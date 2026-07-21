@@ -1,0 +1,85 @@
+:root {
+  --text: #081327;
+  --text-h: #15203b;
+  --bg: #a3c5e7;
+  --border: #445f83;
+  --code-bg: #dfc014;
+
+  --accent: #2563eb;
+  --accent-bg: rgba(37, 99, 235, 0.1);
+  --accent-border: rgba(58, 118, 247, 0.5);
+
+  --social-bg: #cebc1f;
+
+  --shadow:
+    rgba(15, 23, 42, 0.1) 0 10px 15px -3px,
+    rgba(15, 23, 42, 0.05) 0 4px 6px -2px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+
+  color: var(--text);
+  background: var(--bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+  }
+@media print {
+
+  button {
+    display:none;
+  }
+
+  body {
+    background:white;
+  }
+
+@media print {
+
+  @page {
+    size: A4;
+    margin: 5mm;
+  }
+
+
+  body {
+    background:white;
+  }
+
+
+  button {
+    display:none;
+  }
+
+}
+
+  button {
+    display:none;
+  }
+
+
+  body {
+    background:white;
+  }
+
+
+  .page-break {
+    page-break-before: always;
+  }
+
+}
