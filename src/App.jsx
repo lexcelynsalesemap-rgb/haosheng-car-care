@@ -7,6 +7,8 @@ import Invoice from "./pages/Invoice";
 import EditJob from "./pages/EditJob";
 import Settings from "./pages/Settings";
 import JobDetails from "./pages/JobDetails";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 
 function App() {
@@ -16,24 +18,84 @@ function App() {
 
       <Routes>
 
-        <Route path="/" element={<Dashboard />} />
+  {/* Public */}
+  <Route 
+    path="/login" 
+    element={<Login />} 
+  />
 
-        <Route path="/new-job" element={<NewJob />} />
 
-        <Route path="/jobs" element={<Jobs />} />
+  {/* Protected */}
+  <Route
+  path="/"
+  element={
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  }
+/>
 
-        <Route path="/invoice/:id" element={<Invoice />} />
 
-        <Route path="/edit-job/:id" element={<EditJob />} />
+  <Route 
+    path="/new-job" 
+    element={
+      <ProtectedRoute>
+        <NewJob />
+      </ProtectedRoute>
+    } 
+  />
 
-        <Route path="/settings" element={<Settings />} />
 
-        <Route 
-          path="/job-details/:id" 
-          element={<JobDetails />}
-        />
+  <Route 
+    path="/jobs" 
+    element={
+      <ProtectedRoute>
+        <Jobs />
+      </ProtectedRoute>
+    } 
+  />
 
-      </Routes>
+
+  <Route 
+    path="/invoice/:id" 
+    element={
+      <ProtectedRoute>
+        <Invoice />
+      </ProtectedRoute>
+    } 
+  />
+
+
+  <Route 
+    path="/edit-job/:id" 
+    element={
+      <ProtectedRoute>
+        <EditJob />
+      </ProtectedRoute>
+    } 
+  />
+
+
+  <Route 
+    path="/settings" 
+    element={
+      <ProtectedRoute>
+        <Settings />
+      </ProtectedRoute>
+    } 
+  />
+
+
+  <Route 
+    path="/job-details/:id" 
+    element={
+      <ProtectedRoute>
+        <JobDetails />
+      </ProtectedRoute>
+    } 
+  />
+
+</Routes>
 
     </BrowserRouter>
   );
