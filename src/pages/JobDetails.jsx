@@ -13,6 +13,16 @@ const [job,setJob]=useState(null);
 
 const [technicians,setTechnicians]=useState([]);
 
+const [payments,setPayments]=useState([]);
+
+
+// PAYMENT FORM
+
+const [amount,setAmount]=useState("");
+
+const [method,setMethod]=useState("Cash");
+
+const [notes,setNotes]=useState("");
 
 
 
@@ -50,6 +60,46 @@ setJob(data);
 
 
 
+// LOAD PAYMENTS
+
+async function loadPayments(){
+
+
+const {data,error}=await supabase
+
+.from("payments")
+
+.select("*")
+
+.eq("job_id",id)
+
+.order(
+"payment_date",
+{
+ascending:false
+}
+);
+
+
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+
+
+setPayments(data || []);
+
+
+}
+
+
+
+
 // LOAD TECHNICIANS
 
 async function loadTechnicians(){
@@ -73,8 +123,75 @@ return;
 
 
 
-setTechnicians(data);
+setTechnicians(data || []);
 
+
+}
+
+
+
+
+// ADD PAYMENT
+
+async function savePayment(){
+
+
+if(!amount || Number(amount)<=0){
+
+alert("Enter payment amount");
+
+return;
+
+}
+
+
+
+const {error}=await supabase
+
+.from("payments")
+
+.insert([
+
+{
+
+job_id:Number(id),
+
+amount:Number(amount),
+
+payment_method:method,
+
+notes:notes
+
+}
+
+]);
+
+
+
+if(error){
+
+console.log(error);
+
+alert(error.message);
+
+return;
+
+}
+
+
+
+setAmount("");
+
+setMethod("Cash");
+
+setNotes("");
+
+
+
+await loadPayments();
+
+
+alert("Payment Added Successfully");
 
 
 }
@@ -89,6 +206,8 @@ loadJob();
 
 loadTechnicians();
 
+loadPayments();
+
 
 },[]);
 
@@ -98,6 +217,7 @@ loadTechnicians();
 
 if(!job){
 
+
 return (
 
 <h1>
@@ -106,22 +226,22 @@ Loading...
 
 );
 
+
 }
 
 
 
 
 
+function getTechnicianName(id){
 
 
-function getTechnicianName(techID){
+const tech=technicians.find(
 
-
-const tech = technicians.find(
-
-t=>t.id===techID
+t=>t.id===id
 
 );
+
 
 
 return tech?.name || "Unknown";
@@ -133,10 +253,52 @@ return tech?.name || "Unknown";
 
 
 
+const totalPaid = payments.reduce(
+
+(sum,payment)=>
+
+sum + Number(payment.amount),
+
+0
+
+);
 
 
-return(
 
+
+
+const balance =
+
+Number(job.price || 0)
+
+-
+
+Number(job.discount || 0)
+
+-
+
+totalPaid;
+
+
+
+
+
+let paymentStatus="Unpaid";
+
+
+
+if(balance<=0){
+
+paymentStatus="Paid";
+
+}
+
+else if(totalPaid>0){
+
+paymentStatus="Partially Paid";
+
+}
+return (
 
 <div style={styles.page}>
 
@@ -144,8 +306,6 @@ return(
 <h1>
 Job Details
 </h1>
-
-
 
 
 
@@ -158,27 +318,22 @@ Customer Information
 
 
 <p>
-Name:
-{job.customer}
+<strong>Name:</strong> {job.customer}
 </p>
 
 
 <p>
-Phone:
-{job.phone}
+<strong>Phone:</strong> {job.phone}
 </p>
 
 
 <p>
-Date:
-{job.date}
+<strong>Date:</strong> {job.date}
 </p>
 
 
-
 <p>
-Source:
-{job.source || "Not specified"}
+<strong>Source:</strong> {job.source || "Not specified"}
 </p>
 
 
@@ -187,8 +342,7 @@ Source:
 job.voucherNumber &&
 
 <p>
-Voucher:
-{job.voucherNumber}
+<strong>Voucher:</strong> {job.voucherNumber}
 </p>
 
 }
@@ -202,35 +356,31 @@ Vehicle Information
 </h2>
 
 
-
 <p>
-Model:
-{job.carModel}
+<strong>Model:</strong> {job.carModel}
 </p>
 
 
 <p>
-Type:
-{job.carType}
+<strong>Type:</strong> {job.carType}
 </p>
 
 
 <p>
-Color:
-{job.color}
+<strong>Color:</strong> {job.color}
 </p>
 
 
 <p>
-Chassis:
-{job.chassis}
+<strong>Chassis:</strong> {job.chassis}
 </p>
 
 
 <p>
-Plate:
-{job.plate}
+<strong>Plate:</strong> {job.plate}
 </p>
+
+
 
 
 
@@ -239,7 +389,6 @@ Plate:
 <h2>
 Services
 </h2>
-
 
 
 
@@ -258,7 +407,6 @@ style={styles.service}
 >
 
 
-
 <h3>
 {service}
 </h3>
@@ -266,29 +414,36 @@ style={styles.service}
 
 
 <p>
-Price:
+<strong>Price:</strong>
+
 QAR {job.serviceDetails?.[service]?.price || 0}
+
 </p>
 
 
 
 <p>
-Discount:
+<strong>Discount:</strong>
+
 QAR {job.serviceDetails?.[service]?.discount || 0}
+
 </p>
 
 
 
 <p>
-Quantity:
+<strong>Quantity:</strong>
+
 {job.serviceDetails?.[service]?.quantity || 1}
+
 </p>
+
 
 
 
 
 <h4>
-Technicians:
+Technicians
 </h4>
 
 
@@ -296,11 +451,12 @@ Technicians:
 
 {
 
-
 job.serviceDetails?.[service]?.technicians?.length ?
 
 
-job.serviceDetails[service].technicians.map(techID=>(
+job.serviceDetails[service]
+.technicians
+.map(techID=>(
 
 
 <p key={techID}>
@@ -314,6 +470,7 @@ job.serviceDetails[service].technicians.map(techID=>(
 
 
 :
+
 
 <p>
 No technician assigned
@@ -338,43 +495,289 @@ No technician assigned
 
 
 
-
 <h2>
-Payment
+Payment Summary
 </h2>
 
 
 
 <p>
-Payment Method:
-{job.paymentMethod || "Not Selected"}
-</p>
+<strong>Total:</strong>
 
-
-<p>
-Total:
 QAR {job.price}
+
 </p>
 
 
+
+
 <p>
-Discount:
+<strong>Discount:</strong>
+
 QAR {job.discount}
+
 </p>
 
 
+
+
 <p>
-Deposit:
-QAR {job.deposit}
+<strong>Paid:</strong>
+
+QAR {totalPaid}
+
 </p>
 
 
 
 <h2>
 Balance:
-QAR {job.balance}
+
+QAR {balance}
 </h2>
 
+
+
+
+<p>
+
+<strong>Status:</strong>
+
+{" "}
+
+{
+
+paymentStatus==="Paid"
+
+?
+
+"🟢 Paid"
+
+:
+
+paymentStatus==="Partially Paid"
+
+?
+
+"🟡 Partially Paid"
+
+:
+
+"🔴 Unpaid"
+
+}
+
+</p>
+
+
+
+
+
+
+<hr />
+
+
+
+<h3>
+Payment History
+</h3>
+
+
+
+
+{
+
+payments.length===0 ?
+
+
+<p>
+No payments yet.
+</p>
+
+
+:
+
+
+payments.map(payment=>(
+
+
+<div
+
+key={payment.id}
+
+style={styles.paymentBox}
+
+>
+
+
+<p>
+
+<strong>Date:</strong>
+
+{" "}
+
+{payment.payment_date}
+
+</p>
+
+
+
+<p>
+
+<strong>Amount:</strong>
+
+{" "}
+
+QAR {payment.amount}
+
+</p>
+
+
+
+
+<p>
+
+<strong>Method:</strong>
+
+{" "}
+
+{payment.payment_method}
+
+</p>
+
+
+
+{
+
+payment.notes &&
+
+
+<p>
+
+<strong>Notes:</strong>
+
+{" "}
+
+{payment.notes}
+
+</p>
+
+
+}
+
+
+
+</div>
+
+
+))
+
+
+}
+
+
+
+
+
+<hr />
+
+
+
+<h3>
+Add Payment
+</h3>
+
+
+
+
+<input
+
+type="number"
+
+placeholder="Amount"
+
+value={amount}
+
+onChange={(e)=>
+
+setAmount(e.target.value)
+
+}
+
+/>
+
+
+
+
+
+<select
+
+value={method}
+
+onChange={(e)=>
+
+setMethod(e.target.value)
+
+}
+
+>
+
+
+<option value="Cash">
+Cash
+</option>
+
+
+<option value="Visa">
+Visa
+</option>
+
+
+<option value="Mastercard">
+Mastercard
+</option>
+
+
+<option value="PayLater">
+PayLater
+</option>
+
+
+</select>
+
+
+
+
+
+<textarea
+
+placeholder="Notes"
+
+value={notes}
+
+onChange={(e)=>
+
+setNotes(e.target.value)
+
+}
+
+/>
+
+
+
+
+
+<button
+
+onClick={savePayment}
+
+style={styles.button}
+
+>
+
+Add Payment
+
+</button>
 
 
 
@@ -382,16 +785,17 @@ QAR {job.balance}
 
 <Link to={`/invoice/${job.id}`}>
 
-<button style={styles.button}>
+<button
+
+style={styles.invoiceButton}
+
+>
+
 🧾 Invoice
+
 </button>
 
 </Link>
-
-
-
-
-
 </div>
 
 
@@ -424,6 +828,7 @@ minHeight:"100vh"
 
 
 
+
 card:{
 
 
@@ -439,6 +844,7 @@ boxShadow:"0 5px 15px rgba(0,0,0,.1)"
 
 
 },
+
 
 
 
@@ -458,6 +864,26 @@ marginBottom:"15px"
 
 
 
+
+paymentBox:{
+
+
+border:"1px solid #ddd",
+
+padding:"12px",
+
+borderRadius:"10px",
+
+marginBottom:"10px",
+
+background:"#fafafa"
+
+
+},
+
+
+
+
 button:{
 
 
@@ -471,7 +897,34 @@ padding:"12px 20px",
 
 borderRadius:"10px",
 
-cursor:"pointer"
+cursor:"pointer",
+
+marginTop:"10px"
+
+
+},
+
+
+
+
+invoiceButton:{
+
+
+background:"#2563eb",
+
+color:"white",
+
+border:"none",
+
+padding:"12px 20px",
+
+borderRadius:"10px",
+
+cursor:"pointer",
+
+marginTop:"10px",
+
+marginLeft:"10px"
 
 
 }
@@ -479,6 +932,8 @@ cursor:"pointer"
 
 
 };
+
+
 
 
 
