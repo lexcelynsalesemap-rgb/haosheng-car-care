@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
+import UserMenu from "../components/UserMenu";
 import { Link } from "react-router-dom";
+import { supabase } from "../supabase/client";
 import {
   PieChart,
   Pie,
@@ -13,8 +16,48 @@ import {
 
 function Dashboard() {
 
-  const jobs =
-    JSON.parse(localStorage.getItem("jobs")) || [];
+  const [jobs, setJobs] = useState([]);
+
+useEffect(() => {
+
+  loadJobs();
+
+
+  const channel = supabase
+    .channel("jobs-changes")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "jobs"
+      },
+      () => {
+        loadJobs();
+      }
+    )
+    .subscribe();
+
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+
+}, []);
+
+async function loadJobs() {
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  setJobs(data || []);
+}
 
 
   const totalJobs = jobs.length;
@@ -59,12 +102,20 @@ const sourceReport = {
     job => job.source === "Teyseer Motors"
   ).length,
 
+  "Teyseer Motors - Bahaa": jobs.filter(
+    job => job.source === "Teyseer Motors - Bahaa"
+  ).length,
+
   "Teyseer Motors - Salah": jobs.filter(
     job => job.source === "Teyseer Motors - Salah"
   ).length,
 
-  "Teyseer Motors - Bahaa": jobs.filter(
-    job => job.source === "Teyseer Motors - Bahaa"
+  "Bahaa": jobs.filter(
+    job => job.source === "Bahaa"
+  ).length,
+
+  "Salah": jobs.filter(
+    job => job.source === "Salah"
   ).length,
 
   "Walk-in": jobs.filter(
@@ -72,15 +123,9 @@ const sourceReport = {
   ).length,
 
   "Other": jobs.filter(
-    job =>
-      job.source &&
-      ![
-        "Teyseer Motors",
-        "Teyseer Motors - Salah",
-        "Teyseer Motors - Bahaa",
-        "Walk-in"
-      ].includes(job.source)
+    job => job.source === "Other"
   ).length
+
 
 };
 const statusData = [
@@ -127,20 +172,34 @@ const COLORS = [
 ];
   return (
 
-    <div style={styles.page}>
+  <div style={styles.page}>
 
-      <div style={styles.header}>
-  <div>
-    <h1>🚗 Haosheng Car Care</h1>
-    <p>Workshop Management System</p>
-  </div>
+    <div style={styles.header}>
 
-  <Link to="/new-job">
-    <button style={styles.newButton}>
-      + New Job
-    </button>
-  </Link>
-</div>
+      <div>
+        <h1>
+          🚗 Haosheng Car Care
+        </h1>
+
+        <p>
+          Workshop Management System
+        </p>
+      </div>
+
+
+      <div style={{display:"flex", gap:"15px", alignItems:"center"}}>
+
+        <UserMenu />
+
+        <Link to="/new-job">
+          <button style={styles.newButton}>
+            + New Job
+          </button>
+        </Link>
+
+      </div>
+
+    </div>
 
 
       <div style={styles.cards}>

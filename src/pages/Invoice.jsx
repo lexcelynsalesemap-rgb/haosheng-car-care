@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
-
+import { useEffect, useState } from "react";
+import { supabase } from "../supabase/client";
 
 function Invoice() {
 
@@ -7,16 +8,56 @@ function Invoice() {
   const { id } = useParams();
 
 
-  const jobs =
-    JSON.parse(localStorage.getItem("jobs")) || [];
+const [job, setJob] = useState(null);
+const [loading, setLoading] = useState(true);
 
 
-  const job =
-    jobs.find(item => String(item.id) === String(id));
+useEffect(() => {
+
+  loadJob();
+
+}, []);
 
 
 
-  if (!job) {
+async function loadJob(){
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+
+  if(error){
+
+    console.error(error);
+    return;
+
+  }
+
+
+  setJob(data);
+  setLoading(false);
+
+}
+
+
+
+ if (loading) {
+
+return (
+
+<div>
+<h1>Loading Invoice...</h1>
+</div>
+
+);
+
+}
+
+
+if (!job) {
 
     return (
 
@@ -113,8 +154,8 @@ function Invoice() {
 
 
             <p>
-              INVOICE NUMBER:
-              {job.invoiceNumber || "HS-0001"}
+             INVOICE NUMBER:
+HS-{String(job.id).padStart(6, "0")}
             </p>
 
 
@@ -277,21 +318,25 @@ function Invoice() {
   TYPE OF SERVICE
 </th>
 
-              <th style={styles.cell}>
-                PRICE
-              </th>
+<th style={styles.cell}>
+  TECHNICIAN
+</th>
 
-              <th style={styles.cell}>
-                QTY
-              </th>
+<th style={styles.cell}>
+  PRICE
+</th>
 
-              <th style={styles.cell}>
-                DISCOUNT
-              </th>
+<th style={styles.cell}>
+  QTY
+</th>
 
-              <th style={styles.cell}>
-                TOTAL
-              </th>
+<th style={styles.cell}>
+  DISCOUNT
+</th>
+
+<th style={styles.cell}>
+  TOTAL
+</th>
 
 
             </tr>
@@ -310,13 +355,33 @@ function Invoice() {
     <tr key={index}>
 
       <td style={styles.cell}>
-        {service}
-      </td>
+  {service}
+</td>
 
 
-      <td style={styles.cell}>
-        QAR {job.serviceDetails?.[service]?.price || 0}
-      </td>
+<td style={styles.cell}>
+
+{
+  job.serviceDetails?.[service]?.technicians?.length
+
+  ?
+
+  job.serviceDetails[service]
+  .technicians
+  .join(", ")
+
+  :
+
+  "-"
+
+}
+
+</td>
+
+
+<td style={styles.cell}>
+  QAR {job.serviceDetails?.[service]?.price || 0}
+</td>
 
 
       <td style={styles.cell}>
@@ -329,13 +394,27 @@ function Invoice() {
       </td>
 
 
-      <td style={styles.cell}>
-        QAR {
-          (job.serviceDetails?.[service]?.price || 0)
-          -
-          (job.serviceDetails?.[service]?.discount || 0)
-        }
-      </td>
+     <td style={styles.cell}>
+QAR {
+
+(
+job.serviceDetails?.[service]?.price || 0
+)
+
+*
+
+(
+job.serviceDetails?.[service]?.quantity || 1
+)
+
+-
+
+(
+job.serviceDetails?.[service]?.discount || 0
+)
+
+}
+</td>
 
 
     </tr>
@@ -371,13 +450,25 @@ function Invoice() {
 
 
 <p>
-  TOTAL DISCOUNT: QAR {
-    job.services?.reduce(
-      (total, service) =>
-        total + (job.serviceDetails?.[service]?.discount || 0),
-      0
-    )
-  }
+  TOTAL AMOUNT: QAR {
+
+job.services?.reduce(
+
+(total,service)=>
+
+total +
+
+(
+(job.serviceDetails?.[service]?.price || 0)
+*
+(job.serviceDetails?.[service]?.quantity || 1)
+),
+
+0
+
+)
+
+}
 </p>
 
 
@@ -612,7 +703,12 @@ function Invoice() {
           • يجب الالتزام بالصيانة الدورية للحفاظ على الضمان.
         </p>
 
-
+<button
+  onClick={() => window.print()}
+  style={styles.printButton}
+>
+  🖨 Print Invoice
+</button>
       </div>
 
 
@@ -740,7 +836,15 @@ cell:{
   textAlign:"center",
   fontSize:"13px",
 },
-
+printButton:{
+  background:"#2563eb",
+  color:"white",
+  border:"none",
+  padding:"12px 25px",
+  borderRadius:"10px",
+  cursor:"pointer",
+  marginTop:"20px"
+},
 };
 
 

@@ -1,168 +1,485 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { supabase } from "../supabase/client";
 
 
 function JobDetails(){
 
 
-
-  const {id} = useParams();
-
-
-  const jobs =
-    JSON.parse(localStorage.getItem("jobs")) || [];
+const {id}=useParams();
 
 
- const job = jobs.find(
-  j => String(j.id) === String(id)
-);
+const [job,setJob]=useState(null);
+
+const [technicians,setTechnicians]=useState([]);
 
 
 
-  if(!job){
 
-    return (
-      <div style={styles.page}>
-        <h2>Job not found</h2>
+// LOAD JOB
 
-        <Link to="/jobs">
-          Back to Jobs
-        </Link>
-      </div>
-    );
-
-  }
+async function loadJob(){
 
 
-  return(
+const {data,error}=await supabase
 
-    <div style={styles.card}>
+.from("jobs")
 
-  <h2>👤 Customer Information</h2>
+.select("*")
 
-  <p><strong>Name:</strong> {job.customer || "-"}</p>
-  <p><strong>Phone:</strong> {job.phone || "-"}</p>
-  <p><strong>Source:</strong> {job.source || "-"}</p>
+.eq("id",id)
 
-  <hr />
+.single();
 
-  <h2>🚗 Vehicle Information</h2>
 
-  <p><strong>Brand:</strong> {job.carModel || "-"}</p>
-  <p><strong>Model:</strong> {job.carType || "-"}</p>
-  <p><strong>Plate:</strong> {job.plate || "-"}</p>
-  <p><strong>Color:</strong> {job.color || "-"}</p>
-  <p><strong>Chassis:</strong> {job.chassis || "-"}</p>
 
-  <hr />
+if(error){
 
-  <h2>🔧 Services</h2>
+console.log(error);
 
-  <p>
-    {job.services?.length
-      ? job.services.join(", ")
-      : "No services selected"}
-  </p>
+return;
 
-  <hr />
+}
 
-  <h2>💰 Payment Summary</h2>
 
-  <p><strong>Price:</strong> ${job.price || 0}</p>
-  <p><strong>Deposit:</strong> ${job.deposit || 0}</p>
-  <p><strong>Balance:</strong> ${job.balance || 0}</p>
+setJob(data);
 
-  <hr />
-
-  <h2>📋 Job Status</h2>
-
-  <p>{job.status || "New"}</p>
-
-  {job.voucherNumber && (
-    <>
-      <hr />
-      <h2>🎟 Voucher</h2>
-      <p>{job.voucherNumber}</p>
-    </>
-  )}
-
-  <div style={styles.buttonRow}>
-
-    <Link to={`/edit-job/${job.id}`}>
-      <button style={styles.editButton}>
-        ✏️ Edit Job
-      </button>
-    </Link>
-
-    <Link to={`/invoice/${job.id}`}>
-      <button style={styles.invoiceButton}>
-        🧾 Invoice
-      </button>
-    </Link>
-
-    <Link to="/jobs">
-      <button style={styles.button}>
-        ← Back
-      </button>
-    </Link>
-
-  </div>
-
-</div>
-
-  );
 
 }
 
 
 
+
+// LOAD TECHNICIANS
+
+async function loadTechnicians(){
+
+
+const {data,error}=await supabase
+
+.from("technicians")
+
+.select("*");
+
+
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+
+
+setTechnicians(data);
+
+
+
+}
+
+
+
+
+useEffect(()=>{
+
+
+loadJob();
+
+loadTechnicians();
+
+
+},[]);
+
+
+
+
+
+if(!job){
+
+return (
+
+<h1>
+Loading...
+</h1>
+
+);
+
+}
+
+
+
+
+
+
+
+function getTechnicianName(techID){
+
+
+const tech = technicians.find(
+
+t=>t.id===techID
+
+);
+
+
+return tech?.name || "Unknown";
+
+
+}
+
+
+
+
+
+
+
+return(
+
+
+<div style={styles.page}>
+
+
+<h1>
+Job Details
+</h1>
+
+
+
+
+
+<div style={styles.card}>
+
+
+<h2>
+Customer Information
+</h2>
+
+
+<p>
+Name:
+{job.customer}
+</p>
+
+
+<p>
+Phone:
+{job.phone}
+</p>
+
+
+<p>
+Date:
+{job.date}
+</p>
+
+
+
+<p>
+Source:
+{job.source || "Not specified"}
+</p>
+
+
+
+{
+job.voucherNumber &&
+
+<p>
+Voucher:
+{job.voucherNumber}
+</p>
+
+}
+
+
+
+
+
+<h2>
+Vehicle Information
+</h2>
+
+
+
+<p>
+Model:
+{job.carModel}
+</p>
+
+
+<p>
+Type:
+{job.carType}
+</p>
+
+
+<p>
+Color:
+{job.color}
+</p>
+
+
+<p>
+Chassis:
+{job.chassis}
+</p>
+
+
+<p>
+Plate:
+{job.plate}
+</p>
+
+
+
+
+
+<h2>
+Services
+</h2>
+
+
+
+
+
+{
+
+job.services?.map(service=>(
+
+
+<div
+
+key={service}
+
+style={styles.service}
+
+>
+
+
+
+<h3>
+{service}
+</h3>
+
+
+
+<p>
+Price:
+QAR {job.serviceDetails?.[service]?.price || 0}
+</p>
+
+
+
+<p>
+Discount:
+QAR {job.serviceDetails?.[service]?.discount || 0}
+</p>
+
+
+
+<p>
+Quantity:
+{job.serviceDetails?.[service]?.quantity || 1}
+</p>
+
+
+
+
+<h4>
+Technicians:
+</h4>
+
+
+
+
+{
+
+
+job.serviceDetails?.[service]?.technicians?.length ?
+
+
+job.serviceDetails[service].technicians.map(techID=>(
+
+
+<p key={techID}>
+
+👷 {getTechnicianName(techID)}
+
+</p>
+
+
+))
+
+
+:
+
+<p>
+No technician assigned
+</p>
+
+
+}
+
+
+
+
+</div>
+
+
+))
+
+
+}
+
+
+
+
+
+
+
+<h2>
+Payment
+</h2>
+
+
+
+<p>
+Payment Method:
+{job.paymentMethod || "Not Selected"}
+</p>
+
+
+<p>
+Total:
+QAR {job.price}
+</p>
+
+
+<p>
+Discount:
+QAR {job.discount}
+</p>
+
+
+<p>
+Deposit:
+QAR {job.deposit}
+</p>
+
+
+
+<h2>
+Balance:
+QAR {job.balance}
+</h2>
+
+
+
+
+
+
+<Link to={`/invoice/${job.id}`}>
+
+<button style={styles.button}>
+🧾 Invoice
+</button>
+
+</Link>
+
+
+
+
+
+</div>
+
+
+</div>
+
+
+);
+
+}
+
+
+
+
+
 const styles={
 
+
+
 page:{
- padding:"30px",
- background:"#f1f5f9",
- minHeight:"100vh"
+
+
+padding:"30px",
+
+background:"var(--bg)",
+
+minHeight:"100vh"
+
+
 },
+
+
 
 card:{
- background:"white",
- padding:"30px",
- borderRadius:"20px",
- boxShadow:"0 8px 20px rgba(0,0,0,0.08)"
+
+
+background:"white",
+
+padding:"25px",
+
+borderRadius:"15px",
+
+maxWidth:"700px",
+
+boxShadow:"0 5px 15px rgba(0,0,0,.1)"
+
+
 },
 
+
+
+service:{
+
+
+border:"1px solid #ddd",
+
+padding:"15px",
+
+borderRadius:"10px",
+
+marginBottom:"15px"
+
+
+},
+
+
+
 button:{
- background:"#2563eb",
- color:"white",
- border:"none",
- padding:"12px 25px",
- borderRadius:"10px",
- cursor:"pointer"
-},
-editButton:{
-  background:"#16a34a",
-  color:"white",
-  border:"none",
-  padding:"12px 25px",
-  borderRadius:"10px",
-  cursor:"pointer",
-  marginRight:"10px"
-},
-invoiceButton: {
-  background: "#2563eb",
-  color: "white",
-  border: "none",
-  padding: "12px 25px",
-  borderRadius: "10px",
-  cursor: "pointer",
-  marginRight: "10px"
-},
-buttonRow: {
-  display: "flex",
-  gap: "10px",
-  marginTop: "30px",
-  flexWrap: "wrap"
-},
+
+
+background:"#16a34a",
+
+color:"white",
+
+border:"none",
+
+padding:"12px 20px",
+
+borderRadius:"10px",
+
+cursor:"pointer"
+
+
+}
+
+
+
 };
+
 
 
 export default JobDetails;
