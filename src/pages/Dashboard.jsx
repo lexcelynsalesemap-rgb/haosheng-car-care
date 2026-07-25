@@ -13,7 +13,7 @@ import {
   YAxis,
   Tooltip
 } from "recharts";
-
+import { Link } from "react-router-dom";
 function Dashboard() {
 
   const [jobs, setJobs] = useState([]);
@@ -196,7 +196,15 @@ const COLORS = [
             + New Job
           </button>
         </Link>
+<Link to="/technician-earnings">
 
+<button>
+
+👷 Technician Earnings
+
+</button>
+
+</Link>
       </div>
 
     </div>

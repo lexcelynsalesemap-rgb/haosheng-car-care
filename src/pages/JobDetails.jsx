@@ -16,13 +16,21 @@ const [technicians,setTechnicians]=useState([]);
 const [payments,setPayments]=useState([]);
 
 
-// PAYMENT FORM
+
+// PAYMENT
 
 const [amount,setAmount]=useState("");
 
 const [method,setMethod]=useState("Cash");
 
 const [notes,setNotes]=useState("");
+
+const [editingPayment,setEditingPayment]=useState(null);
+// TECHNICIAN EDIT
+
+const [editingService,setEditingService]=useState(null);
+
+const [editTechnicians,setEditTechnicians]=useState([]);
 
 
 
@@ -37,7 +45,7 @@ const {data,error}=await supabase
 
 .select("*")
 
-.eq("id",id)
+.eq("id", Number(id))
 
 .single();
 
@@ -53,46 +61,6 @@ return;
 
 
 setJob(data);
-
-
-}
-
-
-
-
-// LOAD PAYMENTS
-
-async function loadPayments(){
-
-
-const {data,error}=await supabase
-
-.from("payments")
-
-.select("*")
-
-.eq("job_id",id)
-
-.order(
-"payment_date",
-{
-ascending:false
-}
-);
-
-
-
-if(error){
-
-console.log(error);
-
-return;
-
-}
-
-
-
-setPayments(data || []);
 
 
 }
@@ -122,11 +90,215 @@ return;
 }
 
 
-
 setTechnicians(data || []);
 
 
 }
+
+
+
+
+// LOAD PAYMENTS
+
+async function loadPayments(){
+
+
+const {data,error}=await supabase
+
+.from("payments")
+
+.select("*")
+
+.eq("job_id",Number(id))
+
+.order(
+"payment_date",
+{
+ascending:false
+}
+);
+
+
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+
+setPayments(data || []);
+
+
+}
+
+
+
+
+
+useEffect(()=>{
+
+
+loadJob();
+
+loadTechnicians();
+
+loadPayments();
+
+
+},[]);
+
+
+// DELETE PAYMENT
+
+async function deletePayment(paymentID){
+
+const confirmDelete = window.confirm(
+"Delete this payment?"
+);
+
+
+if(!confirmDelete){
+
+return;
+
+}
+
+
+const {error}=await supabase
+
+.from("payments")
+
+.delete()
+
+.eq(
+"id",
+paymentID
+);
+
+
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+
+
+loadPayments();
+
+
+alert("Payment Deleted");
+
+
+}
+
+
+
+// ===============================
+// START EDIT TECHNICIANS
+// ===============================
+
+function startEditTechnicians(service){
+
+setEditingService(service);
+
+
+setEditTechnicians(
+
+job.serviceDetails?.[service]?.technicians || []
+
+);
+
+}
+
+
+
+async function saveTechnicians(service){
+
+const newDetails = {
+
+...(job.serviceDetails || {}),
+
+
+[service]:{
+
+...(job.serviceDetails?.[service] || {}),
+
+technicians:editTechnicians
+
+}
+
+};
+
+
+
+const {error}=await supabase
+
+.from("jobs")
+
+.update({
+
+serviceDetails:newDetails
+
+})
+
+.eq("id", Number(id));
+
+
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+
+
+setJob({
+
+...job,
+
+serviceDetails:newDetails
+
+});
+
+
+setEditingService(null);
+
+await loadJob();
+
+alert("Technicians Updated");
+
+
+}
+
+// GET TECHNICIAN NAME
+
+function getTechnicianName(id){
+
+const tech = technicians.find(
+
+t=>t.id===id
+
+);
+
+
+return tech?.name || "Unknown";
+
+
+}
+
+
+
+
 
 
 
@@ -170,7 +342,86 @@ notes:notes
 
 if(error){
 
-console.log(error);
+alert(error.message);
+
+return;
+
+}
+
+
+
+clearPaymentForm();
+
+await loadPayments();
+
+alert("Payment Added");
+
+
+}
+
+
+
+
+
+function clearPaymentForm(){
+
+
+setAmount("");
+
+setMethod("Cash");
+
+setNotes("");
+
+setEditingPayment(null);
+
+
+}
+
+
+
+
+// START EDIT
+
+function startEditPayment(payment){
+
+
+setEditingPayment(payment);
+
+setAmount(payment.amount);
+
+setMethod(payment.payment_method);
+
+setNotes(payment.notes || "");
+
+
+}
+// UPDATE PAYMENT
+
+async function updatePayment(){
+
+
+const {error}=await supabase
+
+.from("payments")
+
+.update({
+
+amount:Number(amount),
+
+payment_method:method,
+
+notes:notes
+
+})
+
+.eq(
+"id",
+editingPayment.id
+);
+
+
+
+if(error){
 
 alert(error.message);
 
@@ -180,45 +431,21 @@ return;
 
 
 
-setAmount("");
-
-setMethod("Cash");
-
-setNotes("");
-
-
+clearPaymentForm();
 
 await loadPayments();
 
 
-alert("Payment Added Successfully");
+alert("Payment Updated");
 
 
 }
 
 
-
-
-useEffect(()=>{
-
-
-loadJob();
-
-loadTechnicians();
-
-loadPayments();
-
-
-},[]);
-
-
-
-
-
 if(!job){
 
 
-return (
+return(
 
 <h1>
 Loading...
@@ -232,27 +459,6 @@ Loading...
 
 
 
-
-function getTechnicianName(id){
-
-
-const tech=technicians.find(
-
-t=>t.id===id
-
-);
-
-
-
-return tech?.name || "Unknown";
-
-
-}
-
-
-
-
-
 const totalPaid = payments.reduce(
 
 (sum,payment)=>
@@ -262,8 +468,6 @@ sum + Number(payment.amount),
 0
 
 );
-
-
 
 
 
@@ -286,7 +490,6 @@ totalPaid;
 let paymentStatus="Unpaid";
 
 
-
 if(balance<=0){
 
 paymentStatus="Paid";
@@ -298,6 +501,11 @@ else if(totalPaid>0){
 paymentStatus="Partially Paid";
 
 }
+
+
+
+
+
 return (
 
 <div style={styles.page}>
@@ -306,7 +514,6 @@ return (
 <h1>
 Job Details
 </h1>
-
 
 
 <div style={styles.card}>
@@ -333,19 +540,8 @@ Customer Information
 
 
 <p>
-<strong>Source:</strong> {job.source || "Not specified"}
+<strong>Source:</strong> {job.source}
 </p>
-
-
-
-{
-job.voucherNumber &&
-
-<p>
-<strong>Voucher:</strong> {job.voucherNumber}
-</p>
-
-}
 
 
 
@@ -372,14 +568,8 @@ Vehicle Information
 
 
 <p>
-<strong>Chassis:</strong> {job.chassis}
-</p>
-
-
-<p>
 <strong>Plate:</strong> {job.plate}
 </p>
-
 
 
 
@@ -391,10 +581,7 @@ Services
 </h2>
 
 
-
-
 {
-
 job.services?.map(service=>(
 
 
@@ -414,31 +601,15 @@ style={styles.service}
 
 
 <p>
-<strong>Price:</strong>
-
+Price:
 QAR {job.serviceDetails?.[service]?.price || 0}
-
 </p>
 
 
-
 <p>
-<strong>Discount:</strong>
-
+Discount:
 QAR {job.serviceDetails?.[service]?.discount || 0}
-
 </p>
-
-
-
-<p>
-<strong>Quantity:</strong>
-
-{job.serviceDetails?.[service]?.quantity || 1}
-
-</p>
-
-
 
 
 
@@ -447,6 +618,130 @@ Technicians
 </h4>
 
 
+{
+editingService === service ? (
+
+<div>
+
+
+{
+technicians.map(person=>(
+
+
+<label
+key={person.id}
+style={{
+display:"block",
+marginBottom:"5px"
+}}
+>
+
+
+<input
+
+type="checkbox"
+
+
+checked={
+
+editTechnicians.includes(person.id)
+
+}
+
+
+onChange={(e)=>{
+
+
+if(e.target.checked){
+
+
+setEditTechnicians([
+
+...editTechnicians,
+
+person.id
+
+]);
+
+
+}
+
+else{
+
+
+setEditTechnicians(
+
+editTechnicians.filter(
+
+x=>x!==person.id
+
+)
+
+);
+
+
+}
+
+
+}}
+
+
+/>
+
+
+{" "}
+
+{person.name}
+
+
+</label>
+
+
+))
+
+}
+
+
+<br/>
+
+
+<button
+
+style={styles.button}
+
+onClick={()=>saveTechnicians(service)}
+
+>
+
+Save Technicians
+
+</button>
+
+
+
+<button
+
+style={styles.cancelButton}
+
+onClick={()=>setEditingService(null)}
+
+>
+
+Cancel
+
+</button>
+
+
+</div>
+
+
+)
+
+:
+
+(
+
+<div>
 
 
 {
@@ -454,14 +749,12 @@ Technicians
 job.serviceDetails?.[service]?.technicians?.length ?
 
 
-job.serviceDetails[service]
-.technicians
-.map(techID=>(
+job.serviceDetails[service].technicians.map(id=>(
 
 
-<p key={techID}>
+<p key={id}>
 
-👷 {getTechnicianName(techID)}
+👷 {getTechnicianName(id)}
 
 </p>
 
@@ -471,7 +764,6 @@ job.serviceDetails[service]
 
 :
 
-
 <p>
 No technician assigned
 </p>
@@ -479,6 +771,26 @@ No technician assigned
 
 }
 
+
+
+<button
+
+style={styles.editButton}
+
+onClick={()=>startEditTechnicians(service)}
+
+>
+
+✏️ Edit Technicians
+
+</button>
+
+
+</div>
+
+)
+
+}
 
 
 
@@ -500,48 +812,33 @@ Payment Summary
 </h2>
 
 
-
 <p>
-<strong>Total:</strong>
-
+Total:
 QAR {job.price}
-
 </p>
 
 
-
-
 <p>
-<strong>Discount:</strong>
-
+Discount:
 QAR {job.discount}
-
 </p>
-
-
 
 
 <p>
-<strong>Paid:</strong>
-
+Paid:
 QAR {totalPaid}
-
 </p>
-
 
 
 <h2>
 Balance:
-
 QAR {balance}
 </h2>
 
 
-
-
 <p>
 
-<strong>Status:</strong>
+Status:
 
 {" "}
 
@@ -571,32 +868,20 @@ paymentStatus==="Partially Paid"
 
 
 
+<hr/>
 
 
-
-<hr />
-
-
-
-<h3>
+<h2>
 Payment History
-</h3>
-
-
-
-
+</h2>
 {
-
 payments.length===0 ?
-
 
 <p>
 No payments yet.
 </p>
 
-
 :
-
 
 payments.map(payment=>(
 
@@ -611,59 +896,56 @@ style={styles.paymentBox}
 
 
 <p>
-
-<strong>Date:</strong>
-
-{" "}
-
-{payment.payment_date}
-
+<strong>Date:</strong> {payment.payment_date}
 </p>
-
 
 
 <p>
-
-<strong>Amount:</strong>
-
-{" "}
-
-QAR {payment.amount}
-
+<strong>Amount:</strong> QAR {payment.amount}
 </p>
-
-
 
 
 <p>
-
-<strong>Method:</strong>
-
-{" "}
-
-{payment.payment_method}
-
+<strong>Method:</strong> {payment.payment_method}
 </p>
-
 
 
 {
-
 payment.notes &&
 
-
 <p>
-
-<strong>Notes:</strong>
-
-{" "}
-
-{payment.notes}
-
+<strong>Notes:</strong> {payment.notes}
 </p>
 
-
 }
+
+
+
+<button
+
+style={styles.editButton}
+
+onClick={()=>startEditPayment(payment)}
+
+>
+
+✏️ Edit
+
+</button>
+
+
+
+<button
+
+style={styles.deleteButton}
+
+onClick={()=>deletePayment(payment.id)}
+
+>
+
+🗑 Delete
+
+</button>
 
 
 
@@ -672,21 +954,31 @@ payment.notes &&
 
 ))
 
-
 }
 
 
 
 
 
-<hr />
+<hr/>
 
 
+<h2>
 
-<h3>
-Add Payment
-</h3>
+{
+editingPayment
 
+?
+
+"Edit Payment"
+
+:
+
+"Add Payment"
+
+}
+
+</h2>
 
 
 
@@ -769,16 +1061,68 @@ setNotes(e.target.value)
 
 <button
 
-onClick={savePayment}
-
 style={styles.button}
+
+onClick={
+
+editingPayment
+
+?
+
+updatePayment
+
+:
+
+savePayment
+
+}
 
 >
 
-Add Payment
+{
+
+editingPayment
+
+?
+
+"Update Payment"
+
+:
+
+"Add Payment"
+
+}
 
 </button>
 
+
+
+
+{
+
+editingPayment &&
+
+
+<button
+
+style={styles.cancelButton}
+
+onClick={clearPaymentForm}
+
+>
+
+Cancel
+
+</button>
+
+
+}
+
+
+
+
+
+<br/><br/>
 
 
 
@@ -795,7 +1139,11 @@ style={styles.invoiceButton}
 
 </button>
 
+
 </Link>
+
+
+
 </div>
 
 
@@ -805,6 +1153,8 @@ style={styles.invoiceButton}
 );
 
 }
+
+
 
 
 
@@ -828,7 +1178,6 @@ minHeight:"100vh"
 
 
 
-
 card:{
 
 
@@ -844,7 +1193,6 @@ boxShadow:"0 5px 15px rgba(0,0,0,.1)"
 
 
 },
-
 
 
 
@@ -864,7 +1212,6 @@ marginBottom:"15px"
 
 
 
-
 paymentBox:{
 
 
@@ -880,7 +1227,6 @@ background:"#fafafa"
 
 
 },
-
 
 
 
@@ -906,6 +1252,69 @@ marginTop:"10px"
 
 
 
+editButton:{
+
+
+background:"#f59e0b",
+
+color:"white",
+
+border:"none",
+
+padding:"8px 15px",
+
+borderRadius:"8px",
+
+cursor:"pointer",
+
+marginRight:"10px"
+
+
+},
+
+
+
+deleteButton:{
+
+
+background:"#dc2626",
+
+color:"white",
+
+border:"none",
+
+padding:"8px 15px",
+
+borderRadius:"8px",
+
+cursor:"pointer"
+
+
+},
+
+
+
+cancelButton:{
+
+
+background:"#6b7280",
+
+color:"white",
+
+border:"none",
+
+padding:"12px 20px",
+
+borderRadius:"10px",
+
+cursor:"pointer",
+
+marginLeft:"10px"
+
+
+},
+
+
 
 invoiceButton:{
 
@@ -920,20 +1329,13 @@ padding:"12px 20px",
 
 borderRadius:"10px",
 
-cursor:"pointer",
-
-marginTop:"10px",
-
-marginLeft:"10px"
+cursor:"pointer"
 
 
 }
 
 
-
 };
-
-
 
 
 
