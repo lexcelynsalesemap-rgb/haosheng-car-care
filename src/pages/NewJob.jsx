@@ -93,18 +93,27 @@ loadTechnicians();
 
 const servicePrices={
 
-
 "Normal Wash":68,
 
 "Special Wash":360,
 
-"Full PPF":6500,
+"Full PPF":6000,
 
-"Half Body PPF":2800,
+"Half Body PPF":3000,
 
-"Full WTT":2500,
+"Color Change PPF":7000,
 
-"Full WTT With Sunroof":2800
+"Full WTT With Sunroof":1800,
+
+"Interior Cleaning":1580,
+
+"Window Tint":1200,
+
+"Polishing":800,
+
+"Remove Accessories":3000,
+
+"PPF Check With Normal Wash": free,
 
 
 };
