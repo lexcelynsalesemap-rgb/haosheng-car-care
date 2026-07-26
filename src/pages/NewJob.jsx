@@ -299,7 +299,7 @@ serviceDetails[service]?.price || 0
 
 .single();
 
-
+console.log("SERVICE INSERT:", serviceData, serviceError);
 
 if(serviceError){
 
