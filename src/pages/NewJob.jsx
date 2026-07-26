@@ -246,6 +246,8 @@ status:"New"
 
 
 
+// SAVE JOB ONCE
+
 const {data:jobData,error}=await supabase
 
 .from("jobs")
@@ -271,23 +273,27 @@ return;
 
 
 
+// CREATE JOB SERVICES
+
 for(const service of services){
+
 
 
 const {data:serviceData,error:serviceError}=await supabase
 
 .from("job_services")
 
-.insert({
+.insert([{
 
 job_id:jobData.id,
 
 service_name:service,
 
-price:
-serviceDetails[service].price
+price:Number(
+serviceDetails[service]?.price || 0
+)
 
-})
+}])
 
 .select()
 
@@ -305,17 +311,23 @@ continue;
 
 
 
+
+// SAVE TECHNICIANS FOR THIS SERVICE
+
 const technicianRows =
 
-serviceDetails[service].technicians.map(t=>({
+serviceDetails[service]
+?.technicians
+?.map(t=>({
 
 service_id:serviceData.id,
 
 technician_id:t.id,
 
-commission:t.commission
+commission:Number(t.commission || 0)
 
-}));
+})) || [];
+
 
 
 
@@ -341,12 +353,12 @@ console.log(techError);
 }
 
 
+
 }
 
 
 
 alert("Job Saved Successfully!");
-
 
 }
 
