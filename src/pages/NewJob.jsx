@@ -113,7 +113,7 @@ const servicePrices={
 
 "Remove Accessories":3000,
 
-"PPF Check With Normal Wash": free,
+"PPF Check With Normal Wash": 0,
 
 
 };
