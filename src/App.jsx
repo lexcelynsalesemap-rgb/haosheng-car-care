@@ -9,8 +9,8 @@ import Settings from "./pages/Settings";
 import JobDetails from "./pages/JobDetails";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
-
-
+import TechnicianEarnings from "./pages/TechnicianEarnings";
+import AssignTechnician from "./pages/AssignTechnician";
 function App() {
 
   return (
@@ -99,6 +99,14 @@ function App() {
 
     </BrowserRouter>
   );
-}
+  <Route
+  path="/technician-earnings"
+  element={<TechnicianEarnings />}
+/>
 
+}
+<Route
+  path="/assign-technician/:id"
+  element={<AssignTechnician />}
+/>
 export default App;
