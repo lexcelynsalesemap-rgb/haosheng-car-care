@@ -205,83 +205,56 @@ technicians:[]
 async function saveJob(){
 
 
-
 const job={
 
-
 customer,
-
 phone,
-
 date,
 
-
 source:
-
 source==="Other"
-
 ?
-
 otherSource
-
 :
-
 source,
-
 
 voucherNumber,
 
-
 carModel,
-
 carType,
-
 color,
-
 chassis,
-
 plate,
 
-
 services,
-
-
 serviceDetails,
-
 
 paymentMethod,
 
-
 price:Number(total),
-
 
 discount:Number(discount),
 
-
 deposit:Number(deposit),
 
-
 balance:
-
-Number(
-total-discount-deposit
-),
-
+Number(total-discount-deposit),
 
 status:"New"
-
 
 };
 
 
 
-
-const {error}=await supabase
+const {data:jobData,error}=await supabase
 
 .from("jobs")
 
-.insert([job]);
+.insert([job])
 
+.select()
+
+.single();
 
 
 
@@ -296,8 +269,83 @@ return;
 }
 
 
-alert("Job Saved Successfully!");
 
+
+for(const service of services){
+
+
+const {data:serviceData,error:serviceError}=await supabase
+
+.from("job_services")
+
+.insert({
+
+job_id:jobData.id,
+
+service_name:service,
+
+price:
+serviceDetails[service].price
+
+})
+
+.select()
+
+.single();
+
+
+
+if(serviceError){
+
+console.log(serviceError);
+
+continue;
+
+}
+
+
+
+const technicianRows =
+
+serviceDetails[service].technicians.map(t=>({
+
+service_id:serviceData.id,
+
+technician_id:t.id,
+
+commission:t.commission
+
+}));
+
+
+
+
+if(technicianRows.length){
+
+
+const {error:techError}=await supabase
+
+.from("service_technicians")
+
+.insert(technicianRows);
+
+
+
+if(techError){
+
+console.log(techError);
+
+}
+
+
+}
+
+
+}
+
+
+
+alert("Job Saved Successfully!");
 
 
 }
@@ -646,72 +694,58 @@ Technicians
 
 
 {
+technicians.map(person=>{
 
-technicians.map(person=>(
+const selected =
+serviceDetails[service]
+?.technicians
+?.find(t=>t.id===person.id);
 
+
+return (
 
 <div key={person.id}>
 
-
 <label>
-
 
 <input
 
 type="checkbox"
 
-
-checked={
-
-serviceDetails[service]
-?.technicians
-?.includes(person.id)
-
-}
-
-
+checked={!!selected}
 
 onChange={(e)=>{
 
 
 const oldTech =
-
-serviceDetails[service]
-?.technicians || [];
+serviceDetails[service]?.technicians || [];
 
 
-
-let newTech;
-
+let updated;
 
 
 if(e.target.checked){
 
-
-newTech=[
+updated=[
 
 ...oldTech,
 
-person.id
+{
+id:person.id,
+commission:0
+}
 
 ];
 
-
 }
-
 else{
 
-
-newTech = oldTech.filter(
-
-id=>id!==person.id
-
+updated =
+oldTech.filter(
+t=>t.id!==person.id
 );
 
-
 }
-
-
 
 
 
@@ -719,43 +753,95 @@ setServiceDetails({
 
 ...serviceDetails,
 
-
 [service]:{
-
 
 ...serviceDetails[service],
 
-
-technicians:newTech
-
+technicians:updated
 
 }
+
+});
+
+
+}}
+
+/>
+
+
+{person.name}
+
+</label>
+
+
+
+{
+selected &&
+
+<input
+
+type="number"
+
+placeholder="Commission"
+
+value={selected.commission}
+
+onChange={(e)=>{
+
+
+const updated =
+serviceDetails[service]
+.technicians.map(t=>{
+
+
+if(t.id===person.id){
+
+return {
+
+...t,
+
+commission:
+Number(e.target.value)
+
+};
+
+}
+
+
+return t;
 
 
 });
 
 
 
-}}
+setServiceDetails({
 
+...serviceDetails,
+
+[service]:{
+
+...serviceDetails[service],
+
+technicians:updated
+
+}
+
+});
+
+
+}}
 
 />
 
-
-{" "}
-
-{person.name}
-
-
-</label>
+}
 
 
 </div>
 
+)
 
-))
-
-
+})
 }
 
 
