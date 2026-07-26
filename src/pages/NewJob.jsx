@@ -341,7 +341,7 @@ const {error:techError}=await supabase
 
 .insert(technicianRows);
 
-
+console.log("TECH INSERT:", technicianRows, techError);
 
 if(techError){
 
