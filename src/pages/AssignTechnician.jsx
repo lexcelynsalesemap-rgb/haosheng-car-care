@@ -25,36 +25,32 @@ loadData();
 async function loadData(){
 
 
-const {data:serviceData}=await supabase
-
+const {data:serviceData,error:serviceError}=await supabase
 .from("job_services")
-
 .select("*")
-
 .eq("job_id",id);
 
 
+console.log("JOB ID:",id);
+console.log("SERVICES:",serviceData);
+console.log("SERVICE ERROR:",serviceError);
 
-const {data:techData}=await supabase
 
+
+const {data:techData,error:techError}=await supabase
 .from("technicians")
-
 .select("*")
-
 .eq("active",true);
 
 
+console.log("TECHNICIANS:",techData);
+console.log("TECH ERROR:",techError);
+
 
 setServices(serviceData || []);
-
 setTechnicians(techData || []);
 
-
 }
-
-
-
-
 function changeTech(serviceID,techID,checked){
 
 
@@ -167,10 +163,8 @@ if(rows.length){
 
 
 await supabase
-
 .from("service_technicians")
-
-.insert(rows);
+.upsert(rows);
 
 
 }

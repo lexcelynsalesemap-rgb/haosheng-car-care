@@ -86,27 +86,41 @@ function App() {
   />
 
 
-  <Route 
-    path="/job-details/:id" 
-    element={
-      <ProtectedRoute>
-        <JobDetails />
-      </ProtectedRoute>
-    } 
-  />
+        <Route 
+        path="/job-details/:id" 
+        element={
+          <ProtectedRoute>
+            <JobDetails />
+          </ProtectedRoute>
+        } 
+      />
 
-</Routes>
+
+      <Route
+        path="/technician-earnings"
+        element={
+          <ProtectedRoute>
+            <TechnicianEarnings />
+          </ProtectedRoute>
+        }
+      />
+
+
+      <Route
+        path="/assign-technician/:id"
+        element={
+          <ProtectedRoute>
+            <AssignTechnician />
+          </ProtectedRoute>
+        }
+      />
+
+
+    </Routes>
 
     </BrowserRouter>
   );
-  <Route
-  path="/technician-earnings"
-  element={<TechnicianEarnings />}
-/>
-
 }
-<Route
-  path="/assign-technician/:id"
-  element={<AssignTechnician />}
-/>
+
+
 export default App;
