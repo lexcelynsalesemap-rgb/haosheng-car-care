@@ -4,56 +4,48 @@ import { supabase } from "../supabase/client";
 
 function TechnicianEarnings(){
 
-const [technicians,setTechnicians]=useState([]);
-
-const [jobs,setJobs]=useState([]);
+const [earnings,setEarnings]=useState([]);
 
 
-// LOAD DATA
+// LOAD COMMISSIONS
 
 async function loadData(){
 
+const {data,error}=await supabase
 
-const {data:techData,error:techError}=await supabase
+.from("service_technicians")
 
-.from("technicians")
+.select(`
+  commission,
 
-.select("*");
+  technicians(
+    name
+  ),
+
+  job_services(
+    service_name,
+
+    jobs(
+      customer,
+      carModel
+    )
+  )
+`);
 
 
-if(techError){
 
-console.log(techError);
+if(error){
 
+console.log(error);
 return;
 
 }
 
 
-
-const {data:jobData,error:jobError}=await supabase
-
-.from("jobs")
-
-.select("*");
-
-
-if(jobError){
-
-console.log(jobError);
-
-return;
+setEarnings(data || []);
 
 }
 
-
-
-setTechnicians(techData || []);
-
-setJobs(jobData || []);
-
-
-}
 
 
 
@@ -67,84 +59,41 @@ loadData();
 
 
 
-// CALCULATE EARNINGS
+// GROUP BY TECHNICIAN
 
-function calculateEarnings(technicianID){
-
-
-let total=0;
-
-let jobCount=0;
+const summary = {};
 
 
-
-jobs.forEach(job=>{
-
-
-let found=false;
+earnings.forEach(row=>{
 
 
-job.services?.forEach(service=>{
+const name =
+row.technicians?.name || "Unknown";
 
 
-const details =
-job.serviceDetails?.[service];
+if(!summary[name]){
 
+summary[name]={
 
+jobs:0,
 
-if(
-
-details?.technicians?.includes(technicianID)
-
-){
-
-
-found=true;
-
-
-let techCount =
-details.technicians.length;
-
-
-
-let share =
-Number(details.price || 0)
-/ techCount;
-
-
-
-total += share;
-
-
-}
-
-
-});
-
-
-
-if(found){
-
-jobCount++;
-
-}
-
-
-});
-
-
-
-return {
-
-jobs:jobCount,
-
-earnings:total
+total:0
 
 };
 
-
 }
 
+
+
+summary[name].jobs += 1;
+
+
+summary[name].total +=
+Number(row.commission || 0);
+
+
+
+});
 
 
 
@@ -176,16 +125,13 @@ Technician Earnings
 Technician
 </th>
 
-
 <th>
-Completed Jobs
+Services
 </th>
 
-
 <th>
-Earnings
+Commission
 </th>
-
 
 </tr>
 
@@ -198,41 +144,32 @@ Earnings
 
 {
 
-technicians.map(tech=>{
+Object.entries(summary).map(([name,data])=>(
 
 
-const result =
-calculateEarnings(tech.id);
-
-
-
-return (
-
-<tr key={tech.id}>
+<tr key={name}>
 
 
 <td>
-{tech.name}
+{name}
 </td>
 
 
 <td>
-{result.jobs}
+{data.jobs}
 </td>
 
 
 <td>
-QAR {result.earnings.toFixed(2)}
+QAR {data.total.toFixed(2)}
 </td>
 
 
 </tr>
 
 
-)
+))
 
-
-})
 
 }
 
@@ -254,6 +191,7 @@ QAR {result.earnings.toFixed(2)}
 
 
 }
+
 
 
 
