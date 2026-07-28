@@ -200,6 +200,10 @@ technicians:[]
 
 async function saveJob(){
 
+console.log("SAVE CLICKED");
+console.log("DEPOSIT:", deposit);
+console.log("PAYMENT METHOD:", paymentMethod);
+
 
 const job={
 
