@@ -1102,19 +1102,14 @@ technicians:updated
 
 
 
-
 <h2>
 Payment
 </h2>
 
 
-
-
 <label>
 Payment Method
 </label>
-
-
 
 <select
 
@@ -1124,82 +1119,67 @@ onChange={(e)=>setPaymentMethod(e.target.value)}
 
 >
 
-
 <option value="">
 Select Payment Method
 </option>
-
 
 <option value="Cash">
 Cash
 </option>
 
-
 <option value="Visa">
 Visa
 </option>
-
 
 <option value="Mastercard">
 Mastercard
 </option>
 
-
 <option value="PayLater">
 PayLater
 </option>
-
-
 
 </select>
 
 
 
-
+<label>
+Discount
+</label>
 
 <input
 
 type="number"
 
-placeholder="Total Discount"
-
+placeholder="Enter discount"
 
 value={discount}
-
 
 onChange={(e)=>
 setDiscount(Number(e.target.value))
 }
 
-
 />
 
 
 
-
-
-
+<label>
+Deposit Paid
+</label>
 
 <input
 
 type="number"
 
-placeholder="Deposit Paid"
-
+placeholder="Enter deposit"
 
 value={deposit}
-
 
 onChange={(e)=>
 setDeposit(Number(e.target.value))
 }
 
-
 />
-
-
-
-
 
 
 
@@ -1209,19 +1189,10 @@ QAR {total}
 </h3>
 
 
-
 <h3>
-
 Balance Due:
-
-QAR {total-discount-deposit}
-
+QAR {total - discount - deposit}
 </h3>
-
-
-
-
-
 
 <button
 
