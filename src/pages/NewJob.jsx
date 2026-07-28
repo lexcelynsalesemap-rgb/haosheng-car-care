@@ -54,24 +54,19 @@ const [serviceList,setServiceList]=useState([]);
 
 
 
-async function loadServices(){
+async function loadServices() {
 
-const {data,error}=await supabase
-.from("services")
-.select("*");
+  console.log("URL:", supabase.supabaseUrl);
 
+  const { data, error, status } = await supabase
+    .from("services")
+    .select("*");
 
-console.log("SERVICES FROM SUPABASE:", data);
-console.log("SERVICES ERROR:", error);
+  console.log("STATUS:", status);
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
 
-
-if(error){
-  return;
-}
-
-
-setServiceList(data || []);
-
+  setServiceList(data || []);
 }
 
 
