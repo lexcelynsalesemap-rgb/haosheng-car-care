@@ -114,33 +114,24 @@ async function loadPayments(){
 
 
   const totalSales =
-    jobs.reduce(
-      (sum, job) => sum + Number(job.price || 0),
-      0
-    );
-
-
- const paidFromPayments =
-  payments.reduce(
-    (sum, payment) => sum + Number(payment.amount || 0),
-    0
-  );
-
-
-const paidFromDeposits =
   jobs.reduce(
-    (sum, job) => sum + Number(job.deposit || 0),
+    (sum, job) => sum + Number(job.price || 0),
     0
   );
 
 
 const paid =
-  paidFromPayments + paidFromDeposits;
+  payments.reduce(
+    (sum, payment) =>
+      sum + Number(payment.amount || 0),
+    0
+  );
 
 
-  const totalDiscount =
+const totalDiscount =
   jobs.reduce(
-    (sum, job) => sum + Number(job.discount || 0),
+    (sum, job) =>
+      sum + Number(job.discount || 0),
     0
   );
 
