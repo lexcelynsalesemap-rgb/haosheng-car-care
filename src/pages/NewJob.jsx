@@ -304,39 +304,28 @@ return;
 
 if(Number(deposit)>0){
 
-
-const {error:paymentError}=await supabase
+const {data:paymentData,error:paymentError}=await supabase
 
 .from("payments")
 
 .insert([{
 
-
 job_id:jobData.id,
-
 
 amount:Number(deposit),
 
-
 payment_method:paymentMethod,
-
 
 payment_date:new Date().toISOString(),
 
-
 notes:"Initial deposit"
 
+}])
+.select();
 
-}]);
 
-
-
-if(paymentError){
-
-console.log(paymentError);
-
-}
-
+console.log("PAYMENT INSERT DATA:", paymentData);
+console.log("PAYMENT INSERT ERROR:", paymentError);
 
 
 }
@@ -697,16 +686,15 @@ onChange={(e)=>setPlate(e.target.value)}
 
 
 
+<h2>Services</h2>
 
+<p>Services loaded: {serviceList.length}</p>
 
-
-
-<h2>
-Services
-</h2>
-
-
-
+{serviceList.map(service => (
+  <p key={service.id}>
+    {service.name}
+  </p>
+))}
 
 
 {
