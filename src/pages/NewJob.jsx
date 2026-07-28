@@ -689,13 +689,7 @@ onChange={(e)=>setPlate(e.target.value)}
 
 <h2>Services</h2>
 
-<p>Services loaded: {serviceList.length}</p>
 
-{serviceList.map(service => (
-  <p key={service.id}>
-    {service.name}
-  </p>
-))}
 
 
 {
