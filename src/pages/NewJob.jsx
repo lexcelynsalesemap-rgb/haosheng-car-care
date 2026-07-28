@@ -306,34 +306,31 @@ return;
 // ==============================
 
 
+
+
 if(Number(deposit)>0){
 
-const {data:paymentData,error:paymentError}=await supabase
+  const {data:paymentData,error:paymentError}=await supabase
+  .from("payments")
+  .insert([{
 
-.from("payments")
+    job_id: jobData.id,
+    amount: Number(deposit),
+    payment_method: paymentMethod,
+    payment_date: new Date().toISOString(),
+    notes:"Initial deposit"
 
-.insert([{
-
-job_id:jobData.id,
-
-amount:Number(deposit),
-
-payment_method:paymentMethod,
-
-payment_date:new Date().toISOString(),
-
-notes:"Initial deposit"
-
-}])
-.select();
+  }])
+  .select();
 
 
-console.log("PAYMENT INSERT DATA:", paymentData);
-console.log("PAYMENT INSERT ERROR:", paymentError);
-
+  console.log(
+    "PAYMENT INSERT RESULT:",
+    paymentData,
+    paymentError
+  );
 
 }
-
 
 
 
