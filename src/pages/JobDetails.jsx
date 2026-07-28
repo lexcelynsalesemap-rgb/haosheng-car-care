@@ -102,38 +102,23 @@ setTechnicians(data || []);
 
 async function loadPayments(){
 
-
 const {data,error}=await supabase
-
 .from("payments")
-
 .select("*")
-
 .eq("job_id",Number(id))
+.order("payment_date",{ascending:false});
 
-.order(
-"payment_date",
-{
-ascending:false
-}
-);
-
-
+console.log("PAYMENTS:", data);
+console.log("PAYMENT ERROR:", error);
 
 if(error){
-
 console.log(error);
-
 return;
-
 }
-
 
 setPayments(data || []);
 
-
 }
-
 
 
 
@@ -325,15 +310,11 @@ const {error}=await supabase
 .insert([
 
 {
-
-job_id:Number(id),
-
-amount:Number(amount),
-
-payment_method:method,
-
-notes:notes
-
+ job_id:Number(id),
+ amount:Number(amount),
+ payment_method:method,
+ payment_date:new Date().toISOString(),
+ notes:notes
 }
 
 ]);
@@ -896,7 +877,7 @@ style={styles.paymentBox}
 
 
 <p>
-<strong>Date:</strong> {payment.payment_date}
+<strong>Date:</strong> {new Date(payment.payment_date).toLocaleDateString()}
 </p>
 
 

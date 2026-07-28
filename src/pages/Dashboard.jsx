@@ -17,10 +17,18 @@ import {
 function Dashboard() {
 
   const [jobs, setJobs] = useState([]);
+  const [payments, setPayments] = useState([]);
 
 useEffect(() => {
 
-  loadJobs();
+  async function loadDashboard(){
+
+    await loadJobs();
+    await loadPayments();
+
+  }
+
+  loadDashboard();
 
 
   const channel = supabase
@@ -28,23 +36,39 @@ useEffect(() => {
     .on(
       "postgres_changes",
       {
-        event: "*",
-        schema: "public",
-        table: "jobs"
+        event:"*",
+        schema:"public",
+        table:"jobs"
       },
-      () => {
+      ()=>{
         loadJobs();
       }
     )
     .subscribe();
 
 
-  return () => {
+  const paymentChannel = supabase
+    .channel("payments-changes")
+    .on(
+      "postgres_changes",
+      {
+        event:"*",
+        schema:"public",
+        table:"payments"
+      },
+      ()=>{
+        loadPayments();
+      }
+    )
+    .subscribe();
+
+
+  return ()=>{
     supabase.removeChannel(channel);
+    supabase.removeChannel(paymentChannel);
   };
 
-}, []);
-
+},[]);
 async function loadJobs() {
   const { data, error } = await supabase
     .from("jobs")
@@ -58,8 +82,18 @@ async function loadJobs() {
 
   setJobs(data || []);
 }
+async function loadPayments(){
 
+  const {data,error}=await supabase
+    .from("payments")
+    .select("*");
 
+  console.log("DASHBOARD PAYMENTS:", data);
+  console.log("DASHBOARD ERROR:", error);
+
+  setPayments(data || []);
+
+}
   const totalJobs = jobs.length;
 
 
@@ -86,15 +120,33 @@ async function loadJobs() {
     );
 
 
-  const paid =
-    jobs.reduce(
-      (sum, job) => sum + Number(job.deposit || 0),
-      0
-    );
+ const paidFromPayments =
+  payments.reduce(
+    (sum, payment) => sum + Number(payment.amount || 0),
+    0
+  );
 
 
-  const balance =
-    totalSales - paid;
+const paidFromDeposits =
+  jobs.reduce(
+    (sum, job) => sum + Number(job.deposit || 0),
+    0
+  );
+
+
+const paid =
+  paidFromPayments + paidFromDeposits;
+
+
+  const totalDiscount =
+  jobs.reduce(
+    (sum, job) => sum + Number(job.discount || 0),
+    0
+  );
+
+
+const balance =
+  totalSales - totalDiscount - paid;
 
 const sourceReport = {
 

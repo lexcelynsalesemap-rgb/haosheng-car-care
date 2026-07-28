@@ -50,6 +50,33 @@ const [paymentMethod,setPaymentMethod]=useState("");
 // TECHNICIANS
 
 const [technicians,setTechnicians]=useState([]);
+const [serviceList,setServiceList]=useState([]);
+
+
+
+async function loadServices(){
+
+const {data,error}=await supabase
+
+.from("services")
+
+.select("*")
+
+.eq("active",true);
+
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+
+setServiceList(data || []);
+
+}
 
 
 
@@ -74,8 +101,7 @@ return;
 }
 
 
-setTechnicians(data);
-
+setTechnicians(data || []);
 
 }
 
@@ -85,38 +111,9 @@ useEffect(()=>{
 
 loadTechnicians();
 
+loadServices();
+
 },[]);
-
-
-
-
-
-const servicePrices={
-
-"Normal Wash":68,
-
-"Special Wash":360,
-
-"Full PPF":6000,
-
-"Half Body PPF":3000,
-
-"Color Change PPF":7000,
-
-"Full WTT With Sunroof":1800,
-
-"Interior Cleaning":1580,
-
-"Window Tint":1200,
-
-"Polishing":800,
-
-"Remove Accessories":3000,
-
-"PPF Check With Normal Wash": 0,
-
-
-};
 
 
 
@@ -142,7 +139,8 @@ serviceDetails[service]?.price || 0
 
 
 
-function chooseService(service){
+
+function chooseService(service,price){
 
 
 if(services.includes(service)){
@@ -155,7 +153,6 @@ s=>s!==service
 )
 
 );
-
 
 
 const copy={...serviceDetails};
@@ -179,7 +176,6 @@ service
 ]);
 
 
-
 setServiceDetails({
 
 ...serviceDetails,
@@ -187,7 +183,7 @@ setServiceDetails({
 
 [service]:{
 
-price:servicePrices[service],
+price:price,
 
 discount:0,
 
@@ -196,7 +192,6 @@ quantity:1,
 technicians:[]
 
 }
-
 
 });
 
@@ -211,51 +206,77 @@ technicians:[]
 
 
 
+
 async function saveJob(){
 
 
 const job={
 
+
 customer,
+
 phone,
+
 date,
 
+
 source:
+
 source==="Other"
+
 ?
+
 otherSource
+
 :
+
 source,
+
 
 voucherNumber,
 
+
 carModel,
+
 carType,
+
 color,
+
 chassis,
+
 plate,
 
+
 services,
+
 serviceDetails,
+
 
 paymentMethod,
 
+
 price:Number(total),
+
 
 discount:Number(discount),
 
+
 deposit:Number(deposit),
 
+
 balance:
+
 Number(total-discount-deposit),
 
+
 status:"New"
+
 
 };
 
 
 
-// SAVE JOB ONCE
+
 
 const {data:jobData,error}=await supabase
 
@@ -266,6 +287,8 @@ const {data:jobData,error}=await supabase
 .select()
 
 .single();
+
+
 
 
 
@@ -282,7 +305,56 @@ return;
 
 
 
+
+// ==============================
+// CREATE PAYMENT RECORD
+// ==============================
+
+
+if(Number(deposit)>0){
+
+
+const {error:paymentError}=await supabase
+
+.from("payments")
+
+.insert([{
+
+
+job_id:jobData.id,
+
+
+amount:Number(deposit),
+
+
+payment_method:paymentMethod,
+
+
+payment_date:new Date().toISOString(),
+
+
+notes:"Initial deposit"
+
+
+}]);
+
+
+
+if(paymentError){
+
+console.log(paymentError);
+
+}
+
+
+
+}
+
+
+
+
 // CREATE JOB SERVICES
+
 
 for(const service of services){
 
@@ -294,13 +366,19 @@ const {data:serviceData,error:serviceError}=await supabase
 
 .insert([{
 
+
 job_id:jobData.id,
+
 
 service_name:service,
 
+
 price:Number(
+
 serviceDetails[service]?.price || 0
+
 )
+
 
 }])
 
@@ -308,11 +386,19 @@ serviceDetails[service]?.price || 0
 
 .single();
 
-console.log("SERVICE INSERT:", serviceData, serviceError);
+
+
+
+console.log(
+"SERVICE INSERT:",
+serviceData,
+serviceError
+);
+
+
+
 
 if(serviceError){
-
-console.log(serviceError);
 
 continue;
 
@@ -321,21 +407,28 @@ continue;
 
 
 
-// SAVE TECHNICIANS FOR THIS SERVICE
+
 
 const technicianRows =
 
 serviceDetails[service]
+
 ?.technicians
+
 ?.map(t=>({
+
 
 service_id:serviceData.id,
 
+
 technician_id:t.id,
+
 
 commission:Number(t.commission || 0)
 
+
 })) || [];
+
 
 
 
@@ -344,35 +437,36 @@ commission:Number(t.commission || 0)
 if(technicianRows.length){
 
 
+
 const {error:techError}=await supabase
 
 .from("service_technicians")
 
 .insert(technicianRows);
 
-console.log("TECH INSERT:", technicianRows, techError);
-
-if(techError){
-
-console.log(techError);
-
-}
 
 
-}
+console.log(
+"TECH INSERT:",
+techError
+);
 
 
 
 }
+
+
+
+}
+
 
 
 
 alert("Job Saved Successfully!");
 
+
+
 }
-
-
-
 return (
 
 <div style={styles.page}>
@@ -381,6 +475,7 @@ return (
 <h1>
 New Job
 </h1>
+
 
 
 <div style={styles.form}>
@@ -398,11 +493,13 @@ onChange={(e)=>setCustomer(e.target.value)}
 />
 
 
+
 <input
 placeholder="Phone Number"
 value={phone}
 onChange={(e)=>setPhone(e.target.value)}
 />
+
 
 
 <label>
@@ -423,6 +520,7 @@ onChange={(e)=>setDate(e.target.value)}
 
 
 
+
 <h2>
 Source
 </h2>
@@ -436,33 +534,41 @@ onChange={(e)=>setSource(e.target.value)}
 
 >
 
+
 <option value="">
 Select Source
 </option>
+
 
 <option>
 Teyseer Motors
 </option>
 
+
 <option>
 Teyseer Motors - Bahaa
 </option>
+
 
 <option>
 Teyseer Motors - Salah
 </option>
 
+
 <option>
 Bahaa
 </option>
+
 
 <option>
 Salah
 </option>
 
+
 <option>
 Walk-in
 </option>
+
 
 <option>
 Other
@@ -473,8 +579,11 @@ Other
 
 
 
+
 {
+
 source==="Other" &&
+
 
 <input
 
@@ -486,7 +595,9 @@ onChange={(e)=>setOtherSource(e.target.value)}
 
 />
 
+
 }
+
 
 
 
@@ -515,7 +626,10 @@ onChange={(e)=>setVoucherNumber(e.target.value)}
 
 />
 
+
 }
+
+
 
 
 
@@ -526,43 +640,71 @@ Vehicle Information
 
 
 
+
 <input
+
 placeholder="Car Model"
+
 value={carModel}
+
 onChange={(e)=>setCarModel(e.target.value)}
+
 />
 
 
 
+
 <input
+
 placeholder="Car Type"
+
 value={carType}
+
 onChange={(e)=>setCarType(e.target.value)}
+
 />
 
 
 
+
 <input
+
 placeholder="Color"
+
 value={color}
+
 onChange={(e)=>setColor(e.target.value)}
+
 />
 
 
 
+
 <input
+
 placeholder="Chassis Number"
+
 value={chassis}
+
 onChange={(e)=>setChassis(e.target.value)}
+
 />
+
 
 
 
 <input
+
 placeholder="Plate Number"
+
 value={plate}
+
 onChange={(e)=>setPlate(e.target.value)}
+
 />
+
+
+
 
 
 
@@ -577,12 +719,18 @@ Services
 
 
 {
-Object.keys(servicePrices).map(service=>(
 
+serviceList.map(serviceItem=>{
+
+
+const service=serviceItem.name;
+
+
+return (
 
 <div
 
-key={service}
+key={serviceItem.id}
 
 style={styles.serviceBox}
 
@@ -596,11 +744,15 @@ style={styles.serviceBox}
 
 type="checkbox"
 
-checked={
-services.includes(service)
-}
 
-onChange={()=>chooseService(service)}
+checked={services.includes(service)}
+
+
+onChange={()=>chooseService(
+service,
+serviceItem.price
+)}
+
 
 />
 
@@ -615,11 +767,11 @@ onChange={()=>chooseService(service)}
 
 
 
+
+
 {
 
-services.includes(service)
-
-&&
+services.includes(service) &&
 
 
 <div>
@@ -628,15 +780,19 @@ services.includes(service)
 <br/>
 
 
+
+
 <input
 
 type="number"
 
 placeholder="Price"
 
+
 value={
 serviceDetails[service]?.price || 0
 }
+
 
 
 onChange={(e)=>{
@@ -644,14 +800,18 @@ onChange={(e)=>{
 
 setServiceDetails({
 
+
 ...serviceDetails,
 
 
 [service]:{
 
+
 ...serviceDetails[service],
 
+
 price:Number(e.target.value)
+
 
 }
 
@@ -661,7 +821,9 @@ price:Number(e.target.value)
 
 }}
 
+
 />
+
 
 
 
@@ -673,9 +835,11 @@ type="number"
 
 placeholder="Discount"
 
+
 value={
 serviceDetails[service]?.discount || 0
 }
+
 
 
 onChange={(e)=>{
@@ -683,14 +847,18 @@ onChange={(e)=>{
 
 setServiceDetails({
 
+
 ...serviceDetails,
 
 
 [service]:{
 
+
 ...serviceDetails[service],
 
+
 discount:Number(e.target.value)
+
 
 }
 
@@ -700,7 +868,10 @@ discount:Number(e.target.value)
 
 }}
 
+
 />
+
+
 
 
 
@@ -714,57 +885,88 @@ Technicians
 
 
 
+
 {
+
 technicians.map(person=>{
 
+
 const selected =
+
 serviceDetails[service]
+
 ?.technicians
-?.find(t=>t.id===person.id);
+
+?.find(
+t=>t.id===person.id
+);
+
 
 
 return (
 
+
 <div key={person.id}>
 
+
 <label>
+
 
 <input
 
 type="checkbox"
 
+
 checked={!!selected}
+
+
 
 onChange={(e)=>{
 
 
 const oldTech =
-serviceDetails[service]?.technicians || [];
+
+serviceDetails[service]
+
+?.technicians || [];
+
 
 
 let updated;
 
 
+
 if(e.target.checked){
+
 
 updated=[
 
 ...oldTech,
 
 {
+
 id:person.id,
+
 commission:0
+
 }
 
 ];
 
+
 }
+
 else{
 
-updated =
+
+updated=
+
 oldTech.filter(
+
 t=>t.id!==person.id
+
 );
+
 
 }
 
@@ -772,32 +974,47 @@ t=>t.id!==person.id
 
 setServiceDetails({
 
+
 ...serviceDetails,
+
 
 [service]:{
 
+
 ...serviceDetails[service],
+
 
 technicians:updated
 
+
 }
+
 
 });
 
 
 }}
 
+
+
 />
 
 
+{" "}
+
 {person.name}
+
 
 </label>
 
 
 
+
+
 {
+
 selected &&
+
 
 <input
 
@@ -805,26 +1022,34 @@ type="number"
 
 placeholder="Commission"
 
+
 value={selected.commission}
+
+
 
 onChange={(e)=>{
 
 
 const updated =
+
 serviceDetails[service]
-.technicians.map(t=>{
+
+.technicians
+
+.map(t=>{
 
 
 if(t.id===person.id){
+
 
 return {
 
 ...t,
 
-commission:
-Number(e.target.value)
+commission:Number(e.target.value)
 
 };
+
 
 }
 
@@ -838,33 +1063,45 @@ return t;
 
 setServiceDetails({
 
+
 ...serviceDetails,
+
 
 [service]:{
 
+
 ...serviceDetails[service],
+
 
 technicians:updated
 
+
 }
+
 
 });
 
 
 }}
 
+
+
 />
+
 
 }
 
 
+
 </div>
+
 
 )
 
+
 })
-}
 
+}
 
 
 
@@ -876,22 +1113,33 @@ technicians:updated
 
 
 
+
 </div>
 
 
-))
+)
 
+
+})
 
 }
+
+
+
+
+
 
 <h2>
 Payment
 </h2>
 
 
+
+
 <label>
 Payment Method
 </label>
+
 
 
 <select
@@ -902,25 +1150,31 @@ onChange={(e)=>setPaymentMethod(e.target.value)}
 
 >
 
+
 <option value="">
 Select Payment Method
 </option>
+
 
 <option value="Cash">
 Cash
 </option>
 
+
 <option value="Visa">
 Visa
 </option>
+
 
 <option value="Mastercard">
 Mastercard
 </option>
 
+
 <option value="PayLater">
 PayLater
 </option>
+
 
 
 </select>
@@ -935,13 +1189,19 @@ type="number"
 
 placeholder="Total Discount"
 
+
 value={discount}
+
 
 onChange={(e)=>
 setDiscount(Number(e.target.value))
 }
 
+
 />
+
+
+
 
 
 
@@ -952,13 +1212,18 @@ type="number"
 
 placeholder="Deposit Paid"
 
+
 value={deposit}
+
 
 onChange={(e)=>
 setDeposit(Number(e.target.value))
 }
 
+
 />
+
+
 
 
 
@@ -975,9 +1240,10 @@ QAR {total}
 
 Balance Due:
 
-QAR {total - discount - deposit}
+QAR {total-discount-deposit}
 
 </h3>
+
 
 
 
@@ -999,7 +1265,9 @@ SAVE JOB
 
 
 
+
 </div>
+
 
 </div>
 
@@ -1007,17 +1275,10 @@ SAVE JOB
 );
 
 }
-
-
-
-
-
 const styles={
 
 
-
 page:{
-
 
 padding:"30px",
 
@@ -1025,14 +1286,11 @@ background:"var(--bg)",
 
 minHeight:"100vh"
 
-
 },
 
 
 
-
 form:{
-
 
 background:"#fff",
 
@@ -1048,14 +1306,12 @@ flexDirection:"column",
 
 gap:"12px"
 
-
 },
 
 
 
 
 serviceBox:{
-
 
 border:"1px solid #ddd",
 
@@ -1065,14 +1321,12 @@ borderRadius:"10px",
 
 marginBottom:"10px"
 
-
 },
 
 
 
 
 button:{
-
 
 background:"#16a34a",
 
@@ -1088,13 +1342,11 @@ fontSize:"16px",
 
 cursor:"pointer"
 
-
 }
 
 
 
 };
-
 
 
 
