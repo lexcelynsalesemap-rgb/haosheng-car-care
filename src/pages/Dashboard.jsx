@@ -620,8 +620,14 @@ fill="#2563eb"
   <p>System setup</p>
 </Link>
 
-</div>
 
+
+</div>
+<Link to="/reports" style={styles.actionCard}>
+  <div>📊</div>
+  <h3>Reports</h3>
+  <p>Financial overview</p>
+</Link>
     </div>
 
   );
