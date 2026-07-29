@@ -156,6 +156,33 @@ const customerNetSales = customerJobs.reduce(
     sum + Number(job.price || 0) - Number(job.discount || 0),
   0
 );
+const teyseerJobIds = teyseerJobs.map(job => job.id);
+
+const customerJobIds = customerJobs.map(job => job.id);
+
+
+const teyseerPaid = payments
+  .filter(payment => teyseerJobIds.includes(payment.job_id))
+  .reduce(
+    (sum, payment) => sum + Number(payment.amount || 0),
+    0
+  );
+
+
+const customerPaid = payments
+  .filter(payment => customerJobIds.includes(payment.job_id))
+  .reduce(
+    (sum, payment) => sum + Number(payment.amount || 0),
+    0
+  );
+
+
+const teyseerBalance =
+  teyseerNetSales - teyseerPaid;
+
+
+const customerBalance =
+  customerNetSales - customerPaid;
   const totalJobs = filteredJobs.length;
 
 
@@ -390,6 +417,29 @@ This Year
   value={`$${customerNetSales}`}
   icon="👤"
 />
+<Card
+  title="Teyseer Paid"
+  value={`$${teyseerPaid}`}
+  icon="🏢💳"
+/>
+
+<Card
+  title="Teyseer Balance"
+  value={`$${teyseerBalance}`}
+  icon="🏢⚠️"
+/>
+
+<Card
+  title="Customer Paid"
+  value={`$${customerPaid}`}
+  icon="👤💳"
+/>
+
+<Card
+  title="Customer Balance"
+  value={`$${customerBalance}`}
+  icon="👤⚠️"
+/>
 <Card 
   title="Paid"
   value={`$${paid}`}
@@ -590,7 +640,11 @@ function Card({ title, value, status, icon }) {
   "Teyseer Sales": "#9333ea",
   "Customer Sales": "#0284c7",
   "Paid": "#15803d",
-  "Balance Due": "#dc2626"
+  "Balance Due": "#dc2626",
+  "Teyseer Paid": "#7c3aed",
+"Teyseer Balance": "#dc2626",
+"Customer Paid": "#16a34a",
+"Customer Balance": "#ea580c",
 };
 
   const cardContent = (
