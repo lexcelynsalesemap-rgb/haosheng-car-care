@@ -220,38 +220,26 @@ const paid = payments.reduce(
 const netSales = totalSales - totalDiscount;
 
 const balance = netSales - paid;
-const sourceReport = {
+const sourceReport = {};
 
-  "Teyseer Motors": filteredJobs.filter(
-    job => job.source === "Teyseer Motors"
-  ).length,
+filteredJobs.forEach(job => {
 
-  "Teyseer Motors - Bahaa": filteredJobs.filter(
-    job => job.source === "Teyseer Motors - Bahaa"
-  ).length,
+  const source = job.source || "Other";
 
-  "Teyseer Motors - Salah": filteredJobs.filter(
-    job => job.source === "Teyseer Motors - Salah"
-  ).length,
+  if(!sourceReport[source]){
+    sourceReport[source] = {
+      jobs: 0,
+      sales: 0
+    };
+  }
 
-  "Bahaa": filteredJobs.filter(
-    job => job.source === "Bahaa"
-  ).length,
+  sourceReport[source].jobs += 1;
 
-  "Salah": filteredJobs.filter(
-    job => job.source === "Salah"
-  ).length,
+  sourceReport[source].sales +=
+    Number(job.price || 0) -
+    Number(job.discount || 0);
 
-  "Walk-in": filteredJobs.filter(
-    job => job.source === "Walk-in"
-  ).length,
-
-  "Other":filteredJobs.filter(
-    job => job.source === "Other"
-  ).length
-
-
-};
+});
 const statusData = [
   {
     name: "New",
@@ -568,28 +556,32 @@ fill="#2563eb"
 
 <div style={styles.recent}>
 
-  {Object.entries(sourceReport).map(([name, count]) => (
+  {Object.entries(sourceReport).map(([name, data]) => (
 
-    <div
-      key={name}
-      style={styles.recentCard}
-    >
+<div
+key={name}
+style={styles.recentCard}
+>
 
-      <h3>
-        {name}
-      </h3>
+<h3>
+{name}
+</h3>
 
-      <h2>
-        {count}
-      </h2>
+<h2>
+{data.jobs}
+</h2>
 
-      <p>
-        Jobs
-      </p>
+<p>
+Jobs
+</p>
 
-    </div>
+<h3>
+Net Sales: QAR {data.sales}
+</h3>
 
-  ))}
+</div>
+
+))}
 
 </div>
 <h2>Quick Actions</h2>
