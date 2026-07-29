@@ -205,8 +205,6 @@ useEffect(()=>{
 
 loadJob();
 
-loadTechnicians();
-
 loadServiceTechnicians();
 
 loadPayments();
@@ -1001,7 +999,7 @@ onClick={()=>deletePayment(payment.id)}
 ))
 
 }
-id="6m2r2b"
+
 <hr/>
 
 
