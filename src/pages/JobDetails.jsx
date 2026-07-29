@@ -158,7 +158,92 @@ setEditingService(service);
 
 }
 
+async function saveTechnicians(service){
 
+// remove old technicians for this service
+
+const {data:jobService}=await supabase
+
+.from("job_services")
+
+.select("id")
+
+.eq("job_id",Number(id))
+
+.eq("service_name",service)
+
+.single();
+
+
+
+if(!jobService){
+
+alert("Service not found");
+
+return;
+
+}
+
+
+// delete old assignments
+
+await supabase
+
+.from("service_technicians")
+
+.delete()
+
+.eq(
+"service_id",
+jobService.id
+);
+
+
+
+// insert new assignments
+
+const rows = selectedTechs.map(t=>({
+
+service_id:jobService.id,
+
+technician_id:t.id,
+
+commission:Number(t.commission || 0)
+
+}));
+
+
+
+if(rows.length){
+
+const {error}=await supabase
+
+.from("service_technicians")
+
+.insert(rows);
+
+
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+}
+
+
+await loadServiceTechnicians();
+
+
+setEditingService(null);
+
+
+alert("Technicians Updated");
+
+}
 
 // LOAD PAYMENTS
 
@@ -205,12 +290,13 @@ useEffect(()=>{
 
 loadJob();
 
+loadTechnicians();
+
 loadServiceTechnicians();
 
 loadPayments();
 
 },[]);
-
 
 
 
