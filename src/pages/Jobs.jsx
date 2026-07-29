@@ -379,7 +379,7 @@
   <div style={styles.jobHeader}>
 
 
-  <Link to={`/job-details/${job.id}`}>
+  <Link to={`/jobs/${job.id}`}>
 
   <h2>
   👤 {job.customer}
