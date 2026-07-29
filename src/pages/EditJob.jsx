@@ -15,11 +15,18 @@ const [loading,setLoading]=useState(true);
 
 const [customer,setCustomer]=useState("");
 const [phone,setPhone]=useState("");
-const [carModel,setCarModel]=useState("");
-const [plate,setPlate]=useState("");
-const [price,setPrice]=useState(0);
-const [status,setStatus]=useState("New");
 
+const [carModel,setCarModel]=useState("");
+const [carType,setCarType]=useState("");
+const [color,setColor]=useState("");
+const [plate,setPlate]=useState("");
+
+const [services,setServices]=useState([]);
+
+const [serviceDetails,setServiceDetails]=useState({});
+
+
+const [serviceList,setServiceList]=useState([]);
 
 
 
@@ -27,7 +34,33 @@ useEffect(()=>{
 
 loadJob();
 
+loadServices();
+
 },[]);
+
+
+
+async function loadServices(){
+
+const {data,error}=await supabase
+
+.from("services")
+
+.select("*");
+
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+
+setServiceList(data || []);
+
+}
 
 
 
@@ -41,7 +74,7 @@ const {data,error}=await supabase
 
 .select("*")
 
-.eq("id",id)
+.eq("id",Number(id))
 
 .single();
 
@@ -49,7 +82,7 @@ const {data,error}=await supabase
 
 if(error){
 
-console.error(error);
+console.log(error);
 
 return;
 
@@ -63,14 +96,86 @@ setPhone(data.phone || "");
 
 setCarModel(data.carModel || "");
 
+setCarType(data.carType || "");
+
+setColor(data.color || "");
+
 setPlate(data.plate || "");
 
-setPrice(data.price || 0);
 
-setStatus(data.status || "New");
+setServices(data.services || []);
+
+setServiceDetails(data.serviceDetails || {});
 
 
 setLoading(false);
+
+
+}
+
+
+
+
+
+function toggleService(serviceItem){
+
+
+const service=serviceItem.name;
+
+
+if(services.includes(service)){
+
+
+setServices(
+
+services.filter(
+s=>s!==service
+)
+
+);
+
+
+
+const copy={...serviceDetails};
+
+delete copy[service];
+
+setServiceDetails(copy);
+
+
+}
+
+else{
+
+
+setServices([
+
+...services,
+
+service
+
+]);
+
+
+
+setServiceDetails({
+
+...serviceDetails,
+
+
+[service]:{
+
+price:serviceItem.price,
+
+discount:0
+
+}
+
+});
+
+
+}
+
 
 
 }
@@ -83,11 +188,28 @@ setLoading(false);
 async function save(){
 
 
+const total = services.reduce(
+
+(sum,service)=>
+
+sum +
+
+Number(
+serviceDetails[service]?.price || 0
+),
+
+0
+
+);
+
+
+
 const {error}=await supabase
 
 .from("jobs")
 
 .update({
+
 
 customer,
 
@@ -95,15 +217,34 @@ phone,
 
 carModel,
 
+carType,
+
+color,
+
 plate,
 
-price,
 
-status
+services,
+
+
+serviceDetails,
+
+
+price:total
+
+
 
 })
 
-.eq("id",id);
+.eq(
+
+"id",
+
+Number(id)
+
+);
+
+
 
 
 
@@ -120,10 +261,12 @@ return;
 alert("Job Updated");
 
 
-navigate("/jobs");
+navigate(`/jobs/${id}`);
+
 
 
 }
+
 
 
 
@@ -132,15 +275,15 @@ navigate("/jobs");
 
 if(loading){
 
-return <h2>Loading...</h2>
+return <h2>Loading...</h2>;
 
 }
 
 
 
 
-return(
 
+return(
 
 <div style={styles.page}>
 
@@ -151,14 +294,18 @@ Edit Job
 
 
 
+<h2>
+Customer
+</h2>
+
 
 <input
 
 value={customer}
 
-placeholder="Customer Name"
-
 onChange={(e)=>setCustomer(e.target.value)}
+
+placeholder="Customer"
 
 />
 
@@ -168,12 +315,19 @@ onChange={(e)=>setCustomer(e.target.value)}
 
 value={phone}
 
-placeholder="Phone"
-
 onChange={(e)=>setPhone(e.target.value)}
+
+placeholder="Phone"
 
 />
 
+
+
+
+
+<h2>
+Vehicle
+</h2>
 
 
 
@@ -181,12 +335,35 @@ onChange={(e)=>setPhone(e.target.value)}
 
 value={carModel}
 
-placeholder="Car Model"
-
 onChange={(e)=>setCarModel(e.target.value)}
+
+placeholder="Model"
 
 />
 
+
+
+<input
+
+value={carType}
+
+onChange={(e)=>setCarType(e.target.value)}
+
+placeholder="Type"
+
+/>
+
+
+
+<input
+
+value={color}
+
+onChange={(e)=>setColor(e.target.value)}
+
+placeholder="Color"
+
+/>
 
 
 
@@ -194,13 +371,97 @@ onChange={(e)=>setCarModel(e.target.value)}
 
 value={plate}
 
-placeholder="Plate Number"
-
 onChange={(e)=>setPlate(e.target.value)}
+
+placeholder="Plate"
 
 />
 
 
+
+
+
+
+<h2>
+Services
+</h2>
+
+
+
+
+{
+
+serviceList.map(item=>(
+
+
+<div key={item.id}>
+
+
+<label>
+
+
+<input
+
+type="checkbox"
+
+checked={services.includes(item.name)}
+
+onChange={()=>toggleService(item)}
+
+/>
+
+
+{" "}
+
+{item.name}
+
+
+</label>
+
+
+
+
+
+{
+
+services.includes(item.name)
+
+&&
+
+
+<div>
+
+
+<input
+
+type="number"
+
+value={
+serviceDetails[item.name]?.price || 0
+}
+
+onChange={(e)=>{
+
+
+setServiceDetails({
+
+...serviceDetails,
+
+
+[item.name]:{
+
+...serviceDetails[item.name],
+
+price:Number(e.target.value)
+
+}
+
+});
+
+
+}}
+
+/>
 
 
 
@@ -208,58 +469,55 @@ onChange={(e)=>setPlate(e.target.value)}
 
 type="number"
 
-value={price}
+value={
+serviceDetails[item.name]?.discount || 0
+}
 
-placeholder="Price"
+onChange={(e)=>{
 
-onChange={(e)=>setPrice(Number(e.target.value))}
+
+setServiceDetails({
+
+...serviceDetails,
+
+
+[item.name]:{
+
+...serviceDetails[item.name],
+
+discount:Number(e.target.value)
+
+}
+
+});
+
+
+}}
 
 />
 
 
 
+</div>
 
 
-<select
-
-value={status}
-
-onChange={(e)=>setStatus(e.target.value)}
-
->
+}
 
 
-<option>
-New
-</option>
+
+</div>
 
 
-<option>
-In Progress
-</option>
+))
 
+}
 
-<option>
-Finished
-</option>
-
-
-<option>
-Delivered
-</option>
-
-
-</select>
 
 
 
 
 
 <br/>
-<br/>
-
-
-
 
 
 <button onClick={save}>
@@ -267,6 +525,7 @@ Delivered
 SAVE CHANGES
 
 </button>
+
 
 
 
@@ -281,8 +540,8 @@ SAVE CHANGES
 
 
 
-
 const styles={
+
 
 page:{
 
@@ -292,11 +551,12 @@ display:"flex",
 
 flexDirection:"column",
 
-gap:"15px",
+gap:"12px",
 
-maxWidth:"400px"
+maxWidth:"600px"
 
 }
+
 
 };
 
