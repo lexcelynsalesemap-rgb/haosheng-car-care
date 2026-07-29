@@ -4,9 +4,9 @@ import Dashboard from "./pages/Dashboard";
 import NewJob from "./pages/NewJob";
 import Jobs from "./pages/Jobs";
 import Invoice from "./pages/Invoice";
-import EditJob from "./pages/EditJob";
 import Settings from "./pages/Settings";
 import JobDetails from "./pages/JobDetails";
+import EditJob from "./pages/EditJob";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import TechnicianEarnings from "./pages/TechnicianEarnings";
@@ -67,14 +67,24 @@ function App() {
   />
 
 
-  <Route 
-    path="/edit-job/:id" 
-    element={
-      <ProtectedRoute>
-        <EditJob />
-      </ProtectedRoute>
-    } 
-  />
+<Route
+  path="/jobs/:id"
+  element={
+    <ProtectedRoute>
+      <JobDetails />
+    </ProtectedRoute>
+  }
+/>
+
+
+<Route
+  path="/edit-job/:id"
+  element={
+    <ProtectedRoute>
+      <EditJob />
+    </ProtectedRoute>
+  }
+/>
 
 
   <Route 
@@ -87,14 +97,7 @@ function App() {
   />
 
 
-        <Route 
-        path="/job-details/:id" 
-        element={
-          <ProtectedRoute>
-            <JobDetails />
-          </ProtectedRoute>
-        } 
-      />
+      
 
 
       <Route
