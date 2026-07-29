@@ -5,16 +5,14 @@ import { supabase } from "../supabase/client";
 
 function JobDetails(){
 
-
 const {id}=useParams();
 
 
 const [job,setJob]=useState(null);
 
-const [technicians,setTechnicians]=useState([]);
+const [serviceTechnicians,setServiceTechnicians]=useState([]);
 
 const [payments,setPayments]=useState([]);
-
 
 
 // PAYMENT
@@ -26,11 +24,7 @@ const [method,setMethod]=useState("Cash");
 const [notes,setNotes]=useState("");
 
 const [editingPayment,setEditingPayment]=useState(null);
-// TECHNICIAN EDIT
 
-const [editingService,setEditingService]=useState(null);
-
-const [editTechnicians,setEditTechnicians]=useState([]);
 
 
 
@@ -38,14 +32,13 @@ const [editTechnicians,setEditTechnicians]=useState([]);
 
 async function loadJob(){
 
-
 const {data,error}=await supabase
 
 .from("jobs")
 
 .select("*")
 
-.eq("id", Number(id))
+.eq("id",Number(id))
 
 .single();
 
@@ -62,22 +55,41 @@ return;
 
 setJob(data);
 
-
 }
 
 
 
 
-// LOAD TECHNICIANS
 
-async function loadTechnicians(){
+// LOAD TECHNICIANS ASSIGNED TO SERVICES
 
+async function loadServiceTechnicians(){
 
 const {data,error}=await supabase
 
-.from("technicians")
+.from("service_technicians")
 
-.select("*");
+.select(`
+
+id,
+
+commission,
+
+technicians(
+ name
+),
+
+job_services(
+ service_name,
+ job_id
+)
+
+`)
+
+.eq(
+"job_services.job_id",
+Number(id)
+);
 
 
 
@@ -90,10 +102,10 @@ return;
 }
 
 
-setTechnicians(data || []);
-
+setServiceTechnicians(data || []);
 
 }
+
 
 
 
@@ -103,18 +115,33 @@ setTechnicians(data || []);
 async function loadPayments(){
 
 const {data,error}=await supabase
-.from("payments")
-.select("*")
-.eq("job_id",Number(id))
-.order("payment_date",{ascending:false});
 
-console.log("PAYMENTS:", data);
-console.log("PAYMENT ERROR:", error);
+.from("payments")
+
+.select("*")
+
+.eq(
+"job_id",
+Number(id)
+)
+
+.order(
+"payment_date",
+{
+ascending:false
+}
+);
+
+
 
 if(error){
+
 console.log(error);
+
 return;
+
 }
+
 
 setPayments(data || []);
 
@@ -123,26 +150,101 @@ setPayments(data || []);
 
 
 
-useEffect(()=>{
 
+useEffect(()=>{
 
 loadJob();
 
-loadTechnicians();
+loadServiceTechnicians();
 
 loadPayments();
 
-
 },[]);
+
+
+
+
+
+// ADD PAYMENT
+
+async function savePayment(){
+
+
+if(!amount || Number(amount)<=0){
+
+alert("Enter payment amount");
+
+return;
+
+}
+
+
+
+const {error}=await supabase
+
+.from("payments")
+
+.insert([{
+
+job_id:Number(id),
+
+amount:Number(amount),
+
+payment_method:method,
+
+payment_date:new Date().toISOString(),
+
+notes:notes
+
+}]);
+
+
+
+if(error){
+
+alert(error.message);
+
+return;
+
+}
+
+
+
+clearPaymentForm();
+
+loadPayments();
+
+}
+
+
+
+
+function clearPaymentForm(){
+
+setAmount("");
+
+setMethod("Cash");
+
+setNotes("");
+
+setEditingPayment(null);
+
+}
+
+
+
 
 
 // DELETE PAYMENT
 
 async function deletePayment(paymentID){
 
-const confirmDelete = window.confirm(
+
+const confirmDelete =
+window.confirm(
 "Delete this payment?"
 );
+
 
 
 if(!confirmDelete){
@@ -150,6 +252,7 @@ if(!confirmDelete){
 return;
 
 }
+
 
 
 const {error}=await supabase
@@ -177,194 +280,14 @@ return;
 
 loadPayments();
 
-
-alert("Payment Deleted");
-
-
-}
-
-
-
-// ===============================
-// START EDIT TECHNICIANS
-// ===============================
-
-function startEditTechnicians(service){
-
-setEditingService(service);
-
-
-setEditTechnicians(
-
-job.serviceDetails?.[service]?.technicians || []
-
-);
-
-}
-
-
-
-async function saveTechnicians(service){
-
-const newDetails = {
-
-...(job.serviceDetails || {}),
-
-
-[service]:{
-
-...(job.serviceDetails?.[service] || {}),
-
-technicians:editTechnicians
-
-}
-
-};
-
-
-
-const {error}=await supabase
-
-.from("jobs")
-
-.update({
-
-serviceDetails:newDetails
-
-})
-
-.eq("id", Number(id));
-
-
-
-if(error){
-
-alert(error.message);
-
-return;
-
-}
-
-
-
-setJob({
-
-...job,
-
-serviceDetails:newDetails
-
-});
-
-
-setEditingService(null);
-
-await loadJob();
-
-alert("Technicians Updated");
-
-
-}
-
-// GET TECHNICIAN NAME
-
-function getTechnicianName(id){
-
-const tech = technicians.find(
-
-t=>t.id===id
-
-);
-
-
-return tech?.name || "Unknown";
-
-
 }
 
 
 
 
-
-
-
-
-// ADD PAYMENT
-
-async function savePayment(){
-
-
-if(!amount || Number(amount)<=0){
-
-alert("Enter payment amount");
-
-return;
-
-}
-
-
-
-const {error}=await supabase
-
-.from("payments")
-
-.insert([
-
-{
- job_id:Number(id),
- amount:Number(amount),
- payment_method:method,
- payment_date:new Date().toISOString(),
- notes:notes
-}
-
-]);
-
-
-
-if(error){
-
-alert(error.message);
-
-return;
-
-}
-
-
-
-clearPaymentForm();
-
-await loadPayments();
-
-alert("Payment Added");
-
-
-}
-
-
-
-
-
-function clearPaymentForm(){
-
-
-setAmount("");
-
-setMethod("Cash");
-
-setNotes("");
-
-setEditingPayment(null);
-
-
-}
-
-
-
-
-// START EDIT
+// EDIT PAYMENT
 
 function startEditPayment(payment){
-
 
 setEditingPayment(payment);
 
@@ -374,9 +297,10 @@ setMethod(payment.payment_method);
 
 setNotes(payment.notes || "");
 
-
 }
-// UPDATE PAYMENT
+
+
+
 
 async function updatePayment(){
 
@@ -414,19 +338,12 @@ return;
 
 clearPaymentForm();
 
-await loadPayments();
-
-
-alert("Payment Updated");
-
+loadPayments();
 
 }
-
-
 if(!job){
 
-
-return(
+return (
 
 <h1>
 Loading...
@@ -434,9 +351,7 @@ Loading...
 
 );
 
-
 }
-
 
 
 
@@ -444,7 +359,7 @@ const totalPaid = payments.reduce(
 
 (sum,payment)=>
 
-sum + Number(payment.amount),
+sum + Number(payment.amount || 0),
 
 0
 
@@ -463,8 +378,6 @@ Number(job.discount || 0)
 -
 
 totalPaid;
-
-
 
 
 
@@ -497,6 +410,7 @@ Job Details
 </h1>
 
 
+
 <div style={styles.card}>
 
 
@@ -523,7 +437,6 @@ Customer Information
 <p>
 <strong>Source:</strong> {job.source}
 </p>
-
 
 
 
@@ -556,14 +469,30 @@ Vehicle Information
 
 
 
-
 <h2>
 Services
 </h2>
 
 
+
 {
-job.services?.map(service=>(
+
+job.services?.map(service=>{
+
+
+const serviceTechs =
+
+serviceTechnicians.filter(
+
+item =>
+
+item.job_services?.service_name === service
+
+);
+
+
+
+return (
 
 
 <div
@@ -576,174 +505,77 @@ style={styles.service}
 
 
 <h3>
+
 {service}
+
 </h3>
 
 
 
 <p>
+
 Price:
+
 QAR {job.serviceDetails?.[service]?.price || 0}
+
 </p>
+
 
 
 <p>
+
 Discount:
+
 QAR {job.serviceDetails?.[service]?.discount || 0}
+
 </p>
+
 
 
 
 <h4>
+
 Technicians
+
 </h4>
 
 
-{
-editingService === service ? (
-
-<div>
-
 
 {
-technicians.map(person=>(
+
+serviceTechs.length > 0 ?
 
 
-<label
-key={person.id}
-style={{
-display:"block",
-marginBottom:"5px"
-}}
->
+serviceTechs.map(tech=>(
 
 
-<input
-
-type="checkbox"
+<div key={tech.id}>
 
 
-checked={
+<p>
 
-editTechnicians.includes(person.id)
+👷 {tech.technicians?.name}
 
-}
-
-
-onChange={(e)=>{
+</p>
 
 
-if(e.target.checked){
+<p>
 
+Commission:
 
-setEditTechnicians([
+QAR {tech.commission || 0}
 
-...editTechnicians,
-
-person.id
-
-]);
-
-
-}
-
-else{
-
-
-setEditTechnicians(
-
-editTechnicians.filter(
-
-x=>x!==person.id
-
-)
-
-);
-
-
-}
-
-
-}}
-
-
-/>
-
-
-{" "}
-
-{person.name}
-
-
-</label>
-
-
-))
-
-}
-
-
-<br/>
-
-
-<button
-
-style={styles.button}
-
-onClick={()=>saveTechnicians(service)}
-
->
-
-Save Technicians
-
-</button>
-
-
-
-<button
-
-style={styles.cancelButton}
-
-onClick={()=>setEditingService(null)}
-
->
-
-Cancel
-
-</button>
+</p>
 
 
 </div>
 
 
-)
-
-:
-
-(
-
-<div>
-
-
-{
-
-job.serviceDetails?.[service]?.technicians?.length ?
-
-
-job.serviceDetails[service].technicians.map(id=>(
-
-
-<p key={id}>
-
-👷 {getTechnicianName(id)}
-
-</p>
-
-
 ))
 
 
 :
+
 
 <p>
 No technician assigned
@@ -754,36 +586,15 @@ No technician assigned
 
 
 
-<button
-
-style={styles.editButton}
-
-onClick={()=>startEditTechnicians(service)}
-
->
-
-✏️ Edit Technicians
-
-</button>
-
-
-</div>
-
-)
-
-}
-
-
-
 </div>
 
 
-))
+);
 
+
+})
 
 }
-
-
 
 
 
@@ -793,28 +604,38 @@ Payment Summary
 </h2>
 
 
+
 <p>
 Total:
+
 QAR {job.price}
 </p>
 
 
 <p>
 Discount:
+
 QAR {job.discount}
 </p>
 
 
 <p>
 Paid:
+
 QAR {totalPaid}
 </p>
 
 
+
 <h2>
+
 Balance:
+
 QAR {balance}
+
 </h2>
+
+
 
 
 <p>
@@ -845,24 +666,36 @@ paymentStatus==="Partially Paid"
 
 }
 
+
 </p>
+
 
 
 
 <hr/>
 
 
+
+
+
 <h2>
 Payment History
 </h2>
+
+
+
 {
+
 payments.length===0 ?
+
 
 <p>
 No payments yet.
 </p>
 
+
 :
+
 
 payments.map(payment=>(
 
@@ -877,28 +710,53 @@ style={styles.paymentBox}
 
 
 <p>
-<strong>Date:</strong> {new Date(payment.payment_date).toLocaleDateString()}
+
+<strong>Date:</strong>
+
+{" "}
+
+{new Date(payment.payment_date).toLocaleDateString()}
+
 </p>
+
 
 
 <p>
-<strong>Amount:</strong> QAR {payment.amount}
+
+<strong>Amount:</strong>
+
+QAR {payment.amount}
+
 </p>
+
 
 
 <p>
-<strong>Method:</strong> {payment.payment_method}
+
+<strong>Method:</strong>
+
+{payment.payment_method}
+
 </p>
+
+
 
 
 {
+
 payment.notes &&
 
+
 <p>
-<strong>Notes:</strong> {payment.notes}
+
+<strong>Notes:</strong>
+
+{payment.notes}
+
 </p>
 
 }
+
 
 
 
@@ -936,11 +794,7 @@ onClick={()=>deletePayment(payment.id)}
 ))
 
 }
-
-
-
-
-
+id="6m2r2b"
 <hr/>
 
 
@@ -978,8 +832,6 @@ setAmount(e.target.value)
 }
 
 />
-
-
 
 
 
@@ -1021,7 +873,6 @@ PayLater
 
 
 
-
 <textarea
 
 placeholder="Notes"
@@ -1035,7 +886,6 @@ setNotes(e.target.value)
 }
 
 />
-
 
 
 
@@ -1060,6 +910,7 @@ savePayment
 
 >
 
+
 {
 
 editingPayment
@@ -1073,6 +924,7 @@ editingPayment
 "Add Payment"
 
 }
+
 
 </button>
 
@@ -1102,8 +954,8 @@ Cancel
 
 
 
-
-<br/><br/>
+<br/>
+<br/>
 
 
 
@@ -1127,16 +979,12 @@ style={styles.invoiceButton}
 
 </div>
 
-
 </div>
-
 
 );
 
+
 }
-
-
-
 
 
 
@@ -1144,23 +992,19 @@ style={styles.invoiceButton}
 const styles={
 
 
-
 page:{
-
 
 padding:"30px",
 
-background:"var(--bg)",
+background:"#f1f5f9",
 
 minHeight:"100vh"
-
 
 },
 
 
 
 card:{
-
 
 background:"white",
 
@@ -1172,13 +1016,11 @@ maxWidth:"700px",
 
 boxShadow:"0 5px 15px rgba(0,0,0,.1)"
 
-
 },
 
 
 
 service:{
-
 
 border:"1px solid #ddd",
 
@@ -1188,13 +1030,11 @@ borderRadius:"10px",
 
 marginBottom:"15px"
 
-
 },
 
 
 
 paymentBox:{
-
 
 border:"1px solid #ddd",
 
@@ -1206,13 +1046,11 @@ marginBottom:"10px",
 
 background:"#fafafa"
 
-
 },
 
 
 
 button:{
-
 
 background:"#16a34a",
 
@@ -1228,13 +1066,11 @@ cursor:"pointer",
 
 marginTop:"10px"
 
-
 },
 
 
 
 editButton:{
-
 
 background:"#f59e0b",
 
@@ -1250,13 +1086,11 @@ cursor:"pointer",
 
 marginRight:"10px"
 
-
 },
 
 
 
 deleteButton:{
-
 
 background:"#dc2626",
 
@@ -1270,13 +1104,11 @@ borderRadius:"8px",
 
 cursor:"pointer"
 
-
 },
 
 
 
 cancelButton:{
-
 
 background:"#6b7280",
 
@@ -1292,13 +1124,11 @@ cursor:"pointer",
 
 marginLeft:"10px"
 
-
 },
 
 
 
 invoiceButton:{
-
 
 background:"#2563eb",
 
@@ -1311,7 +1141,6 @@ padding:"12px 20px",
 borderRadius:"10px",
 
 cursor:"pointer"
-
 
 }
 
