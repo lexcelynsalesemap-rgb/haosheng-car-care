@@ -44,7 +44,7 @@ const {data,error}=await supabase
 
 .select("*")
 
-.eq("id",Number(id))
+.eq("id",id)
 
 .single();
 
@@ -168,7 +168,7 @@ const {data:jobService}=await supabase
 
 .select("id")
 
-.eq("job_id",Number(id))
+.eq("job_id",id)
 
 .eq("service_name",service)
 
@@ -255,10 +255,7 @@ const {data,error}=await supabase
 
 .select("*")
 
-.eq(
-"job_id",
-Number(id)
-)
+.eq("id",id)
 
 .order(
 "payment_date",
@@ -1253,6 +1250,7 @@ Cancel
 
 <Link to={`/invoice/${job.id}`}>
 
+
 <button
 
 style={styles.invoiceButton}
@@ -1262,7 +1260,11 @@ style={styles.invoiceButton}
 🧾 Invoice
 
 </button>
-
+<Link to={`/edit-job/${job.id}`}>
+<button>
+✏️ Edit Job
+</button>
+</Link>
 
 </Link>
 
