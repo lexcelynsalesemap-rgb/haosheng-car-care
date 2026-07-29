@@ -255,7 +255,10 @@ const {data,error}=await supabase
 
 .select("*")
 
-.eq("id",id)
+.eq(
+"job_id",
+id
+)
 
 .order(
 "payment_date",
@@ -319,7 +322,7 @@ const {error}=await supabase
 
 .insert([{
 
-job_id:Number(id),
+job_id:id,
 
 amount:Number(amount),
 
@@ -1250,21 +1253,20 @@ Cancel
 
 <Link to={`/invoice/${job.id}`}>
 
-
 <button
-
 style={styles.invoiceButton}
-
 >
-
 🧾 Invoice
-
 </button>
+
+</Link>
+
+
 <Link to={`/edit-job/${job.id}`}>
+
 <button>
 ✏️ Edit Job
 </button>
-</Link>
 
 </Link>
 
