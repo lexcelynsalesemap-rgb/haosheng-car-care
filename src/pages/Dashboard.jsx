@@ -18,7 +18,7 @@ function Dashboard() {
 
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
-
+const [dateFilter, setDateFilter] = useState("All");
 useEffect(() => {
 
   async function loadDashboard(){
@@ -94,31 +94,66 @@ async function loadPayments(){
   setPayments(data || []);
 
 }
-  const totalJobs = jobs.length;
+const filteredJobs = jobs.filter(job => {
+
+  if(dateFilter === "All"){
+    return true;
+  }
+
+  const jobDate = new Date(job.created_at);
+  const now = new Date();
+
+
+  if(dateFilter === "Today"){
+    return (
+      jobDate.toDateString() === now.toDateString()
+    );
+  }
+
+
+  if(dateFilter === "Month"){
+    return (
+      jobDate.getMonth() === now.getMonth() &&
+      jobDate.getFullYear() === now.getFullYear()
+    );
+  }
+
+
+  if(dateFilter === "Year"){
+    return (
+      jobDate.getFullYear() === now.getFullYear()
+    );
+  }
+
+
+  return true;
+
+});
+  const totalJobs = filteredJobs.length;
 
 
   const newJobs =
-    jobs.filter(job => (job.status || "New") === "New").length;
+    filteredJobs.filter(job => (job.status || "New") === "New").length;
 
 
   const progressJobs =
-    jobs.filter(job => job.status === "In Progress").length;
+    filteredJobs.filter(job => job.status === "In Progress").length;
 
 
   const finishedJobs =
-    jobs.filter(job => job.status === "Finished").length;
+    filteredJobs.filter(job => job.status === "Finished").length;
 
 
   const deliveredJobs =
-    jobs.filter(job => job.status === "Delivered").length;
+    filteredJobs.filter(job => job.status === "Delivered").length;
 
 
-  const totalSales = jobs.reduce(
+  const totalSales = filteredJobs.reduce(
   (sum, job) => sum + Number(job.price || 0),
   0
 );
 
-const totalDiscount = jobs.reduce(
+const totalDiscount = filteredJobs.reduce(
   (sum, job) => sum + Number(job.discount || 0),
   0
 );
@@ -133,31 +168,31 @@ const netSales = totalSales - totalDiscount;
 const balance = netSales - paid;
 const sourceReport = {
 
-  "Teyseer Motors": jobs.filter(
+  "Teyseer Motors": filteredJobs.filter(
     job => job.source === "Teyseer Motors"
   ).length,
 
-  "Teyseer Motors - Bahaa": jobs.filter(
+  "Teyseer Motors - Bahaa": filteredJobs.filter(
     job => job.source === "Teyseer Motors - Bahaa"
   ).length,
 
-  "Teyseer Motors - Salah": jobs.filter(
+  "Teyseer Motors - Salah": filteredJobs.filter(
     job => job.source === "Teyseer Motors - Salah"
   ).length,
 
-  "Bahaa": jobs.filter(
+  "Bahaa": filteredJobs.filter(
     job => job.source === "Bahaa"
   ).length,
 
-  "Salah": jobs.filter(
+  "Salah": filteredJobs.filter(
     job => job.source === "Salah"
   ).length,
 
-  "Walk-in": jobs.filter(
+  "Walk-in": filteredJobs.filter(
     job => job.source === "Walk-in"
   ).length,
 
-  "Other": jobs.filter(
+  "Other":filteredJobs.filter(
     job => job.source === "Other"
   ).length
 
@@ -210,7 +245,38 @@ const COLORS = [
   <div style={styles.page}>
 
     <div style={styles.header}>
+<div style={{marginBottom:"25px"}}>
 
+<select
+value={dateFilter}
+onChange={(e)=>setDateFilter(e.target.value)}
+style={{
+padding:"10px",
+borderRadius:"10px",
+border:"1px solid #ddd",
+fontSize:"16px"
+}}
+>
+
+<option value="All">
+All Time
+</option>
+
+<option value="Today">
+Today
+</option>
+
+<option value="Month">
+This Month
+</option>
+
+<option value="Year">
+This Year
+</option>
+
+</select>
+
+</div>
       <div>
         <h1>
           🚗 Haosheng Car Care
@@ -316,7 +382,7 @@ const COLORS = [
 
     <tbody>
 
-      {jobs.slice(-5).reverse().map(job => (
+      {filteredJobs.slice(-5).reverse().map(job => (
 
         <tr key={job.id}>
 
@@ -525,6 +591,7 @@ function Card({ title, value, status, icon }) {
       </Link>
 
     );
+
 
   }
 
