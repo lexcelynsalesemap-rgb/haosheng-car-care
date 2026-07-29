@@ -542,25 +542,24 @@ Technicians
 
 
 {
-
 serviceTechs.length > 0 ?
 
+[...new Map(
+  serviceTechs.map(tech => [
+    tech.technicians?.id,
+    tech
+  ])
+).values()].map(tech=>(
 
-serviceTechs.map(tech=>(
-
-
-<div key={tech.id}>
+<div key={tech.technicians?.id}>
 
 
 <p>
-
 👷 {tech.technicians?.name}
-
 </p>
 
 
 <p>
-
 Commission:
 
 QAR {tech.commission || 0}
@@ -570,19 +569,19 @@ QAR {tech.commission || 0}
 
 </div>
 
-
 ))
 
 
 :
 
-
 <p>
 No technician assigned
 </p>
 
-
 }
+
+
+
 
 
 
