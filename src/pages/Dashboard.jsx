@@ -129,6 +129,33 @@ const filteredJobs = jobs.filter(job => {
   return true;
 
 });
+const teyseerSources = [
+  "Teyseer Motors",
+  "Teyseer Motors - Bahaa",
+  "Teyseer Motors - Salah"
+];
+
+
+const teyseerJobs = filteredJobs.filter(job =>
+  teyseerSources.includes(job.source)
+);
+
+
+const customerJobs = filteredJobs.filter(job =>
+  !teyseerSources.includes(job.source)
+);
+const teyseerNetSales = teyseerJobs.reduce(
+  (sum, job) =>
+    sum + Number(job.price || 0) - Number(job.discount || 0),
+  0
+);
+
+
+const customerNetSales = customerJobs.reduce(
+  (sum, job) =>
+    sum + Number(job.price || 0) - Number(job.discount || 0),
+  0
+);
   const totalJobs = filteredJobs.length;
 
 
@@ -352,7 +379,17 @@ This Year
   value={`$${netSales}`}
   icon="💰"
 />
+<Card
+  title="Teyseer Sales"
+  value={`$${teyseerNetSales}`}
+  icon="🏢"
+/>
 
+<Card
+  title="Customer Sales"
+  value={`$${customerNetSales}`}
+  icon="👤"
+/>
 <Card 
   title="Paid"
   value={`$${paid}`}
@@ -544,16 +581,17 @@ fill="#2563eb"
 function Card({ title, value, status, icon }) {
 
   const colors = {
-    "Total Jobs": "#2563eb",
-    "New": "#7c3aed",
-    "In Progress": "#ea580c",
-    "Finished": "#16a34a",
-    "Delivered": "#0891b2",
-    "Total Sales": "#ca8a04",
-    "Paid": "#15803d",
-    "Balance Due": "#dc2626"
-  };
-
+  "Total Jobs": "#2563eb",
+  "New": "#7c3aed",
+  "In Progress": "#ea580c",
+  "Finished": "#16a34a",
+  "Delivered": "#0891b2",
+  "Net Sales": "#ca8a04",
+  "Teyseer Sales": "#9333ea",
+  "Customer Sales": "#0284c7",
+  "Paid": "#15803d",
+  "Balance Due": "#dc2626"
+};
 
   const cardContent = (
 

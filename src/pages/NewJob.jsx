@@ -312,15 +312,16 @@ if(Number(deposit)>0){
 
   const {data:paymentData,error:paymentError}=await supabase
   .from("payments")
-  .insert([{
+.insert([{
 
     job_id: jobData.id,
     amount: Number(deposit),
     payment_method: paymentMethod,
+    payment_source: job.source,
     payment_date: new Date().toISOString(),
     notes:"Initial deposit"
 
-  }])
+}])
   .select();
 
 
@@ -1140,7 +1141,6 @@ PayLater
 </option>
 
 </select>
-
 
 
 <label>
