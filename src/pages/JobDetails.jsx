@@ -10,8 +10,12 @@ const {id}=useParams();
 
 const [job,setJob]=useState(null);
 
+const [technicians,setTechnicians]=useState([]);
+
 const [serviceTechnicians,setServiceTechnicians]=useState([]);
+
 const [editingService,setEditingService]=useState(null);
+
 const [selectedTechs,setSelectedTechs]=useState([]);
 
 const [payments,setPayments]=useState([]);
@@ -59,7 +63,32 @@ setJob(data);
 
 }
 
+async function loadTechnicians(){
 
+const {data,error}=await supabase
+
+.from("technicians")
+
+.select("*")
+
+.eq("active",true);
+
+
+console.log("TECHNICIANS:",data);
+
+
+if(error){
+
+console.log(error);
+
+return;
+
+}
+
+
+setTechnicians(data || []);
+
+}
 
 
 
@@ -175,6 +204,8 @@ setPayments(data || []);
 useEffect(()=>{
 
 loadJob();
+
+loadTechnicians();
 
 loadServiceTechnicians();
 
