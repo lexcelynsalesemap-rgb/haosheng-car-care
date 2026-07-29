@@ -11,6 +11,8 @@ const {id}=useParams();
 const [job,setJob]=useState(null);
 
 const [serviceTechnicians,setServiceTechnicians]=useState([]);
+const [editingService,setEditingService]=useState(null);
+const [selectedTechs,setSelectedTechs]=useState([]);
 
 const [payments,setPayments]=useState([]);
 
@@ -106,7 +108,26 @@ setServiceTechnicians(data || []);
 
 }
 
+function startEditTechnicians(service){
 
+const current =
+serviceTechnicians
+.filter(
+t=>t.job_services?.service_name === service
+)
+.map(t=>({
+
+id:t.technicians.id,
+commission:t.commission
+
+}));
+
+
+setSelectedTechs(current);
+
+setEditingService(service);
+
+}
 
 
 
@@ -542,35 +563,174 @@ Technicians
 
 
 {
+editingService === service ? (
+
+<div>
+
+<h4>Select Technicians</h4>
+
+{
+technicians.map(person=>{
+
+const selected =
+selectedTechs.find(
+t=>t.id===person.id
+);
+
+
+return (
+
+<div key={person.id}>
+
+<label>
+
+<input
+
+type="checkbox"
+
+checked={!!selected}
+
+onChange={(e)=>{
+
+
+if(e.target.checked){
+
+setSelectedTechs([
+
+...selectedTechs,
+
+{
+id:person.id,
+commission:0
+}
+
+]);
+
+}
+else{
+
+setSelectedTechs(
+
+selectedTechs.filter(
+
+t=>t.id!==person.id
+
+)
+
+);
+
+}
+
+
+}}
+
+/>
+
+{" "}
+
+{person.name}
+
+</label>
+
+
+{
+
+selected &&
+
+<input
+
+type="number"
+
+placeholder="Commission"
+
+value={selected.commission}
+
+onChange={(e)=>{
+
+
+setSelectedTechs(
+
+selectedTechs.map(t=>
+
+t.id===person.id
+
+?
+
+{
+...t,
+commission:Number(e.target.value)
+}
+
+:
+
+t
+
+)
+
+);
+
+
+}}
+
+/>
+
+}
+
+
+</div>
+
+)
+
+})
+
+}
+
+
+<br/>
+
+<button
+
+onClick={()=>saveTechnicians(service)}
+
+>
+
+Save Technicians
+
+</button>
+
+
+</div>
+
+
+)
+
+:
+
+(
+
+<div>
+
+
+{
+
 serviceTechs.length > 0 ?
 
-[...new Map(
-  serviceTechs.map(tech => [
-    tech.technicians?.id,
-    tech
-  ])
-).values()].map(tech=>(
+serviceTechs.map(tech=>(
 
-<div key={tech.technicians?.id}>
-
+<div key={tech.id}>
 
 <p>
 👷 {tech.technicians?.name}
 </p>
 
-
 <p>
 Commission:
-
 QAR {tech.commission || 0}
-
 </p>
-
 
 </div>
 
 ))
-
 
 :
 
@@ -580,6 +740,23 @@ No technician assigned
 
 }
 
+
+<button
+
+onClick={()=>startEditTechnicians(service)}
+
+>
+
+✏️ Edit Technicians
+
+</button>
+
+
+</div>
+
+)
+
+}
 
 
 
