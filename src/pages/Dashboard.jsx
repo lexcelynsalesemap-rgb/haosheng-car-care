@@ -113,32 +113,24 @@ async function loadPayments(){
     jobs.filter(job => job.status === "Delivered").length;
 
 
-  const totalSales =
-  jobs.reduce(
-    (sum, job) => sum + Number(job.price || 0),
-    0
-  );
+  const totalSales = jobs.reduce(
+  (sum, job) => sum + Number(job.price || 0),
+  0
+);
 
+const totalDiscount = jobs.reduce(
+  (sum, job) => sum + Number(job.discount || 0),
+  0
+);
 
-const paid =
-  payments.reduce(
-    (sum, payment) =>
-      sum + Number(payment.amount || 0),
-    0
-  );
+const paid = payments.reduce(
+  (sum, payment) => sum + Number(payment.amount || 0),
+  0
+);
 
+const netSales = totalSales - totalDiscount;
 
-const totalDiscount =
-  jobs.reduce(
-    (sum, job) =>
-      sum + Number(job.discount || 0),
-    0
-  );
-
-
-const balance =
-  totalSales - totalDiscount - paid;
-
+const balance = netSales - paid;
 const sourceReport = {
 
   "Teyseer Motors": jobs.filter(
@@ -289,9 +281,9 @@ const COLORS = [
   status="Delivered"
 />
 
-<Card 
-  title="Total Sales"
-  value={`$${totalSales}`}
+<Card
+  title="Net Sales"
+  value={`$${netSales}`}
   icon="💰"
 />
 
