@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import UserMenu from "../components/UserMenu";
 import { Link } from "react-router-dom";
+import UserMenu from "../components/UserMenu";
 import { supabase } from "../supabase/client";
 
 import {
@@ -15,597 +15,448 @@ import {
   Tooltip
 } from "recharts";
 
-
-function Dashboard(){
-
-const [jobs,setJobs] = useState([]);
-const [payments,setPayments] = useState([]);
-const [jobServices,setJobServices] = useState([]);
-
-const [dateFilter,setDateFilter] = useState("All");
-
-
-
-useEffect(()=>{
-
-
-async function loadDashboard(){
-
-await loadJobs();
-await loadPayments();
-await loadJobServices();
-
-}
-
-
-loadDashboard();
-
-
-
-const jobsChannel = supabase
-.channel("dashboard-jobs")
-.on(
-"postgres_changes",
-{
-event:"*",
-schema:"public",
-table:"jobs"
-},
-()=>{
-loadJobs();
-}
-)
-.subscribe();
-
-
-
-const paymentsChannel = supabase
-.channel("dashboard-payments")
-.on(
-"postgres_changes",
-{
-event:"*",
-schema:"public",
-table:"payments"
-},
-()=>{
-loadPayments();
-}
-)
-.subscribe();
-
-
-
-const servicesChannel = supabase
-.channel("dashboard-services")
-.on(
-"postgres_changes",
-{
-event:"*",
-schema:"public",
-table:"job_services"
-},
-()=>{
-loadJobServices();
-}
-)
-.subscribe();
-
-
-
-return ()=>{
-
-supabase.removeChannel(jobsChannel);
-supabase.removeChannel(paymentsChannel);
-supabase.removeChannel(servicesChannel);
-
-};
-
-
-},[]);
-
-
-
-
-
-async function loadJobs(){
-
-const {data,error}=await supabase
-.from("jobs")
-.select("*")
-.order("created_at",{ascending:false});
-
-
-if(error){
-
-console.log(error);
-return;
-
-}
-
-
-setJobs(data || []);
-
-}
-
-
-
-
-
-async function loadPayments(){
-
-const {data,error}=await supabase
-.from("payments")
-.select("*");
-
-
-if(error){
-
-console.log(error);
-return;
-
-}
-
-
-setPayments(data || []);
-
-}
-
-
-
-
-
-async function loadJobServices(){
-
-const {data,error}=await supabase
-.from("job_services")
-.select("*");
-
-
-if(error){
-
-console.log(error);
-return;
-
-}
-
-
-setJobServices(data || []);
-
-}
-
-
-
-
-
-
-
-const filteredJobs = jobs.filter(job=>{
-
-
-if(dateFilter==="All"){
-
-return true;
-
-}
-
-
-const jobDate=new Date(job.created_at);
-const now=new Date();
-
-
-
-if(dateFilter==="Today"){
-
-return jobDate.toDateString()===now.toDateString();
-
-}
-
-
-
-if(dateFilter==="Month"){
-
-return (
-jobDate.getMonth()===now.getMonth()
-&&
-jobDate.getFullYear()===now.getFullYear()
-);
-
-}
-
-
-
-if(dateFilter==="Year"){
-
-return (
-jobDate.getFullYear()===now.getFullYear()
-);
-
-}
-
-
-
-return true;
-
-
-});
-
-
-
-
-
-
-
-
-// =============================
-// TEYSEER / SALES TEAM LOGIC
-// =============================
-
-let teyseerNetSales = 0;
-let salesTeamNetSales = 0;
-const sourceReport = {
-  "Teyseer Motors":{
-    jobs:0,
-    sales:0
-  },
-  "Salah":{
-    jobs:0,
-    sales:0
-  },
-  "Bahaa":{
-    jobs:0,
-    sales:0
-  },
-  "Sales Team":{
-    jobs:0,
-    sales:0
+function Dashboard() {
+
+  const [jobs, setJobs] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [jobServices, setJobServices] = useState([]);
+  const [dateFilter, setDateFilter] = useState("All");
+
+  useEffect(() => {
+
+    loadDashboard();
+
+    const jobsChannel = supabase
+      .channel("dashboard-jobs")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "jobs"
+        },
+        () => loadJobs()
+      )
+      .subscribe();
+
+    const paymentsChannel = supabase
+      .channel("dashboard-payments")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "payments"
+        },
+        () => loadPayments()
+      )
+      .subscribe();
+
+    const servicesChannel = supabase
+      .channel("dashboard-services")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "job_services"
+        },
+        () => loadJobServices()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(jobsChannel);
+      supabase.removeChannel(paymentsChannel);
+      supabase.removeChannel(servicesChannel);
+    };
+
+  }, []);
+
+  async function loadDashboard() {
+    await Promise.all([
+      loadJobs(),
+      loadPayments(),
+      loadJobServices()
+    ]);
   }
-};
 
-filteredJobs.forEach(job=>{
+  async function loadJobs() {
 
-const services = jobServices.filter(
-service=>service.job_id === job.id
-);
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .order("created_at", { ascending: false });
 
+    if (error) {
+      console.log(error);
+      return;
+    }
 
-services.forEach(service=>{
+    setJobs(data || []);
+  }
 
-const amount = Number(service.price || 0);
+  async function loadPayments() {
 
-const serviceName =
-(
-service.service_name ||
-service.name ||
-""
-).toLowerCase();
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*");
 
+    if (error) {
+      console.log(error);
+      return;
+    }
 
-let reportSource = "Sales Team";
+    setPayments(data || []);
+  }
 
+  async function loadJobServices() {
 
-// Teyseer Motors direct
-if(job.source === "Teyseer Motors"){
+    const { data, error } = await supabase
+      .from("job_services")
+      .select("*");
 
-reportSource = "Teyseer Motors";
+    if (error) {
+      console.log(error);
+      return;
+    }
 
-}
+    setJobServices(data || []);
+  }
 
+  const filteredJobs = jobs.filter(job => {
 
-// Salah
-else if(job.source === "Teyseer Motors - Salah"){
+    if (dateFilter === "All") return true;
 
-if(serviceName.includes("full wtt")){
+    const jobDate = new Date(job.created_at);
+    const now = new Date();
 
-reportSource = "Teyseer Motors";
+    if (dateFilter === "Today") {
+      return jobDate.toDateString() === now.toDateString();
+    }
 
-}
-else{
+    if (dateFilter === "Month") {
+      return (
+        jobDate.getMonth() === now.getMonth() &&
+        jobDate.getFullYear() === now.getFullYear()
+      );
+    }
 
-reportSource = "Salah";
+    if (dateFilter === "Year") {
+      return jobDate.getFullYear() === now.getFullYear();
+    }
 
-}
+    return true;
 
-}
+  });
+    // =============================
+  // GENERAL DASHBOARD DATA
+  // =============================
 
-
-// Bahaa
-else if(job.source === "Teyseer Motors - Bahaa"){
-
-if(serviceName.includes("full wtt")){
-
-reportSource = "Teyseer Motors";
-
-}
-else{
-
-reportSource = "Bahaa";
-
-}
-
-}
-
-
-// create automatically (prevents crash)
-if(!sourceReport[reportSource]){
-
-sourceReport[reportSource]={
-jobs:0,
-sales:0
-};
-
-}
-
-
-sourceReport[reportSource].jobs += 1;
-
-sourceReport[reportSource].sales += amount;
+  const totalJobs = filteredJobs.length;
 
 
-});
+  const newJobs =
+    filteredJobs.filter(
+      job => (job.status || "New") === "New"
+    ).length;
 
-});
+
+  const progressJobs =
+    filteredJobs.filter(
+      job => job.status === "In Progress"
+    ).length;
+
+
+  const finishedJobs =
+    filteredJobs.filter(
+      job => job.status === "Finished"
+    ).length;
+
+
+  const deliveredJobs =
+    filteredJobs.filter(
+      job => job.status === "Delivered"
+    ).length;
 
 
 
+  // =============================
+  // FINANCIAL DATA
+  // =============================
+
+
+  const totalSales =
+    filteredJobs.reduce(
+      (sum, job) =>
+        sum + Number(job.price || 0),
+      0
+    );
+
+
+  const totalDiscount =
+    filteredJobs.reduce(
+      (sum, job) =>
+        sum + Number(job.discount || 0),
+      0
+    );
+
+
+  const paid =
+    payments.reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+
+  const netSales =
+    totalSales - totalDiscount;
+
+
+  const balance =
+    netSales - paid;
+
+
+
+  // =============================
+  // SOURCE REPORT
+  // =============================
+
+
+  let teyseerNetSales = 0;
+  let salesTeamNetSales = 0;
+
+
+  const sourceReport = {
+
+    "Teyseer Motors":{
+      jobs:0,
+      sales:0
+    },
+
+    "Salah":{
+      jobs:0,
+      sales:0
+    },
+
+    "Bahaa":{
+      jobs:0,
+      sales:0
+    },
+
+    "Sales Team":{
+      jobs:0,
+      sales:0
+    }
+
+  };
+
+
+
+  filteredJobs.forEach(job => {
+
+
+    const services =
+      jobServices.filter(
+        service =>
+          service.job_id === job.id
+      );
+
+
+
+    services.forEach(service => {
+
+
+      const amount =
+        Number(service.price || 0);
+
+
+
+      const serviceName =
+        (
+          service.service_name ||
+          service.name ||
+          ""
+        )
+        .toLowerCase();
+
+
+
+      let reportSource = "Sales Team";
+
+
+
+      // DIRECT TEYSEER
+
+      if(job.source === "Teyseer Motors"){
+
+        reportSource = "Teyseer Motors";
+
+      }
+
+
+
+      // SALAH
+
+      else if(
+        job.source === "Teyseer Motors - Salah"
+      ){
+
+        if(
+          serviceName.includes("full wtt")
+        ){
+
+          reportSource = "Teyseer Motors";
+
+        }
+        else{
+
+          reportSource = "Salah";
+
+        }
+
+      }
+
+
+
+      // BAHA
+
+      else if(
+        job.source === "Teyseer Motors - Bahaa"
+      ){
+
+        if(
+          serviceName.includes("full wtt")
+        ){
+
+          reportSource = "Teyseer Motors";
+
+        }
+        else{
+
+          reportSource = "Bahaa";
+
+        }
+
+      }
+
+
+
+      if(!sourceReport[reportSource]){
+
+        sourceReport[reportSource] = {
+          jobs:0,
+          sales:0
+        };
+
+      }
+
+
+
+      sourceReport[reportSource].jobs += 1;
+
+      sourceReport[reportSource].sales += amount;
+
+
+
+      if(reportSource === "Teyseer Motors"){
+
+        teyseerNetSales += amount;
+
+      }
+      else{
+
+        salesTeamNetSales += amount;
+
+      }
+
+
+    });
+
+
+  });
+
+
+
+  // =============================
+  // PAYMENT SPLIT
+  // =============================
+
+
+  const teyseerPaid = 0;
+
+
+  const salesTeamPaid =
+    payments.reduce(
+      (sum,payment)=>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+
+
+  const teyseerBalance =
+    teyseerNetSales - teyseerPaid;
+
+
+
+  const salesTeamBalance =
+    salesTeamNetSales - salesTeamPaid;
+   
 
 // =============================
-// PAYMENTS
-// TEYSEER PAYS MONTHLY
-// ALL PAYMENTS ARE SALES TEAM
+// CHART DATA
 // =============================
 
-
-const teyseerPaid = 0;
-
-
-
-const salesTeamPaid =
-payments.reduce(
-(sum,payment)=>
-sum + Number(payment.amount || 0),
-0
-);
-
-
-
-
-
-const teyseerBalance =
-teyseerNetSales - teyseerPaid;
-
-
-
-const salesTeamBalance =
-salesTeamNetSales - salesTeamPaid;
-
-
-
-
-
-
-
-// =============================
-// GENERAL DASHBOARD DATA
-// =============================
-
-
-const totalJobs =
-filteredJobs.length;
-
-
-
-const newJobs =
-filteredJobs.filter(
-job=>(job.status || "New")==="New"
-).length;
-
-
-
-const progressJobs =
-filteredJobs.filter(
-job=>job.status==="In Progress"
-).length;
-
-
-
-const finishedJobs =
-filteredJobs.filter(
-job=>job.status==="Finished"
-).length;
-
-
-
-const deliveredJobs =
-filteredJobs.filter(
-job=>job.status==="Delivered"
-).length;
-
-
-
-
-const totalSales =
-filteredJobs.reduce(
-(sum,job)=>
-sum+Number(job.price || 0),
-0
-);
-
-
-
-const totalDiscount =
-filteredJobs.reduce(
-(sum,job)=>
-sum+Number(job.discount || 0),
-0
-);
-
-
-
-const paid =
-payments.reduce(
-(sum,payment)=>
-sum+Number(payment.amount || 0),
-0
-);
-
-
-
-const netSales =
-totalSales-totalDiscount;
-
-
-
-
-
-
-
-filteredJobs.forEach(job=>{
-
-
-const services = jobServices.filter(
-service=>service.job_id === job.id
-);
-
-
-
-services.forEach(service=>{
-
-
-const amount =
-Number(service.price || 0);
-
-
-
-const serviceName =
-(
-service.service_name ||
-service.name ||
-""
-)
-.toLowerCase();
-
-
-
-let reportSource = job.source || "Sales Team";
-
-
-
-// DIRECT TEYSEER MOTORS
-if(job.source === "Teyseer Motors"){
-
-reportSource = "Teyseer Motors";
-
-}
-
-
-
-// SALAH / BAHA RULE
-
-else if(
-
-job.source === "Teyseer Motors - Salah"
-||
-job.source === "Teyseer Motors - Bahaa"
-
-){
-
-if(serviceName.includes("full wtt")){
-
-reportSource = "Teyseer Motors";
-
-}
-else{
-
-reportSource = "Sales Team";
-
-}
-
-}
-
-
-
-// EVERYTHING ELSE
-
-else{
-
-reportSource = "Sales Team";
-
-}
-
-
-
-
-
-if(!sourceReport[reportSource]){
-
-sourceReport[reportSource]={
-jobs:0,
-sales:0
-};
-
-}
-
-
-sourceReport[reportSource].jobs += 1;
-
-sourceReport[reportSource].sales += amount;
-
-
-
-});
-
-
-});
-
-const statusData=[
-{
-name:"New",
-value:newJobs
-},
-
-{
-name:"Progress",
-value:progressJobs
-},
-
-{
-name:"Finished",
-value:finishedJobs
-},
-
-{
-name:"Delivered",
-value:deliveredJobs
-}
+const statusData = [
+
+  {
+    name:"New",
+    value:newJobs
+  },
+
+  {
+    name:"Progress",
+    value:progressJobs
+  },
+
+  {
+    name:"Finished",
+    value:finishedJobs
+  },
+
+  {
+    name:"Delivered",
+    value:deliveredJobs
+  }
 
 ];
 
 
 
+const salesData = [
 
-const salesData=[
+  {
+    name:"Sales",
+    amount:netSales
+  },
 
-{
-name:"Sales",
-amount:netSales
-},
+  {
+    name:"Paid",
+    amount:paid
+  },
 
-{
-name:"Paid",
-amount:paid
-},
-
-{
-name:"Due",
-amount:balance
-}
+  {
+    name:"Due",
+    amount:balance
+  }
 
 ];
 
 
 
-const COLORS=[
+const COLORS = [
 
 "#7c3aed",
 "#ea580c",
@@ -613,6 +464,8 @@ const COLORS=[
 "#0891b2"
 
 ];
+
+
 
 
 
@@ -630,16 +483,23 @@ return (
 🚗 Haosheng Car Care
 </h1>
 
+
 <p>
 Workshop Management System
 </p>
+
 
 </div>
 
 
 
-
-<div style={{display:"flex",gap:"15px",alignItems:"center"}}>
+<div
+style={{
+display:"flex",
+gap:"15px",
+alignItems:"center"
+}}
+>
 
 
 <UserMenu/>
@@ -680,7 +540,9 @@ Workshop Management System
 
 value={dateFilter}
 
-onChange={(e)=>setDateFilter(e.target.value)}
+onChange={(e)=>
+setDateFilter(e.target.value)
+}
 
 style={{
 padding:"10px",
@@ -716,9 +578,6 @@ This Year
 
 
 </div>
-
-
-
 
 
 
@@ -771,13 +630,11 @@ status="Delivered"
 
 
 
-
 <Card
 title="Net Sales"
 value={`QAR ${netSales}`}
 icon="💰"
 />
-
 
 
 
@@ -797,14 +654,11 @@ icon="👥"
 
 
 
-
-
 <Card
 title="Teyseer Paid"
 value={`QAR ${teyseerPaid}`}
 icon="🏢💳"
 />
-
 
 
 
@@ -816,14 +670,11 @@ icon="🏢⚠️"
 
 
 
-
 <Card
 title="Sales Team Paid"
 value={`QAR ${salesTeamPaid}`}
 icon="👥💳"
 />
-
-
 
 
 
@@ -835,15 +686,11 @@ icon="👥⚠️"
 
 
 
-
-
 <Card
 title="Paid"
 value={`QAR ${paid}`}
 icon="💳"
 />
-
-
 
 
 
@@ -855,12 +702,6 @@ icon="⚠️"
 
 
 </div>
-
-
-
-
-
-
 <h2>
 Recent Jobs
 </h2>
@@ -905,7 +746,6 @@ Price
 
 
 
-
 <tbody>
 
 
@@ -920,12 +760,12 @@ filteredJobs
 
 
 <td>
-{job.customer}
+{job.customer || "Unknown"}
 </td>
 
 
 <td>
-{job.carModel}
+{job.carModel || "-"}
 </td>
 
 
@@ -967,11 +807,10 @@ QAR {job.price || 0}
 
 
 
-
-
 <h2>
 Statistics
 </h2>
+
 
 
 
@@ -987,7 +826,12 @@ Job Status
 </h3>
 
 
-<ResponsiveContainer width="100%" height={250}>
+
+
+<ResponsiveContainer
+width="100%"
+height={250}
+>
 
 
 <PieChart>
@@ -1007,7 +851,8 @@ outerRadius={90}
 
 
 {
-statusData.map((entry,index)=>(
+statusData.map(
+(entry,index)=>(
 
 
 <Cell
@@ -1032,7 +877,6 @@ fill={COLORS[index]}
 </ResponsiveContainer>
 
 
-
 </div>
 
 
@@ -1048,21 +892,29 @@ Financial Overview
 
 
 
-<ResponsiveContainer width="100%" height={250}>
+
+<ResponsiveContainer
+width="100%"
+height={250}
+>
 
 
-<BarChart data={salesData}>
+<BarChart
+
+data={salesData}
+
+>
 
 
-<XAxis dataKey="name"/>
+<XAxis
+dataKey="name"
+/>
 
 
-<YAxis/>
+<YAxis />
 
 
-<Tooltip/>
-
-
+<Tooltip />
 
 
 <Bar
@@ -1074,9 +926,7 @@ fill="#2563eb"
 />
 
 
-
 </BarChart>
-
 
 
 </ResponsiveContainer>
@@ -1092,11 +942,14 @@ Customer Sources
 </h2>
 
 
+
+
 <div style={styles.recent}>
 
 
 {
-Object.entries(sourceReport).map(([name,data])=>(
+Object.entries(sourceReport).map(
+([name,data])=>(
 
 
 <div
@@ -1143,6 +996,7 @@ Net Sales: QAR {data.sales}
 
 
 
+
 <h2>
 Quick Actions
 </h2>
@@ -1150,21 +1004,28 @@ Quick Actions
 
 
 
+
 <div style={styles.actions}>
 
 
-<Link 
+<Link
+
 to="/new-job"
+
 style={styles.actionCard}
+
 >
+
 
 <div>
 ➕
 </div>
 
+
 <h3>
 New Job
 </h3>
+
 
 <p>
 Create service order
@@ -1177,10 +1038,16 @@ Create service order
 
 
 
-<Link 
+
+
+<Link
+
 to="/jobs"
+
 style={styles.actionCard}
+
 >
+
 
 <div>
 📋
@@ -1204,9 +1071,13 @@ Manage repairs
 
 
 
-<Link 
+
+<Link
+
 to="/invoice"
+
 style={styles.actionCard}
+
 >
 
 
@@ -1232,9 +1103,13 @@ Create invoice
 
 
 
-<Link 
+
+<Link
+
 to="/settings"
+
 style={styles.actionCard}
+
 >
 
 
@@ -1256,16 +1131,24 @@ System setup
 </Link>
 
 
+
 </div>
 
 
 
 
 
+
+
+
 <Link
+
 to="/reports"
+
 style={styles.actionCard}
+
 >
+
 
 <div>
 📊
@@ -1286,18 +1169,13 @@ Financial overview
 
 
 
+
+
 </div>
 
 );
 
 }
-
-
-
-
-
-
-
 function Card({title,value,status,icon}){
 
 
@@ -1335,9 +1213,7 @@ const colors={
 
 
 
-
-const cardContent=(
-
+const content = (
 
 <div
 
@@ -1372,10 +1248,7 @@ borderTop:
 
 </div>
 
-
 );
-
-
 
 
 
@@ -1394,7 +1267,7 @@ textDecoration:"none"
 
 >
 
-{cardContent}
+{content}
 
 </Link>
 
@@ -1404,8 +1277,7 @@ textDecoration:"none"
 }
 
 
-
-return cardContent;
+return content;
 
 
 }
@@ -1415,7 +1287,9 @@ return cardContent;
 
 
 
-const styles={
+
+const styles = {
+
 
 
 page:{
@@ -1432,6 +1306,7 @@ color:"#0f172a"
 
 
 
+
 header:{
 
 display:"flex",
@@ -1445,6 +1320,7 @@ marginBottom:"30px",
 flexWrap:"wrap"
 
 },
+
 
 
 
@@ -1484,7 +1360,6 @@ color:"#0f172a"
 
 
 
-
 icon:{
 
 fontSize:"35px",
@@ -1492,7 +1367,6 @@ fontSize:"35px",
 marginBottom:"10px"
 
 },
-
 
 
 
@@ -1518,7 +1392,6 @@ cursor:"pointer"
 
 
 
-
 tableBox:{
 
 background:"white",
@@ -1539,7 +1412,6 @@ overflowX:"auto"
 
 
 
-
 table:{
 
 width:"100%",
@@ -1549,7 +1421,6 @@ borderCollapse:"collapse",
 textAlign:"left"
 
 },
-
 
 
 
@@ -1571,7 +1442,6 @@ fontSize:"14px"
 
 
 
-
 charts:{
 
 display:"grid",
@@ -1579,7 +1449,9 @@ display:"grid",
 gridTemplateColumns:
 "repeat(auto-fit,minmax(300px,1fr))",
 
-gap:"20px"
+gap:"20px",
+
+marginBottom:"40px"
 
 },
 
@@ -1602,7 +1474,6 @@ boxShadow:
 
 
 
-
 recent:{
 
 display:"grid",
@@ -1615,7 +1486,6 @@ gap:"20px",
 marginBottom:"40px"
 
 },
-
 
 
 
@@ -1636,7 +1506,6 @@ boxShadow:
 
 
 
-
 actions:{
 
 display:"grid",
@@ -1649,7 +1518,6 @@ gap:"20px",
 marginBottom:"40px"
 
 },
-
 
 
 
@@ -1674,10 +1542,7 @@ boxShadow:
 display:"block"
 
 }
-
-
 };
-
 
 
 
