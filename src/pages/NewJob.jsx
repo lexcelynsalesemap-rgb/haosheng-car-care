@@ -193,7 +193,45 @@ technicians:[]
 }
 
 
+useEffect(() => {
 
+  const isTeyseer =
+    source === "Teyseer Motors" ||
+    source === "Teyseer Motors - Bahaa" ||
+    source === "Teyseer Motors - Salah";
+
+
+  // Only Full WTT gets Teyseer price
+  if (!isTeyseer || !services.includes("Full WTT")) return;
+
+
+  let price = null;
+
+
+  if (carType === "GWM") {
+    price = 1000;
+  }
+
+  else if (carType === "Suzuki") {
+    price = 800;
+  }
+
+
+  if (price === null) return;
+
+
+  setServiceDetails(prev => ({
+    ...prev,
+
+    "Full WTT": {
+      ...prev["Full WTT"],
+      price: price
+    }
+
+  }));
+
+
+}, [source, carType, services]);
 
 
 
@@ -345,28 +383,21 @@ for(const service of services){
 const {data:serviceData,error:serviceError}=await supabase
 
 .from("job_services")
+let serviceOwner = "Sales Team";
 
-.insert([{
-
-
-job_id:jobData.id,
-
-
-service_name:service,
+const isTeyseer =
+  job.source === "Teyseer Motors" ||
+  job.source === "Teyseer Motors - Bahaa" ||
+  job.source === "Teyseer Motors - Salah";
 
 
-price:Number(
+if(
+  isTeyseer &&
+  service.toLowerCase().includes("wtt")
+){
+  serviceOwner = "Teyseer";
+}
 
-serviceDetails[service]?.price || 0
-
-)
-
-
-}])
-
-.select()
-
-.single();
 
 
 
@@ -615,49 +646,42 @@ onChange={(e)=>setVoucherNumber(e.target.value)}
 
 
 
-
-<h2>
-Vehicle Information
-</h2>
-
-
-
+<h2>Vehicle Information</h2>
 
 <input
+  placeholder="Car Model"
+  value={carModel}
+  onChange={(e)=>setCarModel(e.target.value)}
+/>
 
-placeholder="Car Model"
+{/* Replace the old Car Type input with this */}
+<label>Car Type</label>
 
-value={carModel}
+<select
+  value={carType}
+  onChange={(e)=>setCarType(e.target.value)}
+>
+  <option value="">Select Car Type</option>
+  <option value="GWM">GWM</option>
+  <option value="Suzuki">Suzuki</option>
+  <option value="Toyota">Toyota</option>
+  <option value="Nissan">Nissan</option>
+  <option value="Honda">Honda</option>
+  <option value="Kia">Kia</option>
+  <option value="Hyundai">Hyundai</option>
+  <option value="Ford">Ford</option>
+  <option value="BMW">BMW</option>
+  <option value="Mercedes">Mercedes</option>
+  <option value="Audi">Audi</option>
+</select>
 
-onChange={(e)=>setCarModel(e.target.value)}
-
+<input
+  placeholder="Color"
+  value={color}
+  onChange={(e)=>setColor(e.target.value)}
 />
 
 
-
-
-<input
-
-placeholder="Car Type"
-
-value={carType}
-
-onChange={(e)=>setCarType(e.target.value)}
-
-/>
-
-
-
-
-<input
-
-placeholder="Color"
-
-value={color}
-
-onChange={(e)=>setColor(e.target.value)}
-
-/>
 
 
 
