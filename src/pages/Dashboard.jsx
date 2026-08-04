@@ -243,7 +243,24 @@ return true;
 
 let teyseerNetSales = 0;
 let salesTeamNetSales = 0;
-
+const sourceReport = {
+  "Teyseer Motors":{
+    jobs:0,
+    sales:0
+  },
+  "Salah":{
+    jobs:0,
+    sales:0
+  },
+  "Bahaa":{
+    jobs:0,
+    sales:0
+  },
+  "Sales Team":{
+    jobs:0,
+    sales:0
+  }
+};
 
 filteredJobs.forEach(job=>{
 
@@ -439,27 +456,7 @@ totalSales-totalDiscount;
 
 
 
-const balance =
-netSales-paid;
-const sourceReport = {
 
-"Teyseer Motors":{
-jobs:0,
-sales:0
-},
-
-"Salah":{
-jobs:0,
-sales:0
-},
-
-"Bahaa":{
-jobs:0,
-sales:0
-},
-
-
-};
 
 
 
