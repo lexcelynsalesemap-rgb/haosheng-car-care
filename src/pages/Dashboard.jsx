@@ -121,7 +121,8 @@ function Dashboard() {
       return;
     }
 
-    setJobServices(data || []);
+    console.log("ALL JOB SERVICES:", data);
+setJobServices(data || []);
   }
 
   const filteredJobs = jobs.filter(job => {
@@ -252,7 +253,13 @@ function Dashboard() {
 
   };
 
-
+console.table(
+  filteredJobs.map(job => ({
+    id: job.id,
+    customer: job.customer,
+    source: job.source
+  }))
+);
 
   filteredJobs.forEach(job => {
 
@@ -263,7 +270,8 @@ function Dashboard() {
           service.job_id === job.id
       );
 
-
+console.log("JOB:", job.id, job.customer);
+console.log("SERVICES:", services);
 
     services.forEach(service => {
 

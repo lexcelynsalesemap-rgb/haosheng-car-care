@@ -133,7 +133,7 @@ serviceDetails[service]?.price || 0
 
 function chooseService(service,price){
 
-
+console.log("CHOOSING SERVICE:", service, price);
 if(services.includes(service)){
 
 
@@ -239,12 +239,9 @@ useEffect(() => {
 async function saveJob(){
 
 console.log("SAVE CLICKED");
-console.log("DEPOSIT:", deposit);
-console.log("PAYMENT METHOD:", paymentMethod);
 
 
 const job={
-
 
 customer,
 
@@ -252,17 +249,11 @@ phone,
 
 date,
 
-
 source:
-
 source==="Other"
-
 ?
-
 otherSource
-
 :
-
 source,
 
 
@@ -280,11 +271,6 @@ chassis,
 plate,
 
 
-services,
-
-serviceDetails,
-
-
 paymentMethod,
 
 
@@ -298,24 +284,146 @@ deposit:Number(deposit),
 
 
 balance:
-
-Number(total-discount-deposit),
+Number(total - discount - deposit),
 
 
 status:"New"
-
 
 };
 
 
 
+//
+// CREATE JOB
+//
 
-
-const {data:jobData,error}=await supabase
-
+const {data:jobData,error:jobError}=await supabase
 .from("jobs")
-
 .insert([job])
+.select()
+.single();
+
+
+
+if(jobError){
+
+console.log(jobError);
+alert(jobError.message);
+return;
+
+}
+
+
+
+console.log("JOB CREATED:",jobData);
+
+
+
+
+
+//
+// CREATE PAYMENT
+//
+
+if(Number(deposit)>0){
+
+
+const {error}=await supabase
+
+.from("payments")
+
+.insert([{
+
+job_id:jobData.id,
+
+amount:Number(deposit),
+
+payment_method:paymentMethod,
+
+payment_source:job.source,
+
+payment_date:new Date(),
+
+notes:"Initial deposit"
+
+}]);
+
+
+
+if(error){
+
+console.log("PAYMENT ERROR",error);
+
+}
+
+
+}
+
+
+
+
+
+
+
+//
+// CREATE JOB SERVICES
+//
+
+for(const serviceName of services){
+
+
+
+const details =
+serviceDetails[serviceName];
+
+
+
+const isTeyseer =
+
+job.source==="Teyseer Motors" ||
+
+job.source==="Teyseer Motors - Bahaa" ||
+
+job.source==="Teyseer Motors - Salah";
+
+
+
+let owner="Sales Team";
+
+
+
+if(
+isTeyseer &&
+serviceName.toLowerCase().includes("wtt")
+){
+
+owner="Teyseer";
+
+}
+
+
+
+
+
+const {data:serviceRow,error:serviceError}=
+
+await supabase
+
+.from("job_services")
+
+.insert([{
+
+job_id:jobData.id,
+
+service_name:serviceName,
+
+price:Number(details.price || 0),
+
+discount:Number(details.discount || 0),
+
+owner:owner
+
+}])
 
 .select()
 
@@ -325,88 +433,12 @@ const {data:jobData,error}=await supabase
 
 
 
-if(error){
-
-alert(error.message);
-
-console.log(error);
-
-return;
-
-}
-
-
-
-
-
-// ==============================
-// CREATE PAYMENT RECORD
-// ==============================
-
-
-
-
-if(Number(deposit)>0){
-
-  const {data:paymentData,error:paymentError}=await supabase
-  .from("payments")
-.insert([{
-
-    job_id: jobData.id,
-    amount: Number(deposit),
-    payment_method: paymentMethod,
-    payment_source: job.source,
-    payment_date: new Date().toISOString(),
-    notes:"Initial deposit"
-
-}])
-  .select();
-
-
-  console.log(
-    "PAYMENT INSERT RESULT:",
-    paymentData,
-    paymentError
-  );
-
-}
-
-
-
-// CREATE JOB SERVICES
-
-
-for(const service of services){
-
-
-
-const {data:serviceData,error:serviceError}=await supabase
-
-.from("job_services")
-let serviceOwner = "Sales Team";
-
-const isTeyseer =
-  job.source === "Teyseer Motors" ||
-  job.source === "Teyseer Motors - Bahaa" ||
-  job.source === "Teyseer Motors - Salah";
-
-
-if(
-  isTeyseer &&
-  service.toLowerCase().includes("wtt")
-){
-  serviceOwner = "Teyseer";
-}
-
-
-
-
-
 console.log(
-"SERVICE INSERT:",
-serviceData,
+"INSERT JOB SERVICE",
+serviceRow,
 serviceError
 );
+
 
 
 
@@ -421,61 +453,58 @@ continue;
 
 
 
+//
+// TECHNICIANS
+//
 
-const technicianRows =
+const techRows =
 
-serviceDetails[service]
+(details.technicians || [])
 
-?.technicians
+.map(t=>({
 
-?.map(t=>({
-
-
-service_id:serviceData.id,
-
+service_id:serviceRow.id,
 
 technician_id:t.id,
 
-
 commission:Number(t.commission || 0)
 
-
-})) || [];
-
+}));
 
 
 
 
 
-if(technicianRows.length){
+if(techRows.length){
 
 
+const {error:techError}=
 
-const {error:techError}=await supabase
+await supabase
 
 .from("service_technicians")
 
-.insert(technicianRows);
+.insert(techRows);
 
 
 
 console.log(
-"TECH INSERT:",
+"TECH INSERT",
 techError
 );
 
 
-
 }
 
 
 
 }
-
 
 
 
 alert("Job Saved Successfully!");
+
+
 
 
 
