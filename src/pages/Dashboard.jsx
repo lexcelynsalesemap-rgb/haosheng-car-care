@@ -349,7 +349,17 @@ console.log("SERVICES:", services);
 
       }
 
+else if (job.source === "Bahaa") {
 
+  reportSource = "Bahaa";
+
+}
+
+else if (job.source === "Salah") {
+
+  reportSource = "Salah";
+
+}
 
       if(!sourceReport[reportSource]){
 
@@ -373,6 +383,7 @@ console.log("SERVICES:", services);
         teyseerNetSales += amount;
 
       }
+      
       else{
 
         salesTeamNetSales += amount;
