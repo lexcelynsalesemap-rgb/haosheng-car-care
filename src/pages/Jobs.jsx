@@ -453,21 +453,25 @@
 
   <p>
 
-  Services:
+  <div>
+  <strong>Services:</strong>{" "}
 
-  {
-
-  job.services?.length
-
-  ?
-
-  job.services.join(", ")
-
-  :
-
-  "No services"
-
+  {Array.isArray(job.services)
+    ? job.services.length > 0
+      ? job.services
+          .map(service =>
+            typeof service === "string"
+              ? service
+              : service.name || service.service_name || service.title || ""
+          )
+          .filter(Boolean)
+          .join(", ")
+      : "No services"
+    : typeof job.services === "string" && job.services.trim()
+      ? job.services
+      : "No services"
   }
+</div>
 
   </p>
 

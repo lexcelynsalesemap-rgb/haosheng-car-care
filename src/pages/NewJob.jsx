@@ -111,85 +111,63 @@ loadServices();
 
 
 const total = services.reduce(
+  (sum, serviceName) => {
 
-(sum,service)=>{
+    const details =
+      serviceDetails[serviceName] || {};
 
-return sum +
+    const price =
+      Number(details.price || 0);
 
-Number(
-serviceDetails[service]?.price || 0
-);
+    const serviceDiscount =
+      Number(details.discount || 0);
 
-},
-
-0
-
-);
-
-
-
-
-
-
-function chooseService(service,price){
-
-console.log("CHOOSING SERVICE:", service, price);
-if(services.includes(service)){
-
-
-setServices(
-
-services.filter(
-s=>s!==service
-)
-
+    return sum + Math.max(
+      price - serviceDiscount,
+      0
+    );
+  },
+  0
 );
 
 
-const copy={...serviceDetails};
-
-delete copy[service];
-
-setServiceDetails(copy);
 
 
-}
-
-else{
 
 
-setServices([
+function chooseService(service, price) {
 
-...services,
+  console.log("CHOOSING SERVICE:", service, price);
 
-service
+  if (services.includes(service)) {
 
-]);
+    setServices(prev =>
+      prev.filter(s => s !== service)
+    );
 
+    setServiceDetails(prev => {
+      const copy = { ...prev };
+      delete copy[service];
+      return copy;
+    });
 
-setServiceDetails({
+  } else {
 
-...serviceDetails,
+    setServices(prev => [
+      ...prev,
+      service
+    ]);
 
-
-[service]:{
-
-price:price,
-
-discount:0,
-
-quantity:1,
-
-technicians:[]
-
-}
-
-});
-
-
-}
-
-
+    setServiceDetails(prev => ({
+      ...prev,
+      [service]: {
+        price: Number(price || 0),
+        discount: 0,
+        quantity: 1,
+        technicians: []
+      }
+    }));
+  }
 }
 
 
@@ -241,54 +219,40 @@ async function saveJob(){
 console.log("SAVE CLICKED");
 
 
-const job={
+const job = {
+  customer,
+  phone,
+  date,
 
-customer,
+  source:
+    source === "Other"
+      ? otherSource
+      : source,
 
-phone,
+  voucherNumber,
 
-date,
+  carModel,
+  carType,
+  color,
+  chassis,
+  plate,
 
-source:
-source==="Other"
-?
-otherSource
-:
-source,
+  // SAVE SERVICES INTO JOBS TABLE
+  services,
+  serviceDetails,
 
+  paymentMethod,
 
-voucherNumber,
+  price: Number(total),
 
+  discount: Number(discount),
 
-carModel,
+  deposit: Number(deposit),
 
-carType,
+  balance:
+    Number(total - discount - deposit),
 
-color,
-
-chassis,
-
-plate,
-
-
-paymentMethod,
-
-
-price:Number(total),
-
-
-discount:Number(discount),
-
-
-deposit:Number(deposit),
-
-
-balance:
-Number(total - discount - deposit),
-
-
-status:"New"
-
+  status: "New"
 };
 
 
@@ -818,34 +782,22 @@ placeholder="Price"
 
 
 value={
-serviceDetails[service]?.price || 0
+  serviceDetails?.[service]?.price || 0
 }
 
 
 
-onChange={(e)=>{
+onChange={(e) => {
 
+  setServiceDetails(prev => ({
+    ...prev,
 
-setServiceDetails({
+    [service]: {
+      ...(prev[service] || {}),
+      price: Number(e.target.value)
+    }
 
-
-...serviceDetails,
-
-
-[service]:{
-
-
-...serviceDetails[service],
-
-
-price:Number(e.target.value)
-
-
-}
-
-
-});
-
+  }));
 
 }}
 
@@ -865,34 +817,22 @@ placeholder="Discount"
 
 
 value={
-serviceDetails[service]?.discount || 0
+  serviceDetails?.[service]?.discount || 0
 }
 
 
 
-onChange={(e)=>{
+onChange={(e) => {
 
+  setServiceDetails(prev => ({
+    ...prev,
 
-setServiceDetails({
+    [service]: {
+      ...(prev[service] || {}),
+      discount: Number(e.target.value)
+    }
 
-
-...serviceDetails,
-
-
-[service]:{
-
-
-...serviceDetails[service],
-
-
-discount:Number(e.target.value)
-
-
-}
-
-
-});
-
+  }));
 
 }}
 
@@ -1000,25 +940,14 @@ t=>t.id!==person.id
 
 
 
-setServiceDetails({
+setServiceDetails(prev => ({
+  ...prev,
 
-
-...serviceDetails,
-
-
-[service]:{
-
-
-...serviceDetails[service],
-
-
-technicians:updated
-
-
-}
-
-
-});
+  [service]: {
+    ...(prev[service] || {}),
+    technicians: updated
+  }
+}));
 
 
 }}
@@ -1058,32 +987,31 @@ value={selected.commission}
 onChange={(e)=>{
 
 
-const updated =
+setServiceDetails(prev => {
 
-serviceDetails[service]
+  const updated =
+    (prev[service]?.technicians || []).map(t => {
 
-.technicians
+      if (t.id === person.id) {
 
-.map(t=>{
+        return {
+          ...t,
+          commission: Number(e.target.value)
+        };
 
+      }
 
-if(t.id===person.id){
+      return t;
+    });
 
+  return {
+    ...prev,
 
-return {
-
-...t,
-
-commission:Number(e.target.value)
-
-};
-
-
-}
-
-
-return t;
-
+    [service]: {
+      ...(prev[service] || {}),
+      technicians: updated
+    }
+  };
 
 });
 
