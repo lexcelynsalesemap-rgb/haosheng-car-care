@@ -7,7 +7,9 @@ function EditJob() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
+  // JOB
   const [customer, setCustomer] = useState("");
   const [phone, setPhone] = useState("");
   const [carModel, setCarModel] = useState("");
@@ -15,12 +17,22 @@ function EditJob() {
   const [color, setColor] = useState("");
   const [plate, setPlate] = useState("");
 
+  // SERVICES
   const [services, setServices] = useState([]);
   const [serviceDetails, setServiceDetails] = useState({});
   const [serviceList, setServiceList] = useState([]);
 
+  // SOURCE
   const [source, setSource] = useState("");
   const [otherSource, setOtherSource] = useState("");
+
+  // PAYMENT
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Visa");
+  const [paymentDate, setPaymentDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [paymentNotes, setPaymentNotes] = useState("");
 
   useEffect(() => {
     loadJob();
@@ -51,14 +63,12 @@ function EditJob() {
 
     if (error) {
       console.error("LOAD JOB ERROR:", error);
+      alert(error.message);
       setLoading(false);
       return;
     }
 
     console.log("EDIT JOB:", data);
-    console.log("EDIT JOB SERVICES:", data.services);
-    console.log("EDIT JOB SERVICE DETAILS:", data.serviceDetails);
-    console.log("EDIT JOB SOURCE:", data.source);
 
     setCustomer(data.customer || "");
     setPhone(data.phone || "");
@@ -67,41 +77,41 @@ function EditJob() {
     setColor(data.color || "");
     setPlate(data.plate || "");
 
-    // Preserve source
-   const existingSource = String(data.source || "").trim();
+    // SOURCE
+    const existingSource = String(data.source || "").trim();
 
-const standardSources = [
-  "Teyseer Motors",
-  "Teyseer Motors - Bahaa",
-  "Teyseer Motors - Salah",
-  "Bahaa",
-  "Salah",
-  "Walk-in"
-];
+    const standardSources = [
+      "Teyseer Motors",
+      "Teyseer Motors - Bahaa",
+      "Teyseer Motors - Salah",
+      "Bahaa",
+      "Salah",
+      "Walk-in"
+    ];
 
-const matchedSource = standardSources.find(
-  item => item.toLowerCase() === existingSource.toLowerCase()
-);
+    const matchedSource = standardSources.find(
+      (item) =>
+        item.toLowerCase() === existingSource.toLowerCase()
+    );
 
-if (matchedSource) {
-  setSource(matchedSource);
-  setOtherSource("");
-} else if (existingSource) {
-  setSource("Other");
-  setOtherSource(existingSource);
-} else {
-  setSource("");
-  setOtherSource("");
-}
+    if (matchedSource) {
+      setSource(matchedSource);
+      setOtherSource("");
+    } else if (existingSource) {
+      setSource("Other");
+      setOtherSource(existingSource);
+    } else {
+      setSource("");
+      setOtherSource("");
+    }
 
-    // Load services
+    // SERVICES
     const existingServices = Array.isArray(data.services)
       ? data.services
       : [];
 
     setServices(existingServices);
 
-    // Support the new object format
     if (
       data.serviceDetails &&
       typeof data.serviceDetails === "object"
@@ -118,19 +128,16 @@ if (matchedSource) {
     const serviceName = serviceItem.name;
 
     if (services.includes(serviceName)) {
-      // Remove service
       setServices((prev) =>
         prev.filter((service) => service !== serviceName)
       );
 
-      // Remove its details
       setServiceDetails((prev) => {
         const copy = { ...prev };
         delete copy[serviceName];
         return copy;
       });
     } else {
-      // Add service
       setServices((prev) => [
         ...prev,
         serviceName
@@ -167,60 +174,147 @@ if (matchedSource) {
   }
 
   async function save() {
-    // Calculate total from all services
-    const total = services.reduce((sum, serviceName) => {
-      const details = serviceDetails[serviceName] || {};
+    if (saving) return;
 
-      const price = Number(details.price || 0);
-      const discount = Number(details.discount || 0);
+    setSaving(true);
 
-      return sum + Math.max(price - discount, 0);
-    }, 0);
+    try {
+      // -----------------------------------
+      // CALCULATE TOTAL
+      // -----------------------------------
 
-    const finalSource =
-      source === "Other"
-        ? otherSource.trim()
-        : source;
+      const total = services.reduce(
+        (sum, serviceName) => {
+          const details =
+            serviceDetails[serviceName] || {};
 
-    const { data, error } = await supabase
-      .from("jobs")
-      .update({
+          const price = Number(details.price || 0);
+          const discount = Number(details.discount || 0);
+
+          return (
+            sum +
+            Math.max(price - discount, 0)
+          );
+        },
+        0
+      );
+
+      const finalSource =
+        source === "Other"
+          ? otherSource.trim()
+          : source;
+
+      // -----------------------------------
+      // 1. UPDATE JOB
+      // -----------------------------------
+
+      console.log("SAVING JOB:", {
+        id,
         customer,
         phone,
-        source: finalSource,
+        total
+      });
 
-        carModel,
-        carType,
-        color,
-        plate,
+      const {
+        data: updatedJob,
+        error: jobError
+      } = await supabase
+        .from("jobs")
+        .update({
+          customer,
+          phone,
+          source: finalSource,
+          carModel,
+          carType,
+          color,
+          plate,
+          services,
+          serviceDetails,
+          price: total
+        })
+        .eq("id", id)
+        .select()
+        .single();
 
-        services,
-        serviceDetails,
+      console.log("UPDATED JOB:", updatedJob);
+      console.log("JOB ERROR:", jobError);
 
-        price: total
-      })
-      .eq("id", id)
-      .select()
-      .single();
+      if (jobError) {
+        throw new Error(
+          "Job could not be saved: " +
+          jobError.message
+        );
+      }
 
-    console.log("UPDATED JOB:", data);
-    console.log("UPDATED SERVICES:", data?.services);
-    console.log(
-      "UPDATED SERVICE DETAILS:",
-      data?.serviceDetails
-    );
-    console.log("UPDATED SOURCE:", data?.source);
-    console.log("ERROR:", error);
+      // -----------------------------------
+      // 2. SAVE PAYMENT
+      // -----------------------------------
 
-    if (error) {
-      console.error(error);
-      alert(error.message);
-      return;
+      const amount = Number(paymentAmount || 0);
+
+      if (amount > 0) {
+        console.log("========== PAYMENT DEBUG ==========");
+console.log("URL JOB ID:", id);
+console.log("NUMBER JOB ID:", Number(id));
+console.log("PAYMENT AMOUNT:", amount);
+console.log("PAYMENT METHOD:", paymentMethod);
+console.log("PAYMENT DATE:", paymentDate);
+console.log("PAYMENT NOTES:", paymentNotes);
+console.log("==================================");
+        console.log("SAVING PAYMENT:", {
+          job_id: Number(id),
+          amount,
+          payment_method: paymentMethod,
+          payment_date: paymentDate,
+          notes: paymentNotes
+        });
+
+        const {
+          data: payment,
+          error: paymentError
+        } = await supabase
+          .from("payments")
+          .insert({
+            job_id: Number(id),
+            amount: amount,
+            payment_method: paymentMethod,
+            payment_date: paymentDate,
+            notes: paymentNotes.trim() || null
+          })
+          .select()
+          .single();
+
+        console.log("NEW PAYMENT:", payment);
+        console.log("PAYMENT ERROR:", paymentError);
+
+        if (paymentError) {
+          throw new Error(
+            "Job was saved, but payment failed: " +
+            paymentError.message
+          );
+        }
+      }
+
+      // -----------------------------------
+      // SUCCESS
+      // -----------------------------------
+
+      alert(
+        amount > 0
+          ? "Job and payment saved successfully!"
+          : "Job updated successfully!"
+      );
+
+      navigate(`/jobs/${id}`);
+
+    } catch (error) {
+      console.error("SAVE ERROR:", error);
+
+      alert(error.message || "Something went wrong.");
+
+    } finally {
+      setSaving(false);
     }
-
-    alert("Job Updated");
-
-    navigate(`/job/${id}`);
   }
 
   if (loading) {
@@ -232,103 +326,124 @@ if (matchedSource) {
 
       <h2>Edit Job #{id}</h2>
 
+      {/* CUSTOMER */}
+
       <input
         value={customer}
-        onChange={(e) => setCustomer(e.target.value)}
+        onChange={(e) =>
+          setCustomer(e.target.value)
+        }
         placeholder="Customer"
+        style={styles.input}
       />
 
       <input
         value={phone}
-        onChange={(e) => setPhone(e.target.value)}
+        onChange={(e) =>
+          setPhone(e.target.value)
+        }
         placeholder="Phone"
+        style={styles.input}
       />
 
       <input
         value={carModel}
-        onChange={(e) => setCarModel(e.target.value)}
+        onChange={(e) =>
+          setCarModel(e.target.value)
+        }
         placeholder="Model"
+        style={styles.input}
       />
 
       <input
         value={carType}
-        onChange={(e) => setCarType(e.target.value)}
+        onChange={(e) =>
+          setCarType(e.target.value)
+        }
         placeholder="Type"
+        style={styles.input}
       />
 
       <input
         value={color}
-        onChange={(e) => setColor(e.target.value)}
+        onChange={(e) =>
+          setColor(e.target.value)
+        }
         placeholder="Color"
+        style={styles.input}
       />
 
       <input
         value={plate}
-        onChange={(e) => setPlate(e.target.value)}
+        onChange={(e) =>
+          setPlate(e.target.value)
+        }
         placeholder="Plate"
+        style={styles.input}
       />
 
       {/* SOURCE */}
 
-<label style={{ fontWeight: "bold" }}>
-  Source
-</label>
+      <label style={{ fontWeight: "bold" }}>
+        Source
+      </label>
 
-<select
-  value={source}
-  onChange={(e) => {
-    console.log("SOURCE CHANGED TO:", e.target.value);
-    setSource(e.target.value);
-  }}
-  style={styles.sourceSelect}
->
-  <option value="">
-    Select Source
-  </option>
+      <select
+        value={source}
+        onChange={(e) =>
+          setSource(e.target.value)
+        }
+        style={styles.sourceSelect}
+      >
+        <option value="">Select Source</option>
 
-  <option value="Teyseer Motors">
-    Teyseer Motors
-  </option>
+        <option value="Teyseer Motors">
+          Teyseer Motors
+        </option>
 
-  <option value="Teyseer Motors - Bahaa">
-    Teyseer Motors - Bahaa
-  </option>
+        <option value="Teyseer Motors - Bahaa">
+          Teyseer Motors - Bahaa
+        </option>
 
-  <option value="Teyseer Motors - Salah">
-    Teyseer Motors - Salah
-  </option>
+        <option value="Teyseer Motors - Salah">
+          Teyseer Motors - Salah
+        </option>
 
-  <option value="Bahaa">
-    Bahaa
-  </option>
+        <option value="Bahaa">
+          Bahaa
+        </option>
 
-  <option value="Salah">
-    Salah
-  </option>
+        <option value="Salah">
+          Salah
+        </option>
 
-  <option value="Walk-in">
-    Walk-in
-  </option>
+        <option value="Walk-in">
+          Walk-in
+        </option>
 
-  <option value="Other">
-    Other
-  </option>
-</select>
+        <option value="Other">
+          Other
+        </option>
+      </select>
 
-{source === "Other" && (
-  <input
-    value={otherSource}
-    onChange={(e) => setOtherSource(e.target.value)}
-    placeholder="Enter source"
-    style={styles.input}
-  />
-)}
+      {source === "Other" && (
+        <input
+          value={otherSource}
+          onChange={(e) =>
+            setOtherSource(e.target.value)
+          }
+          placeholder="Enter source"
+          style={styles.input}
+        />
+      )}
+
       {/* SERVICES */}
 
       <h3>Services</h3>
 
       {serviceList.map((item) => {
-        const selected = services.includes(item.name);
+        const selected =
+          services.includes(item.name);
 
         const details =
           serviceDetails[item.name] || {
@@ -371,6 +486,7 @@ if (matchedSource) {
                       e.target.value
                     )
                   }
+                  style={styles.input}
                 />
 
                 <label>
@@ -386,20 +502,20 @@ if (matchedSource) {
                       e.target.value
                     )
                   }
+                  style={styles.input}
                 />
 
                 <div>
                   Final: QAR{" "}
                   {Math.max(
                     Number(details.price || 0) -
-                    Number(details.discount || 0),
+                      Number(details.discount || 0),
                     0
                   )}
                 </div>
 
               </div>
             )}
-
           </div>
         );
       })}
@@ -408,26 +524,119 @@ if (matchedSource) {
 
       <div style={styles.total}>
         Total: QAR{" "}
-        {services.reduce((sum, serviceName) => {
-          const details =
-            serviceDetails[serviceName] || {};
+        {services.reduce(
+          (sum, serviceName) => {
+            const details =
+              serviceDetails[serviceName] || {};
 
-          return (
-            sum +
-            Math.max(
-              Number(details.price || 0) -
-              Number(details.discount || 0),
-              0
-            )
-          );
-        }, 0)}
+            return (
+              sum +
+              Math.max(
+                Number(details.price || 0) -
+                  Number(details.discount || 0),
+                0
+              )
+            );
+          },
+          0
+        )}
       </div>
+
+      {/* PAYMENT */}
+
+      <div style={styles.paymentBox}>
+
+        <h3>Make Payment</h3>
+
+        <label>
+          Payment Amount
+        </label>
+
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={paymentAmount}
+          onChange={(e) =>
+            setPaymentAmount(e.target.value)
+          }
+          placeholder="Enter payment amount"
+          style={styles.input}
+        />
+
+        <label>
+          Payment Method
+        </label>
+
+        <select
+          value={paymentMethod}
+          onChange={(e) =>
+            setPaymentMethod(e.target.value)
+          }
+          style={styles.sourceSelect}
+        >
+          <option value="Visa">
+            Visa
+          </option>
+
+          <option value="Mastercard">
+            Mastercard
+          </option>
+
+          <option value="PayLater">
+            PayLater
+          </option>
+
+          <option value="Cash">
+            Cash
+          </option>
+
+          <option value="Bank Transfer">
+            Bank Transfer
+          </option>
+        </select>
+
+        <label>
+          Payment Date
+        </label>
+
+        <input
+          type="date"
+          value={paymentDate}
+          onChange={(e) =>
+            setPaymentDate(e.target.value)
+          }
+          style={styles.input}
+        />
+
+        <label>
+          Notes
+        </label>
+
+        <input
+          value={paymentNotes}
+          onChange={(e) =>
+            setPaymentNotes(e.target.value)
+          }
+          placeholder="Payment notes"
+          style={styles.input}
+        />
+
+      </div>
+
+      {/* SAVE */}
 
       <button
         onClick={save}
-        style={styles.saveButton}
+        disabled={saving}
+        style={{
+          ...styles.saveButton,
+          opacity: saving ? 0.6 : 1
+        }}
       >
-        SAVE CHANGES
+        {saving
+          ? "SAVING..."
+          : "SAVE CHANGES"}
       </button>
 
     </div>
@@ -457,6 +666,16 @@ const styles = {
     paddingLeft: "25px"
   },
 
+  paymentBox: {
+    marginTop: "20px",
+    padding: "20px",
+    border: "2px solid #2563eb",
+    borderRadius: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px"
+  },
+
   total: {
     fontSize: "20px",
     fontWeight: "bold",
@@ -472,23 +691,23 @@ const styles = {
     cursor: "pointer",
     fontWeight: "bold"
   },
+
   sourceSelect: {
-  padding: "12px",
-  border: "1px solid #ccc",
-  borderRadius: "8px",
-  background: "white",
-  color: "#111",
-  fontSize: "15px",
-  cursor: "pointer"
-},
+    padding: "12px",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+    background: "white",
+    color: "#111",
+    fontSize: "15px",
+    cursor: "pointer"
+  },
 
-input: {
-  padding: "12px",
-  border: "1px solid #ccc",
-  borderRadius: "8px",
-  fontSize: "15px"
-},
-
+  input: {
+    padding: "12px",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+    fontSize: "15px"
+  }
 };
 
 export default EditJob;
