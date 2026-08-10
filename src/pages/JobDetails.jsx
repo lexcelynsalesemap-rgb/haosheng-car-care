@@ -286,19 +286,12 @@ setPayments(data || []);
 
 
 
-useEffect(()=>{
-
-loadJob();
-
-loadTechnicians();
-
-loadServiceTechnicians();
-
-loadPayments();
-
-},[]);
-
-
+useEffect(() => {
+  loadJob();
+  loadTechnicians();
+  loadServiceTechnicians();
+  loadPayments();
+}, [id]);
 
 
 // ADD PAYMENT
@@ -328,7 +321,7 @@ amount:Number(amount),
 
 payment_method:method,
 
-payment_date:new Date().toISOString(),
+payment_date: new Date().toISOString().split("T")[0],
 
 notes:notes
 
@@ -373,54 +366,29 @@ setEditingPayment(null);
 
 // DELETE PAYMENT
 
-async function deletePayment(paymentID){
+async function deletePayment(paymentId) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this payment?"
+  );
 
+  if (!confirmed) return;
 
-const confirmDelete =
-window.confirm(
-"Delete this payment?"
-);
+  const { error } = await supabase
+    .from("payments")
+    .delete()
+    .eq("id", paymentId);
 
+  if (error) {
+    console.error("DELETE PAYMENT ERROR:", error);
+    alert("Could not delete payment:\n\n" + error.message);
+    return;
+  }
 
-
-if(!confirmDelete){
-
-return;
-
+  // Remove it immediately from the screen
+  setPayments((prev) =>
+    prev.filter((payment) => payment.id !== paymentId)
+  );
 }
-
-
-
-const {error}=await supabase
-
-.from("payments")
-
-.delete()
-
-.eq(
-"id",
-paymentID
-);
-
-
-
-if(error){
-
-alert(error.message);
-
-return;
-
-}
-
-
-
-loadPayments();
-
-}
-
-
-
-
 // EDIT PAYMENT
 
 function startEditPayment(payment){
@@ -1066,15 +1034,10 @@ onClick={()=>startEditPayment(payment)}
 
 
 <button
-
-style={styles.deleteButton}
-
-onClick={()=>deletePayment(payment.id)}
-
+  style={styles.deleteButton}
+  onClick={() => deletePayment(payment.id)}
 >
-
-🗑 Delete
-
+  🗑 Delete
 </button>
 
 
