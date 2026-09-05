@@ -4,8 +4,24 @@ import { supabase } from "../supabase/client";
 
 function Reports() {
 
-  const [jobs, setJobs] = useState([]);
-  const [payments, setPayments] = useState([]);
+const [jobs, setJobs] = useState([]);
+const [payments, setPayments] = useState([]);
+
+const [reportDate, setReportDate] = useState(() => {
+  const date = new Date();
+
+  const year = date.getFullYear();
+
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+});
 
 
   useEffect(() => {
@@ -337,14 +353,16 @@ function Reports() {
 
 function printDailyReport() {
 
-  const today = getDateString(new Date());
+  const selectedDate = reportDate;
 
-  const todayJobs = jobs.filter(
-    job => getJobDate(job) === today
-  );
+const todayJobs = jobs.filter(
+  job => getJobDate(job) === selectedDate
+);
 
   if (todayJobs.length === 0) {
-    alert("No cars found for today.");
+    alert(
+  `No cars found for ${selectedDate}.`
+);
     return;
   }
 
@@ -710,7 +728,7 @@ function printDailyReport() {
       </h1>
 
       <div class="date">
-        Date: ${today}
+        Date: ${selectedDate}
       </div>
 
 
@@ -876,6 +894,40 @@ function printDailyReport() {
       <h1>
         📊 Reports
       </h1>
+      <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "15px",
+    flexWrap: "wrap"
+  }}
+>
+
+  <label
+    style={{
+      fontWeight: "bold",
+      fontSize: "16px"
+    }}
+  >
+    📅 Report Date:
+  </label>
+
+  <input
+    type="date"
+    value={reportDate}
+    onChange={(e) =>
+      setReportDate(e.target.value)
+    }
+    style={{
+      padding: "10px 12px",
+      borderRadius: "8px",
+      border: "1px solid #cbd5e1",
+      fontSize: "16px"
+    }}
+  />
+
+</div>
 <button
   onClick={printDailyReport}
   style={{
