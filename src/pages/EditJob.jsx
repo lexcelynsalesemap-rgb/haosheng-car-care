@@ -16,6 +16,7 @@ function EditJob() {
   const [carType, setCarType] = useState("");
   const [color, setColor] = useState("");
   const [plate, setPlate] = useState("");
+  const [jobDate, setJobDate] = useState("");
 
   // SERVICES
   const [services, setServices] = useState([]);
@@ -86,6 +87,19 @@ useEffect(() => {
     setCarType(data.carType || "");
     setColor(data.color || "");
     setPlate(data.plate || "");
+    if (data.created_at) {
+  const date = new Date(data.created_at);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  setJobDate(`${year}-${month}-${day}`);
+} else {
+  setJobDate(
+    new Date().toISOString().split("T")[0]
+  );
+}
 
     // -----------------------------------
     // SOURCE
@@ -229,46 +243,44 @@ async function deletePayment(paymentId) {
   }
 
   try {
-    const { error } = await supabase
+    // 1. DELETE PAYMENT
+    const { error: deleteError } = await supabase
       .from("payments")
       .delete()
       .eq("id", paymentId);
 
-    if (error) {
-      console.error("DELETE PAYMENT ERROR:", error);
-      alert(error.message);
+    if (deleteError) {
+      console.error("DELETE PAYMENT ERROR:", deleteError);
+      alert(deleteError.message);
       return;
     }
 
-    // Remove payment from screen immediately
-    setPayments((prev) =>
-      prev.filter((payment) => payment.id !== paymentId)
-    );
-
-    // Get remaining payments
-    const { data: remainingPayments, error: loadError } =
+    // 2. LOAD PAYMENTS AGAIN FROM DATABASE
+    const { data: remainingPayments, error: paymentsError } =
       await supabase
         .from("payments")
-        .select("amount")
-        .eq("job_id", Number(id));
+        .select("*")
+        .eq("job_id", Number(id))
+        .order("payment_date", { ascending: false });
 
-    if (loadError) {
-      console.error(
-        "LOAD REMAINING PAYMENTS ERROR:",
-        loadError
+    if (paymentsError) {
+      throw new Error(
+        "Could not reload payments: " +
+        paymentsError.message
       );
-      alert(loadError.message);
-      return;
     }
 
-    // Calculate new deposit
+    // 3. UPDATE PAYMENT LIST ON SCREEN
+    setPayments(remainingPayments || []);
+
+    // 4. CALCULATE TOTAL PAID
     const totalPaid = (remainingPayments || []).reduce(
       (sum, payment) =>
         sum + Number(payment.amount || 0),
       0
     );
 
-    // Calculate current job total
+    // 5. GET CURRENT JOB TOTAL
     const { data: jobData, error: jobError } =
       await supabase
         .from("jobs")
@@ -277,12 +289,10 @@ async function deletePayment(paymentId) {
         .single();
 
     if (jobError) {
-      console.error(
-        "LOAD JOB TOTAL ERROR:",
-        jobError
+      throw new Error(
+        "Could not load job totals: " +
+        jobError.message
       );
-      alert(jobError.message);
-      return;
     }
 
     const totalPrice = Number(jobData.price || 0);
@@ -298,36 +308,46 @@ async function deletePayment(paymentId) {
       0
     );
 
-    // Update job payment summary
-    const { error: updateError } =
+    // 6. UPDATE JOB
+    const { data: updatedJob, error: updateError } =
       await supabase
         .from("jobs")
         .update({
           deposit: totalPaid,
           balance: newBalance
         })
-        .eq("id", Number(id));
+        .eq("id", Number(id))
+        .select()
+        .single();
 
     if (updateError) {
-      console.error(
-        "UPDATE BALANCE ERROR:",
-        updateError
+      throw new Error(
+        "Could not update job balance: " +
+        updateError.message
       );
-      alert(updateError.message);
-      return;
     }
 
+    // 7. UPDATE JOB STATE IMMEDIATELY
+    setPayments(remainingPayments || []);
+
+    console.log("PAYMENT DELETED");
+    console.log("TOTAL PAID:", totalPaid);
+    console.log("NEW BALANCE:", newBalance);
+    console.log("UPDATED JOB:", updatedJob);
+
     alert(
-      `Payment deleted.\nNew Balance: QAR ${newBalance}`
+      `Payment deleted successfully.\nNew Balance: QAR ${newBalance.toFixed(2)}`
     );
 
   } catch (error) {
-    console.error(
-      "DELETE PAYMENT ERROR:",
-      error
-    );
+    console.error("DELETE PAYMENT ERROR:", error);
 
-    alert( error.message || "Something went wrong while deleting the payment." ); } }
+    alert(
+      error.message ||
+      "Something went wrong while deleting the payment."
+    );
+  }
+}
   async function save() {
     if (saving) return;
 
@@ -475,7 +495,9 @@ async function deletePayment(paymentId) {
           carType,
           color,
           plate,
-
+created_at: jobDate
+  ? new Date(`${jobDate}T12:00:00`).toISOString()
+  : undefined,
           services,
           serviceDetails,
 
@@ -542,13 +564,17 @@ async function deletePayment(paymentId) {
       // 10. SUCCESS
       // -----------------------------------
 
-      alert(
-        amount > 0
-          ? "Job and payment saved successfully!"
-          : "Job updated successfully!"
-      );
+     // Reload everything from database before leaving
+await loadJob();
+await loadPayments();
 
-      navigate(`/jobs/${id}`);
+alert(
+  amount > 0
+    ? "Job and payment saved successfully!"
+    : "Job updated successfully!"
+);
+
+navigate(`/jobs/${id}`);
 
     } catch (error) {
       console.error(
@@ -565,6 +591,82 @@ async function deletePayment(paymentId) {
       setSaving(false);
     }
   }
+  async function recalculateJobBalance() {
+  // Get the latest job price/discount
+  const { data: job, error: jobError } = await supabase
+    .from("jobs")
+    .select("price, discount")
+    .eq("id", Number(id))
+    .single();
+
+  if (jobError) {
+    throw new Error(
+      "Could not load job totals: " + jobError.message
+    );
+  }
+
+  // Get ALL current payments
+  const { data: paymentsData, error: paymentsError } =
+    await supabase
+      .from("payments")
+      .select("amount")
+      .eq("job_id", Number(id));
+
+  if (paymentsError) {
+    throw new Error(
+      "Could not load payments: " +
+      paymentsError.message
+    );
+  }
+
+  const totalPrice = Number(job.price || 0);
+  const totalDiscount = Number(job.discount || 0);
+
+  const finalTotal = Math.max(
+    totalPrice - totalDiscount,
+    0
+  );
+
+  const totalPaid = (paymentsData || []).reduce(
+    (sum, payment) =>
+      sum + Number(payment.amount || 0),
+    0
+  );
+
+  const balance = Math.max(
+    finalTotal - totalPaid,
+    0
+  );
+
+  // Save the calculated values
+  const { data: updatedJob, error: updateError } =
+    await supabase
+      .from("jobs")
+      .update({
+        deposit: totalPaid,
+        balance: balance
+      })
+      .eq("id", Number(id))
+      .select()
+      .single();
+
+  if (updateError) {
+    throw new Error(
+      "Could not update balance: " +
+      updateError.message
+    );
+  }
+
+  console.log("BALANCE RECALCULATED:", {
+    totalPrice,
+    totalDiscount,
+    finalTotal,
+    totalPaid,
+    balance
+  });
+
+  return updatedJob;
+}
 async function loadPayments() {
   const { data, error } = await supabase
     .from("payments")
@@ -592,6 +694,7 @@ async function loadPayments() {
   // -----------------------------------
 
   return (
+    
 
     <div style={styles.page}>
 
@@ -645,19 +748,38 @@ async function loadPayments() {
       />
 
       <input
-        value={plate}
-        onChange={(e) =>
-          setPlate(e.target.value)
-        }
-        placeholder="Plate"
-        style={styles.input}
-      />
+  value={plate}
+  onChange={(e) =>
+    setPlate(e.target.value)
+  }
+  placeholder="Plate"
+  style={styles.input}
+/>
 
-      {/* SOURCE */}
+{/* JOB DATE */}
 
-      <label style={{ fontWeight: "bold" }}>
-        Source
-      </label>
+<label style={{ fontWeight: "bold" }}>
+  Job Date
+</label>
+
+<input
+  type="date"
+  value={jobDate}
+  onChange={(e) =>
+    setJobDate(e.target.value)
+  }
+  style={styles.input}
+/>
+
+<small style={{ color: "#64748b" }}>
+  Change this if the job was actually received on another date.
+</small>
+
+{/* SOURCE */}
+
+<label style={{ fontWeight: "bold" }}>
+  Source
+</label>
 
       <select
         value={source}
