@@ -1092,29 +1092,20 @@ Manage repairs
 
 
 <Link
-
-to="/invoice"
-
-style={styles.actionCard}
-
+  to="/jobs"
+  style={styles.actionCard}
 >
+  <div>
+    🧾
+  </div>
 
+  <h3>
+    Invoice
+  </h3>
 
-<div>
-🧾
-</div>
-
-
-<h3>
-Invoice
-</h3>
-
-
-<p>
-Create invoice
-</p>
-
-
+  <p>
+    Select a car to create invoice
+  </p>
 </Link>
 
 
