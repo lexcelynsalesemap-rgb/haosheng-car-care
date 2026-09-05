@@ -33,11 +33,17 @@ function EditJob() {
     new Date().toISOString().split("T")[0]
   );
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [payments, setPayments] = useState([]);
 
-  useEffect(() => {
-    loadJob();
-    loadServices();
-  }, [id]);
+useEffect(() => {
+  loadJob();
+  loadServices();
+  loadPayments();
+}, [id]);
+
+  // -----------------------------------
+  // LOAD SERVICES
+  // -----------------------------------
 
   async function loadServices() {
     const { data, error } = await supabase
@@ -51,6 +57,10 @@ function EditJob() {
 
     setServiceList(data || []);
   }
+
+  // -----------------------------------
+  // LOAD JOB
+  // -----------------------------------
 
   async function loadJob() {
     setLoading(true);
@@ -77,7 +87,10 @@ function EditJob() {
     setColor(data.color || "");
     setPlate(data.plate || "");
 
+    // -----------------------------------
     // SOURCE
+    // -----------------------------------
+
     const existingSource = String(data.source || "").trim();
 
     const standardSources = [
@@ -105,12 +118,30 @@ function EditJob() {
       setOtherSource("");
     }
 
+    // -----------------------------------
     // SERVICES
+    // -----------------------------------
+
     const existingServices = Array.isArray(data.services)
       ? data.services
       : [];
 
-    setServices(existingServices);
+    const normalizedServices = existingServices
+      .map((service) => {
+        if (typeof service === "string") {
+          return service;
+        }
+
+        return (
+          service?.name ||
+          service?.service_name ||
+          service?.title ||
+          ""
+        );
+      })
+      .filter(Boolean);
+
+    setServices(normalizedServices);
 
     if (
       data.serviceDetails &&
@@ -123,6 +154,10 @@ function EditJob() {
 
     setLoading(false);
   }
+
+  // -----------------------------------
+  // TOGGLE SERVICE
+  // -----------------------------------
 
   function toggleService(serviceItem) {
     const serviceName = serviceItem.name;
@@ -153,6 +188,10 @@ function EditJob() {
     }
   }
 
+  // -----------------------------------
+  // UPDATE SERVICE PRICE
+  // -----------------------------------
+
   function updateServicePrice(serviceName, price) {
     setServiceDetails((prev) => ({
       ...prev,
@@ -162,6 +201,10 @@ function EditJob() {
       }
     }));
   }
+
+  // -----------------------------------
+  // UPDATE SERVICE DISCOUNT
+  // -----------------------------------
 
   function updateServiceDiscount(serviceName, discount) {
     setServiceDetails((prev) => ({
@@ -173,6 +216,118 @@ function EditJob() {
     }));
   }
 
+  // -----------------------------------
+  // SAVE JOB
+  // -----------------------------------
+async function deletePayment(paymentId) {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this payment?"
+  );
+
+  if (!confirmDelete) {
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from("payments")
+      .delete()
+      .eq("id", paymentId);
+
+    if (error) {
+      console.error("DELETE PAYMENT ERROR:", error);
+      alert(error.message);
+      return;
+    }
+
+    // Remove payment from screen immediately
+    setPayments((prev) =>
+      prev.filter((payment) => payment.id !== paymentId)
+    );
+
+    // Get remaining payments
+    const { data: remainingPayments, error: loadError } =
+      await supabase
+        .from("payments")
+        .select("amount")
+        .eq("job_id", Number(id));
+
+    if (loadError) {
+      console.error(
+        "LOAD REMAINING PAYMENTS ERROR:",
+        loadError
+      );
+      alert(loadError.message);
+      return;
+    }
+
+    // Calculate new deposit
+    const totalPaid = (remainingPayments || []).reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+    // Calculate current job total
+    const { data: jobData, error: jobError } =
+      await supabase
+        .from("jobs")
+        .select("price, discount")
+        .eq("id", Number(id))
+        .single();
+
+    if (jobError) {
+      console.error(
+        "LOAD JOB TOTAL ERROR:",
+        jobError
+      );
+      alert(jobError.message);
+      return;
+    }
+
+    const totalPrice = Number(jobData.price || 0);
+    const totalDiscount = Number(jobData.discount || 0);
+
+    const finalTotal = Math.max(
+      totalPrice - totalDiscount,
+      0
+    );
+
+    const newBalance = Math.max(
+      finalTotal - totalPaid,
+      0
+    );
+
+    // Update job payment summary
+    const { error: updateError } =
+      await supabase
+        .from("jobs")
+        .update({
+          deposit: totalPaid,
+          balance: newBalance
+        })
+        .eq("id", Number(id));
+
+    if (updateError) {
+      console.error(
+        "UPDATE BALANCE ERROR:",
+        updateError
+      );
+      alert(updateError.message);
+      return;
+    }
+
+    alert(
+      `Payment deleted.\nNew Balance: QAR ${newBalance}`
+    );
+
+  } catch (error) {
+    console.error(
+      "DELETE PAYMENT ERROR:",
+      error
+    );
+
+    alert( error.message || "Something went wrong while deleting the payment." ); } }
   async function save() {
     if (saving) return;
 
@@ -180,24 +335,43 @@ function EditJob() {
 
     try {
       // -----------------------------------
-      // CALCULATE TOTAL
+      // 1. CALCULATE TOTAL PRICE + DISCOUNT
       // -----------------------------------
 
-      const total = services.reduce(
-        (sum, serviceName) => {
+      const totals = services.reduce(
+        (result, serviceName) => {
           const details =
             serviceDetails[serviceName] || {};
 
           const price = Number(details.price || 0);
           const discount = Number(details.discount || 0);
 
-          return (
-            sum +
-            Math.max(price - discount, 0)
-          );
+          result.price += price;
+          result.discount += discount;
+
+          return result;
         },
+        {
+          price: 0,
+          discount: 0
+        }
+      );
+
+      const totalPrice = totals.price;
+      const totalDiscount = totals.discount;
+
+      // -----------------------------------
+      // 2. CALCULATE FINAL TOTAL
+      // -----------------------------------
+
+      const finalTotal = Math.max(
+        totalPrice - totalDiscount,
         0
       );
+
+      // -----------------------------------
+      // 3. SOURCE
+      // -----------------------------------
 
       const finalSource =
         source === "Other"
@@ -205,15 +379,87 @@ function EditJob() {
           : source;
 
       // -----------------------------------
-      // 1. UPDATE JOB
+      // 4. ADD PAYMENT IF ENTERED
       // -----------------------------------
 
-      console.log("SAVING JOB:", {
-        id,
-        customer,
-        phone,
-        total
-      });
+      const amount = Number(paymentAmount || 0);
+
+      if (amount > 0) {
+        const { error: paymentError } = await supabase
+          .from("payments")
+          .insert({
+            job_id: Number(id),
+            amount: amount,
+            payment_method: paymentMethod,
+            payment_date: paymentDate,
+            notes: paymentNotes.trim() || null
+          });
+
+        if (paymentError) {
+          console.error(
+            "PAYMENT ERROR:",
+            paymentError
+          );
+
+          throw new Error(
+            "Payment could not be saved: " +
+            paymentError.message
+          );
+        }
+      }
+
+      // -----------------------------------
+      // 5. GET ALL PAYMENTS
+      // -----------------------------------
+
+      const {
+        data: paymentData,
+        error: paymentLoadError
+      } = await supabase
+        .from("payments")
+        .select("amount")
+        .eq("job_id", Number(id));
+
+      if (paymentLoadError) {
+        throw new Error(
+          "Could not calculate payment balance: " +
+          paymentLoadError.message
+        );
+      }
+
+      // -----------------------------------
+      // 6. TOTAL PAID
+      // -----------------------------------
+
+      const totalPaid = (paymentData || []).reduce(
+        (sum, payment) =>
+          sum + Number(payment.amount || 0),
+        0
+      );
+
+      // -----------------------------------
+      // 7. NEW BALANCE
+      // -----------------------------------
+
+      const balance = Math.max(
+        finalTotal - totalPaid,
+        0
+      );
+
+      console.log(
+        "========== SAVING JOB =========="
+      );
+
+      console.log("JOB ID:", id);
+      console.log("TOTAL PRICE:", totalPrice);
+      console.log("TOTAL DISCOUNT:", totalDiscount);
+      console.log("FINAL TOTAL:", finalTotal);
+      console.log("TOTAL PAID:", totalPaid);
+      console.log("NEW BALANCE:", balance);
+
+      // -----------------------------------
+      // 8. UPDATE JOB
+      // -----------------------------------
 
       const {
         data: updatedJob,
@@ -224,79 +470,76 @@ function EditJob() {
           customer,
           phone,
           source: finalSource,
+
           carModel,
           carType,
           color,
           plate,
+
           services,
           serviceDetails,
-          price: total
+
+          price: totalPrice,
+          discount: totalDiscount,
+
+          deposit: totalPaid,
+          balance: balance
         })
-        .eq("id", id)
+        .eq("id", Number(id))
         .select()
         .single();
 
-      console.log("UPDATED JOB:", updatedJob);
-      console.log("JOB ERROR:", jobError);
-
       if (jobError) {
+        console.error(
+          "JOB UPDATE ERROR:",
+          jobError
+        );
+
         throw new Error(
           "Job could not be saved: " +
           jobError.message
         );
       }
 
-      // -----------------------------------
-      // 2. SAVE PAYMENT
-      // -----------------------------------
+      console.log(
+        "========== DATABASE RESULT =========="
+      );
 
-      const amount = Number(paymentAmount || 0);
+      console.log(
+        "DATABASE PRICE:",
+        updatedJob.price
+      );
 
-      if (amount > 0) {
-        console.log("========== PAYMENT DEBUG ==========");
-console.log("URL JOB ID:", id);
-console.log("NUMBER JOB ID:", Number(id));
-console.log("PAYMENT AMOUNT:", amount);
-console.log("PAYMENT METHOD:", paymentMethod);
-console.log("PAYMENT DATE:", paymentDate);
-console.log("PAYMENT NOTES:", paymentNotes);
-console.log("==================================");
-        console.log("SAVING PAYMENT:", {
-          job_id: Number(id),
-          amount,
-          payment_method: paymentMethod,
-          payment_date: paymentDate,
-          notes: paymentNotes
-        });
+      console.log(
+        "DATABASE DISCOUNT:",
+        updatedJob.discount
+      );
 
-        const {
-          data: payment,
-          error: paymentError
-        } = await supabase
-          .from("payments")
-          .insert({
-            job_id: Number(id),
-            amount: amount,
-            payment_method: paymentMethod,
-            payment_date: paymentDate,
-            notes: paymentNotes.trim() || null
-          })
-          .select()
-          .single();
+      console.log(
+        "DATABASE DEPOSIT:",
+        updatedJob.deposit
+      );
 
-        console.log("NEW PAYMENT:", payment);
-        console.log("PAYMENT ERROR:", paymentError);
-
-        if (paymentError) {
-          throw new Error(
-            "Job was saved, but payment failed: " +
-            paymentError.message
-          );
-        }
-      }
+      console.log(
+        "DATABASE BALANCE:",
+        updatedJob.balance
+      );
 
       // -----------------------------------
-      // SUCCESS
+      // 9. CLEAR PAYMENT FORM
+      // -----------------------------------
+
+      setPaymentAmount("");
+      setPaymentMethod("Visa");
+
+      setPaymentDate(
+        new Date().toISOString().split("T")[0]
+      );
+
+      setPaymentNotes("");
+
+      // -----------------------------------
+      // 10. SUCCESS
       // -----------------------------------
 
       alert(
@@ -308,20 +551,48 @@ console.log("==================================");
       navigate(`/jobs/${id}`);
 
     } catch (error) {
-      console.error("SAVE ERROR:", error);
+      console.error(
+        "SAVE JOB ERROR:",
+        error
+      );
 
-      alert(error.message || "Something went wrong.");
+      alert(
+        error.message ||
+        "Something went wrong."
+      );
 
     } finally {
       setSaving(false);
     }
   }
+async function loadPayments() {
+  const { data, error } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("job_id", Number(id))
+    .order("payment_date", { ascending: false });
+
+  if (error) {
+    console.error("LOAD PAYMENTS ERROR:", error);
+    return;
+  }
+
+  setPayments(data || []);
+}
+  // -----------------------------------
+  // LOADING
+  // -----------------------------------
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
+  // -----------------------------------
+  // PAGE
+  // -----------------------------------
+
   return (
+
     <div style={styles.page}>
 
       <h2>Edit Job #{id}</h2>
@@ -395,7 +666,9 @@ console.log("==================================");
         }
         style={styles.sourceSelect}
       >
-        <option value="">Select Source</option>
+        <option value="">
+          Select Source
+        </option>
 
         <option value="Teyseer Motors">
           Teyseer Motors
@@ -456,7 +729,9 @@ console.log("==================================");
             key={item.id}
             style={styles.serviceBox}
           >
+
             <label>
+
               <input
                 type="checkbox"
                 checked={selected}
@@ -468,6 +743,7 @@ console.log("==================================");
               {" "}
 
               {item.name}
+
             </label>
 
             {selected && (
@@ -479,6 +755,8 @@ console.log("==================================");
 
                 <input
                   type="number"
+                  min="0"
+                  step="0.01"
                   value={details.price || 0}
                   onChange={(e) =>
                     updateServicePrice(
@@ -495,6 +773,8 @@ console.log("==================================");
 
                 <input
                   type="number"
+                  min="0"
+                  step="0.01"
                   value={details.discount || 0}
                   onChange={(e) =>
                     updateServiceDiscount(
@@ -516,6 +796,7 @@ console.log("==================================");
 
               </div>
             )}
+
           </div>
         );
       })}
@@ -523,7 +804,9 @@ console.log("==================================");
       {/* TOTAL */}
 
       <div style={styles.total}>
+
         Total: QAR{" "}
+
         {services.reduce(
           (sum, serviceName) => {
             const details =
@@ -540,8 +823,58 @@ console.log("==================================");
           },
           0
         )}
-      </div>
 
+      </div>
+{/* EXISTING PAYMENTS */}
+
+<div style={styles.paymentBox}>
+
+  <h3>Payment History</h3>
+
+  {payments.length === 0 ? (
+    <p>No payments recorded.</p>
+  ) : (
+    payments.map((payment) => (
+      <div
+        key={payment.id}
+        style={styles.paymentRow}
+      >
+
+        <div>
+          <strong>
+            QAR {Number(payment.amount || 0).toFixed(2)}
+          </strong>
+
+          <div>
+            Method: {payment.payment_method || "N/A"}
+          </div>
+
+          <div>
+            Date: {payment.payment_date || "N/A"}
+          </div>
+
+          {payment.notes && (
+            <div>
+              Notes: {payment.notes}
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            deletePayment(payment.id)
+          }
+          style={styles.deletePaymentButton}
+        >
+          🗑 Delete Payment
+        </button>
+
+      </div>
+    ))
+  )}
+
+</div>
       {/* PAYMENT */}
 
       <div style={styles.paymentBox}>
@@ -575,6 +908,7 @@ console.log("==================================");
           }
           style={styles.sourceSelect}
         >
+
           <option value="Visa">
             Visa
           </option>
@@ -594,6 +928,7 @@ console.log("==================================");
           <option value="Bank Transfer">
             Bank Transfer
           </option>
+
         </select>
 
         <label>
@@ -707,7 +1042,28 @@ const styles = {
     border: "1px solid #ccc",
     borderRadius: "8px",
     fontSize: "15px"
-  }
+  },
+  paymentRow: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "15px",
+  padding: "15px",
+  marginBottom: "10px",
+  background: "#f8fafc",
+  border: "1px solid #ddd",
+  borderRadius: "10px"
+},
+
+deletePaymentButton: {
+  background: "#dc2626",
+  color: "white",
+  border: "none",
+  padding: "9px 14px",
+  borderRadius: "8px",
+  cursor: "pointer",
+  fontWeight: "bold"
+},
 };
 
 export default EditJob;
