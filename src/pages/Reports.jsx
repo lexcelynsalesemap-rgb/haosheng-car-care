@@ -316,27 +316,31 @@ function Reports() {
     return `${year}-${month}-${day}`;
   }
 
-  function getJobDate(job) {
-    if (!job.created_at) {
-      return null;
-    }
+ function getJobDate(job) {
 
-    const date =
-      new Date(job.created_at);
-
-    if (isNaN(date.getTime())) {
-      return null;
-    }
-
-    return getDateString(date);
+  if (!job.created_at) {
+    return null;
   }
+
+  const date = new Date(job.created_at);
+
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toLocaleDateString("en-CA", {
+    timeZone: "Asia/Qatar"
+  });
+
+}
 
   // =========================================================
   // TODAY
   // =========================================================
 
-  const today =
-    getDateString(new Date());
+  const today = new Date().toLocaleDateString("en-CA", {
+  timeZone: "Asia/Qatar"
+});
 
   const carsToday = jobs.filter(
     job =>
@@ -548,15 +552,11 @@ function Reports() {
                 date.getTime()
               )
             ) {
-              jobTime =
-                date.toLocaleTimeString(
-                  "en-US",
-                  {
-                    hour: "2-digit",
-                    minute:
-                      "2-digit"
-                  }
-                );
+              jobTime = date.toLocaleTimeString("en-US", {
+  timeZone: "Asia/Qatar",
+  hour: "2-digit",
+  minute: "2-digit"
+});
             }
           }
 
@@ -903,8 +903,9 @@ function Reports() {
           </span>
 
           <span>
-            Printed:
-            ${new Date().toLocaleString()}
+            Printed: ${new Date().toLocaleString("en-US", {
+  timeZone: "Asia/Qatar"
+})}
           </span>
 
         </div>
