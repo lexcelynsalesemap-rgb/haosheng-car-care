@@ -154,9 +154,8 @@ if (!job) {
 
 
             <p>
-             INVOICE NUMBER:
-HS-{String(job.id).padStart(6, "0")}
-            </p>
+  RECEIPT NUMBER: {job.receipt_number}
+</p>
 
 
             <p>

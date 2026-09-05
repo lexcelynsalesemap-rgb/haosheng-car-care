@@ -134,7 +134,6 @@ const total = services.reduce(
 
 
 
-
 function chooseService(service, price) {
 
   console.log("CHOOSING SERVICE:", service, price);
@@ -171,6 +170,7 @@ function chooseService(service, price) {
 }
 
 
+
 useEffect(() => {
 
   const isTeyseer =
@@ -179,7 +179,6 @@ useEffect(() => {
     source === "Teyseer Motors - Salah";
 
 
-  // Only Full WTT gets Teyseer price
   if (!isTeyseer || !services.includes("Full WTT")) return;
 
 
@@ -214,15 +213,74 @@ useEffect(() => {
 
 
 
+
 async function saveJob(){
 
 console.log("SAVE CLICKED");
 
 
+// -----------------------------------
+// GET NEXT RECEIPT NUMBER
+// -----------------------------------
+
+const { data: lastJob, error: receiptError } = await supabase
+
+.from("jobs")
+
+.select("receipt_number")
+
+.not("receipt_number", "is", null)
+
+.order("receipt_number", { ascending: false })
+
+.limit(1)
+
+.maybeSingle();
+
+
+
+if(receiptError){
+
+console.log("RECEIPT NUMBER ERROR:",receiptError);
+
+alert(receiptError.message);
+
+return;
+
+}
+
+
+
+// EXISTING SEPTEMBER JOBS END AT 2749
+// NEXT JOB WILL BE 2750
+
+const nextReceiptNumber =
+lastJob?.receipt_number
+  ? Number(lastJob.receipt_number) + 1
+  : 2718;
+
+
+
+console.log(
+  "NEXT RECEIPT NUMBER:",
+  nextReceiptNumber
+);
+
+
+
+// -----------------------------------
+// CREATE JOB
+// -----------------------------------
+
 const job = {
+
   customer,
+
   phone,
+
   date,
+
+  receipt_number: nextReceiptNumber,
 
   source:
     source === "Other"
@@ -232,13 +290,17 @@ const job = {
   voucherNumber,
 
   carModel,
+
   carType,
+
   color,
+
   chassis,
+
   plate,
 
-  // SAVE SERVICES INTO JOBS TABLE
   services,
+
   serviceDetails,
 
   paymentMethod,
@@ -253,7 +315,10 @@ const job = {
     Number(total - discount - deposit),
 
   status: "New"
+
 };
+
+
 
 
 
@@ -262,9 +327,13 @@ const job = {
 //
 
 const {data:jobData,error:jobError}=await supabase
+
 .from("jobs")
+
 .insert([job])
+
 .select()
+
 .single();
 
 
@@ -272,7 +341,9 @@ const {data:jobData,error:jobError}=await supabase
 if(jobError){
 
 console.log(jobError);
+
 alert(jobError.message);
+
 return;
 
 }
@@ -322,7 +393,6 @@ console.log("PAYMENT ERROR",error);
 
 
 }
-
 
 
 
@@ -466,13 +536,19 @@ techError
 
 
 
-alert("Job Saved Successfully!");
+alert(
+`Job Saved Successfully!
+Receipt Number: ${nextReceiptNumber}`
+);
+
 
 
 
 
 
 }
+
+
 return (
 
 <div style={styles.page}>
@@ -586,6 +662,7 @@ Other
 
 
 
+
 {
 
 source==="Other" &&
@@ -603,6 +680,8 @@ onChange={(e)=>setOtherSource(e.target.value)}
 
 
 }
+
+
 
 
 
@@ -639,41 +718,99 @@ onChange={(e)=>setVoucherNumber(e.target.value)}
 
 
 
-<h2>Vehicle Information</h2>
+
+<h2>
+Vehicle Information
+</h2>
+
 
 <input
-  placeholder="Car Model"
-  value={carModel}
-  onChange={(e)=>setCarModel(e.target.value)}
+
+placeholder="Car Model"
+
+value={carModel}
+
+onChange={(e)=>setCarModel(e.target.value)}
+
 />
 
-{/* Replace the old Car Type input with this */}
-<label>Car Type</label>
+
+
+<label>
+Car Type
+</label>
+
+
 
 <select
-  value={carType}
-  onChange={(e)=>setCarType(e.target.value)}
+
+value={carType}
+
+onChange={(e)=>setCarType(e.target.value)}
+
 >
-  <option value="">Select Car Type</option>
-  <option value="GWM">GWM</option>
-  <option value="Suzuki">Suzuki</option>
-  <option value="Toyota">Toyota</option>
-  <option value="Nissan">Nissan</option>
-  <option value="Honda">Honda</option>
-  <option value="Kia">Kia</option>
-  <option value="Hyundai">Hyundai</option>
-  <option value="Ford">Ford</option>
-  <option value="BMW">BMW</option>
-  <option value="Mercedes">Mercedes</option>
-  <option value="Audi">Audi</option>
+
+<option value="">
+Select Car Type
+</option>
+
+<option value="GWM">
+GWM
+</option>
+
+<option value="Suzuki">
+Suzuki
+</option>
+
+<option value="Toyota">
+Toyota
+</option>
+
+<option value="Nissan">
+Nissan
+</option>
+
+<option value="Honda">
+Honda
+</option>
+
+<option value="Kia">
+Kia
+</option>
+
+<option value="Hyundai">
+Hyundai
+</option>
+
+<option value="Ford">
+Ford
+</option>
+
+<option value="BMW">
+BMW
+</option>
+
+<option value="Mercedes">
+Mercedes
+</option>
+
+<option value="Audi">
+Audi
+</option>
+
 </select>
 
-<input
-  placeholder="Color"
-  value={color}
-  onChange={(e)=>setColor(e.target.value)}
-/>
 
+
+<input
+
+placeholder="Color"
+
+value={color}
+
+onChange={(e)=>setColor(e.target.value)}
+
+/>
 
 
 
@@ -705,7 +842,10 @@ onChange={(e)=>setPlate(e.target.value)}
 
 
 
-<h2>Services</h2>
+
+<h2>
+Services
+</h2>
 
 
 
@@ -736,15 +876,12 @@ style={styles.serviceBox}
 
 type="checkbox"
 
-
 checked={services.includes(service)}
-
 
 onChange={()=>chooseService(
 service,
 serviceItem.price
 )}
-
 
 />
 
@@ -780,7 +917,6 @@ type="number"
 
 placeholder="Price"
 
-
 value={
   serviceDetails?.[service]?.price || 0
 }
@@ -815,7 +951,6 @@ type="number"
 
 placeholder="Discount"
 
-
 value={
   serviceDetails?.[service]?.discount || 0
 }
@@ -838,8 +973,6 @@ onChange={(e) => {
 
 
 />
-
-
 
 
 
@@ -884,10 +1017,7 @@ return (
 
 type="checkbox"
 
-
 checked={!!selected}
-
-
 
 onChange={(e)=>{
 
@@ -899,9 +1029,7 @@ serviceDetails[service]
 ?.technicians || [];
 
 
-
 let updated;
-
 
 
 if(e.target.checked){
@@ -979,7 +1107,6 @@ type="number"
 
 placeholder="Commission"
 
-
 value={selected.commission}
 
 
@@ -1017,27 +1144,6 @@ setServiceDetails(prev => {
 
 
 
-setServiceDetails({
-
-
-...serviceDetails,
-
-
-[service]:{
-
-
-...serviceDetails[service],
-
-
-technicians:updated
-
-
-}
-
-
-});
-
-
 }}
 
 
@@ -1070,6 +1176,9 @@ technicians:updated
 
 
 
+
+
+
 </div>
 
 
@@ -1084,6 +1193,8 @@ technicians:updated
 
 
 
+
+
 <h2>
 Payment
 </h2>
@@ -1092,6 +1203,7 @@ Payment
 <label>
 Payment Method
 </label>
+
 
 <select
 
@@ -1124,9 +1236,12 @@ PayLater
 </select>
 
 
+
+
 <label>
 Discount
 </label>
+
 
 <input
 
@@ -1144,9 +1259,11 @@ setDiscount(Number(e.target.value))
 
 
 
+
 <label>
 Deposit Paid
 </label>
+
 
 <input
 
@@ -1164,16 +1281,20 @@ setDeposit(Number(e.target.value))
 
 
 
+
 <h3>
 Total:
 QAR {total}
 </h3>
 
 
+
 <h3>
 Balance Due:
 QAR {total - discount - deposit}
 </h3>
+
+
 
 <button
 
@@ -1201,6 +1322,8 @@ SAVE JOB
 );
 
 }
+
+
 const styles={
 
 
@@ -1273,7 +1396,6 @@ cursor:"pointer"
 
 
 };
-
 
 
 
