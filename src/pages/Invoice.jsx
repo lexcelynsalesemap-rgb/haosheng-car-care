@@ -436,60 +436,53 @@ job.serviceDetails?.[service]?.discount || 0
 
         <div style={styles.amount}>
 
+  <p>
+    TOTAL AMOUNT: QAR {
+      job.services?.reduce(
+        (total, service) =>
+          total +
+          (
+            (Number(job.serviceDetails?.[service]?.price) || 0)
+            *
+            (Number(job.serviceDetails?.[service]?.quantity) || 1)
+          ),
+        0
+      )
+    }
+  </p>
 
-          <p>
-  TOTAL AMOUNT: QAR {
-    job.services?.reduce(
-      (total, service) =>
-        total + (job.serviceDetails?.[service]?.price || 0),
-      0
-    )
-  }
-</p>
+  <p>
+    DISCOUNT: QAR {
+      job.services?.reduce(
+        (total, service) =>
+          total +
+          (Number(job.serviceDetails?.[service]?.discount) || 0),
+        0
+      )
+    }
+  </p>
 
+  <h3>
+    NET AMOUNT: QAR {
+      job.services?.reduce(
+        (total, service) =>
+          total +
+          Math.max(
+            (
+              (Number(job.serviceDetails?.[service]?.price) || 0)
+              *
+              (Number(job.serviceDetails?.[service]?.quantity) || 1)
+            )
+            -
+            (Number(job.serviceDetails?.[service]?.discount) || 0),
+            0
+          ),
+        0
+      )
+    }
+  </h3>
 
-<p>
-  TOTAL AMOUNT: QAR {
-
-job.services?.reduce(
-
-(total,service)=>
-
-total +
-
-(
-(job.serviceDetails?.[service]?.price || 0)
-*
-(job.serviceDetails?.[service]?.quantity || 1)
-),
-
-0
-
-)
-
-}
-</p>
-
-
-<h3>
-  NET AMOUNT: QAR {
-    job.services?.reduce(
-      (total, service) =>
-        total +
-        (
-          (job.serviceDetails?.[service]?.price || 0)
-          -
-          (job.serviceDetails?.[service]?.discount || 0)
-        ),
-      0
-    )
-  }
-</h3>
-
-        </div>
-
-
-
+</div>
 
         <hr />
 
