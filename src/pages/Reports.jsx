@@ -7,17 +7,18 @@ function Reports() {
   const [jobServices, setJobServices] = useState([]);
 
   // =========================================================
-  // MANUAL PREVIOUS MONTH VALUES
-  // Change these numbers whenever you need
+  // SUPABASE SETTINGS
   // =========================================================
 
   const [manualPending, setManualPending] = useState({
-    June: 7000,
-    July: 10000,
-    August: 18700
+    June: 0,
+    July: 0,
+    August: 0
   });
 
-  const [manualTeyseer, setManualTeyseer] = useState(181200);
+  const [manualTeyseer, setManualTeyseer] = useState(0);
+
+  const [savingSetting, setSavingSetting] = useState("");
 
   // =========================================================
   // REPORT DATE
@@ -39,6 +40,7 @@ function Reports() {
 
   useEffect(() => {
     loadReports();
+    loadSettings();
   }, []);
 
   async function loadReports() {
@@ -57,10 +59,6 @@ function Reports() {
       .from("job_services")
       .select("*");
 
-    console.log("REPORT JOBS:", jobData);
-    console.log("REPORT PAYMENTS:", paymentData);
-    console.log("REPORT SERVICES:", serviceData);
-
     if (jobError) {
       console.log("JOB ERROR:", jobError);
     }
@@ -76,6 +74,87 @@ function Reports() {
     setJobs(jobData || []);
     setPayments(paymentData || []);
     setJobServices(serviceData || []);
+  }
+
+  // =========================================================
+  // LOAD SETTINGS FROM SUPABASE
+  // =========================================================
+
+  async function loadSettings() {
+    const { data, error } = await supabase
+      .from("settings")
+      .select("*");
+
+    if (error) {
+      console.log("SETTINGS ERROR:", error);
+      return;
+    }
+
+    console.log("SETTINGS:", data);
+
+    const june = data?.find(
+      item => item.setting_name === "June Pending"
+    );
+
+    const july = data?.find(
+      item => item.setting_name === "July Pending"
+    );
+
+    const august = data?.find(
+      item => item.setting_name === "August Pending"
+    );
+
+    const teyseer = data?.find(
+      item => item.setting_name === "Previous Teyseer"
+    );
+
+    setManualPending({
+      June: Number(june?.amount || 0),
+      July: Number(july?.amount || 0),
+      August: Number(august?.amount || 0)
+    });
+
+    setManualTeyseer(
+      Number(teyseer?.amount || 0)
+    );
+  }
+
+  // =========================================================
+  // SAVE SETTING TO SUPABASE
+  // =========================================================
+
+  async function saveSetting(settingName, amount) {
+    setSavingSetting(settingName);
+
+    const { error } = await supabase
+      .from("settings")
+      .update({
+        amount: Number(amount) || 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq("setting_name", settingName);
+
+    if (error) {
+      console.log("SAVE SETTING ERROR:", error);
+      alert(
+        `Could not save ${settingName}: ${error.message}`
+      );
+    }
+
+    setSavingSetting("");
+  }
+
+  // =========================================================
+  // CHANGE PREVIOUS MONTH
+  // =========================================================
+
+  function changePending(month, value) {
+    const amount = Number(value) || 0;
+
+    setManualPending(prev => ({
+      ...prev,
+      [month]: amount
+    }));
   }
 
   // =========================================================
@@ -100,12 +179,6 @@ function Reports() {
 
   // =========================================================
   // PAYMENT METHODS
-  //
-  // This supports common names:
-  // Cash
-  // Card
-  // Bank Transfer
-  // Pending
   // =========================================================
 
   function getPaymentMethod(payment) {
@@ -166,8 +239,6 @@ function Reports() {
 
   // =========================================================
   // TEYSEER
-  //
-  // SAME LOGIC AS DASHBOARD
   // =========================================================
 
   const teyseerSources = [
@@ -185,13 +256,11 @@ function Reports() {
       !teyseerSources.includes(job.source)
   );
 
-  // ---------------------------------------------------------
-  // Calculate Teyseer sales from job_services
-  // Same logic used on Dashboard
-  // ---------------------------------------------------------
+  // =========================================================
+  // TEYSEER SALES
+  // =========================================================
 
   let teyseerSales = 0;
-  let customerSalesFromServices = 0;
 
   teyseerJobs.forEach(job => {
     const services = jobServices.filter(
@@ -200,8 +269,7 @@ function Reports() {
     );
 
     services.forEach(service => {
-      const amount =
-        Number(service.price || 0);
+      const amount = Number(service.price || 0);
 
       const serviceName = (
         service.service_name ||
@@ -212,12 +280,10 @@ function Reports() {
 
       let reportSource = "Sales Team";
 
-      // DIRECT TEYSEER
       if (job.source === "Teyseer Motors") {
         reportSource = "Teyseer Motors";
       }
 
-      // SALAH
       else if (
         job.source === "Teyseer Motors - Salah"
       ) {
@@ -230,7 +296,6 @@ function Reports() {
         }
       }
 
-      // BAHA
       else if (
         job.source === "Teyseer Motors - Bahaa"
       ) {
@@ -281,6 +346,10 @@ function Reports() {
       0
     );
 
+  // =========================================================
+  // CUSTOMER PAID
+  // =========================================================
+
   const customerIds = customerJobs.map(
     job => job.id
   );
@@ -316,31 +385,35 @@ function Reports() {
     return `${year}-${month}-${day}`;
   }
 
- function getJobDate(job) {
+  function getJobDate(job) {
+    if (!job.created_at) {
+      return null;
+    }
 
-  if (!job.created_at) {
-    return null;
+    const date = new Date(job.created_at);
+
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+
+    return date.toLocaleDateString(
+      "en-CA",
+      {
+        timeZone: "Asia/Qatar"
+      }
+    );
   }
-
-  const date = new Date(job.created_at);
-
-  if (isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date.toLocaleDateString("en-CA", {
-    timeZone: "Asia/Qatar"
-  });
-
-}
 
   // =========================================================
   // TODAY
   // =========================================================
 
-  const today = new Date().toLocaleDateString("en-CA", {
-  timeZone: "Asia/Qatar"
-});
+  const today = new Date().toLocaleDateString(
+    "en-CA",
+    {
+      timeZone: "Asia/Qatar"
+    }
+  );
 
   const carsToday = jobs.filter(
     job =>
@@ -552,11 +625,16 @@ function Reports() {
                 date.getTime()
               )
             ) {
-              jobTime = date.toLocaleTimeString("en-US", {
-  timeZone: "Asia/Qatar",
-  hour: "2-digit",
-  minute: "2-digit"
-});
+              jobTime =
+                date.toLocaleTimeString(
+                  "en-US",
+                  {
+                    timeZone:
+                      "Asia/Qatar",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  }
+                );
             }
           }
 
@@ -587,7 +665,9 @@ function Reports() {
                 })
                 .filter(Boolean)
                 .join(", ");
-          } else if (
+          }
+
+          else if (
             typeof job.services ===
             "string"
           ) {
@@ -598,35 +678,23 @@ function Reports() {
 
           return `
             <tr>
-
               <td>${index + 1}</td>
-
               <td>${jobTime}</td>
-
               <td>${job.customer || ""}</td>
-
               <td>${job.phone || ""}</td>
-
               <td>${job.carModel || ""}</td>
-
               <td>${job.plate || ""}</td>
-
               <td>${job.source || "Not specified"}</td>
-
               <td>${services}</td>
-
               <td class="money">
                 QAR ${netAmount.toLocaleString()}
               </td>
-
               <td class="money paid">
                 QAR ${jobPaid.toLocaleString()}
               </td>
-
               <td class="money balance">
                 QAR ${jobBalance.toLocaleString()}
               </td>
-
             </tr>
           `;
         })
@@ -651,9 +719,7 @@ function Reports() {
 
     printWindow.document.write(`
       <!DOCTYPE html>
-
       <html>
-
       <head>
 
         <title>
@@ -801,7 +867,6 @@ function Reports() {
         <div class="summary">
 
           <div class="summaryBox">
-
             <div class="summaryLabel">
               TOTAL CARS
             </div>
@@ -809,11 +874,9 @@ function Reports() {
             <div class="summaryValue">
               ${todayJobs.length}
             </div>
-
           </div>
 
           <div class="summaryBox">
-
             <div class="summaryLabel">
               NET SALES
             </div>
@@ -821,11 +884,9 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalSales.toLocaleString()}
             </div>
-
           </div>
 
           <div class="summaryBox">
-
             <div class="summaryLabel">
               TOTAL PAID
             </div>
@@ -833,11 +894,9 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalPaid.toLocaleString()}
             </div>
-
           </div>
 
           <div class="summaryBox">
-
             <div class="summaryLabel">
               BALANCE DUE
             </div>
@@ -845,7 +904,6 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalBalance.toLocaleString()}
             </div>
-
           </div>
 
         </div>
@@ -855,7 +913,6 @@ function Reports() {
           <thead>
 
             <tr>
-
               <th>#</th>
               <th>Time</th>
               <th>Customer</th>
@@ -867,7 +924,6 @@ function Reports() {
               <th>Amount</th>
               <th>Paid</th>
               <th>Balance</th>
-
             </tr>
 
           </thead>
@@ -903,15 +959,18 @@ function Reports() {
           </span>
 
           <span>
-            Printed: ${new Date().toLocaleString("en-US", {
-  timeZone: "Asia/Qatar"
-})}
+            Printed:
+            ${new Date().toLocaleString(
+              "en-US",
+              {
+                timeZone: "Asia/Qatar"
+              }
+            )}
           </span>
 
         </div>
 
       </body>
-
       </html>
     `);
 
@@ -1094,7 +1153,7 @@ function Reports() {
       </div>
 
       {/* =====================================================
-          MANUAL PREVIOUS MONTH BALANCES
+          PREVIOUS MONTH PENDING
       ===================================================== */}
 
       <h2>
@@ -1114,43 +1173,70 @@ function Reports() {
         <ManualCard
           title="June Pending"
           value={manualPending.June}
+          saving={
+            savingSetting ===
+            "June Pending"
+          }
           onChange={value =>
-            setManualPending({
-              ...manualPending,
-              June:
-                Number(value) || 0
-            })
+            changePending(
+              "June",
+              value
+            )
+          }
+          onSave={() =>
+            saveSetting(
+              "June Pending",
+              manualPending.June
+            )
           }
         />
 
         <ManualCard
           title="July Pending"
           value={manualPending.July}
+          saving={
+            savingSetting ===
+            "July Pending"
+          }
           onChange={value =>
-            setManualPending({
-              ...manualPending,
-              July:
-                Number(value) || 0
-            })
+            changePending(
+              "July",
+              value
+            )
+          }
+          onSave={() =>
+            saveSetting(
+              "July Pending",
+              manualPending.July
+            )
           }
         />
 
         <ManualCard
           title="August Pending"
           value={manualPending.August}
+          saving={
+            savingSetting ===
+            "August Pending"
+          }
           onChange={value =>
-            setManualPending({
-              ...manualPending,
-              August:
-                Number(value) || 0
-            })
+            changePending(
+              "August",
+              value
+            )
+          }
+          onSave={() =>
+            saveSetting(
+              "August Pending",
+              manualPending.August
+            )
           }
         />
 
       </div>
 
       {/* =====================================================
-          MANUAL TEYSEER
+          PREVIOUS TEYSEER
       ===================================================== */}
 
       <h2>
@@ -1177,8 +1263,7 @@ function Reports() {
           value={manualTeyseer}
           onChange={e =>
             setManualTeyseer(
-              Number(e.target.value) ||
-              0
+              Number(e.target.value) || 0
             )
           }
           style={{
@@ -1192,13 +1277,42 @@ function Reports() {
           }}
         />
 
+        <br />
+        <br />
+
+        <button
+          onClick={() =>
+            saveSetting(
+              "Previous Teyseer",
+              manualTeyseer
+            )
+          }
+          style={{
+            background: "#9333ea",
+            color: "white",
+            border: "none",
+            padding:
+              "10px 18px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          {savingSetting ===
+          "Previous Teyseer"
+            ? "Saving..."
+            : "Save Previous Teyseer"}
+        </button>
+
         <h2
           style={{
             color: "#9333ea"
           }}
         >
           QAR{" "}
-          {manualTeyseer.toLocaleString()}
+          {Number(
+            manualTeyseer
+          ).toLocaleString()}
         </h2>
 
       </div>
@@ -1494,8 +1608,12 @@ function FinancialCard({
 
       <h2>
         {noCurrency
-          ? Number(value).toLocaleString()
-          : `QAR ${Number(value).toLocaleString()}`
+          ? Number(
+              value
+            ).toLocaleString()
+          : `QAR ${Number(
+              value
+            ).toLocaleString()}`
         }
       </h2>
 
@@ -1510,7 +1628,9 @@ function FinancialCard({
 function ManualCard({
   title,
   value,
-  onChange
+  onChange,
+  onSave,
+  saving
 }) {
   return (
     <div
@@ -1536,14 +1656,16 @@ function ManualCard({
           marginBottom: "8px"
         }}
       >
-        Enter amount manually
+        Enter amount
       </label>
 
       <input
         type="number"
         value={value}
         onChange={e =>
-          onChange(e.target.value)
+          onChange(
+            e.target.value
+          )
         }
         style={{
           width: "100%",
@@ -1555,13 +1677,38 @@ function ManualCard({
         }}
       />
 
+      <button
+        onClick={onSave}
+        disabled={saving}
+        style={{
+          marginTop: "12px",
+          background: "#dc2626",
+          color: "white",
+          border: "none",
+          padding:
+            "10px 18px",
+          borderRadius: "8px",
+          cursor: saving
+            ? "not-allowed"
+            : "pointer",
+          fontWeight: "bold",
+          opacity: saving ? 0.7 : 1
+        }}
+      >
+        {saving
+          ? "Saving..."
+          : "Save"}
+      </button>
+
       <h2
         style={{
           color: "#dc2626"
         }}
       >
         QAR{" "}
-        {Number(value).toLocaleString()}
+        {Number(
+          value
+        ).toLocaleString()}
       </h2>
 
     </div>
