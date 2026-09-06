@@ -8,7 +8,6 @@ function Reports() {
 
   // =========================================================
   // MANUAL REPORT SETTINGS
-  // These values are loaded from Supabase
   // =========================================================
 
   const [manualPending, setManualPending] = useState({
@@ -45,12 +44,13 @@ function Reports() {
   }, []);
 
   async function loadReports() {
+    // IMPORTANT:
+    // We do NOT order by created_at because your jobs table
+    // does not have a created_at column.
+
     const { data: jobData, error: jobError } = await supabase
       .from("jobs")
-      .select("*")
-      .order("created_at", {
-        ascending: false,
-      });
+      .select("*");
 
     const { data: paymentData, error: paymentError } = await supabase
       .from("payments")
@@ -65,15 +65,18 @@ function Reports() {
     console.log("REPORT SERVICES:", serviceData);
 
     if (jobError) {
-      console.log("JOB ERROR:", jobError);
+      console.error("JOB ERROR:", jobError);
+      alert("Could not load jobs: " + jobError.message);
     }
 
     if (paymentError) {
-      console.log("PAYMENT ERROR:", paymentError);
+      console.error("PAYMENT ERROR:", paymentError);
+      alert("Could not load payments: " + paymentError.message);
     }
 
     if (serviceError) {
-      console.log("SERVICE ERROR:", serviceError);
+      console.error("SERVICE ERROR:", serviceError);
+      alert("Could not load services: " + serviceError.message);
     }
 
     setJobs(jobData || []);
@@ -82,7 +85,7 @@ function Reports() {
   }
 
   // =========================================================
-  // LOAD MANUAL SETTINGS FROM SUPABASE
+  // LOAD REPORT SETTINGS
   // TABLE: report_settings
   // =========================================================
 
@@ -146,27 +149,26 @@ function Reports() {
   }
 
   // =========================================================
-  // AUTO SAVE SETTING
-  // No Save button required
+  // SAVE REPORT SETTING
   // =========================================================
 
   async function saveSetting(settingName, amount) {
     try {
       setSavingSetting(settingName);
 
-      const numericAmount =
-        Number(amount) || 0;
+      const numericAmount = Number(amount) || 0;
 
-      // First try to update existing row
-      const { data: updatedRows, error: updateError } =
-        await supabase
-          .from("report_settings")
-          .update({
-            amount: numericAmount,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("setting_name", settingName)
-          .select();
+      // First try to update an existing row
+      const {
+        data: updatedRows,
+        error: updateError,
+      } = await supabase
+        .from("report_settings")
+        .update({
+          amount: numericAmount,
+        })
+        .eq("setting_name", settingName)
+        .select();
 
       if (updateError) {
         console.error(
@@ -181,20 +183,19 @@ function Reports() {
         return;
       }
 
-      // If the row does not exist, create it
+      // If row does not exist, insert it
       if (
         !updatedRows ||
         updatedRows.length === 0
       ) {
-        const { error: insertError } =
-          await supabase
-            .from("report_settings")
-            .insert({
-              setting_name: settingName,
-              amount: numericAmount,
-              updated_at:
-                new Date().toISOString(),
-            });
+        const {
+          error: insertError,
+        } = await supabase
+          .from("report_settings")
+          .insert({
+            setting_name: settingName,
+            amount: numericAmount,
+          });
 
         if (insertError) {
           console.error(
@@ -310,6 +311,14 @@ function Reports() {
 
   // =========================================================
   // PAYMENT METHODS
+  //
+  // Your database contains:
+  // Visa
+  // Mastercard
+  // Cash
+  // Bank Transfer
+  //
+  // Visa + Mastercard = Card
   // =========================================================
 
   function getPaymentMethod(payment) {
@@ -323,10 +332,13 @@ function Reports() {
       .toLowerCase();
   }
 
+  // =========================================================
+  // CASH
+  // =========================================================
+
   const cashPaid = payments
     .filter(payment => {
-      const method =
-        getPaymentMethod(payment);
+      const method = getPaymentMethod(payment);
 
       return (
         method === "cash" ||
@@ -339,14 +351,24 @@ function Reports() {
       0
     );
 
+  // =========================================================
+  // CARD
+  // VISA + MASTERCARD + CARD
+  // =========================================================
+
   const cardPaid = payments
     .filter(payment => {
-      const method =
-        getPaymentMethod(payment);
+      const method = getPaymentMethod(payment);
 
       return (
         method === "card" ||
-        method.includes("card")
+        method.includes("card") ||
+        method === "visa" ||
+        method.includes("visa") ||
+        method === "mastercard" ||
+        method === "master card" ||
+        method.includes("mastercard") ||
+        method.includes("master card")
       );
     })
     .reduce(
@@ -355,12 +377,17 @@ function Reports() {
       0
     );
 
+  // =========================================================
+  // BANK TRANSFER
+  // =========================================================
+
   const bankTransferPaid = payments
     .filter(payment => {
-      const method =
-        getPaymentMethod(payment);
+      const method = getPaymentMethod(payment);
 
       return (
+        method === "bank transfer" ||
+        method === "bank_transfer" ||
         method.includes("bank") ||
         method.includes("transfer")
       );
@@ -370,6 +397,18 @@ function Reports() {
         sum + Number(payment.amount || 0),
       0
     );
+
+  // =========================================================
+  // OTHER PAYMENT METHODS
+  // =========================================================
+
+  const knownPaymentTotal =
+    cashPaid +
+    cardPaid +
+    bankTransferPaid;
+
+  const otherPaid =
+    paid - knownPaymentTotal;
 
   // =========================================================
   // TEYSEER
@@ -484,8 +523,10 @@ function Reports() {
 
   const teyseerPaid = payments
     .filter(payment =>
-      teyseerIds.includes(
-        payment.job_id
+      teyseerIds.some(
+        id =>
+          String(id) ===
+          String(payment.job_id)
       )
     )
     .reduce(
@@ -504,8 +545,10 @@ function Reports() {
 
   const customerPaid = payments
     .filter(payment =>
-      customerIds.includes(
-        payment.job_id
+      customerIds.some(
+        id =>
+          String(id) ===
+          String(payment.job_id)
       )
     )
     .reduce(
@@ -538,12 +581,27 @@ function Reports() {
   }
 
   function getJobDate(job) {
-    if (!job.created_at) {
+    /*
+      Your jobs table does not have created_at.
+      We try common date fields instead.
+
+      If your actual job date column has another name,
+      add it here.
+    */
+
+    const rawDate =
+      job.created_at ||
+      job.date ||
+      job.job_date ||
+      job.createdDate ||
+      job.created_date;
+
+    if (!rawDate) {
       return null;
     }
 
     const date =
-      new Date(job.created_at);
+      new Date(rawDate);
 
     if (isNaN(date.getTime())) {
       return null;
@@ -723,8 +781,8 @@ function Reports() {
           const jobPayments =
             payments.filter(
               payment =>
-                payment.job_id ===
-                job.id
+                String(payment.job_id) ===
+                String(job.id)
             );
 
           return (
@@ -755,8 +813,8 @@ function Reports() {
             const jobPayments =
               payments.filter(
                 payment =>
-                  payment.job_id ===
-                  job.id
+                  String(payment.job_id) ===
+                  String(job.id)
               );
 
             const jobPaid =
@@ -789,12 +847,19 @@ function Reports() {
 
             let jobTime = "";
 
+            const rawDate =
+              job.created_at ||
+              job.date ||
+              job.job_date ||
+              job.createdDate ||
+              job.created_date;
+
             if (
-              job.created_at
+              rawDate
             ) {
               const date =
                 new Date(
-                  job.created_at
+                  rawDate
                 );
 
               if (
@@ -861,7 +926,7 @@ function Reports() {
                 <td>${jobTime}</td>
                 <td>${job.customer || ""}</td>
                 <td>${job.phone || ""}</td>
-                <td>${job.carModel || ""}</td>
+                <td>${job.carModel || job.car_model || ""}</td>
                 <td>${job.plate || ""}</td>
                 <td>${job.source || "Not specified"}</td>
                 <td>${services}</td>
@@ -1188,9 +1253,7 @@ function Reports() {
         📊 Reports
       </h1>
 
-      {/* =====================================================
-          DATE
-      ===================================================== */}
+      {/* DATE */}
 
       <div
         style={{
@@ -1250,9 +1313,7 @@ function Reports() {
         🖨️ Print Daily Report
       </button>
 
-      {/* =====================================================
-          FINANCIAL SUMMARY
-      ===================================================== */}
+      {/* FINANCIAL SUMMARY */}
 
       <h2>
         💰 Financial Summary
@@ -1297,9 +1358,7 @@ function Reports() {
         />
       </div>
 
-      {/* =====================================================
-          PAYMENT METHODS
-      ===================================================== */}
+      {/* PAYMENT METHODS */}
 
       <h2>
         💳 Payment Methods
@@ -1323,7 +1382,7 @@ function Reports() {
         />
 
         <FinancialCard
-          title="Card"
+          title="Card (Visa + Mastercard)"
           value={cardPaid}
           color="#2563eb"
           icon="💳"
@@ -1335,11 +1394,18 @@ function Reports() {
           color="#7c3aed"
           icon="🏦"
         />
+
+        {otherPaid > 0 && (
+          <FinancialCard
+            title="Other"
+            value={otherPaid}
+            color="#f59e0b"
+            icon="💰"
+          />
+        )}
       </div>
 
-      {/* =====================================================
-          PREVIOUS MONTH PENDING
-      ===================================================== */}
+      {/* PREVIOUS MONTH PENDING */}
 
       <h2>
         📅 Previous Month Pending
@@ -1392,9 +1458,7 @@ function Reports() {
         />
       </div>
 
-      {/* =====================================================
-          PREVIOUS TEYSEER
-      ===================================================== */}
+      {/* PREVIOUS TEYSEER */}
 
       <h2>
         🏢 Previous Teyseer
@@ -1458,9 +1522,7 @@ function Reports() {
         </h2>
       </div>
 
-      {/* =====================================================
-          CAR REPORT
-      ===================================================== */}
+      {/* CAR REPORT */}
 
       <h2>
         🚗 Car Reports
@@ -1509,9 +1571,7 @@ function Reports() {
         />
       </div>
 
-      {/* =====================================================
-          DAILY CARS
-      ===================================================== */}
+      {/* DAILY CARS */}
 
       <div
         style={{
@@ -1640,9 +1700,7 @@ function Reports() {
         )}
       </div>
 
-      {/* =====================================================
-          SOURCE REPORT
-      ===================================================== */}
+      {/* SOURCE REPORT */}
 
       <h2>
         🏢 Source Reports
