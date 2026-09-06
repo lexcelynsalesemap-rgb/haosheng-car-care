@@ -7,18 +7,17 @@ function Reports() {
   const [jobServices, setJobServices] = useState([]);
 
   // =========================================================
-  // SUPABASE SETTINGS
+  // MANUAL REPORT VALUES
+  // These are loaded from Supabase report_settings
   // =========================================================
 
   const [manualPending, setManualPending] = useState({
     June: 0,
     July: 0,
-    August: 0
+    August: 0,
   });
 
   const [manualTeyseer, setManualTeyseer] = useState(0);
-
-  const [savingSetting, setSavingSetting] = useState("");
 
   // =========================================================
   // REPORT DATE
@@ -40,24 +39,41 @@ function Reports() {
 
   useEffect(() => {
     loadReports();
-    loadSettings();
+    loadReportSettings();
   }, []);
 
+  // =========================================================
+  // LOAD REPORTS
+  // =========================================================
+
   async function loadReports() {
-    const { data: jobData, error: jobError } = await supabase
+    const {
+      data: jobData,
+      error: jobError,
+    } = await supabase
       .from("jobs")
       .select("*")
       .order("created_at", {
-        ascending: false
+        ascending: false,
       });
 
-    const { data: paymentData, error: paymentError } = await supabase
+    const {
+      data: paymentData,
+      error: paymentError,
+    } = await supabase
       .from("payments")
       .select("*");
 
-    const { data: serviceData, error: serviceError } = await supabase
+    const {
+      data: serviceData,
+      error: serviceError,
+    } = await supabase
       .from("job_services")
       .select("*");
+
+    console.log("REPORT JOBS:", jobData);
+    console.log("REPORT PAYMENTS:", paymentData);
+    console.log("REPORT SERVICES:", serviceData);
 
     if (jobError) {
       console.log("JOB ERROR:", jobError);
@@ -77,84 +93,116 @@ function Reports() {
   }
 
   // =========================================================
-  // LOAD SETTINGS FROM SUPABASE
+  // LOAD MANUAL SETTINGS FROM SUPABASE
+  //
+  // TABLE:
+  // report_settings
+  //
+  // COLUMNS:
+  // id
+  // setting_name
+  // amount
+  // updated_at
   // =========================================================
 
-  async function loadSettings() {
-    const { data, error } = await supabase
-      .from("settings")
+  async function loadReportSettings() {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("report_settings")
       .select("*");
 
     if (error) {
-      console.log("SETTINGS ERROR:", error);
+      console.error(
+        "REPORT SETTINGS ERROR:",
+        error
+      );
+
+      alert(
+        `Could not load report settings: ${error.message}`
+      );
+
       return;
     }
 
-    console.log("SETTINGS:", data);
-
-    const june = data?.find(
-      item => item.setting_name === "June Pending"
+    console.log(
+      "REPORT SETTINGS:",
+      data
     );
 
-    const july = data?.find(
-      item => item.setting_name === "July Pending"
-    );
+    const settings = {};
 
-    const august = data?.find(
-      item => item.setting_name === "August Pending"
-    );
-
-    const teyseer = data?.find(
-      item => item.setting_name === "Previous Teyseer"
-    );
+    (data || []).forEach((row) => {
+      settings[row.setting_name] =
+        Number(row.amount || 0);
+    });
 
     setManualPending({
-      June: Number(june?.amount || 0),
-      July: Number(july?.amount || 0),
-      August: Number(august?.amount || 0)
+      June:
+        settings["June Pending"] || 0,
+
+      July:
+        settings["July Pending"] || 0,
+
+      August:
+        settings["August Pending"] || 0,
     });
 
     setManualTeyseer(
-      Number(teyseer?.amount || 0)
+      settings["Previous Teyseer"] || 0
     );
   }
 
   // =========================================================
-  // SAVE SETTING TO SUPABASE
+  // SAVE MANUAL SETTING TO SUPABASE
   // =========================================================
 
-  async function saveSetting(settingName, amount) {
-    setSavingSetting(settingName);
+  async function saveReportSetting(
+    settingName,
+    amount
+  ) {
+    const numericAmount =
+      Number(amount) || 0;
 
-    const { error } = await supabase
-      .from("settings")
+    console.log(
+      "Saving setting:",
+      settingName,
+      numericAmount
+    );
+
+    const {
+      error,
+    } = await supabase
+      .from("report_settings")
       .update({
-        amount: Number(amount) || 0,
-        updated_at: new Date().toISOString()
+        amount: numericAmount,
+        updated_at:
+          new Date().toISOString(),
       })
-      .eq("setting_name", settingName);
+      .eq(
+        "setting_name",
+        settingName
+      );
 
     if (error) {
-      console.log("SAVE SETTING ERROR:", error);
+      console.error(
+        "SAVE SETTING ERROR:",
+        error
+      );
+
       alert(
         `Could not save ${settingName}: ${error.message}`
       );
+
+      return false;
     }
 
-    setSavingSetting("");
-  }
+    console.log(
+      `${settingName} saved successfully`
+    );
 
-  // =========================================================
-  // CHANGE PREVIOUS MONTH
-  // =========================================================
-
-  function changePending(month, value) {
-    const amount = Number(value) || 0;
-
-    setManualPending(prev => ({
-      ...prev,
-      [month]: amount
-    }));
+    return true;
   }
 
   // =========================================================
@@ -171,7 +219,8 @@ function Reports() {
 
   const paid = payments.reduce(
     (sum, payment) =>
-      sum + Number(payment.amount || 0),
+      sum +
+      Number(payment.amount || 0),
     0
   );
 
@@ -184,17 +233,18 @@ function Reports() {
   function getPaymentMethod(payment) {
     return String(
       payment.payment_method ||
-      payment.method ||
-      payment.type ||
-      ""
+        payment.method ||
+        payment.type ||
+        ""
     )
       .trim()
       .toLowerCase();
   }
 
   const cashPaid = payments
-    .filter(payment => {
-      const method = getPaymentMethod(payment);
+    .filter((payment) => {
+      const method =
+        getPaymentMethod(payment);
 
       return (
         method === "cash" ||
@@ -203,13 +253,15 @@ function Reports() {
     })
     .reduce(
       (sum, payment) =>
-        sum + Number(payment.amount || 0),
+        sum +
+        Number(payment.amount || 0),
       0
     );
 
   const cardPaid = payments
-    .filter(payment => {
-      const method = getPaymentMethod(payment);
+    .filter((payment) => {
+      const method =
+        getPaymentMethod(payment);
 
       return (
         method === "card" ||
@@ -218,24 +270,28 @@ function Reports() {
     })
     .reduce(
       (sum, payment) =>
-        sum + Number(payment.amount || 0),
+        sum +
+        Number(payment.amount || 0),
       0
     );
 
-  const bankTransferPaid = payments
-    .filter(payment => {
-      const method = getPaymentMethod(payment);
+  const bankTransferPaid =
+    payments
+      .filter((payment) => {
+        const method =
+          getPaymentMethod(payment);
 
-      return (
-        method.includes("bank") ||
-        method.includes("transfer")
+        return (
+          method.includes("bank") ||
+          method.includes("transfer")
+        );
+      })
+      .reduce(
+        (sum, payment) =>
+          sum +
+          Number(payment.amount || 0),
+        0
       );
-    })
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
 
   // =========================================================
   // TEYSEER
@@ -244,32 +300,41 @@ function Reports() {
   const teyseerSources = [
     "Teyseer Motors",
     "Teyseer Motors - Bahaa",
-    "Teyseer Motors - Salah"
+    "Teyseer Motors - Salah",
   ];
 
-  const teyseerJobs = jobs.filter(job =>
-    teyseerSources.includes(job.source)
+  const teyseerJobs = jobs.filter((job) =>
+    teyseerSources.includes(
+      job.source
+    )
   );
 
   const customerJobs = jobs.filter(
-    job =>
-      !teyseerSources.includes(job.source)
+    (job) =>
+      !teyseerSources.includes(
+        job.source
+      )
   );
 
   // =========================================================
-  // TEYSEER SALES
+  // CALCULATE TEYSEER SALES
+  // FROM JOB SERVICES
   // =========================================================
 
   let teyseerSales = 0;
+  let customerSalesFromServices = 0;
 
-  teyseerJobs.forEach(job => {
-    const services = jobServices.filter(
-      service =>
-        String(service.job_id) === String(job.id)
-    );
+  teyseerJobs.forEach((job) => {
+    const services =
+      jobServices.filter(
+        (service) =>
+          String(service.job_id) ===
+          String(job.id)
+      );
 
-    services.forEach(service => {
-      const amount = Number(service.price || 0);
+    services.forEach((service) => {
+      const amount =
+        Number(service.price || 0);
 
       const serviceName = (
         service.service_name ||
@@ -278,38 +343,55 @@ function Reports() {
       )
         .toLowerCase();
 
-      let reportSource = "Sales Team";
+      let reportSource =
+        "Sales Team";
 
-      if (job.source === "Teyseer Motors") {
-        reportSource = "Teyseer Motors";
+      // DIRECT TEYSEER
+      if (
+        job.source ===
+        "Teyseer Motors"
+      ) {
+        reportSource =
+          "Teyseer Motors";
       }
 
+      // SALAH
       else if (
-        job.source === "Teyseer Motors - Salah"
+        job.source ===
+        "Teyseer Motors - Salah"
       ) {
         if (
-          serviceName.includes("full wtt")
+          serviceName.includes(
+            "full wtt"
+          )
         ) {
-          reportSource = "Teyseer Motors";
+          reportSource =
+            "Teyseer Motors";
         } else {
           reportSource = "Salah";
         }
       }
 
+      // BAHA
       else if (
-        job.source === "Teyseer Motors - Bahaa"
+        job.source ===
+        "Teyseer Motors - Bahaa"
       ) {
         if (
-          serviceName.includes("full wtt")
+          serviceName.includes(
+            "full wtt"
+          )
         ) {
-          reportSource = "Teyseer Motors";
+          reportSource =
+            "Teyseer Motors";
         } else {
           reportSource = "Bahaa";
         }
       }
 
       if (
-        reportSource === "Teyseer Motors"
+        reportSource ===
+        "Teyseer Motors"
       ) {
         teyseerSales += amount;
       }
@@ -320,59 +402,76 @@ function Reports() {
   // CUSTOMER SALES
   // =========================================================
 
-  const customerSales = customerJobs.reduce(
-    (sum, job) =>
-      sum +
-      Number(job.price || 0) -
-      Number(job.discount || 0),
-    0
-  );
+  const customerSales =
+    customerJobs.reduce(
+      (sum, job) =>
+        sum +
+        Number(job.price || 0) -
+        Number(job.discount || 0),
+      0
+    );
 
   // =========================================================
   // TEYSEER PAID
   // =========================================================
 
-  const teyseerIds = teyseerJobs.map(
-    job => job.id
-  );
-
-  const teyseerPaid = payments
-    .filter(payment =>
-      teyseerIds.includes(payment.job_id)
-    )
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
+  const teyseerIds =
+    teyseerJobs.map(
+      (job) => job.id
     );
+
+  const teyseerPaid =
+    payments
+      .filter((payment) =>
+        teyseerIds.includes(
+          payment.job_id
+        )
+      )
+      .reduce(
+        (sum, payment) =>
+          sum +
+          Number(
+            payment.amount || 0
+          ),
+        0
+      );
 
   // =========================================================
   // CUSTOMER PAID
   // =========================================================
 
-  const customerIds = customerJobs.map(
-    job => job.id
-  );
-
-  const customerPaid = payments
-    .filter(payment =>
-      customerIds.includes(payment.job_id)
-    )
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
+  const customerIds =
+    customerJobs.map(
+      (job) => job.id
     );
 
+  const customerPaid =
+    payments
+      .filter((payment) =>
+        customerIds.includes(
+          payment.job_id
+        )
+      )
+      .reduce(
+        (sum, payment) =>
+          sum +
+          Number(
+            payment.amount || 0
+          ),
+        0
+      );
+
   const customerBalance =
-    customerSales - customerPaid;
+    customerSales -
+    customerPaid;
 
   // =========================================================
   // DATE HELPERS
   // =========================================================
 
   function getDateString(date) {
-    const year = date.getFullYear();
+    const year =
+      date.getFullYear();
 
     const month = String(
       date.getMonth() + 1
@@ -390,16 +489,21 @@ function Reports() {
       return null;
     }
 
-    const date = new Date(job.created_at);
+    const date = new Date(
+      job.created_at
+    );
 
-    if (isNaN(date.getTime())) {
+    if (
+      isNaN(date.getTime())
+    ) {
       return null;
     }
 
     return date.toLocaleDateString(
       "en-CA",
       {
-        timeZone: "Asia/Qatar"
+        timeZone:
+          "Asia/Qatar",
       }
     );
   }
@@ -408,23 +512,28 @@ function Reports() {
   // TODAY
   // =========================================================
 
-  const today = new Date().toLocaleDateString(
-    "en-CA",
-    {
-      timeZone: "Asia/Qatar"
-    }
-  );
+  const today =
+    new Date().toLocaleDateString(
+      "en-CA",
+      {
+        timeZone:
+          "Asia/Qatar",
+      }
+    );
 
-  const carsToday = jobs.filter(
-    job =>
-      getJobDate(job) === today
-  ).length;
+  const carsToday =
+    jobs.filter(
+      (job) =>
+        getJobDate(job) ===
+        today
+    ).length;
 
   // =========================================================
   // THIS WEEK
   // =========================================================
 
-  const currentDate = new Date();
+  const currentDate =
+    new Date();
 
   const startOfWeek =
     new Date(currentDate);
@@ -433,7 +542,9 @@ function Reports() {
     startOfWeek.getDay();
 
   const difference =
-    day === 0 ? 6 : day - 1;
+    day === 0
+      ? 6
+      : day - 1;
 
   startOfWeek.setDate(
     startOfWeek.getDate() -
@@ -448,16 +559,19 @@ function Reports() {
   );
 
   const weekStart =
-    getDateString(startOfWeek);
+    getDateString(
+      startOfWeek
+    );
 
   const carsThisWeek =
-    jobs.filter(job => {
+    jobs.filter((job) => {
       const jobDate =
         getJobDate(job);
 
       return (
         jobDate &&
-        jobDate >= weekStart &&
+        jobDate >=
+          weekStart &&
         jobDate <= today
       );
     }).length;
@@ -474,16 +588,19 @@ function Reports() {
     );
 
   const monthStart =
-    getDateString(startOfMonth);
+    getDateString(
+      startOfMonth
+    );
 
   const carsThisMonth =
-    jobs.filter(job => {
+    jobs.filter((job) => {
       const jobDate =
         getJobDate(job);
 
       return (
         jobDate &&
-        jobDate >= monthStart &&
+        jobDate >=
+          monthStart &&
         jobDate <= today
       );
     }).length;
@@ -494,7 +611,7 @@ function Reports() {
 
   const dailyCars = {};
 
-  jobs.forEach(job => {
+  jobs.forEach((job) => {
     const date =
       getJobDate(job);
 
@@ -510,10 +627,14 @@ function Reports() {
   });
 
   const dailyCarRows =
-    Object.entries(dailyCars)
-      .sort(([dateA], [dateB]) =>
-        dateB.localeCompare(dateA)
-      );
+    Object.entries(
+      dailyCars
+    ).sort(
+      ([dateA], [dateB]) =>
+        dateB.localeCompare(
+          dateA
+        )
+    );
 
   // =========================================================
   // PRINT DAILY REPORT
@@ -525,12 +646,14 @@ function Reports() {
 
     const todayJobs =
       jobs.filter(
-        job =>
+        (job) =>
           getJobDate(job) ===
           selectedDate
       );
 
-    if (todayJobs.length === 0) {
+    if (
+      todayJobs.length === 0
+    ) {
       alert(
         `No cars found for ${selectedDate}.`
       );
@@ -542,8 +665,12 @@ function Reports() {
       todayJobs.reduce(
         (sum, job) =>
           sum +
-          Number(job.price || 0) -
-          Number(job.discount || 0),
+          Number(
+            job.price || 0
+          ) -
+          Number(
+            job.discount || 0
+          ),
         0
       );
 
@@ -552,7 +679,7 @@ function Reports() {
         (sum, job) => {
           const jobPayments =
             payments.filter(
-              payment =>
+              (payment) =>
                 payment.job_id ===
                 job.id
             );
@@ -566,7 +693,8 @@ function Reports() {
               ) =>
                 paymentSum +
                 Number(
-                  payment.amount || 0
+                  payment.amount ||
+                    0
                 ),
               0
             )
@@ -576,128 +704,152 @@ function Reports() {
       );
 
     const totalBalance =
-      totalSales - totalPaid;
+      totalSales -
+      totalPaid;
 
     const reportRows =
       todayJobs
-        .map((job, index) => {
-          const jobPayments =
-            payments.filter(
-              payment =>
-                payment.job_id ===
-                job.id
-            );
-
-          const jobPaid =
-            jobPayments.reduce(
-              (sum, payment) =>
-                sum +
-                Number(
-                  payment.amount || 0
-                ),
-              0
-            );
-
-          const price =
-            Number(job.price || 0);
-
-          const discount =
-            Number(
-              job.discount || 0
-            );
-
-          const netAmount =
-            price - discount;
-
-          const jobBalance =
-            netAmount - jobPaid;
-
-          let jobTime = "";
-
-          if (job.created_at) {
-            const date =
-              new Date(
-                job.created_at
+        .map(
+          (job, index) => {
+            const jobPayments =
+              payments.filter(
+                (payment) =>
+                  payment.job_id ===
+                  job.id
               );
 
+            const jobPaid =
+              jobPayments.reduce(
+                (
+                  sum,
+                  payment
+                ) =>
+                  sum +
+                  Number(
+                    payment.amount ||
+                      0
+                  ),
+                0
+              );
+
+            const price =
+              Number(
+                job.price || 0
+              );
+
+            const discount =
+              Number(
+                job.discount || 0
+              );
+
+            const netAmount =
+              price - discount;
+
+            const jobBalance =
+              netAmount -
+              jobPaid;
+
+            let jobTime = "";
+
             if (
-              !isNaN(
-                date.getTime()
+              job.created_at
+            ) {
+              const date =
+                new Date(
+                  job.created_at
+                );
+
+              if (
+                !isNaN(
+                  date.getTime()
+                )
+              ) {
+                jobTime =
+                  date.toLocaleTimeString(
+                    "en-US",
+                    {
+                      timeZone:
+                        "Asia/Qatar",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  );
+              }
+            }
+
+            let services =
+              "No services";
+
+            if (
+              Array.isArray(
+                job.services
               )
             ) {
-              jobTime =
-                date.toLocaleTimeString(
-                  "en-US",
-                  {
-                    timeZone:
-                      "Asia/Qatar",
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  }
-                );
+              services =
+                job.services
+                  .map(
+                    (service) => {
+                      if (
+                        typeof service ===
+                        "string"
+                      ) {
+                        return service;
+                      }
+
+                      return (
+                        service?.name ||
+                        service?.service_name ||
+                        service?.title ||
+                        ""
+                      );
+                    }
+                  )
+                  .filter(Boolean)
+                  .join(", ");
+            } else if (
+              typeof job.services ===
+              "string"
+            ) {
+              services =
+                job.services.trim() ||
+                "No services";
             }
+
+            return `
+              <tr>
+
+                <td>${index + 1}</td>
+
+                <td>${jobTime}</td>
+
+                <td>${job.customer || ""}</td>
+
+                <td>${job.phone || ""}</td>
+
+                <td>${job.carModel || ""}</td>
+
+                <td>${job.plate || ""}</td>
+
+                <td>${job.source || "Not specified"}</td>
+
+                <td>${services}</td>
+
+                <td class="money">
+                  QAR ${netAmount.toLocaleString()}
+                </td>
+
+                <td class="money paid">
+                  QAR ${jobPaid.toLocaleString()}
+                </td>
+
+                <td class="money balance">
+                  QAR ${jobBalance.toLocaleString()}
+                </td>
+
+              </tr>
+            `;
           }
-
-          let services =
-            "No services";
-
-          if (
-            Array.isArray(
-              job.services
-            )
-          ) {
-            services =
-              job.services
-                .map(service => {
-                  if (
-                    typeof service ===
-                    "string"
-                  ) {
-                    return service;
-                  }
-
-                  return (
-                    service?.name ||
-                    service?.service_name ||
-                    service?.title ||
-                    ""
-                  );
-                })
-                .filter(Boolean)
-                .join(", ");
-          }
-
-          else if (
-            typeof job.services ===
-            "string"
-          ) {
-            services =
-              job.services.trim() ||
-              "No services";
-          }
-
-          return `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${jobTime}</td>
-              <td>${job.customer || ""}</td>
-              <td>${job.phone || ""}</td>
-              <td>${job.carModel || ""}</td>
-              <td>${job.plate || ""}</td>
-              <td>${job.source || "Not specified"}</td>
-              <td>${services}</td>
-              <td class="money">
-                QAR ${netAmount.toLocaleString()}
-              </td>
-              <td class="money paid">
-                QAR ${jobPaid.toLocaleString()}
-              </td>
-              <td class="money balance">
-                QAR ${jobBalance.toLocaleString()}
-              </td>
-            </tr>
-          `;
-        })
+        )
         .join("");
 
     const printWindow =
@@ -719,7 +871,9 @@ function Reports() {
 
     printWindow.document.write(`
       <!DOCTYPE html>
+
       <html>
+
       <head>
 
         <title>
@@ -867,6 +1021,7 @@ function Reports() {
         <div class="summary">
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               TOTAL CARS
             </div>
@@ -874,9 +1029,11 @@ function Reports() {
             <div class="summaryValue">
               ${todayJobs.length}
             </div>
+
           </div>
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               NET SALES
             </div>
@@ -884,9 +1041,11 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalSales.toLocaleString()}
             </div>
+
           </div>
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               TOTAL PAID
             </div>
@@ -894,9 +1053,11 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalPaid.toLocaleString()}
             </div>
+
           </div>
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               BALANCE DUE
             </div>
@@ -904,6 +1065,7 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalBalance.toLocaleString()}
             </div>
+
           </div>
 
         </div>
@@ -913,6 +1075,7 @@ function Reports() {
           <thead>
 
             <tr>
+
               <th>#</th>
               <th>Time</th>
               <th>Customer</th>
@@ -924,6 +1087,7 @@ function Reports() {
               <th>Amount</th>
               <th>Paid</th>
               <th>Balance</th>
+
             </tr>
 
           </thead>
@@ -963,7 +1127,8 @@ function Reports() {
             ${new Date().toLocaleString(
               "en-US",
               {
-                timeZone: "Asia/Qatar"
+                timeZone:
+                  "Asia/Qatar",
               }
             )}
           </span>
@@ -971,6 +1136,7 @@ function Reports() {
         </div>
 
       </body>
+
       </html>
     `);
 
@@ -994,7 +1160,7 @@ function Reports() {
       style={{
         padding: "30px",
         background: "#f1f5f9",
-        minHeight: "100vh"
+        minHeight: "100vh",
       }}
     >
 
@@ -1012,14 +1178,14 @@ function Reports() {
           alignItems: "center",
           gap: "12px",
           marginBottom: "15px",
-          flexWrap: "wrap"
+          flexWrap: "wrap",
         }}
       >
 
         <label
           style={{
             fontWeight: "bold",
-            fontSize: "16px"
+            fontSize: "16px",
           }}
         >
           📅 Report Date:
@@ -1028,7 +1194,7 @@ function Reports() {
         <input
           type="date"
           value={reportDate}
-          onChange={e =>
+          onChange={(e) =>
             setReportDate(
               e.target.value
             )
@@ -1039,7 +1205,7 @@ function Reports() {
             borderRadius: "8px",
             border:
               "1px solid #cbd5e1",
-            fontSize: "16px"
+            fontSize: "16px",
           }}
         />
 
@@ -1057,7 +1223,7 @@ function Reports() {
           cursor: "pointer",
           fontSize: "16px",
           fontWeight: "bold",
-          marginBottom: "25px"
+          marginBottom: "25px",
         }}
       >
         🖨️ Print Daily Report
@@ -1077,7 +1243,7 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom: "30px"
+          marginBottom: "30px",
         }}
       >
 
@@ -1125,7 +1291,7 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom: "30px"
+          marginBottom: "30px",
         }}
       >
 
@@ -1145,7 +1311,9 @@ function Reports() {
 
         <FinancialCard
           title="Bank Transfer"
-          value={bankTransferPaid}
+          value={
+            bankTransferPaid
+          }
           color="#7c3aed"
           icon="🏦"
         />
@@ -1166,71 +1334,74 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom: "30px"
+          marginBottom: "30px",
         }}
       >
 
         <ManualCard
           title="June Pending"
-          value={manualPending.June}
-          saving={
-            savingSetting ===
-            "June Pending"
+          value={
+            manualPending.June
           }
-          onChange={value =>
-            changePending(
-              "June",
-              value
-            )
-          }
-          onSave={() =>
-            saveSetting(
+          onChange={(value) => {
+            setManualPending(
+              (previous) => ({
+                ...previous,
+                June:
+                  Number(value) || 0,
+              })
+            );
+          }}
+          onBlur={() => {
+            saveReportSetting(
               "June Pending",
               manualPending.June
-            )
-          }
+            );
+          }}
         />
 
         <ManualCard
           title="July Pending"
-          value={manualPending.July}
-          saving={
-            savingSetting ===
-            "July Pending"
+          value={
+            manualPending.July
           }
-          onChange={value =>
-            changePending(
-              "July",
-              value
-            )
-          }
-          onSave={() =>
-            saveSetting(
+          onChange={(value) => {
+            setManualPending(
+              (previous) => ({
+                ...previous,
+                July:
+                  Number(value) || 0,
+              })
+            );
+          }}
+          onBlur={() => {
+            saveReportSetting(
               "July Pending",
               manualPending.July
-            )
-          }
+            );
+          }}
         />
 
         <ManualCard
           title="August Pending"
-          value={manualPending.August}
-          saving={
-            savingSetting ===
-            "August Pending"
+          value={
+            manualPending.August
           }
-          onChange={value =>
-            changePending(
-              "August",
-              value
-            )
-          }
-          onSave={() =>
-            saveSetting(
+          onChange={(value) => {
+            setManualPending(
+              (previous) => ({
+                ...previous,
+                August:
+                  Number(value) || 0,
+              })
+            );
+          }}
+          onBlur={() => {
+            saveReportSetting(
               "August Pending",
               manualPending.August
-            )
-          }
+            );
+          }}
         />
 
       </div>
@@ -1250,7 +1421,7 @@ function Reports() {
           borderRadius: "18px",
           boxShadow:
             "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom: "30px"
+          marginBottom: "30px",
         }}
       >
 
@@ -1261,11 +1432,19 @@ function Reports() {
         <input
           type="number"
           value={manualTeyseer}
-          onChange={e =>
+          onChange={(e) =>
             setManualTeyseer(
-              Number(e.target.value) || 0
+              Number(
+                e.target.value
+              ) || 0
             )
           }
+          onBlur={() => {
+            saveReportSetting(
+              "Previous Teyseer",
+              manualTeyseer
+            );
+          }}
           style={{
             width: "100%",
             maxWidth: "350px",
@@ -1273,46 +1452,17 @@ function Reports() {
             fontSize: "18px",
             border:
               "1px solid #cbd5e1",
-            borderRadius: "8px"
+            borderRadius: "8px",
           }}
         />
 
-        <br />
-        <br />
-
-        <button
-          onClick={() =>
-            saveSetting(
-              "Previous Teyseer",
-              manualTeyseer
-            )
-          }
-          style={{
-            background: "#9333ea",
-            color: "white",
-            border: "none",
-            padding:
-              "10px 18px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: "bold"
-          }}
-        >
-          {savingSetting ===
-          "Previous Teyseer"
-            ? "Saving..."
-            : "Save Previous Teyseer"}
-        </button>
-
         <h2
           style={{
-            color: "#9333ea"
+            color: "#9333ea",
           }}
         >
           QAR{" "}
-          {Number(
-            manualTeyseer
-          ).toLocaleString()}
+          {manualTeyseer.toLocaleString()}
         </h2>
 
       </div>
@@ -1331,7 +1481,7 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom: "30px"
+          marginBottom: "30px",
         }}
       >
 
@@ -1380,7 +1530,7 @@ function Reports() {
           borderRadius: "18px",
           boxShadow:
             "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom: "30px"
+          marginBottom: "30px",
         }}
       >
 
@@ -1395,7 +1545,7 @@ function Reports() {
         ) : (
           <div
             style={{
-              overflowX: "auto"
+              overflowX: "auto",
             }}
           >
 
@@ -1403,7 +1553,7 @@ function Reports() {
               style={{
                 width: "100%",
                 borderCollapse:
-                  "collapse"
+                  "collapse",
               }}
             >
 
@@ -1412,13 +1562,17 @@ function Reports() {
                 <tr>
 
                   <th
-                    style={tableHeader}
+                    style={
+                      tableHeader
+                    }
                   >
                     Date
                   </th>
 
                   <th
-                    style={tableHeader}
+                    style={
+                      tableHeader
+                    }
                   >
                     Cars Received
                   </th>
@@ -1438,26 +1592,38 @@ function Reports() {
                       ).toLocaleDateString(
                         "en-US",
                         {
-                          weekday: "short",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric"
+                          weekday:
+                            "short",
+                          year:
+                            "numeric",
+                          month:
+                            "short",
+                          day:
+                            "numeric",
                         }
                       );
 
                     return (
-                      <tr key={date}>
+                      <tr
+                        key={date}
+                      >
 
                         <td
-                          style={tableCell}
+                          style={
+                            tableCell
+                          }
                         >
                           <strong>
-                            {formattedDate}
+                            {
+                              formattedDate
+                            }
                           </strong>
                         </td>
 
                         <td
-                          style={tableCell}
+                          style={
+                            tableCell
+                          }
                         >
 
                           <span
@@ -1471,10 +1637,11 @@ function Reports() {
                               borderRadius:
                                 "20px",
                               fontWeight:
-                                "bold"
+                                "bold",
                             }}
                           >
-                            🚗 {count}
+                            🚗{" "}
+                            {count}
                           </span>
 
                         </td>
@@ -1507,11 +1674,15 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(250px,1fr))",
           gap: "20px",
-          marginBottom: "30px"
+          marginBottom: "30px",
         }}
       >
 
-        <div style={sourceCardStyle}>
+        <div
+          style={
+            sourceCardStyle
+          }
+        >
 
           <h2>
             🏢 Teyseer
@@ -1534,7 +1705,11 @@ function Reports() {
 
         </div>
 
-        <div style={sourceCardStyle}>
+        <div
+          style={
+            sourceCardStyle
+          }
+        >
 
           <h2>
             👤 Customers / Other
@@ -1577,7 +1752,7 @@ function FinancialCard({
   value,
   color,
   icon,
-  noCurrency
+  noCurrency,
 }) {
   return (
     <div
@@ -1589,14 +1764,14 @@ function FinancialCard({
           "0 8px 20px rgba(0,0,0,0.08)",
         textAlign: "center",
         borderTop:
-          `5px solid ${color}`
+          `5px solid ${color}`,
       }}
     >
 
       <div
         style={{
           fontSize: "35px",
-          marginBottom: "10px"
+          marginBottom: "10px",
         }}
       >
         {icon}
@@ -1629,8 +1804,7 @@ function ManualCard({
   title,
   value,
   onChange,
-  onSave,
-  saving
+  onBlur,
 }) {
   return (
     <div
@@ -1641,7 +1815,7 @@ function ManualCard({
         boxShadow:
           "0 8px 20px rgba(0,0,0,0.08)",
         borderTop:
-          "5px solid #dc2626"
+          "5px solid #dc2626",
       }}
     >
 
@@ -1653,56 +1827,34 @@ function ManualCard({
         style={{
           display: "block",
           color: "#64748b",
-          marginBottom: "8px"
+          marginBottom: "8px",
         }}
       >
-        Enter amount
+        Enter amount manually
       </label>
 
       <input
         type="number"
         value={value}
-        onChange={e =>
+        onChange={(e) =>
           onChange(
             e.target.value
           )
         }
+        onBlur={onBlur}
         style={{
           width: "100%",
           padding: "12px",
           fontSize: "18px",
           border:
             "1px solid #cbd5e1",
-          borderRadius: "8px"
+          borderRadius: "8px",
         }}
       />
 
-      <button
-        onClick={onSave}
-        disabled={saving}
-        style={{
-          marginTop: "12px",
-          background: "#dc2626",
-          color: "white",
-          border: "none",
-          padding:
-            "10px 18px",
-          borderRadius: "8px",
-          cursor: saving
-            ? "not-allowed"
-            : "pointer",
-          fontWeight: "bold",
-          opacity: saving ? 0.7 : 1
-        }}
-      >
-        {saving
-          ? "Saving..."
-          : "Save"}
-      </button>
-
       <h2
         style={{
-          color: "#dc2626"
+          color: "#dc2626",
         }}
       >
         QAR{" "}
@@ -1724,7 +1876,7 @@ const sourceCardStyle = {
   padding: "25px",
   borderRadius: "18px",
   boxShadow:
-    "0 8px 20px rgba(0,0,0,0.08)"
+    "0 8px 20px rgba(0,0,0,0.08)",
 };
 
 // =========================================================
@@ -1736,13 +1888,13 @@ const tableHeader = {
   padding: "14px",
   background: "#f8fafc",
   borderBottom:
-    "2px solid #e2e8f0"
+    "2px solid #e2e8f0",
 };
 
 const tableCell = {
   padding: "15px",
   borderBottom:
-    "1px solid #e2e8f0"
+    "1px solid #e2e8f0",
 };
 
 export default Reports;
