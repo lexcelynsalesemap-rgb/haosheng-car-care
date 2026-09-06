@@ -27,11 +27,9 @@ function Reports() {
   const [reportDate, setReportDate] = useState(() => {
     const date = new Date();
 
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    return date.toLocaleDateString("en-CA", {
+      timeZone: "Asia/Qatar",
+    });
   });
 
   // =========================================================
@@ -45,7 +43,7 @@ function Reports() {
 
   async function loadReports() {
     // IMPORTANT:
-    // We do NOT order by created_at because your jobs table
+    // No created_at ordering because your jobs table
     // does not have a created_at column.
 
     const { data: jobData, error: jobError } = await supabase
@@ -66,17 +64,14 @@ function Reports() {
 
     if (jobError) {
       console.error("JOB ERROR:", jobError);
-      alert("Could not load jobs: " + jobError.message);
     }
 
     if (paymentError) {
       console.error("PAYMENT ERROR:", paymentError);
-      alert("Could not load payments: " + paymentError.message);
     }
 
     if (serviceError) {
       console.error("SERVICE ERROR:", serviceError);
-      alert("Could not load services: " + serviceError.message);
     }
 
     setJobs(jobData || []);
@@ -86,7 +81,6 @@ function Reports() {
 
   // =========================================================
   // LOAD REPORT SETTINGS
-  // TABLE: report_settings
   // =========================================================
 
   async function loadReportSettings() {
@@ -96,20 +90,12 @@ function Reports() {
 
     if (error) {
       console.error("REPORT SETTINGS ERROR:", error);
-
-      alert(
-        "Could not load report settings: " +
-          error.message
-      );
-
       return;
     }
 
     console.log("REPORT SETTINGS:", data);
 
-    if (!data) {
-      return;
-    }
+    if (!data) return;
 
     const june = data.find(
       item => item.setting_name === "June Pending"
@@ -128,23 +114,13 @@ function Reports() {
     );
 
     setManualPending({
-      June: june
-        ? Number(june.amount) || 0
-        : 7000,
-
-      July: july
-        ? Number(july.amount) || 0
-        : 10000,
-
-      August: august
-        ? Number(august.amount) || 0
-        : 18700,
+      June: june ? Number(june.amount) || 0 : 7000,
+      July: july ? Number(july.amount) || 0 : 10000,
+      August: august ? Number(august.amount) || 0 : 18700,
     });
 
     if (teyseer) {
-      setManualTeyseer(
-        Number(teyseer.amount) || 0
-      );
+      setManualTeyseer(Number(teyseer.amount) || 0);
     }
   }
 
@@ -158,70 +134,64 @@ function Reports() {
 
       const numericAmount = Number(amount) || 0;
 
-      // First try to update an existing row
-      const {
-        data: updatedRows,
-        error: updateError,
-      } = await supabase
+      const { data: existing, error: findError } = await supabase
         .from("report_settings")
-        .update({
-          amount: numericAmount,
-        })
+        .select("*")
         .eq("setting_name", settingName)
-        .select();
+        .maybeSingle();
 
-      if (updateError) {
-        console.error(
-          "UPDATE SETTING ERROR:",
-          updateError
-        );
-
+      if (findError) {
+        console.error("FIND SETTING ERROR:", findError);
         alert(
-          `Could not save ${settingName}: ${updateError.message}`
+          `Could not save ${settingName}: ${findError.message}`
         );
-
         return;
       }
 
-      // If row does not exist, insert it
-      if (
-        !updatedRows ||
-        updatedRows.length === 0
-      ) {
-        const {
-          error: insertError,
-        } = await supabase
+      if (existing) {
+        const { error } = await supabase
+          .from("report_settings")
+          .update({
+            amount: numericAmount,
+          })
+          .eq("setting_name", settingName);
+
+        if (error) {
+          console.error("UPDATE SETTING ERROR:", error);
+
+          alert(
+            `Could not save ${settingName}: ${error.message}`
+          );
+
+          return;
+        }
+      } else {
+        const { error } = await supabase
           .from("report_settings")
           .insert({
             setting_name: settingName,
             amount: numericAmount,
           });
 
-        if (insertError) {
-          console.error(
-            "INSERT SETTING ERROR:",
-            insertError
-          );
+        if (error) {
+          console.error("INSERT SETTING ERROR:", error);
 
           alert(
-            `Could not save ${settingName}: ${insertError.message}`
+            `Could not save ${settingName}: ${error.message}`
           );
 
           return;
         }
       }
 
-      console.log(
-        `${settingName} saved:`,
-        numericAmount
-      );
+      console.log(`${settingName} saved:`, numericAmount);
     } finally {
       setSavingSetting("");
     }
   }
 
   // =========================================================
-  // CHANGE JUNE
+  // CHANGE MANUAL VALUES
   // =========================================================
 
   function changeJune(value) {
@@ -232,15 +202,8 @@ function Reports() {
       June: amount,
     }));
 
-    saveSetting(
-      "June Pending",
-      amount
-    );
+    saveSetting("June Pending", amount);
   }
-
-  // =========================================================
-  // CHANGE JULY
-  // =========================================================
 
   function changeJuly(value) {
     const amount = Number(value) || 0;
@@ -250,15 +213,8 @@ function Reports() {
       July: amount,
     }));
 
-    saveSetting(
-      "July Pending",
-      amount
-    );
+    saveSetting("July Pending", amount);
   }
-
-  // =========================================================
-  // CHANGE AUGUST
-  // =========================================================
 
   function changeAugust(value) {
     const amount = Number(value) || 0;
@@ -268,29 +224,19 @@ function Reports() {
       August: amount,
     }));
 
-    saveSetting(
-      "August Pending",
-      amount
-    );
+    saveSetting("August Pending", amount);
   }
-
-  // =========================================================
-  // CHANGE TEYSEER
-  // =========================================================
 
   function changeTeyseer(value) {
     const amount = Number(value) || 0;
 
     setManualTeyseer(amount);
 
-    saveSetting(
-      "Previous Teyseer",
-      amount
-    );
+    saveSetting("Previous Teyseer", amount);
   }
 
   // =========================================================
-  // GENERAL FINANCIAL REPORT
+  // FINANCIAL SUMMARY
   // =========================================================
 
   const netSales = jobs.reduce(
@@ -311,14 +257,7 @@ function Reports() {
 
   // =========================================================
   // PAYMENT METHODS
-  //
-  // Your database contains:
-  // Visa
-  // Mastercard
-  // Cash
-  // Bank Transfer
-  //
-  // Visa + Mastercard = Card
+  // Visa + Mastercard = CARD
   // =========================================================
 
   function getPaymentMethod(payment) {
@@ -332,66 +271,52 @@ function Reports() {
       .toLowerCase();
   }
 
-  // =========================================================
-  // CASH
-  // =========================================================
+  function isCash(payment) {
+    const method = getPaymentMethod(payment);
+
+    return method.includes("cash");
+  }
+
+  function isCard(payment) {
+    const method = getPaymentMethod(payment);
+
+    return (
+      method.includes("visa") ||
+      method.includes("mastercard") ||
+      method.includes("master card") ||
+      method === "card" ||
+      method.includes("credit card") ||
+      method.includes("debit card")
+    );
+  }
+
+  function isBankTransfer(payment) {
+    const method = getPaymentMethod(payment);
+
+    return (
+      method.includes("bank") ||
+      method.includes("transfer")
+    );
+  }
 
   const cashPaid = payments
-    .filter(payment => {
-      const method = getPaymentMethod(payment);
-
-      return (
-        method === "cash" ||
-        method.includes("cash")
-      );
-    })
+    .filter(isCash)
     .reduce(
       (sum, payment) =>
         sum + Number(payment.amount || 0),
       0
     );
-
-  // =========================================================
-  // CARD
-  // VISA + MASTERCARD + CARD
-  // =========================================================
 
   const cardPaid = payments
-    .filter(payment => {
-      const method = getPaymentMethod(payment);
-
-      return (
-        method === "card" ||
-        method.includes("card") ||
-        method === "visa" ||
-        method.includes("visa") ||
-        method === "mastercard" ||
-        method === "master card" ||
-        method.includes("mastercard") ||
-        method.includes("master card")
-      );
-    })
+    .filter(isCard)
     .reduce(
       (sum, payment) =>
         sum + Number(payment.amount || 0),
       0
     );
-
-  // =========================================================
-  // BANK TRANSFER
-  // =========================================================
 
   const bankTransferPaid = payments
-    .filter(payment => {
-      const method = getPaymentMethod(payment);
-
-      return (
-        method === "bank transfer" ||
-        method === "bank_transfer" ||
-        method.includes("bank") ||
-        method.includes("transfer")
-      );
-    })
+    .filter(isBankTransfer)
     .reduce(
       (sum, payment) =>
         sum + Number(payment.amount || 0),
@@ -399,16 +324,76 @@ function Reports() {
     );
 
   // =========================================================
-  // OTHER PAYMENT METHODS
+  // DAILY PAYMENTS
+  // Uses payments.payment_date
   // =========================================================
 
-  const knownPaymentTotal =
-    cashPaid +
-    cardPaid +
-    bankTransferPaid;
+  const dailyPayments = {};
 
-  const otherPaid =
-    paid - knownPaymentTotal;
+  payments.forEach(payment => {
+    if (!payment.payment_date) return;
+
+    const date = String(payment.payment_date).slice(0, 10);
+
+    if (!dailyPayments[date]) {
+      dailyPayments[date] = {
+        cash: 0,
+        visa: 0,
+        mastercard: 0,
+        bankTransfer: 0,
+        other: 0,
+        total: 0,
+      };
+    }
+
+    const amount = Number(payment.amount || 0);
+    const method = getPaymentMethod(payment);
+
+    dailyPayments[date].total += amount;
+
+    if (isCash(payment)) {
+      dailyPayments[date].cash += amount;
+    } else if (
+      method.includes("visa")
+    ) {
+      dailyPayments[date].visa += amount;
+    } else if (
+      method.includes("mastercard") ||
+      method.includes("master card")
+    ) {
+      dailyPayments[date].mastercard += amount;
+    } else if (isBankTransfer(payment)) {
+      dailyPayments[date].bankTransfer += amount;
+    } else {
+      dailyPayments[date].other += amount;
+    }
+  });
+
+  const dailyPaymentRows = Object.entries(dailyPayments)
+    .sort(
+      ([dateA], [dateB]) =>
+        dateB.localeCompare(dateA)
+    );
+
+  // =========================================================
+  // SELECTED DATE PAYMENT
+  // =========================================================
+
+  const selectedDatePayments = payments.filter(payment => {
+    if (!payment.payment_date) return false;
+
+    return (
+      String(payment.payment_date).slice(0, 10) ===
+      reportDate
+    );
+  });
+
+  const selectedDatePaymentTotal =
+    selectedDatePayments.reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
 
   // =========================================================
   // TEYSEER
@@ -436,16 +421,14 @@ function Reports() {
   let teyseerSales = 0;
 
   teyseerJobs.forEach(job => {
-    const services =
-      jobServices.filter(
-        service =>
-          String(service.job_id) ===
-          String(job.id)
-      );
+    const services = jobServices.filter(
+      service =>
+        String(service.job_id) ===
+        String(job.id)
+    );
 
     services.forEach(service => {
-      const amount =
-        Number(service.price || 0);
+      const amount = Number(service.price || 0);
 
       const serviceName = String(
         service.service_name ||
@@ -453,49 +436,29 @@ function Reports() {
           ""
       ).toLowerCase();
 
-      let reportSource =
-        "Sales Team";
+      let reportSource = "Sales Team";
 
-      if (
-        job.source ===
-        "Teyseer Motors"
-      ) {
-        reportSource =
-          "Teyseer Motors";
+      if (job.source === "Teyseer Motors") {
+        reportSource = "Teyseer Motors";
       } else if (
-        job.source ===
-        "Teyseer Motors - Salah"
+        job.source === "Teyseer Motors - Salah"
       ) {
-        if (
-          serviceName.includes(
-            "full wtt"
-          )
-        ) {
-          reportSource =
-            "Teyseer Motors";
+        if (serviceName.includes("full wtt")) {
+          reportSource = "Teyseer Motors";
         } else {
           reportSource = "Salah";
         }
       } else if (
-        job.source ===
-        "Teyseer Motors - Bahaa"
+        job.source === "Teyseer Motors - Bahaa"
       ) {
-        if (
-          serviceName.includes(
-            "full wtt"
-          )
-        ) {
-          reportSource =
-            "Teyseer Motors";
+        if (serviceName.includes("full wtt")) {
+          reportSource = "Teyseer Motors";
         } else {
           reportSource = "Bahaa";
         }
       }
 
-      if (
-        reportSource ===
-        "Teyseer Motors"
-      ) {
+      if (reportSource === "Teyseer Motors") {
         teyseerSales += amount;
       }
     });
@@ -505,21 +468,19 @@ function Reports() {
   // CUSTOMER SALES
   // =========================================================
 
-  const customerSales =
-    customerJobs.reduce(
-      (sum, job) =>
-        sum +
-        Number(job.price || 0) -
-        Number(job.discount || 0),
-      0
-    );
+  const customerSales = customerJobs.reduce(
+    (sum, job) =>
+      sum +
+      Number(job.price || 0) -
+      Number(job.discount || 0),
+    0
+  );
 
   // =========================================================
   // TEYSEER PAID
   // =========================================================
 
-  const teyseerIds =
-    teyseerJobs.map(job => job.id);
+  const teyseerIds = teyseerJobs.map(job => job.id);
 
   const teyseerPaid = payments
     .filter(payment =>
@@ -531,8 +492,7 @@ function Reports() {
     )
     .reduce(
       (sum, payment) =>
-        sum +
-        Number(payment.amount || 0),
+        sum + Number(payment.amount || 0),
       0
     );
 
@@ -540,8 +500,7 @@ function Reports() {
   // CUSTOMER PAID
   // =========================================================
 
-  const customerIds =
-    customerJobs.map(job => job.id);
+  const customerIds = customerJobs.map(job => job.id);
 
   const customerPaid = payments
     .filter(payment =>
@@ -553,8 +512,7 @@ function Reports() {
     )
     .reduce(
       (sum, payment) =>
-        sum +
-        Number(payment.amount || 0),
+        sum + Number(payment.amount || 0),
       0
     );
 
@@ -566,8 +524,7 @@ function Reports() {
   // =========================================================
 
   function getDateString(date) {
-    const year =
-      date.getFullYear();
+    const year = date.getFullYear();
 
     const month = String(
       date.getMonth() + 1
@@ -580,28 +537,22 @@ function Reports() {
     return `${year}-${month}-${day}`;
   }
 
+  // NOTE:
+  // Your jobs table previously caused a created_at error.
+  // This supports several possible date column names.
+
   function getJobDate(job) {
-    /*
-      Your jobs table does not have created_at.
-      We try common date fields instead.
-
-      If your actual job date column has another name,
-      add it here.
-    */
-
-    const rawDate =
+    const possibleDate =
       job.created_at ||
-      job.date ||
       job.job_date ||
-      job.createdDate ||
-      job.created_date;
+      job.date ||
+      job.createdDate;
 
-    if (!rawDate) {
+    if (!possibleDate) {
       return null;
     }
 
-    const date =
-      new Date(rawDate);
+    const date = new Date(possibleDate);
 
     if (isNaN(date.getTime())) {
       return null;
@@ -610,8 +561,7 @@ function Reports() {
     return date.toLocaleDateString(
       "en-CA",
       {
-        timeZone:
-          "Asia/Qatar",
+        timeZone: "Asia/Qatar",
       }
     );
   }
@@ -620,34 +570,27 @@ function Reports() {
   // TODAY
   // =========================================================
 
-  const today =
-    new Date().toLocaleDateString(
-      "en-CA",
-      {
-        timeZone:
-          "Asia/Qatar",
-      }
-    );
+  const today = new Date().toLocaleDateString(
+    "en-CA",
+    {
+      timeZone: "Asia/Qatar",
+    }
+  );
 
-  const carsToday =
-    jobs.filter(
-      job =>
-        getJobDate(job) ===
-        today
-    ).length;
+  const carsToday = jobs.filter(
+    job =>
+      getJobDate(job) === today
+  ).length;
 
   // =========================================================
   // THIS WEEK
   // =========================================================
 
-  const currentDate =
-    new Date();
+  const currentDate = new Date();
 
-  const startOfWeek =
-    new Date(currentDate);
+  const startOfWeek = new Date(currentDate);
 
-  const day =
-    startOfWeek.getDay();
+  const day = startOfWeek.getDay();
 
   const difference =
     day === 0
@@ -655,8 +598,7 @@ function Reports() {
       : day - 1;
 
   startOfWeek.setDate(
-    startOfWeek.getDate() -
-      difference
+    startOfWeek.getDate() - difference
   );
 
   startOfWeek.setHours(
@@ -667,51 +609,40 @@ function Reports() {
   );
 
   const weekStart =
-    getDateString(
-      startOfWeek
+    getDateString(startOfWeek);
+
+  const carsThisWeek = jobs.filter(job => {
+    const jobDate = getJobDate(job);
+
+    return (
+      jobDate &&
+      jobDate >= weekStart &&
+      jobDate <= today
     );
-
-  const carsThisWeek =
-    jobs.filter(job => {
-      const jobDate =
-        getJobDate(job);
-
-      return (
-        jobDate &&
-        jobDate >=
-          weekStart &&
-        jobDate <= today
-      );
-    }).length;
+  }).length;
 
   // =========================================================
   // THIS MONTH
   // =========================================================
 
-  const startOfMonth =
-    new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
-    );
+  const startOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  );
 
   const monthStart =
-    getDateString(
-      startOfMonth
+    getDateString(startOfMonth);
+
+  const carsThisMonth = jobs.filter(job => {
+    const jobDate = getJobDate(job);
+
+    return (
+      jobDate &&
+      jobDate >= monthStart &&
+      jobDate <= today
     );
-
-  const carsThisMonth =
-    jobs.filter(job => {
-      const jobDate =
-        getJobDate(job);
-
-      return (
-        jobDate &&
-        jobDate >=
-          monthStart &&
-        jobDate <= today
-      );
-    }).length;
+  }).length;
 
   // =========================================================
   // DAILY CARS
@@ -720,12 +651,9 @@ function Reports() {
   const dailyCars = {};
 
   jobs.forEach(job => {
-    const date =
-      getJobDate(job);
+    const date = getJobDate(job);
 
-    if (!date) {
-      return;
-    }
+    if (!date) return;
 
     if (!dailyCars[date]) {
       dailyCars[date] = 0;
@@ -746,214 +674,186 @@ function Reports() {
   // =========================================================
 
   function printDailyReport() {
-    const selectedDate =
-      reportDate;
+    const selectedDate = reportDate;
 
-    const todayJobs =
-      jobs.filter(
-        job =>
-          getJobDate(job) ===
+    const todayJobs = jobs.filter(
+      job =>
+        getJobDate(job) === selectedDate
+    );
+
+    const selectedPayments =
+      payments.filter(payment =>
+        payment.payment_date &&
+        String(payment.payment_date).slice(0, 10) ===
           selectedDate
       );
 
     if (
-      todayJobs.length === 0
+      todayJobs.length === 0 &&
+      selectedPayments.length === 0
     ) {
       alert(
-        `No cars found for ${selectedDate}.`
+        `No cars or payments found for ${selectedDate}.`
       );
 
       return;
     }
 
-    const totalSales =
-      todayJobs.reduce(
-        (sum, job) =>
-          sum +
-          Number(job.price || 0) -
-          Number(job.discount || 0),
-        0
-      );
+    const totalSales = todayJobs.reduce(
+      (sum, job) =>
+        sum +
+        Number(job.price || 0) -
+        Number(job.discount || 0),
+      0
+    );
 
-    const totalPaid =
-      todayJobs.reduce(
-        (sum, job) => {
-          const jobPayments =
-            payments.filter(
-              payment =>
-                String(payment.job_id) ===
-                String(job.id)
-            );
-
-          return (
-            sum +
-            jobPayments.reduce(
-              (
-                paymentSum,
-                payment
-              ) =>
-                paymentSum +
-                Number(
-                  payment.amount || 0
-                ),
-              0
-            )
-          );
-        },
-        0
-      );
+    const totalPaid = selectedPayments.reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
 
     const totalBalance =
       totalSales - totalPaid;
 
-    const reportRows =
-      todayJobs
-        .map(
-          (job, index) => {
-            const jobPayments =
-              payments.filter(
-                payment =>
-                  String(payment.job_id) ===
-                  String(job.id)
+    const reportRows = todayJobs
+      .map((job, index) => {
+        const jobPayments =
+          payments.filter(
+            payment =>
+              String(payment.job_id) ===
+              String(job.id)
+          );
+
+        const jobPaid =
+          jobPayments.reduce(
+            (sum, payment) =>
+              sum +
+              Number(payment.amount || 0),
+            0
+          );
+
+        const price =
+          Number(job.price || 0);
+
+        const discount =
+          Number(job.discount || 0);
+
+        const netAmount =
+          price - discount;
+
+        const jobBalance =
+          netAmount - jobPaid;
+
+        let jobTime = "";
+
+        const possibleDate =
+          job.created_at ||
+          job.job_date ||
+          job.date ||
+          job.createdDate;
+
+        if (possibleDate) {
+          const date = new Date(
+            possibleDate
+          );
+
+          if (!isNaN(date.getTime())) {
+            jobTime =
+              date.toLocaleTimeString(
+                "en-US",
+                {
+                  timeZone:
+                    "Asia/Qatar",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
               );
-
-            const jobPaid =
-              jobPayments.reduce(
-                (sum, payment) =>
-                  sum +
-                  Number(
-                    payment.amount ||
-                      0
-                  ),
-                0
-              );
-
-            const price =
-              Number(
-                job.price || 0
-              );
-
-            const discount =
-              Number(
-                job.discount || 0
-              );
-
-            const netAmount =
-              price - discount;
-
-            const jobBalance =
-              netAmount -
-              jobPaid;
-
-            let jobTime = "";
-
-            const rawDate =
-              job.created_at ||
-              job.date ||
-              job.job_date ||
-              job.createdDate ||
-              job.created_date;
-
-            if (
-              rawDate
-            ) {
-              const date =
-                new Date(
-                  rawDate
-                );
-
-              if (
-                !isNaN(
-                  date.getTime()
-                )
-              ) {
-                jobTime =
-                  date.toLocaleTimeString(
-                    "en-US",
-                    {
-                      timeZone:
-                        "Asia/Qatar",
-                      hour:
-                        "2-digit",
-                      minute:
-                        "2-digit",
-                    }
-                  );
-              }
-            }
-
-            let services =
-              "No services";
-
-            if (
-              Array.isArray(
-                job.services
-              )
-            ) {
-              services =
-                job.services
-                  .map(
-                    service => {
-                      if (
-                        typeof service ===
-                        "string"
-                      ) {
-                        return service;
-                      }
-
-                      return (
-                        service?.name ||
-                        service?.service_name ||
-                        service?.title ||
-                        ""
-                      );
-                    }
-                  )
-                  .filter(Boolean)
-                  .join(", ");
-            } else if (
-              typeof job.services ===
-              "string"
-            ) {
-              services =
-                job.services.trim() ||
-                "No services";
-            }
-
-            return `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${jobTime}</td>
-                <td>${job.customer || ""}</td>
-                <td>${job.phone || ""}</td>
-                <td>${job.carModel || job.car_model || ""}</td>
-                <td>${job.plate || ""}</td>
-                <td>${job.source || "Not specified"}</td>
-                <td>${services}</td>
-
-                <td class="money">
-                  QAR ${netAmount.toLocaleString()}
-                </td>
-
-                <td class="money paid">
-                  QAR ${jobPaid.toLocaleString()}
-                </td>
-
-                <td class="money balance">
-                  QAR ${jobBalance.toLocaleString()}
-                </td>
-              </tr>
-            `;
           }
-        )
+        }
+
+        let services = "No services";
+
+        if (Array.isArray(job.services)) {
+          services = job.services
+            .map(service => {
+              if (
+                typeof service ===
+                "string"
+              ) {
+                return service;
+              }
+
+              return (
+                service?.name ||
+                service?.service_name ||
+                service?.title ||
+                ""
+              );
+            })
+            .filter(Boolean)
+            .join(", ");
+        } else if (
+          typeof job.services ===
+          "string"
+        ) {
+          services =
+            job.services.trim() ||
+            "No services";
+        }
+
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${jobTime}</td>
+            <td>${job.customer || ""}</td>
+            <td>${job.phone || ""}</td>
+            <td>${job.carModel || ""}</td>
+            <td>${job.plate || ""}</td>
+            <td>${job.source || "Not specified"}</td>
+            <td>${services}</td>
+            <td class="money">
+              QAR ${netAmount.toLocaleString()}
+            </td>
+            <td class="money paid">
+              QAR ${jobPaid.toLocaleString()}
+            </td>
+            <td class="money balance">
+              QAR ${jobBalance.toLocaleString()}
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const paymentRows =
+      selectedPayments
+        .map(payment => {
+          const method =
+            payment.payment_method ||
+            payment.method ||
+            payment.type ||
+            "Unknown";
+
+          return `
+            <tr>
+              <td>${payment.payment_date || ""}</td>
+              <td>${method}</td>
+              <td class="money">
+                QAR ${Number(
+                  payment.amount || 0
+                ).toLocaleString()}
+              </td>
+            </tr>
+          `;
+        })
         .join("");
 
-    const printWindow =
-      window.open(
-        "",
-        "_blank",
-        "width=1500,height=900"
-      );
+    const printWindow = window.open(
+      "",
+      "_blank",
+      "width=1500,height=900"
+    );
 
     if (!printWindow) {
       alert(
@@ -967,17 +867,11 @@ function Reports() {
 
     printWindow.document.write(`
       <!DOCTYPE html>
-
       <html>
-
       <head>
-
-        <title>
-          Daily Workshop Report
-        </title>
+        <title>Daily Workshop Report</title>
 
         <style>
-
           * {
             box-sizing: border-box;
           }
@@ -994,6 +888,10 @@ function Reports() {
             font-size: 28px;
           }
 
+          h2 {
+            margin-top: 30px;
+          }
+
           .date {
             color: #64748b;
             margin-top: 5px;
@@ -1002,8 +900,7 @@ function Reports() {
 
           .summary {
             display: grid;
-            grid-template-columns:
-              repeat(4, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 15px;
             margin-bottom: 25px;
           }
@@ -1088,7 +985,6 @@ function Reports() {
           }
 
           @media print {
-
             @page {
               size: landscape;
               margin: 10mm;
@@ -1097,11 +993,8 @@ function Reports() {
             body {
               padding: 5px;
             }
-
           }
-
         </style>
-
       </head>
 
       <body>
@@ -1138,7 +1031,7 @@ function Reports() {
 
           <div class="summaryBox">
             <div class="summaryLabel">
-              TOTAL PAID
+              PAYMENTS TODAY
             </div>
 
             <div class="summaryValue">
@@ -1158,10 +1051,12 @@ function Reports() {
 
         </div>
 
+        <h2>
+          🚗 Cars
+        </h2>
+
         <table>
-
           <thead>
-
             <tr>
               <th>#</th>
               <th>Time</th>
@@ -1175,15 +1070,29 @@ function Reports() {
               <th>Paid</th>
               <th>Balance</th>
             </tr>
-
           </thead>
 
           <tbody>
-
             ${reportRows}
-
           </tbody>
+        </table>
 
+        <h2>
+          💳 Payments Received
+        </h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Payment Method</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${paymentRows}
+          </tbody>
         </table>
 
         <div class="signature">
@@ -1222,19 +1131,17 @@ function Reports() {
         </div>
 
       </body>
-
       </html>
     `);
 
     printWindow.document.close();
 
-    printWindow.onload =
-      function () {
-        setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
-        }, 500);
-      };
+    printWindow.onload = function () {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 500);
+    };
   }
 
   // =========================================================
@@ -1249,11 +1156,14 @@ function Reports() {
         minHeight: "100vh",
       }}
     >
+
       <h1>
         📊 Reports
       </h1>
 
-      {/* DATE */}
+      {/* =====================================================
+          DATE
+      ===================================================== */}
 
       <div
         style={{
@@ -1277,17 +1187,12 @@ function Reports() {
           type="date"
           value={reportDate}
           onChange={e =>
-            setReportDate(
-              e.target.value
-            )
+            setReportDate(e.target.value)
           }
           style={{
-            padding:
-              "10px 12px",
-            borderRadius:
-              "8px",
-            border:
-              "1px solid #cbd5e1",
+            padding: "10px 12px",
+            borderRadius: "8px",
+            border: "1px solid #cbd5e1",
             fontSize: "16px",
           }}
         />
@@ -1299,21 +1204,20 @@ function Reports() {
           background: "#111827",
           color: "white",
           border: "none",
-          padding:
-            "12px 20px",
-          borderRadius:
-            "10px",
+          padding: "12px 20px",
+          borderRadius: "10px",
           cursor: "pointer",
           fontSize: "16px",
           fontWeight: "bold",
-          marginBottom:
-            "25px",
+          marginBottom: "25px",
         }}
       >
         🖨️ Print Daily Report
       </button>
 
-      {/* FINANCIAL SUMMARY */}
+      {/* =====================================================
+          FINANCIAL SUMMARY
+      ===================================================== */}
 
       <h2>
         💰 Financial Summary
@@ -1325,8 +1229,7 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom:
-            "30px",
+          marginBottom: "30px",
         }}
       >
         <FinancialCard
@@ -1358,7 +1261,9 @@ function Reports() {
         />
       </div>
 
-      {/* PAYMENT METHODS */}
+      {/* =====================================================
+          PAYMENT METHODS
+      ===================================================== */}
 
       <h2>
         💳 Payment Methods
@@ -1370,8 +1275,7 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom:
-            "30px",
+          marginBottom: "30px",
         }}
       >
         <FinancialCard
@@ -1382,7 +1286,7 @@ function Reports() {
         />
 
         <FinancialCard
-          title="Card (Visa + Mastercard)"
+          title="Card"
           value={cardPaid}
           color="#2563eb"
           icon="💳"
@@ -1394,18 +1298,189 @@ function Reports() {
           color="#7c3aed"
           icon="🏦"
         />
+      </div>
 
-        {otherPaid > 0 && (
-          <FinancialCard
-            title="Other"
-            value={otherPaid}
-            color="#f59e0b"
-            icon="💰"
-          />
+      {/* =====================================================
+          DAILY PAYMENTS
+      ===================================================== */}
+
+      <h2>
+        💳 Daily Payments
+      </h2>
+
+      {/* SELECTED DAY PAYMENT */}
+
+      <div
+        style={{
+          background: "white",
+          padding: "25px",
+          borderRadius: "18px",
+          boxShadow:
+            "0 8px 20px rgba(0,0,0,0.08)",
+          marginBottom: "20px",
+          borderTop: "5px solid #16a34a",
+        }}
+      >
+        <h3>
+          Payments on {reportDate}
+        </h3>
+
+        <h1
+          style={{
+            color: "#16a34a",
+            margin: "10px 0",
+          }}
+        >
+          QAR{" "}
+          {selectedDatePaymentTotal.toLocaleString()}
+        </h1>
+
+        <p
+          style={{
+            color: "#64748b",
+          }}
+        >
+          {selectedDatePayments.length} payment
+          {selectedDatePayments.length === 1
+            ? ""
+            : "s"} received
+        </p>
+      </div>
+
+      {/* DAILY PAYMENT TABLE */}
+
+      <div
+        style={{
+          background: "white",
+          padding: "25px",
+          borderRadius: "18px",
+          boxShadow:
+            "0 8px 20px rgba(0,0,0,0.08)",
+          marginBottom: "30px",
+        }}
+      >
+        {dailyPaymentRows.length === 0 ? (
+          <p>
+            No payment records found.
+          </p>
+        ) : (
+          <div
+            style={{
+              overflowX: "auto",
+            }}
+          >
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+              }}
+            >
+              <thead>
+                <tr>
+                  <th style={tableHeader}>
+                    Date
+                  </th>
+
+                  <th style={tableHeader}>
+                    Cash
+                  </th>
+
+                  <th style={tableHeader}>
+                    Visa
+                  </th>
+
+                  <th style={tableHeader}>
+                    Mastercard
+                  </th>
+
+                  <th style={tableHeader}>
+                    Bank Transfer
+                  </th>
+
+                  <th style={tableHeader}>
+                    Other
+                  </th>
+
+                  <th style={tableHeader}>
+                    Total
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {dailyPaymentRows.map(
+                  ([date, values]) => {
+                    const formattedDate =
+                      new Date(
+                        `${date}T00:00:00`
+                      ).toLocaleDateString(
+                        "en-US",
+                        {
+                          weekday: "short",
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        }
+                      );
+
+                    return (
+                      <tr key={date}>
+
+                        <td style={tableCell}>
+                          <strong>
+                            {formattedDate}
+                          </strong>
+                        </td>
+
+                        <td style={tableCell}>
+                          QAR{" "}
+                          {values.cash.toLocaleString()}
+                        </td>
+
+                        <td style={tableCell}>
+                          QAR{" "}
+                          {values.visa.toLocaleString()}
+                        </td>
+
+                        <td style={tableCell}>
+                          QAR{" "}
+                          {values.mastercard.toLocaleString()}
+                        </td>
+
+                        <td style={tableCell}>
+                          QAR{" "}
+                          {values.bankTransfer.toLocaleString()}
+                        </td>
+
+                        <td style={tableCell}>
+                          QAR{" "}
+                          {values.other.toLocaleString()}
+                        </td>
+
+                        <td
+                          style={{
+                            ...tableCell,
+                            fontWeight: "bold",
+                            color: "#16a34a",
+                          }}
+                        >
+                          QAR{" "}
+                          {values.total.toLocaleString()}
+                        </td>
+
+                      </tr>
+                    );
+                  }
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* PREVIOUS MONTH PENDING */}
+      {/* =====================================================
+          PREVIOUS MONTH PENDING
+      ===================================================== */}
 
       <h2>
         📅 Previous Month Pending
@@ -1417,48 +1492,40 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom:
-            "30px",
+          marginBottom: "30px",
         }}
       >
         <ManualCard
           title="June Pending"
           value={manualPending.June}
           saving={
-            savingSetting ===
-            "June Pending"
+            savingSetting === "June Pending"
           }
-          onChange={
-            changeJune
-          }
+          onChange={changeJune}
         />
 
         <ManualCard
           title="July Pending"
           value={manualPending.July}
           saving={
-            savingSetting ===
-            "July Pending"
+            savingSetting === "July Pending"
           }
-          onChange={
-            changeJuly
-          }
+          onChange={changeJuly}
         />
 
         <ManualCard
           title="August Pending"
           value={manualPending.August}
           saving={
-            savingSetting ===
-            "August Pending"
+            savingSetting === "August Pending"
           }
-          onChange={
-            changeAugust
-          }
+          onChange={changeAugust}
         />
       </div>
 
-      {/* PREVIOUS TEYSEER */}
+      {/* =====================================================
+          PREVIOUS TEYSEER
+      ===================================================== */}
 
       <h2>
         🏢 Previous Teyseer
@@ -1471,8 +1538,7 @@ function Reports() {
           borderRadius: "18px",
           boxShadow:
             "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom:
-            "30px",
+          marginBottom: "30px",
         }}
       >
         <h3>
@@ -1483,19 +1549,15 @@ function Reports() {
           type="number"
           value={manualTeyseer}
           onChange={e =>
-            changeTeyseer(
-              e.target.value
-            )
+            changeTeyseer(e.target.value)
           }
           style={{
             width: "100%",
             maxWidth: "350px",
             padding: "12px",
             fontSize: "18px",
-            border:
-              "1px solid #cbd5e1",
-            borderRadius:
-              "8px",
+            border: "1px solid #cbd5e1",
+            borderRadius: "8px",
           }}
         />
 
@@ -1522,7 +1584,9 @@ function Reports() {
         </h2>
       </div>
 
-      {/* CAR REPORT */}
+      {/* =====================================================
+          CAR REPORT
+      ===================================================== */}
 
       <h2>
         🚗 Car Reports
@@ -1534,8 +1598,7 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(220px,1fr))",
           gap: "20px",
-          marginBottom:
-            "30px",
+          marginBottom: "30px",
         }}
       >
         <FinancialCard
@@ -1571,7 +1634,9 @@ function Reports() {
         />
       </div>
 
-      {/* DAILY CARS */}
+      {/* =====================================================
+          DAILY CARS
+      ===================================================== */}
 
       <div
         style={{
@@ -1580,48 +1645,36 @@ function Reports() {
           borderRadius: "18px",
           boxShadow:
             "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom:
-            "30px",
+          marginBottom: "30px",
         }}
       >
         <h2>
           📊 Cars Received Per Day
         </h2>
 
-        {dailyCarRows.length ===
-        0 ? (
+        {dailyCarRows.length === 0 ? (
           <p>
             No car records found.
           </p>
         ) : (
           <div
             style={{
-              overflowX:
-                "auto",
+              overflowX: "auto",
             }}
           >
             <table
               style={{
                 width: "100%",
-                borderCollapse:
-                  "collapse",
+                borderCollapse: "collapse",
               }}
             >
               <thead>
                 <tr>
-                  <th
-                    style={
-                      tableHeader
-                    }
-                  >
+                  <th style={tableHeader}>
                     Date
                   </th>
 
-                  <th
-                    style={
-                      tableHeader
-                    }
-                  >
+                  <th style={tableHeader}>
                     Cars Received
                   </th>
                 </tr>
@@ -1636,40 +1689,22 @@ function Reports() {
                       ).toLocaleDateString(
                         "en-US",
                         {
-                          weekday:
-                            "short",
-                          year:
-                            "numeric",
-                          month:
-                            "short",
-                          day:
-                            "numeric",
+                          weekday: "short",
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
                         }
                       );
 
                     return (
-                      <tr
-                        key={
-                          date
-                        }
-                      >
-                        <td
-                          style={
-                            tableCell
-                          }
-                        >
+                      <tr key={date}>
+                        <td style={tableCell}>
                           <strong>
-                            {
-                              formattedDate
-                            }
+                            {formattedDate}
                           </strong>
                         </td>
 
-                        <td
-                          style={
-                            tableCell
-                          }
-                        >
+                        <td style={tableCell}>
                           <span
                             style={{
                               background:
@@ -1684,10 +1719,7 @@ function Reports() {
                                 "bold",
                             }}
                           >
-                            🚗{" "}
-                            {
-                              count
-                            }
+                            🚗 {count}
                           </span>
                         </td>
                       </tr>
@@ -1700,7 +1732,9 @@ function Reports() {
         )}
       </div>
 
-      {/* SOURCE REPORT */}
+      {/* =====================================================
+          SOURCE REPORT
+      ===================================================== */}
 
       <h2>
         🏢 Source Reports
@@ -1712,24 +1746,16 @@ function Reports() {
           gridTemplateColumns:
             "repeat(auto-fit,minmax(250px,1fr))",
           gap: "20px",
-          marginBottom:
-            "30px",
+          marginBottom: "30px",
         }}
       >
-        <div
-          style={
-            sourceCardStyle
-          }
-        >
+        <div style={sourceCardStyle}>
           <h2>
             🏢 Teyseer
           </h2>
 
           <p>
-            Cars:{" "}
-            {
-              teyseerJobs.length
-            }
+            Cars: {teyseerJobs.length}
           </p>
 
           <p>
@@ -1743,20 +1769,13 @@ function Reports() {
           </p>
         </div>
 
-        <div
-          style={
-            sourceCardStyle
-          }
-        >
+        <div style={sourceCardStyle}>
           <h2>
             👤 Customers / Other
           </h2>
 
           <p>
-            Cars:{" "}
-            {
-              customerJobs.length
-            }
+            Cars: {customerJobs.length}
           </p>
 
           <p>
@@ -1775,6 +1794,7 @@ function Reports() {
           </p>
         </div>
       </div>
+
     </div>
   );
 }
@@ -1818,9 +1838,7 @@ function FinancialCard({
 
       <h2>
         {noCurrency
-          ? Number(
-              value
-            ).toLocaleString()
+          ? Number(value).toLocaleString()
           : `QAR ${Number(
               value
             ).toLocaleString()}`}
@@ -1869,9 +1887,7 @@ function ManualCard({
         type="number"
         value={value}
         onChange={e =>
-          onChange(
-            e.target.value
-          )
+          onChange(e.target.value)
         }
         style={{
           width: "100%",
@@ -1879,8 +1895,7 @@ function ManualCard({
           fontSize: "18px",
           border:
             "1px solid #cbd5e1",
-          borderRadius:
-            "8px",
+          borderRadius: "8px",
         }}
       />
 
@@ -1902,9 +1917,7 @@ function ManualCard({
         }}
       >
         QAR{" "}
-        {Number(
-          value
-        ).toLocaleString()}
+        {Number(value).toLocaleString()}
       </h2>
     </div>
   );
