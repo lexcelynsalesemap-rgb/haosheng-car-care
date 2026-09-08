@@ -383,47 +383,82 @@ function TechnicianEarnings() {
       </div>
 
       <style>
-        {`
-          @media print {
+  {`
+    @media print {
 
-            body {
-              background: white !important;
-            }
+      body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
 
-            .no-print {
-              display: none !important;
-            }
+      .no-print {
+        display: none !important;
+      }
 
-            .printHeader {
-              display: block !important;
-            }
+      .printHeader {
+        display: block !important;
+      }
 
-            input {
-              border: none !important;
-              background: transparent !important;
-              padding: 0 !important;
-              font-size: 12px !important;
-            }
+      @page {
+        size: landscape;
+        margin: 8mm;
+      }
 
-            @page {
-              margin: 15mm;
-            }
+      table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        font-size: 10px !important;
+      }
 
-            table {
-              page-break-inside: auto;
-            }
+      th {
+        padding: 6px 4px !important;
+        font-size: 10px !important;
+      }
 
-            tr {
-              page-break-inside: avoid;
-              page-break-after: auto;
-            }
-          }
+      td {
+        padding: 6px 4px !important;
+        font-size: 10px !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+      }
 
-          .printHeader {
-            display: none;
-          }
-        `}
-      </style>
+      input {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        font-size: 10px !important;
+        width: 100% !important;
+      }
+
+      tr {
+        page-break-inside: avoid;
+      }
+
+      h1 {
+        font-size: 20px !important;
+        margin: 0 0 5px 0 !important;
+      }
+
+      h2 {
+        font-size: 14px !important;
+      }
+
+      p {
+        font-size: 10px !important;
+        margin: 3px 0 !important;
+      }
+
+      .printHeader {
+        margin-bottom: 10px !important;
+      }
+    }
+
+    .printHeader {
+      display: none;
+    }
+  `}
+</style>
 
     </div>
   );
