@@ -5,12 +5,15 @@ function TechnicianEarnings() {
   const [earnings, setEarnings] = useState([]);
   const [staffFilter, setStaffFilter] = useState("All");
   const [monthFilter, setMonthFilter] = useState("");
+  const [saving, setSaving] = useState(null);
 
   async function loadData() {
     const { data, error } = await supabase
       .from("service_technicians")
       .select(`
+        id,
         commission,
+        remarks,
         technicians(
           name
         ),
@@ -36,7 +39,6 @@ function TechnicianEarnings() {
     loadData();
   }, []);
 
-  // GET STAFF NAMES
   const staffNames = [
     ...new Set(
       earnings
@@ -45,16 +47,13 @@ function TechnicianEarnings() {
     ),
   ];
 
-  // FILTER DATA
   const filteredEarnings = earnings.filter((row) => {
     const staffName = row.technicians?.name || "Unknown";
     const job = row.job_services?.jobs;
 
-    // STAFF FILTER
     const staffMatch =
       staffFilter === "All" || staffName === staffFilter;
 
-    // MONTH FILTER
     let monthMatch = true;
 
     if (monthFilter && job?.created_at) {
@@ -71,13 +70,29 @@ function TechnicianEarnings() {
     return staffMatch && monthMatch;
   });
 
-  // TOTAL COMMISSION
   const totalCommission = filteredEarnings.reduce(
     (total, row) => total + Number(row.commission || 0),
     0
   );
 
-  // PRINT
+  async function saveRemarks(id, remarks) {
+    setSaving(id);
+
+    const { error } = await supabase
+      .from("service_technicians")
+      .update({
+        remarks: remarks,
+      })
+      .eq("id", id);
+
+    if (error) {
+      console.log(error);
+      alert("Could not save the remarks.");
+    }
+
+    setSaving(null);
+  }
+
   function printReport() {
     window.print();
   }
@@ -85,7 +100,6 @@ function TechnicianEarnings() {
   return (
     <div style={styles.page}>
 
-      {/* SCREEN HEADER */}
       <div style={styles.header} className="no-print">
 
         <div>
@@ -107,7 +121,6 @@ function TechnicianEarnings() {
 
       </div>
 
-      {/* FILTERS */}
       <div style={styles.filterCard} className="no-print">
 
         <div style={styles.filterGroup}>
@@ -161,7 +174,6 @@ function TechnicianEarnings() {
 
       </div>
 
-      {/* PRINT HEADER */}
       <div style={styles.printHeader}>
 
         <h1>
@@ -191,11 +203,9 @@ function TechnicianEarnings() {
 
       </div>
 
-      {/* TOTAL */}
       <div style={styles.totalCard}>
 
         <div>
-
           <div style={styles.totalTitle}>
             Total Services
           </div>
@@ -203,11 +213,9 @@ function TechnicianEarnings() {
           <div style={styles.totalNumber}>
             {filteredEarnings.length}
           </div>
-
         </div>
 
         <div>
-
           <div style={styles.totalTitle}>
             Total Commission
           </div>
@@ -215,12 +223,10 @@ function TechnicianEarnings() {
           <div style={styles.totalAmount}>
             QAR {totalCommission.toFixed(2)}
           </div>
-
         </div>
 
       </div>
 
-      {/* REPORT */}
       <div style={styles.card}>
 
         <h2 style={styles.heading}>
@@ -257,6 +263,10 @@ function TechnicianEarnings() {
                 Commission
               </th>
 
+              <th style={styles.th}>
+                Remarks
+              </th>
+
             </tr>
 
           </thead>
@@ -268,7 +278,7 @@ function TechnicianEarnings() {
               <tr>
 
                 <td
-                  colSpan="6"
+                  colSpan="7"
                   style={styles.empty}
                 >
                   No earnings found for the selected filters.
@@ -278,13 +288,13 @@ function TechnicianEarnings() {
 
             ) : (
 
-              filteredEarnings.map((row, index) => {
+              filteredEarnings.map((row) => {
 
                 const job = row.job_services?.jobs;
 
                 return (
 
-                  <tr key={index}>
+                  <tr key={row.id}>
 
                     <td style={styles.td}>
                       {job?.created_at
@@ -317,6 +327,47 @@ function TechnicianEarnings() {
                       ).toFixed(2)}
                     </td>
 
+                    <td style={styles.td}>
+
+                      <div style={styles.remarkContainer}>
+
+                        <input
+                          type="text"
+                          value={row.remarks || ""}
+                          placeholder="Add remark..."
+                          onChange={(e) => {
+
+                            setEarnings((current) =>
+                              current.map((item) =>
+                                item.id === row.id
+                                  ? {
+                                      ...item,
+                                      remarks: e.target.value,
+                                    }
+                                  : item
+                              )
+                            );
+
+                          }}
+                          onBlur={(e) =>
+                            saveRemarks(
+                              row.id,
+                              e.target.value
+                            )
+                          }
+                          style={styles.remarkInput}
+                        />
+
+                        {saving === row.id && (
+                          <span style={styles.saving}>
+                            Saving...
+                          </span>
+                        )}
+
+                      </div>
+
+                    </td>
+
                   </tr>
 
                 );
@@ -343,6 +394,17 @@ function TechnicianEarnings() {
               display: none !important;
             }
 
+            .printHeader {
+              display: block !important;
+            }
+
+            input {
+              border: none !important;
+              background: transparent !important;
+              padding: 0 !important;
+              font-size: 12px !important;
+            }
+
             @page {
               margin: 15mm;
             }
@@ -354,10 +416,6 @@ function TechnicianEarnings() {
             tr {
               page-break-inside: avoid;
               page-break-after: auto;
-            }
-
-            .printHeader {
-              display: block !important;
             }
           }
 
@@ -514,6 +572,26 @@ const styles = {
     fontWeight: "700",
     color: "#16a34a",
     whiteSpace: "nowrap",
+  },
+
+  remarkContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+
+  remarkInput: {
+    width: "180px",
+    padding: "8px 10px",
+    border: "1px solid #ddd",
+    borderRadius: "6px",
+    fontSize: "13px",
+    outline: "none",
+  },
+
+  saving: {
+    fontSize: "11px",
+    color: "#888",
   },
 
   empty: {
