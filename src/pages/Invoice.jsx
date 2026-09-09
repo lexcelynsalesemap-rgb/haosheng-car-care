@@ -1555,8 +1555,7 @@ if (typeof document !== "undefined") {
 
   if (!existingStyle) {
 
-    const printStyle =
-      document.createElement("style");
+    const printStyle = document.createElement("style");
 
     printStyle.id =
       "professional-invoice-print-style";
@@ -1571,14 +1570,16 @@ if (typeof document !== "undefined") {
 
         @page {
           size: A4 portrait;
-          margin: 8mm;
+          margin: 0;
         }
 
         html,
         body {
+          width: 210mm !important;
+          height: 297mm !important;
           margin: 0 !important;
           padding: 0 !important;
-          background: white !important;
+          background: #ffffff !important;
         }
 
         body {
@@ -1586,30 +1587,74 @@ if (typeof document !== "undefined") {
           print-color-adjust: exact !important;
         }
 
+        /* Hide print button */
+
         .print-button {
           display: none !important;
         }
 
+        /* =========================================
+           PAGE 1
+        ========================================= */
+
         .invoice-page {
-          width: 190mm !important;
-          height: 277mm !important;
+          width: 210mm !important;
+          height: 297mm !important;
+
           margin: 0 !important;
+
           padding: 7mm !important;
+
+          background: #ffffff !important;
+
           box-shadow: none !important;
 
+          overflow: hidden !important;
+
+          position: relative !important;
+
+          page-break-before: auto !important;
           page-break-after: always !important;
+
+          break-before: auto !important;
           break-after: page !important;
         }
 
+        /* =========================================
+           PAGE 2
+        ========================================= */
+
         .terms-page {
-          width: 190mm !important;
-          height: 277mm !important;
+          width: 210mm !important;
+          height: 297mm !important;
+
           margin: 0 !important;
+
           padding: 7mm !important;
+
+          background: #ffffff !important;
+
           box-shadow: none !important;
 
+          overflow: hidden !important;
+
+          position: relative !important;
+
           page-break-before: always !important;
+          page-break-after: auto !important;
+
           break-before: page !important;
+          break-after: auto !important;
+        }
+
+        /* =========================================
+           PREVENT CONTENT FROM CREATING EXTRA PAGES
+        ========================================= */
+
+        .invoice-page *,
+        .terms-page * {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
 
         table {
@@ -1622,15 +1667,21 @@ if (typeof document !== "undefined") {
           break-inside: avoid !important;
         }
 
-      }
-
-      @media screen and (max-width: 800px) {
+        /* =========================================
+           REMOVE SCREEN SPACING
+        ========================================= */
 
         .invoice-page,
         .terms-page {
-          transform-origin: top center;
-          transform: scale(0.85);
-          margin-bottom: -80px !important;
+          transform: none !important;
+        }
+
+        /* =========================================
+           REMOVE OUTER PAGE BACKGROUND
+        ========================================= */
+
+        body > div {
+          background: #ffffff !important;
         }
 
       }
