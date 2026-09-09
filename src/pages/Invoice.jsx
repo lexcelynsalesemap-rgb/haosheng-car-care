@@ -47,34 +47,33 @@ function Invoice() {
   }
 
   /* =========================================================
-     CALCULATE TOTALS
+     TOTALS
   ========================================================= */
 
   const totalAmount =
     job.services?.reduce((total, service) => {
-      const details = job.serviceDetails?.[service];
+      const details = job.serviceDetails?.[service] || {};
 
-      const price = Number(details?.price) || 0;
-      const quantity = Number(details?.quantity) || 1;
+      const price = Number(details.price) || 0;
+      const quantity = Number(details.quantity) || 1;
 
       return total + price * quantity;
     }, 0) || 0;
 
   const totalDiscount =
     job.services?.reduce((total, service) => {
-      const discount =
-        Number(job.serviceDetails?.[service]?.discount) || 0;
+      const details = job.serviceDetails?.[service] || {};
 
-      return total + discount;
+      return total + (Number(details.discount) || 0);
     }, 0) || 0;
 
   const netAmount =
     job.services?.reduce((total, service) => {
-      const details = job.serviceDetails?.[service];
+      const details = job.serviceDetails?.[service] || {};
 
-      const price = Number(details?.price) || 0;
-      const quantity = Number(details?.quantity) || 1;
-      const discount = Number(details?.discount) || 0;
+      const price = Number(details.price) || 0;
+      const quantity = Number(details.quantity) || 1;
+      const discount = Number(details.discount) || 0;
 
       return total + Math.max(price * quantity - discount, 0);
     }, 0) || 0;
@@ -83,7 +82,7 @@ function Invoice() {
     <div style={styles.page}>
 
       {/* =====================================================
-          PAGE 1 - INVOICE
+          PAGE 1
       ====================================================== */}
 
       <section
@@ -91,7 +90,7 @@ function Invoice() {
         style={styles.invoice}
       >
 
-        {/* TOP BAR */}
+        {/* TOP BLACK / GOLD BAR */}
 
         <div style={styles.topBar}></div>
 
@@ -101,6 +100,8 @@ function Invoice() {
         ================================================== */}
 
         <header style={styles.header}>
+
+          {/* GA LOGO */}
 
           <div style={styles.logoArea}>
 
@@ -112,6 +113,8 @@ function Invoice() {
 
           </div>
 
+
+          {/* COMPANY INFORMATION */}
 
           <div style={styles.companyInfo}>
 
@@ -140,6 +143,8 @@ function Invoice() {
           </div>
 
 
+          {/* INVOICE BADGE */}
+
           <div style={styles.invoiceBadge}>
 
             <div style={styles.invoiceLabel}>
@@ -160,7 +165,7 @@ function Invoice() {
 
 
         {/* =================================================
-            CUSTOMER / PAYMENT INFORMATION
+            CUSTOMER + PAYMENT
         ================================================== */}
 
         <div style={styles.infoGrid}>
@@ -176,7 +181,6 @@ function Invoice() {
             <div style={styles.cardBody}>
 
               <div style={styles.infoRow}>
-
                 <span style={styles.infoLabel}>
                   CUSTOMER NAME
                 </span>
@@ -184,12 +188,10 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.customer || "-"}
                 </span>
-
               </div>
 
 
               <div style={styles.infoRow}>
-
                 <span style={styles.infoLabel}>
                   MOBILE NUMBER
                 </span>
@@ -197,12 +199,10 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.phone || "-"}
                 </span>
-
               </div>
 
 
               <div style={styles.infoRow}>
-
                 <span style={styles.infoLabel}>
                   INVOICE DATE
                 </span>
@@ -210,7 +210,6 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.date || "-"}
                 </span>
-
               </div>
 
             </div>
@@ -235,7 +234,9 @@ function Invoice() {
                 </span>
 
                 <span style={styles.paymentValue}>
-                  {job.payment_method || "Not Selected"}
+                  {job.payment_method ||
+                    job.paymentMethod ||
+                    "Not Selected"}
                 </span>
 
               </div>
@@ -243,25 +244,23 @@ function Invoice() {
 
               <div style={styles.infoRow}>
 
-                <span
-                  style={styles.infoLabel}
-                  dir="rtl"
-                >
+                <span style={styles.infoLabel}>
                   طريقة الدفع
                 </span>
 
                 <span
-                  style={styles.paymentValue}
+                  style={styles.infoValue}
                   dir="rtl"
                 >
-                  {job.payment_method || "غير محدد"}
+                  {job.payment_method ||
+                    job.paymentMethod ||
+                    "غير محدد"}
                 </span>
 
               </div>
 
 
               {job.voucherNumber && (
-
                 <div style={styles.infoRow}>
 
                   <span style={styles.infoLabel}>
@@ -273,7 +272,6 @@ function Invoice() {
                   </span>
 
                 </div>
-
               )}
 
             </div>
@@ -447,28 +445,33 @@ function Invoice() {
             {job.services?.map((service, index) => {
 
               const details =
-                job.serviceDetails?.[service];
+                job.serviceDetails?.[service] || {};
 
               const price =
-                Number(details?.price) || 0;
+                Number(details.price) || 0;
 
               const quantity =
-                Number(details?.quantity) || 1;
+                Number(details.quantity) || 1;
 
-              const discount =
-                Number(details?.discount) || 0;
+              const serviceDiscount =
+                Number(details.discount) || 0;
 
-              const total =
+              const serviceTotal =
                 Math.max(
-                  price * quantity - discount,
+                  price * quantity - serviceDiscount,
                   0
                 );
 
               return (
-
                 <tr key={index}>
 
-                  <td style={styles.serviceCell}>
+                  <td
+                    style={{
+                      ...styles.serviceCell,
+                      textAlign: "left",
+                      fontWeight: "600",
+                    }}
+                  >
                     {service}
                   </td>
 
@@ -481,22 +484,20 @@ function Invoice() {
                   </td>
 
                   <td style={styles.serviceCell}>
-                    QAR {discount.toFixed(2)}
+                    QAR {serviceDiscount.toFixed(2)}
                   </td>
 
                   <td
                     style={{
                       ...styles.serviceCell,
-                      fontWeight: "700",
+                      fontWeight: "800",
                     }}
                   >
-                    QAR {total.toFixed(2)}
+                    QAR {serviceTotal.toFixed(2)}
                   </td>
 
                 </tr>
-
               );
-
             })}
 
 
@@ -568,23 +569,6 @@ function Invoice() {
             </div>
 
           </div>
-
-        </div>
-
-
-        {/* =================================================
-            PAYMENT SUMMARY
-        ================================================== */}
-
-        <div style={styles.paymentSummary}>
-
-          <span>
-            PAYMENT METHOD
-          </span>
-
-          <strong>
-            {job.payment_method || "Not Selected"}
-          </strong>
 
         </div>
 
@@ -676,7 +660,7 @@ function Invoice() {
 
 
       {/* =====================================================
-          PAGE 2 - TERMS AND CONDITIONS
+          PAGE 2
       ====================================================== */}
 
       <section
@@ -725,7 +709,6 @@ function Invoice() {
             ❖ WARRANTY
           </h2>
 
-
           <p style={styles.termsParagraph}>
             We, the Haosheng Car Care team, are pleased
             to offer you a warranty when you install full
@@ -733,11 +716,9 @@ function Invoice() {
             (excluding misuse).
           </p>
 
-
           <p style={styles.termsParagraph}>
             • Quarter panel protection: 5-year warranty.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • Protection warranty includes Nano-ceramic
@@ -745,11 +726,9 @@ function Invoice() {
             cracking, and paint removal.
           </p>
 
-
           <p style={styles.termsParagraph}>
             • Thermal insulation warranty: 10 years.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • Nano-ceramic service: 2 years for shine,
@@ -761,14 +740,12 @@ function Invoice() {
             ❖ CONDITIONS
           </h2>
 
-
           <p style={styles.termsParagraph}>
             • Signing the invoice or receipt by the
             customer is considered acceptance and receipt
             of the protection on the vehicle and cannot
             be denied or contested.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • The consumer cannot obtain post-installation
@@ -778,14 +755,12 @@ function Invoice() {
             materials.
           </p>
 
-
           <p style={styles.termsParagraph}>
             • The warranty does not apply to any of our
             products if tampered with or repaired,
             modified, or maintained by unauthorized
             persons.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • The warranty does not cover replacement of
@@ -794,13 +769,11 @@ function Invoice() {
             to determine the cost of replacement.
           </p>
 
-
           <p style={styles.termsParagraph}>
             • The customer must bring the vehicle for
             maintenance six days after protection
             installation.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • The customer must bring the vehicle for
@@ -808,7 +781,6 @@ function Invoice() {
             Failure to comply with the schedule voids the
             warranty.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • Washing the car with materials that damage
@@ -820,7 +792,6 @@ function Invoice() {
           <h2 style={styles.termsHeading}>
             ❖ ADDITIONAL SERVICES
           </h2>
-
 
           <p style={styles.termsParagraph}>
             • We offer car washing and protection
@@ -847,7 +818,6 @@ function Invoice() {
             ❖ ضمان
           </h2>
 
-
           <p style={styles.termsParagraph}>
             يسرّنا في فريق هاوشنغ للعناية بالسيارات أن
             نقدم لكم ضمانًا عند تركيب حماية كاملة
@@ -855,11 +825,9 @@ function Invoice() {
             (باستثناء سوء الاستخدام).
           </p>
 
-
           <p style={styles.termsParagraph}>
             • حماية ربع لوحة السيارة: ضمان 5 سنوات.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • يشمل ضمان الحماية لمعان نانو سيراميك،
@@ -867,11 +835,9 @@ function Invoice() {
             والتشققات، وإزالة الطلاء.
           </p>
 
-
           <p style={styles.termsParagraph}>
             • ضمان العزل الحراري: 10 سنوات.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • خدمة نانو سيراميك: سنتان للمعان،
@@ -883,13 +849,11 @@ function Invoice() {
             ❖ شروط
           </h2>
 
-
           <p style={styles.termsParagraph}>
             • يُعد توقيع العميل على الفاتورة أو الإيصال
             قبولاً واستلاماً للحماية على المركبة، ولا
             يجوز رفضه أو الاعتراض عليه.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • لا يحق للمستهلك الحصول على خدمات ما بعد
@@ -898,13 +862,11 @@ function Invoice() {
             غير مناسبة.
           </p>
 
-
           <p style={styles.termsParagraph}>
             • لا ينطبق الضمان على أي من منتجاتنا إذا تم
             العبث بها أو إصلاحها أو تعديلها أو صيانتها
             من قبل أشخاص غير مصرح لهم.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • لا يغطي الضمان استبدال الأجزاء التالفة بسبب
@@ -912,19 +874,16 @@ function Invoice() {
             للشركة بتقييم الضرر لتحديد تكلفة الاستبدال.
           </p>
 
-
           <p style={styles.termsParagraph}>
             • يجب على العميل إحضار المركبة للصيانة بعد
             6 أيام من تركيب الحماية.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • يجب على العميل إحضار المركبة للصيانة السنوية
             وفحص الحماية. يُبطل الضمان عدم الالتزام
             بالجدول الزمني.
           </p>
-
 
           <p style={styles.termsParagraph}>
             • يُبطل الضمان عند غسل السيارة بمواد تُتلف
@@ -935,7 +894,6 @@ function Invoice() {
           <h2 style={styles.arabicTermsHeading}>
             ❖ خدمات إضافية
           </h2>
-
 
           <p style={styles.termsParagraph}>
             نقدم خدمات غسيل السيارات وفحص الحماية مرة
@@ -954,7 +912,7 @@ function Invoice() {
         </div>
 
 
-        {/* PRINT BUTTON */}
+        {/* PRINT */}
 
         <button
           className="print-button"
@@ -976,17 +934,16 @@ function Invoice() {
 ========================================================= */
 
 const colors = {
-  navy: "#060A0F",
-  blue: "#1D4E89",
-  lightBlue: "#EAF2F8",
-  gold: "#C79A45",
-  lightGold: "#F8F1E4",
-  dark: "#20252B",
-  gray: "#667085",
-  lightGray: "#F5F7FA",
-  border: "#D8DEE6",
+  black: "#050505",
+  darkBlack: "#0B0B0B",
+  gold: "#C9A24E",
+  brightGold: "#D8B766",
+  lightGold: "#F7F0DF",
+  darkText: "#171717",
+  gray: "#666666",
+  lightGray: "#F6F6F6",
+  border: "#D6D0C4",
   white: "#FFFFFF",
-  black: "#000000",
 };
 
 
@@ -997,11 +954,12 @@ const colors = {
 const styles = {
 
   page: {
-    background: "#E9EDF2",
+    background: "#E5E5E5",
     minHeight: "100vh",
     padding: "20px 0",
-    fontFamily: "Arial, Helvetica, sans-serif",
-    color: colors.dark,
+    fontFamily:
+      "Arial, Helvetica, sans-serif",
+    color: colors.darkText,
   },
 
 
@@ -1010,7 +968,7 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "Arial, Helvetica, sans-serif",
   },
 
 
@@ -1019,24 +977,31 @@ const styles = {
   ====================================================== */
 
   invoice: {
-    width: "190mm",
-    height: "277mm",
+    width: "210mm",
+    minHeight: "297mm",
     boxSizing: "border-box",
     background: colors.white,
     margin: "0 auto 20px",
-    padding: "7mm",
+    padding: "8mm",
     position: "relative",
     overflow: "hidden",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+    boxShadow:
+      "0 4px 20px rgba(0,0,0,0.15)",
   },
 
 
   topBar: {
-    height: "5px",
+    height: "6px",
     width: "100%",
     background:
-      `linear-gradient(90deg, ${colors.navy} 0%, ${colors.navy} 65%, ${colors.gold} 65%, ${colors.gold} 100%)`,
-    marginBottom: "10px",
+      `linear-gradient(
+        90deg,
+        ${colors.black} 0%,
+        ${colors.black} 68%,
+        ${colors.gold} 68%,
+        ${colors.gold} 100%
+      )`,
+    marginBottom: "12px",
   },
 
 
@@ -1046,9 +1011,9 @@ const styles = {
 
   header: {
     display: "grid",
-    gridTemplateColumns: "23% 57% 20%",
+    gridTemplateColumns: "24% 56% 20%",
     alignItems: "center",
-    minHeight: "95px",
+    minHeight: "100px",
   },
 
 
@@ -1056,13 +1021,13 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    padding: "5px",
+    padding: "4px",
   },
 
 
   logo: {
-    width: "95px",
-    maxHeight: "80px",
+    width: "105px",
+    maxHeight: "88px",
     objectFit: "contain",
   },
 
@@ -1075,70 +1040,73 @@ const styles = {
 
   companyName: {
     color: colors.black,
-    fontSize: "17px",
-    lineHeight: "1.05",
-    margin: "0 0 4px",
-    fontWeight: "800",
-    letterSpacing: "0.3px",
+    fontSize: "18px",
+    lineHeight: "1.1",
+    margin: "0 0 5px",
+    fontWeight: "900",
+    letterSpacing: "0.4px",
   },
 
 
   companyArabic: {
     color: colors.gold,
     fontSize: "15px",
-    margin: "3px 0 5px",
+    margin: "3px 0 6px",
     fontWeight: "700",
   },
 
 
   address: {
-    fontSize: "8px",
-    margin: "2px 0",
+    fontSize: "9px",
+    margin: "3px 0",
     color: colors.gray,
   },
 
 
   contact: {
-    fontSize: "7.5px",
-    margin: "2px 0",
+    fontSize: "8px",
+    margin: "3px 0",
     color: colors.gray,
   },
 
 
   separator: {
-    margin: "0 3px",
+    margin: "0 4px",
     color: colors.gold,
     fontWeight: "bold",
   },
 
 
   invoiceBadge: {
-    background: colors.lightGold,
-    color: colors.black,
-    padding: "10px 7px",
+    background: colors.black,
+    color: colors.white,
+    padding: "12px 7px",
     textAlign: "center",
-    borderRadius: "4px",
-    borderBottom: `4px solid ${colors.gold}`,
+    borderRadius: "3px",
+    borderBottom:
+      `4px solid ${colors.gold}`,
   },
 
 
   invoiceLabel: {
-    fontSize: "15px",
-    fontWeight: "800",
+    fontSize: "16px",
+    fontWeight: "900",
     letterSpacing: "1px",
+    color: colors.gold,
   },
 
 
   invoiceArabic: {
-    fontSize: "12px",
+    fontSize: "13px",
     marginTop: "2px",
+    color: colors.white,
   },
 
 
   receiptNumber: {
-    fontSize: "9px",
-    marginTop: "6px",
-    color: colors.dark,
+    fontSize: "10px",
+    marginTop: "8px",
+    color: colors.white,
   },
 
 
@@ -1149,31 +1117,33 @@ const styles = {
   infoGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "8px",
-    marginTop: "8px",
+    gap: "10px",
+    marginTop: "10px",
   },
 
 
   infoCard: {
-    border: `1px solid ${colors.border}`,
-    borderRadius: "4px",
+    border:
+      `1px solid ${colors.border}`,
+    borderRadius: "3px",
     overflow: "hidden",
   },
 
 
   cardHeader: {
-    background: colors.lightBlue,
-    color: colors.black,
-    fontSize: "8px",
-    fontWeight: "800",
+    background: colors.black,
+    color: colors.gold,
+    fontSize: "9px",
+    fontWeight: "900",
     letterSpacing: "0.6px",
-    padding: "5px 8px",
-    borderBottom: `2px solid ${colors.gold}`,
+    padding: "7px 9px",
+    borderBottom:
+      `2px solid ${colors.gold}`,
   },
 
 
   cardBody: {
-    padding: "5px 8px",
+    padding: "6px 9px",
   },
 
 
@@ -1181,34 +1151,35 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "3px 0",
-    borderBottom: "1px solid #EEF1F4",
-    gap: "8px",
+    padding: "5px 0",
+    borderBottom:
+      "1px solid #EEEEEE",
+    gap: "10px",
   },
 
 
   infoLabel: {
-    fontSize: "7.5px",
+    fontSize: "8px",
     color: colors.gray,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
 
   infoValue: {
-    fontSize: "8.5px",
+    fontSize: "9px",
     fontWeight: "700",
     textAlign: "right",
   },
 
 
   paymentValue: {
-    fontSize: "9px",
-    fontWeight: "800",
-    color: colors.blue,
+    fontSize: "10px",
+    fontWeight: "900",
+    color: colors.black,
     textAlign: "right",
-    background: colors.lightGold,
-    padding: "3px 7px",
-    borderRadius: "3px",
+    borderBottom:
+      `2px solid ${colors.gold}`,
+    paddingBottom: "2px",
   },
 
 
@@ -1220,21 +1191,22 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: "9px",
-    marginBottom: "5px",
-    padding: "5px 8px",
-    background: colors.navy,
+    marginTop: "11px",
+    marginBottom: "6px",
+    padding: "7px 9px",
+    background: colors.black,
     color: colors.white,
-    fontSize: "9px",
-    fontWeight: "800",
+    fontSize: "10px",
+    fontWeight: "900",
     letterSpacing: "0.7px",
-    borderLeft: `4px solid ${colors.gold}`,
+    borderLeft:
+      `5px solid ${colors.gold}`,
   },
 
 
   sectionArabic: {
-    fontSize: "9px",
-    color: "#E8D4A9",
+    fontSize: "10px",
+    color: colors.gold,
   },
 
 
@@ -1244,44 +1216,48 @@ const styles = {
 
   vehicleGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(5, 1fr)",
-    border: `1px solid ${colors.border}`,
+    gridTemplateColumns:
+      "repeat(5, 1fr)",
+    border:
+      `1px solid ${colors.border}`,
     borderRadius: "3px",
     overflow: "hidden",
   },
 
 
   vehicleItem: {
-    minHeight: "44px",
+    minHeight: "55px",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    padding: "4px",
-    borderRight: `1px solid ${colors.border}`,
-    background: "#FCFDFE",
+    padding: "5px",
+    borderRight:
+      `1px solid ${colors.border}`,
+    background: "#FEFEFE",
     textAlign: "center",
   },
 
 
   vehicleLabel: {
-    fontSize: "6.5px",
+    fontSize: "7px",
     color: colors.gray,
-    fontWeight: "800",
+    fontWeight: "900",
     letterSpacing: "0.6px",
-    marginBottom: "3px",
+    marginBottom: "4px",
   },
 
 
   vehicleValue: {
-    fontSize: "8.5px",
+    fontSize: "10px",
+    color: colors.black,
   },
 
 
   vehicleArabic: {
-    fontSize: "6.5px",
-    marginTop: "2px",
-    color: colors.gray,
+    fontSize: "7px",
+    color: colors.gold,
+    marginTop: "3px",
   },
 
 
@@ -1292,32 +1268,36 @@ const styles = {
   serviceTable: {
     width: "100%",
     borderCollapse: "collapse",
-    fontSize: "8px",
+    fontSize: "10px",
   },
 
 
   serviceHeader: {
     background: colors.black,
     color: colors.gold,
-    border: `1px solid ${colors.navy}`,
-    padding: "6px 4px",
+    border:
+      `1px solid ${colors.black}`,
+    padding: "8px 5px",
     textAlign: "center",
-    fontSize: "7.5px",
+    fontSize: "8px",
     letterSpacing: "0.5px",
   },
 
 
   serviceCell: {
-    border: `1px solid ${colors.border}`,
-    padding: "5px 4px",
+    border:
+      `1px solid ${colors.border}`,
+    padding: "8px 6px",
     textAlign: "center",
-    fontSize: "8px",
+    fontSize: "9px",
+    color: colors.darkText,
   },
 
 
   emptyCell: {
-    border: `1px solid ${colors.border}`,
-    padding: "10px",
+    border:
+      `1px solid ${colors.border}`,
+    padding: "12px",
     textAlign: "center",
     color: colors.gray,
   },
@@ -1330,14 +1310,15 @@ const styles = {
   totalArea: {
     display: "flex",
     justifyContent: "flex-end",
-    marginTop: "8px",
+    marginTop: "10px",
   },
 
 
   totalBox: {
-    width: "46%",
-    border: `1px solid ${colors.border}`,
-    borderRadius: "4px",
+    width: "48%",
+    border:
+      `1px solid ${colors.border}`,
+    borderRadius: "3px",
     overflow: "hidden",
   },
 
@@ -1345,39 +1326,21 @@ const styles = {
   totalRow: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "5px 8px",
-    fontSize: "8px",
-    borderBottom: `1px solid ${colors.border}`,
+    padding: "7px 9px",
+    fontSize: "9px",
+    borderBottom:
+      `1px solid ${colors.border}`,
   },
 
 
   netRow: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "7px 8px",
+    padding: "10px",
     background: colors.black,
     color: colors.gold,
-    fontSize: "9px",
-    fontWeight: "800",
-  },
-
-
-  /* =====================================================
-     PAYMENT SUMMARY
-  ====================================================== */
-
-  paymentSummary: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: "7px",
-    padding: "7px 10px",
-    background: colors.lightBlue,
-    border: `1px solid ${colors.border}`,
-    borderLeft: `4px solid ${colors.gold}`,
-    borderRadius: "4px",
-    fontSize: "9px",
-    fontWeight: "700",
+    fontSize: "11px",
+    fontWeight: "900",
   },
 
 
@@ -1386,30 +1349,33 @@ const styles = {
   ====================================================== */
 
   ppfBox: {
-    marginTop: "8px",
-    border: `1px solid ${colors.gold}`,
-    borderRadius: "4px",
+    marginTop: "10px",
+    border:
+      `1px solid ${colors.gold}`,
+    borderRadius: "3px",
     overflow: "hidden",
   },
 
 
   ppfTitle: {
-    background: colors.lightGold,
-    color: colors.navy,
-    fontSize: "8px",
-    fontWeight: "800",
-    padding: "5px 8px",
-    borderBottom: `1px solid ${colors.gold}`,
+    background: colors.black,
+    color: colors.gold,
+    fontSize: "9px",
+    fontWeight: "900",
+    padding: "7px 9px",
+    borderBottom:
+      `1px solid ${colors.gold}`,
   },
 
 
   ppfContent: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "2px 12px",
-    padding: "6px 8px",
-    fontSize: "7.5px",
-    lineHeight: "1.25",
+    gridTemplateColumns:
+      "1fr 1fr",
+    gap: "4px 15px",
+    padding: "8px 9px",
+    fontSize: "8px",
+    lineHeight: "1.3",
   },
 
 
@@ -1421,7 +1387,7 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "70px",
-    marginTop: "13px",
+    marginTop: "18px",
   },
 
 
@@ -1431,20 +1397,21 @@ const styles = {
 
 
   signatureTitle: {
-    fontSize: "7.5px",
-    color: colors.navy,
-    fontWeight: "800",
+    fontSize: "8px",
+    color: colors.black,
+    fontWeight: "900",
   },
 
 
   signatureLine: {
-    borderBottom: `1px solid ${colors.dark}`,
-    marginTop: "24px",
+    borderBottom:
+      `1px solid ${colors.black}`,
+    marginTop: "28px",
   },
 
 
   signatureSub: {
-    fontSize: "7px",
+    fontSize: "8px",
     color: colors.gray,
     marginTop: "3px",
   },
@@ -1456,14 +1423,15 @@ const styles = {
 
   footer: {
     position: "absolute",
-    bottom: "6mm",
-    left: "7mm",
-    right: "7mm",
+    bottom: "7mm",
+    left: "8mm",
+    right: "8mm",
     textAlign: "center",
-    fontSize: "7px",
+    fontSize: "8px",
     color: colors.gray,
-    borderTop: `1px solid ${colors.border}`,
-    paddingTop: "4px",
+    borderTop:
+      `1px solid ${colors.border}`,
+    paddingTop: "5px",
   },
 
 
@@ -1472,46 +1440,48 @@ const styles = {
   ====================================================== */
 
   termsPage: {
-    width: "190mm",
-    height: "277mm",
+    width: "210mm",
+    minHeight: "297mm",
     boxSizing: "border-box",
     background: colors.white,
     margin: "0 auto",
-    padding: "7mm",
+    padding: "8mm",
     position: "relative",
     overflow: "hidden",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-    fontSize: "9px",
-    lineHeight: "1.25",
+    boxShadow:
+      "0 4px 20px rgba(0,0,0,0.15)",
+    fontSize: "10px",
+    lineHeight: "1.28",
   },
 
 
   termsHeader: {
     display: "flex",
     alignItems: "center",
-    gap: "15px",
-    padding: "2px 5px 6px",
+    gap: "18px",
+    padding: "4px 5px 8px",
   },
 
 
   termsLogo: {
-    width: "60px",
-    height: "48px",
+    width: "75px",
+    height: "58px",
     objectFit: "contain",
   },
 
 
   termsMainTitle: {
     margin: "0",
-    fontSize: "19px",
-    color: colors.gold,
+    fontSize: "21px",
+    color: colors.black,
     letterSpacing: "0.8px",
+    fontWeight: "900",
   },
 
 
   termsArabicTitle: {
-    margin: "3px 0 0",
-    fontSize: "14px",
+    margin: "4px 0 0",
+    fontSize: "16px",
     color: colors.gold,
   },
 
@@ -1519,8 +1489,12 @@ const styles = {
   termsDivider: {
     height: "2px",
     background:
-      `linear-gradient(90deg, ${colors.black}, ${colors.gold})`,
-    margin: "3px 0 7px",
+      `linear-gradient(
+        90deg,
+        ${colors.black},
+        ${colors.gold}
+      )`,
+    margin: "4px 0 10px",
   },
 
 
@@ -1531,11 +1505,12 @@ const styles = {
 
   termsHeading: {
     color: colors.gold,
-    fontSize: "12px",
-    fontWeight: "800",
-    margin: "6px 0 3px",
-    borderLeft: `3px solid ${colors.gold}`,
-    paddingLeft: "6px",
+    fontSize: "14px",
+    fontWeight: "900",
+    margin: "7px 0 4px",
+    borderLeft:
+      `4px solid ${colors.gold}`,
+    paddingLeft: "7px",
   },
 
 
@@ -1547,29 +1522,31 @@ const styles = {
 
   arabicTermsHeading: {
     color: colors.gold,
-    fontSize: "12px",
-    fontWeight: "800",
-    margin: "6px 0 3px",
-    borderRight: `3px solid ${colors.gold}`,
-    paddingRight: "6px",
+    fontSize: "14px",
+    fontWeight: "900",
+    margin: "7px 0 4px",
+    borderRight:
+      `4px solid ${colors.gold}`,
+    paddingRight: "7px",
   },
 
 
   termsParagraph: {
-    margin: "3px 0",
-    fontSize: "7.8px",
+    margin: "4px 0",
+    fontSize: "8.8px",
   },
 
 
   termsFooter: {
     position: "absolute",
-    bottom: "6mm",
-    left: "7mm",
-    right: "7mm",
+    bottom: "7mm",
+    left: "8mm",
+    right: "8mm",
     textAlign: "center",
-    borderTop: `1px solid ${colors.border}`,
-    paddingTop: "4px",
-    fontSize: "6.5px",
+    borderTop:
+      `1px solid ${colors.border}`,
+    paddingTop: "5px",
+    fontSize: "7px",
     color: colors.gray,
   },
 
@@ -1582,15 +1559,17 @@ const styles = {
     position: "fixed",
     right: "25px",
     bottom: "25px",
-    background: colors.gold,
-    color: colors.white,
-    border: "none",
+    background: colors.black,
+    color: colors.gold,
+    border:
+      `1px solid ${colors.gold}`,
     padding: "13px 24px",
-    borderRadius: "8px",
+    borderRadius: "6px",
     cursor: "pointer",
     fontSize: "14px",
-    fontWeight: "700",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+    fontWeight: "800",
+    boxShadow:
+      "0 4px 12px rgba(0,0,0,0.25)",
     zIndex: 9999,
   },
 
@@ -1622,6 +1601,12 @@ if (typeof document !== "undefined") {
         box-sizing: border-box;
       }
 
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
       @media print {
 
         @page {
@@ -1631,10 +1616,10 @@ if (typeof document !== "undefined") {
 
         html,
         body {
+          width: 210mm !important;
           margin: 0 !important;
           padding: 0 !important;
           background: white !important;
-          width: 210mm !important;
         }
 
         body {
@@ -1649,11 +1634,13 @@ if (typeof document !== "undefined") {
         .invoice-page {
           width: 210mm !important;
           height: 297mm !important;
+          min-height: 297mm !important;
+          max-height: 297mm !important;
 
           margin: 0 !important;
+          padding: 8mm !important;
 
-          padding: 10mm !important;
-
+          background: white !important;
           box-shadow: none !important;
 
           overflow: hidden !important;
@@ -1665,26 +1652,21 @@ if (typeof document !== "undefined") {
         .terms-page {
           width: 210mm !important;
           height: 297mm !important;
+          min-height: 297mm !important;
+          max-height: 297mm !important;
 
           margin: 0 !important;
+          padding: 8mm !important;
 
-          padding: 10mm !important;
-
+          background: white !important;
           box-shadow: none !important;
 
           overflow: hidden !important;
 
           page-break-before: always !important;
-          page-break-after: auto !important;
-
+          page-break-after: avoid !important;
           break-before: page !important;
-          break-after: auto !important;
-        }
-
-        .invoice-page,
-        .terms-page {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
+          break-after: avoid !important;
         }
 
         table {
@@ -1692,31 +1674,33 @@ if (typeof document !== "undefined") {
           break-inside: avoid !important;
         }
 
+        thead {
+          display: table-header-group !important;
+        }
+
+        tbody {
+          display: table-row-group !important;
+        }
+
         tr {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
         }
 
-        .infoGrid,
-        .vehicleGrid,
-        .totalArea,
-        .paymentSummary,
-        .ppfBox,
-        .signatureArea {
+        img {
           page-break-inside: avoid !important;
-          break-inside: avoid !important;
         }
 
       }
-
 
       @media screen and (max-width: 800px) {
 
         .invoice-page,
         .terms-page {
+          width: 210mm;
           transform-origin: top center;
-          transform: scale(0.85);
-          margin-bottom: -80px !important;
+          transform: scale(0.75);
+          margin-bottom: -70px !important;
         }
 
       }
