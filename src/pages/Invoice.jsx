@@ -83,33 +83,45 @@ if (!job) {
       <div style={styles.invoice}>
 
 
-        <div style={styles.header}>
+       <div style={styles.header}>
 
+  <div style={styles.headerContent}>
 
-          <h1>
-            HAOSHENG CAR SERVICE AND ACCESSORIES
-          </h1>
+    {/* GA LOGO */}
+    <div style={styles.logoContainer}>
+      <img
+        src="/ga-logo.png"
+        alt="GA Logo"
+        style={styles.logo}
+      />
+    </div>
 
+    {/* COMPANY INFORMATION */}
+    <div style={styles.companyInfo}>
 
-          <h2>
-            هاوشنغ لخدمات وزينة السيارات
-          </h2>
+      <h1>
+        HAOSHENG CAR SERVICE AND ACCESSORIES
+      </h1>
 
+      <h2>
+        هاوشنغ لخدمات وزينة السيارات
+      </h2>
 
-          <p>
-            Building 358, Salwa Road, Doha - Qatar
-          </p>
+      <p>
+        Building 358, Salwa Road, Doha - Qatar
+      </p>
 
+      <p>
+        Tel: +974 3368 1888 |
+        C.R.NO: 199725 |
+        Email: info@haoshengcar.com
+      </p>
 
-          <p>
-            Tel: +974 3368 1888 |
-            C.R.NO: 199725 |
-            Email: info@haoshengcar.com
-          </p>
+    </div>
 
+  </div>
 
-        </div>
-
+</div>
 
 
         <hr />
@@ -594,114 +606,191 @@ job.serviceDetails?.[service]?.discount || 0
 
       <div style={styles.warranty}>
 
+  {/* ENGLISH TERMS */}
 
-        <h1>
-          Terms and Conditions
-        </h1>
+  <h1 style={{ fontSize: "20px", margin: "5px 0 10px" }}>
+  Terms and Conditions
+</h1>
 
+  <h2 style={{ fontSize: "15px", margin: "8px 0 5px" }}>
+  ❖ Warranty
+</h2>
 
-        <h2>
-          ❖ Warranty
-        </h2>
+  <p>
+    We, the Haosheng Car Care team, are pleased to offer you a warranty
+    when you install full vehicle protection or full front-end protection
+    (excluding misuse).
+  </p>
 
+  <p>
+    • Quarter panel protection: 5-year warranty.
+  </p>
 
-        <p>
-          We, the Haosheng Car Care team, are pleased to offer you a warranty when you install full vehicle protection or full front-end protection excluding misuse.
-        </p>
+  <p>
+    • Protection warranty includes Nano-ceramic shine, yellowing,
+    self-healing of scratches, cracking, and paint removal.
+  </p>
 
+  <p>
+    • Thermal insulation warranty: 10 years.
+  </p>
 
-        <p>
-          • Quarter panel protection: 5-year warranty.
-        </p>
-
-
-        <p>
-          • Protection warranty includes Nano-ceramic shine, yellowing, self-healing of scratches, cracking, and paint removal.
-        </p>
-
-
-        <p>
-          • Thermal insulation warranty: 10 years.
-        </p>
-
-
-        <p>
-          • Nano-ceramic service: 2 years for shine, 6 months for water repellency.
-        </p>
+  <p>
+    • Nano-ceramic service: 2 years for shine, 6 months for water repellency.
+  </p>
 
 
+  <h2>
+    ❖ Conditions
+  </h2>
 
-        <h2>
-          ❖ Conditions
-        </h2>
+  <p>
+    • Signing the invoice or receipt by the customer is considered
+    acceptance and receipt of the protection on the vehicle and cannot
+    be denied or contested.
+  </p>
 
+  <p>
+    • The consumer cannot obtain post-installation services during
+    the warranty period for maintenance or replacement if they caused
+    the damage or used inappropriate car washing materials.
+  </p>
 
-        <p>
-          • Customer signature confirms acceptance of the protection installed on the vehicle.
-        </p>
+  <p>
+    • The warranty does not apply to any of our products if tampered
+    with or repaired, modified, or maintained by unauthorized persons.
+  </p>
 
+  <p>
+    • The warranty does not cover replacement of parts damaged by severe
+    scratches or accidents. Damage will be assessed by company
+    technicians to determine the cost of replacement.
+  </p>
 
-        <p>
-          • Warranty is void if improper washing materials are used.
-        </p>
+  <p>
+    • The customer must bring the vehicle for maintenance six days
+    after protection installation.
+  </p>
 
+  <p>
+    • The customer must bring the vehicle for annual maintenance and
+    protection inspection. Failure to comply with the schedule voids
+    the warranty.
+  </p>
 
-        <p>
-          • Warranty does not apply if repaired or modified by unauthorized persons.
-        </p>
-
-
-        <p>
-          • Annual maintenance inspection is required.
-        </p>
-
-
-
-        <hr />
-
-
-
-        <h1 dir="rtl">
-          شروط وأحكام
-        </h1>
-
-
-        <h2 dir="rtl">
-          ❖ ضمان
-        </h2>
-
-
-        <p dir="rtl">
-          تقدم هاوشنغ للعناية بالسيارات ضماناً عند تركيب حماية كاملة للمركبة أو حماية كاملة للواجهة الأمامية باستثناء سوء الاستخدام.
-        </p>
+  <p>
+    • Washing the car with materials that damage the protection,
+    causing scratches or yellowing, voids the warranty.
+  </p>
 
 
-        <p dir="rtl">
-          • حماية ربع لوحة السيارة: ضمان 5 سنوات.
-        </p>
+  <h2>
+    ❖ Additional Services
+  </h2>
+
+  <p>
+    • We offer car washing and protection inspection services once a
+    month for a nominal fee.
+  </p>
 
 
-        <p dir="rtl">
-          • يشمل الضمان لمعان النانو سيراميك ومقاومة الاصفرار والمعالجة الذاتية للخدوش.
-        </p>
+  <hr />
 
 
-        <p dir="rtl">
-          • ضمان العزل الحراري: 10 سنوات.
-        </p>
+  {/* ARABIC TERMS */}
+
+  <h1 dir="rtl">
+    شروط و أحكام
+  </h1>
+
+  <h2 dir="rtl">
+    ❖ ضمان
+  </h2>
+
+  <p dir="rtl">
+    يسرّنا في فريق هاوشنغ للعناية بالسيارات أن نقدم لكم ضمانًا
+    عند تركيب حماية كاملة لسيارتكم أو حماية كاملة للواجهة الأمامية
+    (باستثناء سوء الاستخدام).
+  </p>
+
+  <p dir="rtl">
+    • حماية ربع لوحة السيارة: ضمان 5 سنوات.
+  </p>
+
+  <p dir="rtl">
+    • يشمل ضمان الحماية لمعان نانو سيراميك، والاصفرار، والمعالجة
+    الذاتية للخدوش والتشققات، وإزالة الطلاء.
+  </p>
+
+  <p dir="rtl">
+    • ضمان العزل الحراري: 10 سنوات.
+  </p>
+
+  <p dir="rtl">
+    • خدمة نانو سيراميك: سنتان لللمعان، و6 أشهر لمقاومة الماء.
+  </p>
 
 
-        <p dir="rtl">
-          • يجب الالتزام بالصيانة الدورية للحفاظ على الضمان.
-        </p>
+  <h2 dir="rtl">
+    ❖ شروط
+  </h2>
 
-<button
-  onClick={() => window.print()}
-  style={styles.printButton}
->
-  🖨 Print Invoice
-</button>
-      </div>
+  <p dir="rtl">
+    • يُعد توقيع العميل على الفاتورة أو الإيصال قبولاً واستلاماً
+    للحماية على المركبة، ولا يجوز رفضه أو الاعتراض عليه.
+  </p>
+
+  <p dir="rtl">
+    • لا يحق للمستهلك الحصول على خدمات ما بعد التركيب خلال فترة
+    الضمان للصيانة أو الاستبدال إذا تسبب في تلف المركبة أو استخدم
+    مواد غسيل غير مناسبة.
+  </p>
+
+  <p dir="rtl">
+    • لا ينطبق الضمان على أي من منتجاتنا إذا تم العبث بها أو إصلاحها
+    أو تعديلها أو صيانتها من قبل أشخاص غير مصرح لهم.
+  </p>
+
+  <p dir="rtl">
+    • لا يغطي الضمان استبدال الأجزاء التالفة بسبب الخدوش الشديدة
+    أو الحوادث. سيقوم فنيو الشركة بتقييم الضرر لتحديد تكلفة الاستبدال.
+  </p>
+
+  <p dir="rtl">
+    • يجب على العميل إحضار المركبة للصيانة بعد ستة أيام من تركيب الحماية.
+  </p>
+
+  <p dir="rtl">
+    • يجب على العميل إحضار المركبة للصيانة السنوية وفحص الحماية.
+    يُبطل الضمان عدم الالتزام بالجدول الزمني.
+  </p>
+
+  <p dir="rtl">
+    • يُبطل الضمان غسل السيارة بمواد تُتلف الحماية، أو تُسبب خدوشاً
+    أو اصفراراً.
+  </p>
+
+
+  <h2 dir="rtl">
+    ❖ خدمات إضافية
+  </h2>
+
+  <p dir="rtl">
+    نقدم خدمات غسيل السيارات وفحص الحماية مرة واحدة شهريًا مقابل
+    رسوم رمزية.
+  </p>
+
+
+  <button
+    onClick={() => window.print()}
+    style={styles.printButton}
+  >
+    🖨 Print Invoice
+  </button>
+
+</div>
+
+
 
 
     </div>
@@ -714,131 +803,106 @@ job.serviceDetails?.[service]?.discount || 0
 
 const styles = {
 
+  page: {
+    background: "#fff",
+    padding: "10px"
+  },
 
-page:{
-
-  background:"#fff",
-
-  padding:"10px"
-
+  invoice: {
+  width: "190mm",
+  height: "277mm",
+  boxSizing: "border-box",
+  margin: "auto",
+  padding: "8px",
+  fontSize: "11px",
+  lineHeight: "1.15",
+  pageBreakAfter: "always",
+  breakAfter: "page",
 },
 
-
-
-invoice:{
-
-  width:"190mm",
-
-  margin:"auto",
-
-  padding:"15px",
-
-  fontSize:"12px",
-
-  lineHeight:"1.2",
-
-  pageBreakAfter:"always"
-
+  header: {
+  width: "100%",
 },
 
-
-
-header:{
-
-  textAlign:"center"
-
+headerContent: {
+  display: "flex",
+  alignItems: "center",
+  width: "100%",
 },
 
-
-
-row:{
-
-  display:"flex",
-
-  justifyContent:"space-between"
-
+logoContainer: {
+  width: "25%",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
 },
 
-
-
-right:{
-
-  textAlign:"right"
-
+logo: {
+  width: "110px",
+  height: "auto",
+  display: "block",
 },
 
-
-
-amount:{
-
-  textAlign:"right"
-
+companyInfo: {
+  width: "75%",
+  textAlign: "center",
 },
 
+  row: {
+    display: "flex",
+    justifyContent: "space-between"
+  },
 
+  right: {
+    textAlign: "right"
+  },
 
-signatures:{
+  amount: {
+    textAlign: "right"
+  },
 
-  display:"flex",
+  signatures: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "25px"
+  },
 
-  justifyContent:"space-between",
-
-  marginTop:"25px"
-
+  warranty: {
+  width: "190mm",
+  height: "277mm",
+  boxSizing: "border-box",
+  margin: "auto",
+  padding: "10px",
+  fontSize: "10px",
+  lineHeight: "1.15",
+  pageBreakBefore: "always",
+  breakBefore: "page",
 },
 
-
-
-footer:{
-
-  marginTop:"25px",
-
-  textAlign:"center",
-
-  fontSize:"11px"
-
+  table: {
+  width: "100%",
+  borderCollapse: "collapse",
+  marginTop: "10px",
 },
 
-
-
-warranty:{
-
-  width:"190mm",
-
-  margin:"auto",
-
-  padding:"20px",
-
-  fontSize:"12px",
-
-  lineHeight:"1.3",
-
-  pageBreakBefore:"always"
-
-},
-table:{
-  width:"100%",
-  borderCollapse:"collapse",
-  marginTop:"20px",
+  cell: {
+  border: "1px solid #000",
+  padding: "6px",
+  textAlign: "center",
+  fontSize: "11px",
 },
 
-cell:{
-  border:"1px solid #000",
-  padding:"10px",
-  textAlign:"center",
-  fontSize:"13px",
-},
-printButton:{
-  background:"#2563eb",
-  color:"white",
-  border:"none",
-  padding:"12px 25px",
-  borderRadius:"10px",
-  cursor:"pointer",
-  marginTop:"20px"
-},
+  printButton: {
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    padding: "12px 25px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    marginTop: "20px"
+  }
+
 };
-
 
 
 export default Invoice;
