@@ -921,7 +921,7 @@ function Invoice() {
 ========================================================= */
 
 const colors = {
-  navy: "#14283D",
+  navy: "#060a0f",
   blue: "#1D4E89",
   lightBlue: "#EAF2F8",
   gold: "#C79A45",
@@ -1016,7 +1016,7 @@ const styles = {
 
 
   companyName: {
-    color: colors.navy,
+    color: colors.black,
     fontSize: "18px",
     lineHeight: "1.1",
     margin: "0 0 5px",
@@ -1055,8 +1055,8 @@ const styles = {
 
 
   invoiceBadge: {
-    background: colors.navy,
-    color: colors.white,
+    background: colors.lightGold,
+    color: colors.black,
     padding: "12px 8px",
     textAlign: "center",
     borderRadius: "4px",
@@ -1081,7 +1081,7 @@ const styles = {
   receiptNumber: {
     fontSize: "10px",
     marginTop: "8px",
-    color: "#E8D4A9",
+    color: "#1d1c1b",
   },
 
 
@@ -1107,13 +1107,13 @@ const styles = {
 
   cardHeader: {
     background: colors.lightBlue,
-    color: colors.navy,
+    color: colors.black,
     fontSize: "9px",
     fontWeight: "800",
     letterSpacing: "0.6px",
     padding: "6px 9px",
     borderBottom:
-      `2px solid ${colors.blue}`,
+      `2px solid ${colors.gold}`,
   },
 
 
@@ -1199,7 +1199,7 @@ const styles = {
 
 
   vehicleItem: {
-    minHeight: "54px",
+    minHeight: "50px",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
@@ -1243,8 +1243,8 @@ const styles = {
 
 
   serviceHeader: {
-    background: colors.navy,
-    color: colors.white,
+    background: colors.black,
+    color: colors.gold,
     border:
       `1px solid ${colors.navy}`,
     padding: "7px 5px",
@@ -1306,9 +1306,9 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     padding: "9px",
-    background: colors.navy,
-    color: colors.white,
-    fontSize: "12px",
+    background: colors.black,
+    color: colors.gold,
+    fontSize: "10px",
     fontWeight: "800",
   },
 
@@ -1329,7 +1329,7 @@ const styles = {
   ppfTitle: {
     background: colors.lightGold,
     color: colors.navy,
-    fontSize: "10px",
+    fontSize: "9px",
     fontWeight: "800",
     padding: "6px 9px",
     borderBottom:
@@ -1419,7 +1419,7 @@ const styles = {
     overflow: "hidden",
     boxShadow:
       "0 4px 20px rgba(0,0,0,0.12)",
-    fontSize: "9px",
+    fontSize: "10px",
     lineHeight: "1.3",
   },
 
@@ -1442,7 +1442,7 @@ const styles = {
   termsMainTitle: {
     margin: "0",
     fontSize: "21px",
-    color: colors.navy,
+    color: colors.gold,
     letterSpacing: "0.8px",
   },
 
@@ -1457,7 +1457,7 @@ const styles = {
   termsDivider: {
     height: "2px",
     background:
-      `linear-gradient(90deg, ${colors.navy}, ${colors.gold})`,
+      `linear-gradient(90deg, ${colors.black}, ${colors.gold})`,
     margin: "4px 0 10px",
   },
 
@@ -1468,8 +1468,8 @@ const styles = {
 
 
   termsHeading: {
-    color: colors.navy,
-    fontSize: "12px",
+    color: colors.gold,
+    fontSize: "14px",
     fontWeight: "800",
     margin:
       "7px 0 4px",
@@ -1486,8 +1486,8 @@ const styles = {
 
 
   arabicTermsHeading: {
-    color: colors.navy,
-    fontSize: "12px",
+    color: colors.gold,
+    fontSize: "14px",
     fontWeight: "800",
     margin:
       "7px 0 4px",
@@ -1526,7 +1526,7 @@ const styles = {
     position: "fixed",
     right: "25px",
     bottom: "25px",
-    background: colors.blue,
+    background: colors.gold,
     color: colors.white,
     border: "none",
     padding: "13px 24px",
