@@ -76,10 +76,7 @@ function Invoice() {
       const quantity = Number(details?.quantity) || 1;
       const discount = Number(details?.discount) || 0;
 
-      return (
-        total +
-        Math.max(price * quantity - discount, 0)
-      );
+      return total + Math.max(price * quantity - discount, 0);
     }, 0) || 0;
 
   return (
@@ -89,9 +86,12 @@ function Invoice() {
           PAGE 1 - INVOICE
       ====================================================== */}
 
-      <section className="invoice-page" style={styles.invoice}>
+      <section
+        className="invoice-page"
+        style={styles.invoice}
+      >
 
-        {/* TOP COLOR BAR */}
+        {/* TOP BAR */}
 
         <div style={styles.topBar}></div>
 
@@ -160,10 +160,12 @@ function Invoice() {
 
 
         {/* =================================================
-            CUSTOMER INFORMATION
+            CUSTOMER / PAYMENT INFORMATION
         ================================================== */}
 
         <div style={styles.infoGrid}>
+
+          {/* CUSTOMER */}
 
           <div style={styles.infoCard}>
 
@@ -174,6 +176,7 @@ function Invoice() {
             <div style={styles.cardBody}>
 
               <div style={styles.infoRow}>
+
                 <span style={styles.infoLabel}>
                   CUSTOMER NAME
                 </span>
@@ -181,10 +184,12 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.customer || "-"}
                 </span>
+
               </div>
 
 
               <div style={styles.infoRow}>
+
                 <span style={styles.infoLabel}>
                   MOBILE NUMBER
                 </span>
@@ -192,10 +197,12 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.phone || "-"}
                 </span>
+
               </div>
 
 
               <div style={styles.infoRow}>
+
                 <span style={styles.infoLabel}>
                   INVOICE DATE
                 </span>
@@ -203,12 +210,15 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.date || "-"}
                 </span>
+
               </div>
 
             </div>
 
           </div>
 
+
+          {/* PAYMENT */}
 
           <div style={styles.infoCard}>
 
@@ -219,31 +229,39 @@ function Invoice() {
             <div style={styles.cardBody}>
 
               <div style={styles.infoRow}>
+
                 <span style={styles.infoLabel}>
                   PAYMENT METHOD
                 </span>
 
                 <span style={styles.paymentValue}>
-                  {job.paymentMethod || "Not Selected"}
+                  {job.payment_method || "Not Selected"}
                 </span>
+
               </div>
 
 
               <div style={styles.infoRow}>
-                <span style={styles.infoLabel}>
+
+                <span
+                  style={styles.infoLabel}
+                  dir="rtl"
+                >
                   طريقة الدفع
                 </span>
 
                 <span
-                  style={styles.infoValue}
+                  style={styles.paymentValue}
                   dir="rtl"
                 >
-                  {job.paymentMethod || "غير محدد"}
+                  {job.payment_method || "غير محدد"}
                 </span>
+
               </div>
 
 
               {job.voucherNumber && (
+
                 <div style={styles.infoRow}>
 
                   <span style={styles.infoLabel}>
@@ -255,6 +273,7 @@ function Invoice() {
                   </span>
 
                 </div>
+
               )}
 
             </div>
@@ -284,84 +303,99 @@ function Invoice() {
         <div style={styles.vehicleGrid}>
 
           <div style={styles.vehicleItem}>
+
             <span style={styles.vehicleLabel}>
               MAKE
             </span>
 
-            <strong>
+            <strong style={styles.vehicleValue}>
               {job.carType || "-"}
             </strong>
 
-            <small>
+            <small style={styles.vehicleArabic}>
               العلامة
             </small>
+
           </div>
 
 
           <div style={styles.vehicleItem}>
+
             <span style={styles.vehicleLabel}>
               MODEL
             </span>
 
-            <strong>
+            <strong style={styles.vehicleValue}>
               {job.carModel || "-"}
             </strong>
 
-            <small>
+            <small style={styles.vehicleArabic}>
               النوع
             </small>
+
           </div>
 
 
           <div style={styles.vehicleItem}>
+
             <span style={styles.vehicleLabel}>
               COLOR
             </span>
 
-            <strong>
+            <strong style={styles.vehicleValue}>
               {job.color || "-"}
             </strong>
 
-            <small>
+            <small style={styles.vehicleArabic}>
               اللون
             </small>
+
           </div>
 
 
           <div style={styles.vehicleItem}>
+
             <span style={styles.vehicleLabel}>
               CHASSIS
             </span>
 
-            <strong>
+            <strong style={styles.vehicleValue}>
               {job.chassis || "-"}
             </strong>
 
-            <small>
+            <small style={styles.vehicleArabic}>
               الهيكل
             </small>
+
           </div>
 
 
-          <div style={styles.vehicleItem}>
+          <div
+            style={{
+              ...styles.vehicleItem,
+              borderRight: "none",
+            }}
+          >
+
             <span style={styles.vehicleLabel}>
               PLATE
             </span>
 
-            <strong>
+            <strong style={styles.vehicleValue}>
               {job.plate || "-"}
             </strong>
 
-            <small>
+            <small style={styles.vehicleArabic}>
               اللوحة
             </small>
+
           </div>
 
         </div>
 
 
         {/* =================================================
-            SERVICE TABLE
+            SERVICES
         ================================================== */}
 
         <div style={styles.sectionHeading}>
@@ -462,6 +496,7 @@ function Invoice() {
                 </tr>
 
               );
+
             })}
 
 
@@ -533,6 +568,23 @@ function Invoice() {
             </div>
 
           </div>
+
+        </div>
+
+
+        {/* =================================================
+            PAYMENT SUMMARY
+        ================================================== */}
+
+        <div style={styles.paymentSummary}>
+
+          <span>
+            PAYMENT METHOD
+          </span>
+
+          <strong>
+            {job.payment_method || "Not Selected"}
+          </strong>
 
         </div>
 
@@ -624,10 +676,13 @@ function Invoice() {
 
 
       {/* =====================================================
-          PAGE 2 - TERMS & CONDITIONS
+          PAGE 2 - TERMS AND CONDITIONS
       ====================================================== */}
 
-      <section className="terms-page" style={styles.termsPage}>
+      <section
+        className="terms-page"
+        style={styles.termsPage}
+      >
 
         <div style={styles.topBar}></div>
 
@@ -917,11 +972,11 @@ function Invoice() {
 
 
 /* =========================================================
-   STYLES
+   COLORS
 ========================================================= */
 
 const colors = {
-  navy: "#060a0f",
+  navy: "#060A0F",
   blue: "#1D4E89",
   lightBlue: "#EAF2F8",
   gold: "#C79A45",
@@ -931,8 +986,13 @@ const colors = {
   lightGray: "#F5F7FA",
   border: "#D8DEE6",
   white: "#FFFFFF",
+  black: "#000000",
 };
 
+
+/* =========================================================
+   STYLES
+========================================================= */
 
 const styles = {
 
@@ -940,8 +1000,7 @@ const styles = {
     background: "#E9EDF2",
     minHeight: "100vh",
     padding: "20px 0",
-    fontFamily:
-      "Arial, Helvetica, sans-serif",
+    fontFamily: "Arial, Helvetica, sans-serif",
     color: colors.dark,
   },
 
@@ -968,8 +1027,7 @@ const styles = {
     padding: "7mm",
     position: "relative",
     overflow: "hidden",
-    boxShadow:
-      "0 4px 20px rgba(0,0,0,0.12)",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
   },
 
 
@@ -978,7 +1036,7 @@ const styles = {
     width: "100%",
     background:
       `linear-gradient(90deg, ${colors.navy} 0%, ${colors.navy} 65%, ${colors.gold} 65%, ${colors.gold} 100%)`,
-    marginBottom: "12px",
+    marginBottom: "10px",
   },
 
 
@@ -988,9 +1046,9 @@ const styles = {
 
   header: {
     display: "grid",
-    gridTemplateColumns: "25% 55% 20%",
+    gridTemplateColumns: "23% 57% 20%",
     alignItems: "center",
-    minHeight: "105px",
+    minHeight: "95px",
   },
 
 
@@ -1003,8 +1061,8 @@ const styles = {
 
 
   logo: {
-    width: "105px",
-    maxHeight: "90px",
+    width: "95px",
+    maxHeight: "80px",
     objectFit: "contain",
   },
 
@@ -1017,9 +1075,9 @@ const styles = {
 
   companyName: {
     color: colors.black,
-    fontSize: "18px",
-    lineHeight: "1.1",
-    margin: "0 0 5px",
+    fontSize: "17px",
+    lineHeight: "1.05",
+    margin: "0 0 4px",
     fontWeight: "800",
     letterSpacing: "0.3px",
   },
@@ -1027,28 +1085,28 @@ const styles = {
 
   companyArabic: {
     color: colors.gold,
-    fontSize: "16px",
-    margin: "3px 0 6px",
+    fontSize: "15px",
+    margin: "3px 0 5px",
     fontWeight: "700",
   },
 
 
   address: {
-    fontSize: "9px",
-    margin: "3px 0",
+    fontSize: "8px",
+    margin: "2px 0",
     color: colors.gray,
   },
 
 
   contact: {
-    fontSize: "8px",
-    margin: "3px 0",
+    fontSize: "7.5px",
+    margin: "2px 0",
     color: colors.gray,
   },
 
 
   separator: {
-    margin: "0 4px",
+    margin: "0 3px",
     color: colors.gold,
     fontWeight: "bold",
   },
@@ -1057,49 +1115,47 @@ const styles = {
   invoiceBadge: {
     background: colors.lightGold,
     color: colors.black,
-    padding: "12px 8px",
+    padding: "10px 7px",
     textAlign: "center",
     borderRadius: "4px",
-    borderBottom:
-      `4px solid ${colors.gold}`,
+    borderBottom: `4px solid ${colors.gold}`,
   },
 
 
   invoiceLabel: {
-    fontSize: "16px",
+    fontSize: "15px",
     fontWeight: "800",
     letterSpacing: "1px",
   },
 
 
   invoiceArabic: {
-    fontSize: "13px",
+    fontSize: "12px",
     marginTop: "2px",
   },
 
 
   receiptNumber: {
-    fontSize: "10px",
-    marginTop: "8px",
-    color: "#1d1c1b",
+    fontSize: "9px",
+    marginTop: "6px",
+    color: colors.dark,
   },
 
 
   /* =====================================================
-     CUSTOMER / PAYMENT CARDS
+     CUSTOMER / PAYMENT
   ====================================================== */
 
   infoGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "10px",
-    marginTop: "10px",
+    gap: "8px",
+    marginTop: "8px",
   },
 
 
   infoCard: {
-    border:
-      `1px solid ${colors.border}`,
+    border: `1px solid ${colors.border}`,
     borderRadius: "4px",
     overflow: "hidden",
   },
@@ -1108,17 +1164,16 @@ const styles = {
   cardHeader: {
     background: colors.lightBlue,
     color: colors.black,
-    fontSize: "9px",
+    fontSize: "8px",
     fontWeight: "800",
     letterSpacing: "0.6px",
-    padding: "6px 9px",
-    borderBottom:
-      `2px solid ${colors.gold}`,
+    padding: "5px 8px",
+    borderBottom: `2px solid ${colors.gold}`,
   },
 
 
   cardBody: {
-    padding: "6px 9px",
+    padding: "5px 8px",
   },
 
 
@@ -1126,22 +1181,21 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "4px 0",
-    borderBottom:
-      "1px solid #EEF1F4",
-    gap: "10px",
+    padding: "3px 0",
+    borderBottom: "1px solid #EEF1F4",
+    gap: "8px",
   },
 
 
   infoLabel: {
-    fontSize: "8px",
+    fontSize: "7.5px",
     color: colors.gray,
     fontWeight: "700",
   },
 
 
   infoValue: {
-    fontSize: "9px",
+    fontSize: "8.5px",
     fontWeight: "700",
     textAlign: "right",
   },
@@ -1152,6 +1206,9 @@ const styles = {
     fontWeight: "800",
     color: colors.blue,
     textAlign: "right",
+    background: colors.lightGold,
+    padding: "3px 7px",
+    borderRadius: "3px",
   },
 
 
@@ -1163,71 +1220,68 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: "11px",
-    marginBottom: "6px",
-    padding:
-      "6px 9px",
+    marginTop: "9px",
+    marginBottom: "5px",
+    padding: "5px 8px",
     background: colors.navy,
     color: colors.white,
-    fontSize: "10px",
+    fontSize: "9px",
     fontWeight: "800",
     letterSpacing: "0.7px",
-    borderLeft:
-      `4px solid ${colors.gold}`,
+    borderLeft: `4px solid ${colors.gold}`,
   },
 
 
   sectionArabic: {
-    fontSize: "10px",
+    fontSize: "9px",
     color: "#E8D4A9",
   },
 
 
   /* =====================================================
-     VEHICLE GRID
+     VEHICLE
   ====================================================== */
 
   vehicleGrid: {
     display: "grid",
-    gridTemplateColumns:
-      "repeat(5, 1fr)",
-    border:
-      `1px solid ${colors.border}`,
+    gridTemplateColumns: "repeat(5, 1fr)",
+    border: `1px solid ${colors.border}`,
     borderRadius: "3px",
     overflow: "hidden",
   },
 
 
   vehicleItem: {
-    minHeight: "50px",
+    minHeight: "44px",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    padding: "5px",
-    borderRight:
-      `1px solid ${colors.border}`,
+    padding: "4px",
+    borderRight: `1px solid ${colors.border}`,
     background: "#FCFDFE",
     textAlign: "center",
   },
 
 
   vehicleLabel: {
-    fontSize: "7px",
+    fontSize: "6.5px",
     color: colors.gray,
     fontWeight: "800",
     letterSpacing: "0.6px",
-    marginBottom: "4px",
+    marginBottom: "3px",
   },
 
 
-  vehicleItemStrong: {
-    fontSize: "9px",
+  vehicleValue: {
+    fontSize: "8.5px",
   },
 
 
-  vehicleItemSmall: {
-    fontSize: "7px",
+  vehicleArabic: {
+    fontSize: "6.5px",
+    marginTop: "2px",
+    color: colors.gray,
   },
 
 
@@ -1238,35 +1292,32 @@ const styles = {
   serviceTable: {
     width: "100%",
     borderCollapse: "collapse",
-    fontSize: "9px",
+    fontSize: "8px",
   },
 
 
   serviceHeader: {
     background: colors.black,
     color: colors.gold,
-    border:
-      `1px solid ${colors.navy}`,
-    padding: "7px 5px",
+    border: `1px solid ${colors.navy}`,
+    padding: "6px 4px",
     textAlign: "center",
-    fontSize: "8px",
+    fontSize: "7.5px",
     letterSpacing: "0.5px",
   },
 
 
   serviceCell: {
-    border:
-      `1px solid ${colors.border}`,
-    padding: "7px 5px",
+    border: `1px solid ${colors.border}`,
+    padding: "5px 4px",
     textAlign: "center",
-    fontSize: "9px",
+    fontSize: "8px",
   },
 
 
   emptyCell: {
-    border:
-      `1px solid ${colors.border}`,
-    padding: "12px",
+    border: `1px solid ${colors.border}`,
+    padding: "10px",
     textAlign: "center",
     color: colors.gray,
   },
@@ -1279,14 +1330,13 @@ const styles = {
   totalArea: {
     display: "flex",
     justifyContent: "flex-end",
-    marginTop: "10px",
+    marginTop: "8px",
   },
 
 
   totalBox: {
-    width: "48%",
-    border:
-      `1px solid ${colors.border}`,
+    width: "46%",
+    border: `1px solid ${colors.border}`,
     borderRadius: "4px",
     overflow: "hidden",
   },
@@ -1295,21 +1345,39 @@ const styles = {
   totalRow: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "6px 9px",
-    fontSize: "9px",
-    borderBottom:
-      `1px solid ${colors.border}`,
+    padding: "5px 8px",
+    fontSize: "8px",
+    borderBottom: `1px solid ${colors.border}`,
   },
 
 
   netRow: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "9px",
+    padding: "7px 8px",
     background: colors.black,
     color: colors.gold,
-    fontSize: "10px",
+    fontSize: "9px",
     fontWeight: "800",
+  },
+
+
+  /* =====================================================
+     PAYMENT SUMMARY
+  ====================================================== */
+
+  paymentSummary: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: "7px",
+    padding: "7px 10px",
+    background: colors.lightBlue,
+    border: `1px solid ${colors.border}`,
+    borderLeft: `4px solid ${colors.gold}`,
+    borderRadius: "4px",
+    fontSize: "9px",
+    fontWeight: "700",
   },
 
 
@@ -1318,9 +1386,8 @@ const styles = {
   ====================================================== */
 
   ppfBox: {
-    marginTop: "10px",
-    border:
-      `1px solid ${colors.gold}`,
+    marginTop: "8px",
+    border: `1px solid ${colors.gold}`,
     borderRadius: "4px",
     overflow: "hidden",
   },
@@ -1329,22 +1396,20 @@ const styles = {
   ppfTitle: {
     background: colors.lightGold,
     color: colors.navy,
-    fontSize: "9px",
+    fontSize: "8px",
     fontWeight: "800",
-    padding: "6px 9px",
-    borderBottom:
-      `1px solid ${colors.gold}`,
+    padding: "5px 8px",
+    borderBottom: `1px solid ${colors.gold}`,
   },
 
 
   ppfContent: {
     display: "grid",
-    gridTemplateColumns:
-      "1fr 1fr",
-    gap: "3px 15px",
-    padding: "7px 9px",
-    fontSize: "8px",
-    lineHeight: "1.3",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "2px 12px",
+    padding: "6px 8px",
+    fontSize: "7.5px",
+    lineHeight: "1.25",
   },
 
 
@@ -1355,8 +1420,8 @@ const styles = {
   signatureArea: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "80px",
-    marginTop: "17px",
+    gap: "70px",
+    marginTop: "13px",
   },
 
 
@@ -1366,21 +1431,20 @@ const styles = {
 
 
   signatureTitle: {
-    fontSize: "8px",
+    fontSize: "7.5px",
     color: colors.navy,
     fontWeight: "800",
   },
 
 
   signatureLine: {
-    borderBottom:
-      `1px solid ${colors.dark}`,
-    marginTop: "28px",
+    borderBottom: `1px solid ${colors.dark}`,
+    marginTop: "24px",
   },
 
 
   signatureSub: {
-    fontSize: "8px",
+    fontSize: "7px",
     color: colors.gray,
     marginTop: "3px",
   },
@@ -1392,15 +1456,14 @@ const styles = {
 
   footer: {
     position: "absolute",
-    bottom: "8mm",
+    bottom: "6mm",
     left: "7mm",
     right: "7mm",
     textAlign: "center",
-    fontSize: "8px",
+    fontSize: "7px",
     color: colors.gray,
-    borderTop:
-      `1px solid ${colors.border}`,
-    paddingTop: "5px",
+    borderTop: `1px solid ${colors.border}`,
+    paddingTop: "4px",
   },
 
 
@@ -1417,39 +1480,38 @@ const styles = {
     padding: "7mm",
     position: "relative",
     overflow: "hidden",
-    boxShadow:
-      "0 4px 20px rgba(0,0,0,0.12)",
-    fontSize: "10px",
-    lineHeight: "1.3",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+    fontSize: "9px",
+    lineHeight: "1.25",
   },
 
 
   termsHeader: {
     display: "flex",
     alignItems: "center",
-    gap: "18px",
-    padding: "4px 5px 8px",
+    gap: "15px",
+    padding: "2px 5px 6px",
   },
 
 
   termsLogo: {
-    width: "70px",
-    height: "55px",
+    width: "60px",
+    height: "48px",
     objectFit: "contain",
   },
 
 
   termsMainTitle: {
     margin: "0",
-    fontSize: "21px",
+    fontSize: "19px",
     color: colors.gold,
     letterSpacing: "0.8px",
   },
 
 
   termsArabicTitle: {
-    margin: "4px 0 0",
-    fontSize: "16px",
+    margin: "3px 0 0",
+    fontSize: "14px",
     color: colors.gold,
   },
 
@@ -1458,7 +1520,7 @@ const styles = {
     height: "2px",
     background:
       `linear-gradient(90deg, ${colors.black}, ${colors.gold})`,
-    margin: "4px 0 10px",
+    margin: "3px 0 7px",
   },
 
 
@@ -1469,13 +1531,11 @@ const styles = {
 
   termsHeading: {
     color: colors.gold,
-    fontSize: "14px",
+    fontSize: "12px",
     fontWeight: "800",
-    margin:
-      "7px 0 4px",
-    borderLeft:
-      `3px solid ${colors.gold}`,
-    paddingLeft: "7px",
+    margin: "6px 0 3px",
+    borderLeft: `3px solid ${colors.gold}`,
+    paddingLeft: "6px",
   },
 
 
@@ -1487,33 +1547,29 @@ const styles = {
 
   arabicTermsHeading: {
     color: colors.gold,
-    fontSize: "14px",
+    fontSize: "12px",
     fontWeight: "800",
-    margin:
-      "7px 0 4px",
-    borderRight:
-      `3px solid ${colors.gold}`,
-    paddingRight: "7px",
+    margin: "6px 0 3px",
+    borderRight: `3px solid ${colors.gold}`,
+    paddingRight: "6px",
   },
 
 
   termsParagraph: {
-    margin:
-      "4px 0",
-    fontSize: "8.5px",
+    margin: "3px 0",
+    fontSize: "7.8px",
   },
 
 
   termsFooter: {
     position: "absolute",
-    bottom: "8mm",
+    bottom: "6mm",
     left: "7mm",
     right: "7mm",
     textAlign: "center",
-    borderTop:
-      `1px solid ${colors.border}`,
-    paddingTop: "5px",
-    fontSize: "7px",
+    borderTop: `1px solid ${colors.border}`,
+    paddingTop: "4px",
+    fontSize: "6.5px",
     color: colors.gray,
   },
 
@@ -1534,8 +1590,7 @@ const styles = {
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: "700",
-    boxShadow:
-      "0 4px 12px rgba(0,0,0,0.25)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
     zIndex: 9999,
   },
 
@@ -1555,7 +1610,8 @@ if (typeof document !== "undefined") {
 
   if (!existingStyle) {
 
-    const printStyle = document.createElement("style");
+    const printStyle =
+      document.createElement("style");
 
     printStyle.id =
       "professional-invoice-print-style";
@@ -1575,11 +1631,10 @@ if (typeof document !== "undefined") {
 
         html,
         body {
-          width: 210mm !important;
-          height: 297mm !important;
           margin: 0 !important;
           padding: 0 !important;
-          background: #ffffff !important;
+          background: white !important;
+          width: 210mm !important;
         }
 
         body {
@@ -1587,15 +1642,9 @@ if (typeof document !== "undefined") {
           print-color-adjust: exact !important;
         }
 
-        /* Hide print button */
-
         .print-button {
           display: none !important;
         }
-
-        /* =========================================
-           PAGE 1
-        ========================================= */
 
         .invoice-page {
           width: 210mm !important;
@@ -1603,26 +1652,15 @@ if (typeof document !== "undefined") {
 
           margin: 0 !important;
 
-          padding: 7mm !important;
-
-          background: #ffffff !important;
+          padding: 10mm !important;
 
           box-shadow: none !important;
 
           overflow: hidden !important;
 
-          position: relative !important;
-
-          page-break-before: auto !important;
           page-break-after: always !important;
-
-          break-before: auto !important;
           break-after: page !important;
         }
-
-        /* =========================================
-           PAGE 2
-        ========================================= */
 
         .terms-page {
           width: 210mm !important;
@@ -1630,15 +1668,11 @@ if (typeof document !== "undefined") {
 
           margin: 0 !important;
 
-          padding: 7mm !important;
-
-          background: #ffffff !important;
+          padding: 10mm !important;
 
           box-shadow: none !important;
 
           overflow: hidden !important;
-
-          position: relative !important;
 
           page-break-before: always !important;
           page-break-after: auto !important;
@@ -1647,12 +1681,8 @@ if (typeof document !== "undefined") {
           break-after: auto !important;
         }
 
-        /* =========================================
-           PREVENT CONTENT FROM CREATING EXTRA PAGES
-        ========================================= */
-
-        .invoice-page *,
-        .terms-page * {
+        .invoice-page,
+        .terms-page {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
         }
@@ -1667,21 +1697,26 @@ if (typeof document !== "undefined") {
           break-inside: avoid !important;
         }
 
-        /* =========================================
-           REMOVE SCREEN SPACING
-        ========================================= */
+        .infoGrid,
+        .vehicleGrid,
+        .totalArea,
+        .paymentSummary,
+        .ppfBox,
+        .signatureArea {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+
+      }
+
+
+      @media screen and (max-width: 800px) {
 
         .invoice-page,
         .terms-page {
-          transform: none !important;
-        }
-
-        /* =========================================
-           REMOVE OUTER PAGE BACKGROUND
-        ========================================= */
-
-        body > div {
-          background: #ffffff !important;
+          transform-origin: top center;
+          transform: scale(0.85);
+          margin-bottom: -80px !important;
         }
 
       }
