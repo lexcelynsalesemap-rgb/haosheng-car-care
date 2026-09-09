@@ -16,14 +16,12 @@ import {
 } from "recharts";
 
 function Dashboard() {
-
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
   const [jobServices, setJobServices] = useState([]);
   const [dateFilter, setDateFilter] = useState("All");
 
   useEffect(() => {
-
     loadDashboard();
 
     const jobsChannel = supabase
@@ -70,7 +68,6 @@ function Dashboard() {
       supabase.removeChannel(paymentsChannel);
       supabase.removeChannel(servicesChannel);
     };
-
   }, []);
 
   async function loadDashboard() {
@@ -82,14 +79,15 @@ function Dashboard() {
   }
 
   async function loadJobs() {
-
     const { data, error } = await supabase
       .from("jobs")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", {
+        ascending: false
+      });
 
     if (error) {
-      console.log(error);
+      console.error("LOAD JOBS ERROR:", error);
       return;
     }
 
@@ -97,13 +95,12 @@ function Dashboard() {
   }
 
   async function loadPayments() {
-
     const { data, error } = await supabase
       .from("payments")
       .select("*");
 
     if (error) {
-      console.log(error);
+      console.error("LOAD PAYMENTS ERROR:", error);
       return;
     }
 
@@ -111,1450 +108,1181 @@ function Dashboard() {
   }
 
   async function loadJobServices() {
-
     const { data, error } = await supabase
       .from("job_services")
       .select("*");
 
     if (error) {
-      console.log(error);
+      console.error(
+        "LOAD JOB SERVICES ERROR:",
+        error
+      );
       return;
     }
 
-    console.log("ALL JOB SERVICES:", data);
-setJobServices(data || []);
+    setJobServices(data || []);
   }
 
-  const filteredJobs = jobs.filter(job => {
+  // =============================
+  // DATE FILTER
+  // =============================
 
-    if (dateFilter === "All") return true;
+  const filteredJobs = jobs.filter((job) => {
+    if (dateFilter === "All") {
+      return true;
+    }
+
+    if (!job.created_at) {
+      return false;
+    }
 
     const jobDate = new Date(job.created_at);
     const now = new Date();
 
     if (dateFilter === "Today") {
-      return jobDate.toDateString() === now.toDateString();
+      return (
+        jobDate.toDateString() ===
+        now.toDateString()
+      );
     }
 
     if (dateFilter === "Month") {
       return (
         jobDate.getMonth() === now.getMonth() &&
-        jobDate.getFullYear() === now.getFullYear()
+        jobDate.getFullYear() ===
+          now.getFullYear()
       );
     }
 
     if (dateFilter === "Year") {
-      return jobDate.getFullYear() === now.getFullYear();
+      return (
+        jobDate.getFullYear() ===
+        now.getFullYear()
+      );
     }
 
     return true;
-
   });
-    // =============================
+
+  // =============================
   // GENERAL DASHBOARD DATA
   // =============================
 
   const totalJobs = filteredJobs.length;
 
+  const newJobs = filteredJobs.filter(
+    (job) => (job.status || "New") === "New"
+  ).length;
 
-  const newJobs =
-    filteredJobs.filter(
-      job => (job.status || "New") === "New"
-    ).length;
+  const progressJobs = filteredJobs.filter(
+    (job) => job.status === "In Progress"
+  ).length;
 
+  const finishedJobs = filteredJobs.filter(
+    (job) => job.status === "Finished"
+  ).length;
 
-  const progressJobs =
-    filteredJobs.filter(
-      job => job.status === "In Progress"
-    ).length;
-
-
-  const finishedJobs =
-    filteredJobs.filter(
-      job => job.status === "Finished"
-    ).length;
-
-
-  const deliveredJobs =
-    filteredJobs.filter(
-      job => job.status === "Delivered"
-    ).length;
-
-
+  const deliveredJobs = filteredJobs.filter(
+    (job) => job.status === "Delivered"
+  ).length;
 
   // =============================
   // FINANCIAL DATA
   // =============================
 
+  const totalSales = filteredJobs.reduce(
+    (sum, job) =>
+      sum + Number(job.price || 0),
+    0
+  );
 
-  const totalSales =
-    filteredJobs.reduce(
-      (sum, job) =>
-        sum + Number(job.price || 0),
-      0
-    );
+  const totalDiscount = filteredJobs.reduce(
+    (sum, job) =>
+      sum + Number(job.discount || 0),
+    0
+  );
 
+  const netSales = Math.max(
+    totalSales - totalDiscount,
+    0
+  );
 
-  const totalDiscount =
-    filteredJobs.reduce(
-      (sum, job) =>
-        sum + Number(job.discount || 0),
-      0
-    );
+  // Only count payments belonging
+  // to jobs inside the selected filter.
+  const filteredJobIds = new Set(
+    filteredJobs.map((job) => job.id)
+  );
 
+  const filteredPayments = payments.filter(
+    (payment) =>
+      filteredJobIds.has(payment.job_id)
+  );
 
-  const paid =
-    payments.reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
+  const paid = filteredPayments.reduce(
+    (sum, payment) =>
+      sum + Number(payment.amount || 0),
+    0
+  );
 
-
-  const netSales =
-    totalSales - totalDiscount;
-
-
-  const balance =
-    netSales - paid;
-
-
+  const balance = Math.max(
+    netSales - paid,
+    0
+  );
 
   // =============================
   // SOURCE REPORT
   // =============================
 
-
   let teyseerNetSales = 0;
   let salesTeamNetSales = 0;
 
-
   const sourceReport = {
-
-    "Teyseer Motors":{
-      jobs:0,
-      sales:0
+    "Teyseer Motors": {
+      jobs: 0,
+      sales: 0
     },
 
-    "Salah":{
-      jobs:0,
-      sales:0
+    Salah: {
+      jobs: 0,
+      sales: 0
     },
 
-    "Bahaa":{
-      jobs:0,
-      sales:0
+    Bahaa: {
+      jobs: 0,
+      sales: 0
     },
 
-    "Sales Team":{
-      jobs:0,
-      sales:0
+    "Sales Team": {
+      jobs: 0,
+      sales: 0
     }
-
   };
 
-console.table(
-  filteredJobs.map(job => ({
-    id: job.id,
-    customer: job.customer,
-    source: job.source
-  }))
-);
+  const teyseerJobIds = new Set();
 
-  filteredJobs.forEach(job => {
+  filteredJobs.forEach((job) => {
+    const services = jobServices.filter(
+      (service) =>
+        service.job_id === job.id
+    );
 
-
-    const services =
-      jobServices.filter(
-        service =>
-          service.job_id === job.id
-      );
-
-console.log("JOB:", job.id, job.customer);
-console.log("SERVICES:", services);
-
-    services.forEach(service => {
-
-
+    services.forEach((service) => {
       const amount =
         Number(service.price || 0);
 
-
-
-      const serviceName =
-        (
-          service.service_name ||
-          service.name ||
-          ""
-        )
-        .toLowerCase();
-
-
+      const serviceName = (
+        service.service_name ||
+        service.name ||
+        ""
+      ).toLowerCase();
 
       let reportSource = "Sales Team";
 
-
-
       // DIRECT TEYSEER
-
-      if(job.source === "Teyseer Motors"){
-
+      if (
+        job.source === "Teyseer Motors"
+      ) {
         reportSource = "Teyseer Motors";
-
       }
-
-
 
       // SALAH
-
-      else if(
-        job.source === "Teyseer Motors - Salah"
-      ){
-
-        if(
+      else if (
+        job.source ===
+        "Teyseer Motors - Salah"
+      ) {
+        if (
           serviceName.includes("full wtt")
-        ){
-
+        ) {
           reportSource = "Teyseer Motors";
-
-        }
-        else{
-
+        } else {
           reportSource = "Salah";
-
         }
-
       }
-
-
 
       // BAHA
-
-      else if(
-        job.source === "Teyseer Motors - Bahaa"
-      ){
-
-        if(
+      else if (
+        job.source ===
+        "Teyseer Motors - Bahaa"
+      ) {
+        if (
           serviceName.includes("full wtt")
-        ){
-
+        ) {
           reportSource = "Teyseer Motors";
-
-        }
-        else{
-
+        } else {
           reportSource = "Bahaa";
-
         }
-
       }
 
-else if (job.source === "Bahaa") {
+      // DIRECT BAHA
+      else if (
+        job.source === "Bahaa"
+      ) {
+        reportSource = "Bahaa";
+      }
 
-  reportSource = "Bahaa";
+      // DIRECT SALAH
+      else if (
+        job.source === "Salah"
+      ) {
+        reportSource = "Salah";
+      }
 
-}
-
-else if (job.source === "Salah") {
-
-  reportSource = "Salah";
-
-}
-
-      if(!sourceReport[reportSource]){
-
+      if (!sourceReport[reportSource]) {
         sourceReport[reportSource] = {
-          jobs:0,
-          sales:0
+          jobs: 0,
+          sales: 0
         };
-
       }
-
-
 
       sourceReport[reportSource].jobs += 1;
 
-      sourceReport[reportSource].sales += amount;
+      sourceReport[reportSource].sales +=
+        amount;
 
-
-
-      if(reportSource === "Teyseer Motors"){
-
+      if (
+        reportSource ===
+        "Teyseer Motors"
+      ) {
         teyseerNetSales += amount;
 
-      }
-      
-      else{
-
+        teyseerJobIds.add(job.id);
+      } else {
         salesTeamNetSales += amount;
-
       }
-
-
     });
-
-
   });
-
-
 
   // =============================
   // PAYMENT SPLIT
   // =============================
 
-
-  const teyseerPaid = 0;
-
+  const teyseerPaid =
+    filteredPayments
+      .filter((payment) =>
+        teyseerJobIds.has(
+          payment.job_id
+        )
+      )
+      .reduce(
+        (sum, payment) =>
+          sum +
+          Number(payment.amount || 0),
+        0
+      );
 
   const salesTeamPaid =
-    payments.reduce(
-      (sum,payment)=>
-        sum + Number(payment.amount || 0),
-      0
+    filteredPayments
+      .filter(
+        (payment) =>
+          !teyseerJobIds.has(
+            payment.job_id
+          )
+      )
+      .reduce(
+        (sum, payment) =>
+          sum +
+          Number(payment.amount || 0),
+        0
+      );
+
+  const teyseerBalance = Math.max(
+    teyseerNetSales - teyseerPaid,
+    0
+  );
+
+  const salesTeamBalance = Math.max(
+    salesTeamNetSales - salesTeamPaid,
+    0
+  );
+
+  // =============================
+  // CHART DATA
+  // =============================
+
+  const statusData = [
+    {
+      name: "New",
+      value: newJobs
+    },
+
+    {
+      name: "Progress",
+      value: progressJobs
+    },
+
+    {
+      name: "Finished",
+      value: finishedJobs
+    },
+
+    {
+      name: "Delivered",
+      value: deliveredJobs
+    }
+  ];
+
+  const salesData = [
+    {
+      name: "Sales",
+      amount: netSales
+    },
+
+    {
+      name: "Paid",
+      amount: paid
+    },
+
+    {
+      name: "Due",
+      amount: balance
+    }
+  ];
+
+  const COLORS = [
+    "#d4af37",
+    "#f59e0b",
+    "#22c55e",
+    "#0891b2"
+  ];
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.container}>
+
+        {/* HEADER */}
+
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>
+              🚗 Haosheng Car Care
+            </h1>
+
+            <p style={styles.subtitle}>
+              Workshop Management System
+            </p>
+          </div>
+
+          <div style={styles.headerActions}>
+            <UserMenu />
+
+            <Link
+              to="/new-job"
+              style={{
+                textDecoration: "none"
+              }}
+            >
+              <button
+                style={styles.newButton}
+              >
+                + New Job
+              </button>
+            </Link>
+
+            <Link
+              to="/technician-earnings"
+              style={{
+                textDecoration: "none"
+              }}
+            >
+              <button
+                style={styles.secondaryButton}
+              >
+                👷 Technician Earnings
+              </button>
+            </Link>
+          </div>
+        </div>
+
+        {/* DATE FILTER */}
+
+        <div style={styles.filterBox}>
+          <label style={styles.filterLabel}>
+            Dashboard Period
+          </label>
+
+          <select
+            value={dateFilter}
+            onChange={(e) =>
+              setDateFilter(
+                e.target.value
+              )
+            }
+            style={styles.select}
+          >
+            <option value="All">
+              All Time
+            </option>
+
+            <option value="Today">
+              Today
+            </option>
+
+            <option value="Month">
+              This Month
+            </option>
+
+            <option value="Year">
+              This Year
+            </option>
+          </select>
+        </div>
+
+        {/* SUMMARY CARDS */}
+
+        <div style={styles.cards}>
+
+          <Card
+            title="Total Jobs"
+            value={totalJobs}
+            icon="🚗"
+          />
+
+          <Card
+            title="New"
+            value={newJobs}
+            icon="🆕"
+            status="New"
+          />
+
+          <Card
+            title="In Progress"
+            value={progressJobs}
+            icon="🔧"
+            status="In Progress"
+          />
+
+          <Card
+            title="Finished"
+            value={finishedJobs}
+            icon="✅"
+            status="Finished"
+          />
+
+          <Card
+            title="Delivered"
+            value={deliveredJobs}
+            icon="🚚"
+            status="Delivered"
+          />
+
+          <Card
+            title="Net Sales"
+            value={`QAR ${netSales.toFixed(2)}`}
+            icon="💰"
+          />
+
+          <Card
+            title="Teyseer Sales"
+            value={`QAR ${teyseerNetSales.toFixed(2)}`}
+            icon="🏢"
+          />
+
+          <Card
+            title="Sales Team Sales"
+            value={`QAR ${salesTeamNetSales.toFixed(2)}`}
+            icon="👥"
+          />
+
+          <Card
+            title="Teyseer Paid"
+            value={`QAR ${teyseerPaid.toFixed(2)}`}
+            icon="🏢💳"
+          />
+
+          <Card
+            title="Teyseer Balance"
+            value={`QAR ${teyseerBalance.toFixed(2)}`}
+            icon="🏢⚠️"
+          />
+
+          <Card
+            title="Sales Team Paid"
+            value={`QAR ${salesTeamPaid.toFixed(2)}`}
+            icon="👥💳"
+          />
+
+          <Card
+            title="Sales Team Balance"
+            value={`QAR ${salesTeamBalance.toFixed(2)}`}
+            icon="👥⚠️"
+          />
+
+          <Card
+            title="Paid"
+            value={`QAR ${paid.toFixed(2)}`}
+            icon="💳"
+          />
+
+          <Card
+            title="Balance Due"
+            value={`QAR ${balance.toFixed(2)}`}
+            icon="⚠️"
+          />
+
+        </div>
+
+        {/* RECENT JOBS */}
+
+        <h2 style={styles.heading}>
+          Recent Jobs
+        </h2>
+
+        <div style={styles.tableBox}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>
+                  Customer
+                </th>
+
+                <th style={styles.th}>
+                  Vehicle
+                </th>
+
+                <th style={styles.th}>
+                  Status
+                </th>
+
+                <th style={styles.th}>
+                  Price
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredJobs
+                .slice(0, 5)
+                .map((job) => (
+                  <tr key={job.id}>
+                    <td style={styles.td}>
+                      {job.customer ||
+                        "Unknown"}
+                    </td>
+
+                    <td style={styles.td}>
+                      {job.carModel || "-"}
+                    </td>
+
+                    <td style={styles.td}>
+                      <span
+                        style={
+                          styles.status
+                        }
+                      >
+                        {job.status ||
+                          "New"}
+                      </span>
+                    </td>
+
+                    <td style={styles.td}>
+                      QAR{" "}
+                      {Number(
+                        job.price || 0
+                      ).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+
+          {filteredJobs.length === 0 && (
+            <p style={styles.empty}>
+              No jobs found for this period.
+            </p>
+          )}
+        </div>
+
+        {/* STATISTICS */}
+
+        <h2 style={styles.heading}>
+          Statistics
+        </h2>
+
+        <div style={styles.charts}>
+
+          {/* JOB STATUS */}
+
+          <div style={styles.chartBox}>
+            <h3 style={styles.chartTitle}>
+              Job Status
+            </h3>
+
+            <ResponsiveContainer
+              width="100%"
+              height={250}
+            >
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={90}
+                  label
+                >
+                  {statusData.map(
+                    (entry, index) => (
+                      <Cell
+                        key={index}
+                        fill={
+                          COLORS[index]
+                        }
+                      />
+                    )
+                  )}
+                </Pie>
+
+                <Tooltip
+                  contentStyle={
+                    styles.tooltip
+                  }
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* FINANCIAL */}
+
+          <div style={styles.chartBox}>
+            <h3 style={styles.chartTitle}>
+              Financial Overview
+            </h3>
+
+            <ResponsiveContainer
+              width="100%"
+              height={250}
+            >
+              <BarChart
+                data={salesData}
+              >
+                <XAxis
+                  dataKey="name"
+                  stroke="#aaa"
+                />
+
+                <YAxis
+                  stroke="#aaa"
+                />
+
+                <Tooltip
+                  contentStyle={
+                    styles.tooltip
+                  }
+                />
+
+                <Bar
+                  dataKey="amount"
+                  fill="#d4af37"
+                  radius={[
+                    6,
+                    6,
+                    0,
+                    0
+                  ]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+        </div>
+
+        {/* CUSTOMER SOURCES */}
+
+        <h2 style={styles.heading}>
+          Customer Sources
+        </h2>
+
+        <div style={styles.recent}>
+          {Object.entries(
+            sourceReport
+          ).map(
+            ([name, data]) => (
+              <div
+                key={name}
+                style={
+                  styles.recentCard
+                }
+              >
+                <h3
+                  style={
+                    styles.goldText
+                  }
+                >
+                  {name}
+                </h3>
+
+                <h2
+                  style={
+                    styles.bigNumber
+                  }
+                >
+                  {data.jobs}
+                </h2>
+
+                <p
+                  style={
+                    styles.muted
+                  }
+                >
+                  Jobs
+                </p>
+
+                <h3>
+                  Net Sales:{" "}
+                  <span
+                    style={
+                      styles.goldText
+                    }
+                  >
+                    QAR{" "}
+                    {data.sales.toFixed(
+                      2
+                    )}
+                  </span>
+                </h3>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* QUICK ACTIONS */}
+
+        <h2 style={styles.heading}>
+          Quick Actions
+        </h2>
+
+        <div style={styles.actions}>
+
+          <Link
+            to="/new-job"
+            style={styles.actionCard}
+          >
+            <div
+              style={styles.actionIcon}
+            >
+              ➕
+            </div>
+
+            <h3>New Job</h3>
+
+            <p>
+              Create service order
+            </p>
+          </Link>
+
+          <Link
+            to="/jobs"
+            style={styles.actionCard}
+          >
+            <div
+              style={styles.actionIcon}
+            >
+              📋
+            </div>
+
+            <h3>Jobs</h3>
+
+            <p>
+              Manage repairs
+            </p>
+          </Link>
+
+          <Link
+            to="/jobs"
+            style={styles.actionCard}
+          >
+            <div
+              style={styles.actionIcon}
+            >
+              🧾
+            </div>
+
+            <h3>Invoice</h3>
+
+            <p>
+              Select a car to create
+              invoice
+            </p>
+          </Link>
+
+          <Link
+            to="/settings"
+            style={styles.actionCard}
+          >
+            <div
+              style={styles.actionIcon}
+            >
+              ⚙️
+            </div>
+
+            <h3>Settings</h3>
+
+            <p>
+              System setup
+            </p>
+          </Link>
+
+          <Link
+            to="/reports"
+            style={styles.actionCard}
+          >
+            <div
+              style={styles.actionIcon}
+            >
+              📊
+            </div>
+
+            <h3>Reports</h3>
+
+            <p>
+              Financial overview
+            </p>
+          </Link>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// =====================================
+// DASHBOARD CARD
+// =====================================
+
+function Card({
+  title,
+  value,
+  status,
+  icon
+}) {
+  const colors = {
+    "Total Jobs": "#d4af37",
+    New: "#d4af37",
+    "In Progress": "#f59e0b",
+    Finished: "#22c55e",
+    Delivered: "#0891b2",
+    "Net Sales": "#d4af37",
+    "Teyseer Sales": "#d4af37",
+    "Sales Team Sales": "#0891b2",
+    "Teyseer Paid": "#22c55e",
+    "Teyseer Balance": "#dc2626",
+    "Sales Team Paid": "#22c55e",
+    "Sales Team Balance": "#f59e0b",
+    Paid: "#22c55e",
+    "Balance Due": "#dc2626"
+  };
+
+  const content = (
+    <div
+      style={{
+        ...styles.card,
+        borderTop:
+          `4px solid ${
+            colors[title] ||
+            "#d4af37"
+          }`
+      }}
+    >
+      <div style={styles.icon}>
+        {icon}
+      </div>
+
+      <h3 style={styles.cardTitle}>
+        {title}
+      </h3>
+
+      <h2 style={styles.cardValue}>
+        {value}
+      </h2>
+    </div>
+  );
+
+  if (status) {
+    return (
+      <Link
+        to={`/jobs?status=${encodeURIComponent(
+          status
+        )}`}
+        style={{
+          textDecoration: "none"
+        }}
+      >
+        {content}
+      </Link>
     );
-
-
-
-  const teyseerBalance =
-    teyseerNetSales - teyseerPaid;
-
-
-
-  const salesTeamBalance =
-    salesTeamNetSales - salesTeamPaid;
-   
-
-// =============================
-// CHART DATA
-// =============================
-
-const statusData = [
-
-  {
-    name:"New",
-    value:newJobs
-  },
-
-  {
-    name:"Progress",
-    value:progressJobs
-  },
-
-  {
-    name:"Finished",
-    value:finishedJobs
-  },
-
-  {
-    name:"Delivered",
-    value:deliveredJobs
   }
 
-];
-
-
-
-const salesData = [
-
-  {
-    name:"Sales",
-    amount:netSales
-  },
-
-  {
-    name:"Paid",
-    amount:paid
-  },
-
-  {
-    name:"Due",
-    amount:balance
-  }
-
-];
-
-
-
-const COLORS = [
-
-"#7c3aed",
-"#ea580c",
-"#16a34a",
-"#0891b2"
-
-];
-
-
-
-
-
-return (
-
-<div style={styles.page}>
-
-
-<div style={styles.header}>
-
-
-<div>
-
-<h1>
-🚗 Haosheng Car Care
-</h1>
-
-
-<p>
-Workshop Management System
-</p>
-
-
-</div>
-
-
-
-<div
-style={{
-display:"flex",
-gap:"15px",
-alignItems:"center"
-}}
->
-
-
-<UserMenu/>
-
-
-<Link to="/new-job">
-
-<button style={styles.newButton}>
-+ New Job
-</button>
-
-</Link>
-
-
-
-<Link to="/technician-earnings">
-
-<button>
-👷 Technician Earnings
-</button>
-
-</Link>
-
-
-</div>
-
-
-</div>
-
-
-
-
-
-<div style={{marginBottom:"25px"}}>
-
-
-<select
-
-value={dateFilter}
-
-onChange={(e)=>
-setDateFilter(e.target.value)
+  return content;
 }
 
-style={{
-padding:"10px",
-borderRadius:"10px",
-border:"1px solid #ddd",
-fontSize:"16px"
-}}
-
->
-
-
-<option value="All">
-All Time
-</option>
-
-
-<option value="Today">
-Today
-</option>
-
-
-<option value="Month">
-This Month
-</option>
-
-
-<option value="Year">
-This Year
-</option>
-
-
-</select>
-
-
-</div>
-
-
-
-
-
-<div style={styles.cards}>
-
-
-<Card
-title="Total Jobs"
-value={totalJobs}
-icon="🚗"
-/>
-
-
-
-<Card
-title="New"
-value={newJobs}
-icon="🆕"
-status="New"
-/>
-
-
-
-<Card
-title="In Progress"
-value={progressJobs}
-icon="🔧"
-status="In Progress"
-/>
-
-
-
-<Card
-title="Finished"
-value={finishedJobs}
-icon="✅"
-status="Finished"
-/>
-
-
-
-<Card
-title="Delivered"
-value={deliveredJobs}
-icon="🚚"
-status="Delivered"
-/>
-
-
-
-<Card
-title="Net Sales"
-value={`QAR ${netSales}`}
-icon="💰"
-/>
-
-
-
-<Card
-title="Teyseer Sales"
-value={`QAR ${teyseerNetSales}`}
-icon="🏢"
-/>
-
-
-
-<Card
-title="Sales Team Sales"
-value={`QAR ${salesTeamNetSales}`}
-icon="👥"
-/>
-
-
-
-<Card
-title="Teyseer Paid"
-value={`QAR ${teyseerPaid}`}
-icon="🏢💳"
-/>
-
-
-
-<Card
-title="Teyseer Balance"
-value={`QAR ${teyseerBalance}`}
-icon="🏢⚠️"
-/>
-
-
-
-<Card
-title="Sales Team Paid"
-value={`QAR ${salesTeamPaid}`}
-icon="👥💳"
-/>
-
-
-
-<Card
-title="Sales Team Balance"
-value={`QAR ${salesTeamBalance}`}
-icon="👥⚠️"
-/>
-
-
-
-<Card
-title="Paid"
-value={`QAR ${paid}`}
-icon="💳"
-/>
-
-
-
-<Card
-title="Balance Due"
-value={`QAR ${balance}`}
-icon="⚠️"
-/>
-
-
-</div>
-<h2>
-Recent Jobs
-</h2>
-
-
-
-<div style={styles.tableBox}>
-
-
-<table style={styles.table}>
-
-
-<thead>
-
-<tr>
-
-<th>
-Customer
-</th>
-
-
-<th>
-Vehicle
-</th>
-
-
-<th>
-Status
-</th>
-
-
-<th>
-Price
-</th>
-
-
-</tr>
-
-
-</thead>
-
-
-
-
-<tbody>
-
-
-{
-filteredJobs
-.slice(-5)
-.reverse()
-.map(job=>(
-
-
-<tr key={job.id}>
-
-
-<td>
-{job.customer || "Unknown"}
-</td>
-
-
-<td>
-{job.carModel || "-"}
-</td>
-
-
-<td>
-
-<span style={styles.status}>
-
-{job.status || "New"}
-
-</span>
-
-</td>
-
-
-<td>
-
-QAR {job.price || 0}
-
-</td>
-
-
-</tr>
-
-
-))
-}
-
-
-
-</tbody>
-
-
-</table>
-
-
-</div>
-
-
-
-
-
-<h2>
-Statistics
-</h2>
-
-
-
-
-
-<div style={styles.charts}>
-
-
-<div style={styles.chartBox}>
-
-
-<h3>
-Job Status
-</h3>
-
-
-
-
-<ResponsiveContainer
-width="100%"
-height={250}
->
-
-
-<PieChart>
-
-
-<Pie
-
-data={statusData}
-
-dataKey="value"
-
-nameKey="name"
-
-outerRadius={90}
-
->
-
-
-{
-statusData.map(
-(entry,index)=>(
-
-
-<Cell
-
-key={index}
-
-fill={COLORS[index]}
-
-/>
-
-
-))
-}
-
-
-</Pie>
-
-
-</PieChart>
-
-
-</ResponsiveContainer>
-
-
-</div>
-
-
-
-
-
-<div style={styles.chartBox}>
-
-
-<h3>
-Financial Overview
-</h3>
-
-
-
-
-<ResponsiveContainer
-width="100%"
-height={250}
->
-
-
-<BarChart
-
-data={salesData}
-
->
-
-
-<XAxis
-dataKey="name"
-/>
-
-
-<YAxis />
-
-
-<Tooltip />
-
-
-<Bar
-
-dataKey="amount"
-
-fill="#2563eb"
-
-/>
-
-
-</BarChart>
-
-
-</ResponsiveContainer>
-
-
-</div>
-
-
-
-</div>
-<h2>
-Customer Sources
-</h2>
-
-
-
-
-<div style={styles.recent}>
-
-
-{
-Object.entries(sourceReport).map(
-([name,data])=>(
-
-
-<div
-
-key={name}
-
-style={styles.recentCard}
-
->
-
-
-<h3>
-{name}
-</h3>
-
-
-<h2>
-{data.jobs}
-</h2>
-
-
-<p>
-Jobs
-</p>
-
-
-<h3>
-Net Sales: QAR {data.sales}
-</h3>
-
-
-
-</div>
-
-
-))
-}
-
-
-</div>
-
-
-
-
-
-
-
-<h2>
-Quick Actions
-</h2>
-
-
-
-
-
-<div style={styles.actions}>
-
-
-<Link
-
-to="/new-job"
-
-style={styles.actionCard}
-
->
-
-
-<div>
-➕
-</div>
-
-
-<h3>
-New Job
-</h3>
-
-
-<p>
-Create service order
-</p>
-
-
-</Link>
-
-
-
-
-
-
-
-<Link
-
-to="/jobs"
-
-style={styles.actionCard}
-
->
-
-
-<div>
-📋
-</div>
-
-
-<h3>
-Jobs
-</h3>
-
-
-<p>
-Manage repairs
-</p>
-
-
-</Link>
-
-
-
-
-
-
-
-<Link
-  to="/jobs"
-  style={styles.actionCard}
->
-  <div>
-    🧾
-  </div>
-
-  <h3>
-    Invoice
-  </h3>
-
-  <p>
-    Select a car to create invoice
-  </p>
-</Link>
-
-
-
-
-
-
-
-<Link
-
-to="/settings"
-
-style={styles.actionCard}
-
->
-
-
-<div>
-⚙️
-</div>
-
-
-<h3>
-Settings
-</h3>
-
-
-<p>
-System setup
-</p>
-
-
-</Link>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-<Link
-
-to="/reports"
-
-style={styles.actionCard}
-
->
-
-
-<div>
-📊
-</div>
-
-
-<h3>
-Reports
-</h3>
-
-
-<p>
-Financial overview
-</p>
-
-
-</Link>
-
-
-
-
-
-</div>
-
-);
-
-}
-function Card({title,value,status,icon}){
-
-
-const colors={
-
-"Total Jobs":"#2563eb",
-
-"New":"#7c3aed",
-
-"In Progress":"#ea580c",
-
-"Finished":"#16a34a",
-
-"Delivered":"#0891b2",
-
-"Net Sales":"#ca8a04",
-
-"Teyseer Sales":"#9333ea",
-
-"Sales Team Sales":"#0284c7",
-
-"Teyseer Paid":"#7c3aed",
-
-"Teyseer Balance":"#dc2626",
-
-"Sales Team Paid":"#16a34a",
-
-"Sales Team Balance":"#ea580c",
-
-"Paid":"#15803d",
-
-"Balance Due":"#dc2626"
-
-};
-
-
-
-const content = (
-
-<div
-
-style={{
-
-...styles.card,
-
-borderTop:
-`5px solid ${colors[title] || "#2563eb"}`
-
-}}
-
->
-
-
-<div style={styles.icon}>
-
-{icon}
-
-</div>
-
-
-<h3>
-{title}
-</h3>
-
-
-<h2>
-{value}
-</h2>
-
-
-</div>
-
-);
-
-
-
-if(status){
-
-
-return (
-
-<Link
-
-to={`/jobs?status=${status}`}
-
-style={{
-textDecoration:"none"
-}}
-
->
-
-{content}
-
-</Link>
-
-);
-
-
-}
-
-
-return content;
-
-
-}
-
-
-
-
-
-
+// =====================================
+// STYLES
+// =====================================
 
 const styles = {
-
-
-
-page:{
-
-padding:"30px",
-
-background:"#f1f5f9",
-
-minHeight:"100vh",
-
-color:"#0f172a"
-
-},
-
-
-
-
-header:{
-
-display:"flex",
-
-justifyContent:"space-between",
-
-alignItems:"center",
-
-marginBottom:"30px",
-
-flexWrap:"wrap"
-
-},
-
-
-
-
-cards:{
-
-display:"grid",
-
-gridTemplateColumns:
-"repeat(auto-fit,minmax(220px,1fr))",
-
-gap:"20px",
-
-marginBottom:"40px"
-
-},
-
-
-
-
-card:{
-
-background:"white",
-
-padding:"25px",
-
-borderRadius:"18px",
-
-textAlign:"center",
-
-boxShadow:
-"0 8px 20px rgba(0,0,0,0.08)",
-
-color:"#0f172a"
-
-},
-
-
-
-
-icon:{
-
-fontSize:"35px",
-
-marginBottom:"10px"
-
-},
-
-
-
-
-newButton:{
-
-background:"#dc2626",
-
-color:"white",
-
-border:"none",
-
-padding:"12px 25px",
-
-borderRadius:"10px",
-
-fontSize:"16px",
-
-cursor:"pointer"
-
-},
-
-
-
-
-tableBox:{
-
-background:"white",
-
-borderRadius:"18px",
-
-padding:"20px",
-
-boxShadow:
-"0 8px 20px rgba(0,0,0,0.08)",
-
-marginBottom:"40px",
-
-overflowX:"auto"
-
-},
-
-
-
-
-table:{
-
-width:"100%",
-
-borderCollapse:"collapse",
-
-textAlign:"left"
-
-},
-
-
-
-
-status:{
-
-background:"#dcfce7",
-
-color:"#166534",
-
-padding:"6px 12px",
-
-borderRadius:"20px",
-
-fontSize:"14px"
-
-},
-
-
-
-
-charts:{
-
-display:"grid",
-
-gridTemplateColumns:
-"repeat(auto-fit,minmax(300px,1fr))",
-
-gap:"20px",
-
-marginBottom:"40px"
-
-},
-
-
-
-
-chartBox:{
-
-background:"white",
-
-padding:"20px",
-
-borderRadius:"18px",
-
-boxShadow:
-"0 8px 20px rgba(0,0,0,0.08)"
-
-},
-
-
-
-
-recent:{
-
-display:"grid",
-
-gridTemplateColumns:
-"repeat(auto-fit,minmax(250px,1fr))",
-
-gap:"20px",
-
-marginBottom:"40px"
-
-},
-
-
-
-
-recentCard:{
-
-background:"white",
-
-padding:"20px",
-
-borderRadius:"18px",
-
-boxShadow:
-"0 8px 20px rgba(0,0,0,0.08)"
-
-},
-
-
-
-
-actions:{
-
-display:"grid",
-
-gridTemplateColumns:
-"repeat(auto-fit,minmax(180px,1fr))",
-
-gap:"20px",
-
-marginBottom:"40px"
-
-},
-
-
-
-
-actionCard:{
-
-background:"white",
-
-padding:"25px",
-
-borderRadius:"18px",
-
-textDecoration:"none",
-
-color:"#0f172a",
-
-textAlign:"center",
-
-boxShadow:
-"0 8px 20px rgba(0,0,0,0.08)",
-
-display:"block"
-
-}
+  page: {
+    minHeight: "100vh",
+    padding: "30px",
+    background: "#0b0b0b",
+    color: "#f5f5f5",
+    boxSizing: "border-box"
+  },
+
+  container: {
+    width: "100%",
+    maxWidth: "1400px",
+    margin: "0 auto"
+  },
+
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "20px",
+    marginBottom: "30px",
+    flexWrap: "wrap"
+  },
+
+  title: {
+    color: "#d4af37",
+    fontSize: "30px",
+    margin: 0
+  },
+
+  subtitle: {
+    color: "#999",
+    marginTop: "8px"
+  },
+
+  headerActions: {
+    display: "flex",
+    gap: "12px",
+    alignItems: "center",
+    flexWrap: "wrap"
+  },
+
+  newButton: {
+    background: "#d4af37",
+    color: "#080808",
+    border: "none",
+    padding: "12px 22px",
+    borderRadius: "10px",
+    fontSize: "16px",
+    cursor: "pointer",
+    fontWeight: "bold"
+  },
+
+  secondaryButton: {
+    background: "#222",
+    color: "#f5f5f5",
+    border: "1px solid #555",
+    padding: "12px 18px",
+    borderRadius: "10px",
+    fontSize: "15px",
+    cursor: "pointer",
+    fontWeight: "bold"
+  },
+
+  filterBox: {
+    background: "#151515",
+    border: "1px solid #3b321c",
+    borderRadius: "12px",
+    padding: "18px",
+    marginBottom: "25px",
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    flexWrap: "wrap"
+  },
+
+  filterLabel: {
+    color: "#d4af37",
+    fontWeight: "bold"
+  },
+
+  select: {
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#fff",
+    fontSize: "16px",
+    cursor: "pointer"
+  },
+
+  cards: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(220px,1fr))",
+    gap: "18px",
+    marginBottom: "40px"
+  },
+
+  card: {
+    background: "#151515",
+    padding: "22px",
+    borderRadius: "12px",
+    textAlign: "center",
+    border: "1px solid #3b321c",
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)",
+    color: "#f5f5f5",
+    minHeight: "150px",
+    boxSizing: "border-box"
+  },
+
+  icon: {
+    fontSize: "34px",
+    marginBottom: "8px"
+  },
+
+  cardTitle: {
+    color: "#aaa",
+    margin: "5px 0 10px"
+  },
+
+  cardValue: {
+    color: "#d4af37",
+    margin: 0,
+    fontSize: "24px"
+  },
+
+  heading: {
+    color: "#d4af37",
+    marginTop: "35px",
+    marginBottom: "18px"
+  },
+
+  tableBox: {
+    background: "#151515",
+    border: "1px solid #3b321c",
+    borderRadius: "12px",
+    padding: "20px",
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)",
+    marginBottom: "40px",
+    overflowX: "auto"
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    textAlign: "left"
+  },
+
+  th: {
+    color: "#d4af37",
+    padding: "14px",
+    borderBottom:
+      "1px solid #3b321c"
+  },
+
+  td: {
+    padding: "14px",
+    borderBottom:
+      "1px solid #292929",
+    color: "#eee"
+  },
+
+  status: {
+    background: "#3b321c",
+    color: "#d4af37",
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontSize: "14px"
+  },
+
+  charts: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(300px,1fr))",
+    gap: "20px",
+    marginBottom: "40px"
+  },
+
+  chartBox: {
+    background: "#151515",
+    border: "1px solid #3b321c",
+    padding: "20px",
+    borderRadius: "12px",
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)"
+  },
+
+  chartTitle: {
+    color: "#d4af37"
+  },
+
+  tooltip: {
+    background: "#151515",
+    border:
+      "1px solid #d4af37",
+    color: "#fff"
+  },
+
+  recent: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(250px,1fr))",
+    gap: "20px",
+    marginBottom: "40px"
+  },
+
+  recentCard: {
+    background: "#151515",
+    padding: "20px",
+    borderRadius: "12px",
+    border: "1px solid #3b321c",
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)"
+  },
+
+  goldText: {
+    color: "#d4af37"
+  },
+
+  bigNumber: {
+    color: "#fff",
+    fontSize: "32px",
+    marginBottom: "0"
+  },
+
+  muted: {
+    color: "#888"
+  },
+
+  actions: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(180px,1fr))",
+    gap: "20px",
+    paddingBottom: "40px"
+  },
+
+  actionCard: {
+    background: "#151515",
+    padding: "25px",
+    borderRadius: "12px",
+    textDecoration: "none",
+    color: "#f5f5f5",
+    textAlign: "center",
+    border: "1px solid #3b321c",
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)",
+    display: "block",
+    transition: "0.2s"
+  },
+
+  actionIcon: {
+    fontSize: "32px",
+    marginBottom: "8px"
+  },
+
+  empty: {
+    color: "#888",
+    textAlign: "center",
+    padding: "20px"
+  }
 };
-
-
-
 
 export default Dashboard;

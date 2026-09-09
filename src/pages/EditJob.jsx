@@ -36,6 +36,24 @@ function EditJob() {
   const [paymentNotes, setPaymentNotes] = useState("");
   const [payments, setPayments] = useState([]);
 
+  // -----------------------------------
+  // TEYSEER CHECK
+  // -----------------------------------
+
+  function isTeyseerSource(sourceName) {
+    return (
+      sourceName === "Teyseer Motors" ||
+      sourceName === "Teyseer Motors - Bahaa" ||
+      sourceName === "Teyseer Motors - Salah"
+    );
+  }
+
+  function isWttService(serviceName) {
+    return serviceName
+      ?.toLowerCase()
+      .includes("wtt");
+  }
+
   useEffect(() => {
     loadJob();
     loadServices();
@@ -123,7 +141,8 @@ function EditJob() {
 
     const matchedSource = standardSources.find(
       (item) =>
-        item.toLowerCase() === existingSource.toLowerCase()
+        item.toLowerCase() ===
+        existingSource.toLowerCase()
     );
 
     if (matchedSource) {
@@ -225,6 +244,7 @@ function EditJob() {
         [serviceName]: {
           price: Number(serviceItem.price || 0),
           discount: 0,
+          quantity: 1,
           technicians: []
         }
       }));
@@ -318,7 +338,9 @@ function EditJob() {
     const { data: job, error: jobError } =
       await supabase
         .from("jobs")
-        .select("price, discount")
+        .select(
+          "price, discount, services, serviceDetails, source"
+        )
         .eq("id", Number(id))
         .single();
 
@@ -328,6 +350,72 @@ function EditJob() {
         jobError.message
       );
     }
+
+    const savedServices = Array.isArray(job.services)
+      ? job.services
+      : [];
+
+    const savedDetails =
+      job.serviceDetails &&
+      typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
+
+    const savedSource = job.source || "";
+
+    // -----------------------------------
+    // CUSTOMER SERVICE TOTAL
+    //
+    // WTT is excluded from customer's
+    // payable amount for Teyseer jobs.
+    // -----------------------------------
+
+    const customerServicesTotal =
+      savedServices.reduce(
+        (sum, serviceName) => {
+          if (
+            isTeyseerSource(savedSource) &&
+            isWttService(serviceName)
+          ) {
+            return sum;
+          }
+
+          const details =
+            savedDetails[serviceName] || {};
+
+          const price =
+            Number(details.price || 0);
+
+          const quantity =
+            Number(details.quantity || 1);
+
+          const serviceDiscount =
+            Number(details.discount || 0);
+
+          return (
+            sum +
+            Math.max(
+              price * quantity -
+                serviceDiscount,
+              0
+            )
+          );
+        },
+        0
+      );
+
+    const jobDiscount =
+      Number(job.discount || 0);
+
+    const finalTotal = Math.max(
+      customerServicesTotal -
+        jobDiscount,
+      0
+    );
+
+    // -----------------------------------
+    // TOTAL PAID
+    // -----------------------------------
 
     const {
       data: paymentsData,
@@ -344,17 +432,6 @@ function EditJob() {
       );
     }
 
-    const totalPrice =
-      Number(job.price || 0);
-
-    const totalDiscount =
-      Number(job.discount || 0);
-
-    const finalTotal = Math.max(
-      totalPrice - totalDiscount,
-      0
-    );
-
     const totalPaid =
       (paymentsData || []).reduce(
         (sum, payment) =>
@@ -366,6 +443,10 @@ function EditJob() {
       finalTotal - totalPaid,
       0
     );
+
+    // -----------------------------------
+    // UPDATE JOB
+    // -----------------------------------
 
     const {
       data: updatedJob,
@@ -406,7 +487,9 @@ function EditJob() {
 
     try {
       // -----------------------------------
-      // CALCULATE TOTALS
+      // CALCULATE INTERNAL TOTAL
+      //
+      // This includes WTT.
       // -----------------------------------
 
       const totals = services.reduce(
@@ -417,11 +500,17 @@ function EditJob() {
           const price =
             Number(details.price || 0);
 
+          const quantity =
+            Number(details.quantity || 1);
+
           const discount =
             Number(details.discount || 0);
 
-          result.price += price;
-          result.discount += discount;
+          result.price +=
+            price * quantity;
+
+          result.discount +=
+            discount;
 
           return result;
         },
@@ -431,10 +520,14 @@ function EditJob() {
         }
       );
 
+      // -----------------------------------
+      // INTERNAL ALL SERVICES TOTAL
+      // -----------------------------------
+
       const totalPrice = totals.price;
       const totalDiscount = totals.discount;
 
-      const finalTotal = Math.max(
+      const internalTotal = Math.max(
         totalPrice - totalDiscount,
         0
       );
@@ -449,6 +542,58 @@ function EditJob() {
           : source;
 
       // -----------------------------------
+      // CUSTOMER PAYABLE TOTAL
+      //
+      // WTT is paid by Teyseer and is
+      // therefore NOT charged to customer.
+      // -----------------------------------
+
+      const customerServicesTotal =
+        services.reduce(
+          (sum, serviceName) => {
+            if (
+              isTeyseerSource(finalSource) &&
+              isWttService(serviceName)
+            ) {
+              return sum;
+            }
+
+            const details =
+              serviceDetails[serviceName] || {};
+
+            const price =
+              Number(details.price || 0);
+
+            const quantity =
+              Number(details.quantity || 1);
+
+            const serviceDiscount =
+              Number(details.discount || 0);
+
+            return (
+              sum +
+              Math.max(
+                price * quantity -
+                  serviceDiscount,
+                0
+              )
+            );
+          },
+          0
+        );
+
+      // -----------------------------------
+      // CUSTOMER NET AMOUNT
+      // -----------------------------------
+
+      const customerNetAmount =
+        Math.max(
+          customerServicesTotal -
+            Number(totalDiscount || 0),
+          0
+        );
+
+      // -----------------------------------
       // PAYMENT
       // -----------------------------------
 
@@ -456,13 +601,8 @@ function EditJob() {
         Number(paymentAmount || 0);
 
       /*
-       * IMPORTANT:
-       *
-       * A payment method is ONLY required
-       * when the user enters a payment amount.
-       *
-       * The job itself can be saved with
-       * NO payment method.
+       * Payment method is only required
+       * when entering a payment.
        */
 
       if (amount > 0 && !paymentMethod) {
@@ -536,16 +676,24 @@ function EditJob() {
         );
 
       // -----------------------------------
-      // BALANCE
+      // CUSTOMER BALANCE
+      //
+      // WTT is already excluded above.
       // -----------------------------------
 
       const balance = Math.max(
-        finalTotal - totalPaid,
+        customerNetAmount - totalPaid,
         0
       );
 
       // -----------------------------------
       // UPDATE JOB
+      //
+      // price = INTERNAL TOTAL
+      //
+      // This keeps WTT inside the internal
+      // job total while balance uses the
+      // customer payable total.
       // -----------------------------------
 
       const {
@@ -571,10 +719,16 @@ function EditJob() {
           services,
           serviceDetails,
 
-          price: totalPrice,
+          // INTERNAL TOTAL
+          price: internalTotal,
+
+          // TOTAL SERVICE DISCOUNTS
           discount: totalDiscount,
 
+          // CUSTOMER PAYMENTS ONLY
           deposit: totalPaid,
+
+          // CUSTOMER BALANCE
           balance: balance
         })
         .eq("id", Number(id));
@@ -634,6 +788,105 @@ function EditJob() {
       setSaving(false);
     }
   }
+
+  // -----------------------------------
+  // CALCULATED DISPLAY TOTALS
+  // -----------------------------------
+
+  const allServicesTotal =
+    services.reduce(
+      (sum, serviceName) => {
+        const details =
+          serviceDetails[serviceName] || {};
+
+        const price =
+          Number(details.price || 0);
+
+        const quantity =
+          Number(details.quantity || 1);
+
+        const serviceDiscount =
+          Number(details.discount || 0);
+
+        return (
+          sum +
+          Math.max(
+            price * quantity -
+              serviceDiscount,
+            0
+          )
+        );
+      },
+      0
+    );
+
+  const customerServicesTotal =
+    services.reduce(
+      (sum, serviceName) => {
+        if (
+          isTeyseerSource(source) &&
+          isWttService(serviceName)
+        ) {
+          return sum;
+        }
+
+        const details =
+          serviceDetails[serviceName] || {};
+
+        const price =
+          Number(details.price || 0);
+
+        const quantity =
+          Number(details.quantity || 1);
+
+        const serviceDiscount =
+          Number(details.discount || 0);
+
+        return (
+          sum +
+          Math.max(
+            price * quantity -
+              serviceDiscount,
+            0
+          )
+        );
+      },
+      0
+    );
+
+  const totalServiceDiscount =
+    services.reduce(
+      (sum, serviceName) => {
+        const details =
+          serviceDetails[serviceName] || {};
+
+        return (
+          sum +
+          Number(details.discount || 0)
+        );
+      },
+      0
+    );
+
+  const customerNetAmount =
+    Math.max(
+      customerServicesTotal -
+        totalServiceDiscount,
+      0
+    );
+
+  const totalPaid =
+    payments.reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+  const customerBalance =
+    Math.max(
+      customerNetAmount - totalPaid,
+      0
+    );
 
   // -----------------------------------
   // LOADING
@@ -812,6 +1065,23 @@ function EditJob() {
 
         </div>
 
+        {/* TEYSEER NOTICE */}
+
+        {isTeyseerSource(source) && (
+          <div style={styles.teyseerBox}>
+
+            <strong>
+              TEYSEER JOB
+            </strong>
+
+            <span>
+              WTT is paid through Teyseer and is
+              excluded from the customer's amount.
+            </span>
+
+          </div>
+        )}
+
         {/* SERVICES */}
 
         <div style={styles.section}>
@@ -828,8 +1098,16 @@ function EditJob() {
             const details =
               serviceDetails[item.name] || {
                 price: item.price || 0,
-                discount: 0
+                discount: 0,
+                quantity: 1
               };
+
+            const isWtt =
+              isWttService(item.name);
+
+            const isTeyseerWtt =
+              isTeyseerSource(source) &&
+              isWtt;
 
             return (
               <div
@@ -850,6 +1128,16 @@ function EditJob() {
                   <span>
                     {item.name}
                   </span>
+
+                  {isTeyseerWtt && (
+                    <span
+                      style={
+                        styles.teyseerLabel
+                      }
+                    >
+                      Paid through Teyseer
+                    </span>
+                  )}
 
                 </label>
 
@@ -875,6 +1163,36 @@ function EditJob() {
                         updateServicePrice(
                           item.name,
                           e.target.value
+                        )
+                      }
+                      style={styles.input}
+                    />
+
+                    <label>
+                      Quantity
+                    </label>
+
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={
+                        details.quantity || 1
+                      }
+                      onChange={(e) =>
+                        setServiceDetails(
+                          (prev) => ({
+                            ...prev,
+                            [item.name]: {
+                              ...(prev[
+                                item.name
+                              ] || {}),
+                              quantity:
+                                Number(
+                                  e.target.value
+                                ) || 1
+                            }
+                          })
                         )
                       }
                       style={styles.input}
@@ -909,13 +1227,28 @@ function EditJob() {
                       {Math.max(
                         Number(
                           details.price || 0
-                        ) -
+                        ) *
+                          Number(
+                            details.quantity || 1
+                          ) -
                           Number(
                             details.discount || 0
                           ),
                         0
                       ).toFixed(2)}
                     </div>
+
+                    {isTeyseerWtt && (
+                      <div
+                        style={
+                          styles.teyseerServiceNotice
+                        }
+                      >
+                        This WTT amount is paid by
+                        Teyseer and is not included
+                        in the customer's balance.
+                      </div>
+                    )}
 
                   </div>
                 )}
@@ -932,33 +1265,39 @@ function EditJob() {
 
           <div style={styles.total}>
 
-            Total: QAR{" "}
+            All Services Total: QAR{" "}
 
-            {services.reduce(
-              (sum, serviceName) => {
+            {allServicesTotal.toFixed(2)}
 
-                const details =
-                  serviceDetails[
-                    serviceName
-                  ] || {};
+          </div>
 
-                return (
-                  sum +
-                  Math.max(
-                    Number(
-                      details.price || 0
-                    ) -
-                      Number(
-                        details.discount || 0
-                      ),
-                    0
-                  )
-                );
+          {isTeyseerSource(source) && (
+            <div
+              style={
+                styles.teyseerTotalNotice
+              }
+            >
+              WTT is included in the internal
+              total but paid through Teyseer.
+            </div>
+          )}
 
-              },
-              0
-            ).toFixed(2)}
+          <div
+            style={
+              styles.customerTotal
+            }
+          >
+            Customer Net Amount: QAR{" "}
+            {customerNetAmount.toFixed(2)}
+          </div>
 
+          <div
+            style={
+              styles.customerBalance
+            }
+          >
+            Customer Balance: QAR{" "}
+            {customerBalance.toFixed(2)}
           </div>
 
         </div>
@@ -1259,6 +1598,58 @@ const styles = {
     fontWeight: "bold",
     fontSize: "16px",
     marginTop: "5px"
+  },
+
+  teyseerBox: {
+    background: "#241f10",
+    border: "1px solid #d4af37",
+    borderRadius: "12px",
+    padding: "15px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    color: "#f5f5f5"
+  },
+
+  teyseerLabel: {
+    marginLeft: "5px",
+    color: "#d4af37",
+    fontSize: "12px",
+    fontWeight: "700"
+  },
+
+  teyseerServiceNotice: {
+    background: "#241f10",
+    color: "#d4af37",
+    padding: "9px",
+    borderRadius: "7px",
+    fontSize: "13px",
+    fontWeight: "600",
+    marginTop: "5px"
+  },
+
+  teyseerTotalNotice: {
+    color: "#d4af37",
+    background: "#241f10",
+    padding: "10px",
+    borderRadius: "8px",
+    marginTop: "12px",
+    fontSize: "13px",
+    fontWeight: "600"
+  },
+
+  customerTotal: {
+    color: "#f5f5f5",
+    fontSize: "19px",
+    fontWeight: "bold",
+    marginTop: "15px"
+  },
+
+  customerBalance: {
+    color: "#22c55e",
+    fontSize: "19px",
+    fontWeight: "bold",
+    marginTop: "8px"
   },
 
   totalBox: {

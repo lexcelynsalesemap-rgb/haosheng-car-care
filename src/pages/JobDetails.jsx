@@ -295,54 +295,126 @@ useEffect(() => {
 
 
 // ADD PAYMENT
+async function updateJobPaymentSummary() {
+  // Get the current job from database
+  const { data: currentJob, error: jobError } = await supabase
+    .from("jobs")
+    .select("price, discount")
+    .eq("id", Number(id))
+    .single();
 
-async function savePayment(){
+  if (jobError) {
+    console.error(
+      "LOAD JOB FOR PAYMENT SUMMARY ERROR:",
+      jobError
+    );
+    return;
+  }
 
+  // Get all payments
+  const { data: paymentData, error: paymentError } =
+    await supabase
+      .from("payments")
+      .select("amount")
+      .eq("job_id", Number(id));
 
-if(!amount || Number(amount)<=0){
+  if (paymentError) {
+    console.error(
+      "LOAD PAYMENTS FOR PAYMENT SUMMARY ERROR:",
+      paymentError
+    );
+    return;
+  }
 
-alert("Enter payment amount");
+  // Calculate total paid
+  const totalPaid = (paymentData || []).reduce(
+    (sum, payment) =>
+      sum + Number(payment.amount || 0),
+    0
+  );
 
-return;
+  const totalPrice = Number(currentJob.price || 0);
+  const discount = Number(currentJob.discount || 0);
 
+  const finalTotal = Math.max(
+    totalPrice - discount,
+    0
+  );
+
+  const balance = finalTotal - totalPaid;
+
+  console.log("========== JOB PAYMENT UPDATE ==========");
+  console.log("JOB ID:", id);
+  console.log("TOTAL:", totalPrice);
+  console.log("DISCOUNT:", discount);
+  console.log("TOTAL PAID:", totalPaid);
+  console.log("BALANCE:", balance);
+  console.log("=========================================");
+
+  // Update jobs table
+  const { error: updateError } = await supabase
+    .from("jobs")
+    .update({
+      deposit: totalPaid,
+      balance: balance
+    })
+    .eq("id", Number(id));
+
+  if (updateError) {
+    console.error(
+      "UPDATE JOB BALANCE ERROR:",
+      updateError
+    );
+
+    alert(
+      "Payment changed, but job balance could not be updated:\n\n" +
+        updateError.message
+    );
+
+    return;
+  }
+
+  // Update React state
+  setJob((prev) => ({
+    ...prev,
+    deposit: totalPaid,
+    balance: balance
+  }));
+
+  console.log("JOB PAYMENT SUMMARY UPDATED");
 }
 
+async function savePayment() {
+  if (!amount || Number(amount) <= 0) {
+    alert("Enter payment amount");
+    return;
+  }
 
+  const { error } = await supabase
+    .from("payments")
+    .insert([
+      {
+        job_id: Number(id),
+        amount: Number(amount),
+        payment_method: method,
+        payment_date: new Date().toISOString(),
+        notes: notes
+      }
+    ]);
 
-const {error}=await supabase
+  if (error) {
+    console.error("SAVE PAYMENT ERROR:", error);
+    alert(error.message);
+    return;
+  }
 
-.from("payments")
+  clearPaymentForm();
 
-.insert([{
+  await loadPayments();
 
-job_id:id,
+  await updateJobPaymentSummary();
 
-amount:Number(amount),
-
-payment_method:method,
-
-payment_date: new Date().toISOString().split("T")[0],
-
-notes:notes
-
-}]);
-
-
-
-if(error){
-
-alert(error.message);
-
-return;
-
-}
-
-
-
-clearPaymentForm();
-
-loadPayments();
-
+  alert("Payment added and job updated!");
 }
 
 
@@ -379,16 +451,27 @@ async function deletePayment(paymentId) {
     .eq("id", paymentId);
 
   if (error) {
-    console.error("DELETE PAYMENT ERROR:", error);
-    alert("Could not delete payment:\n\n" + error.message);
+    console.error(
+      "DELETE PAYMENT ERROR:",
+      error
+    );
+
+    alert(
+      "Could not delete payment:\n\n" +
+      error.message
+    );
+
     return;
   }
 
-  // Remove it immediately from the screen
-  setPayments((prev) =>
-    prev.filter((payment) => payment.id !== paymentId)
-  );
+  await loadPayments();
+
+  await updateJobPaymentSummary();
+
+  alert("Payment deleted and job updated!");
 }
+
+ 
 // EDIT PAYMENT
 
 function startEditPayment(payment){
@@ -406,45 +489,40 @@ setNotes(payment.notes || "");
 
 
 
-async function updatePayment(){
+async function updatePayment() {
+  if (!editingPayment) return;
 
+  if (!amount || Number(amount) <= 0) {
+    alert("Enter payment amount");
+    return;
+  }
 
-const {error}=await supabase
+  const { error } = await supabase
+    .from("payments")
+    .update({
+      amount: Number(amount),
+      payment_method: method,
+      notes: notes
+    })
+    .eq("id", editingPayment.id);
 
-.from("payments")
+  if (error) {
+    console.error("UPDATE PAYMENT ERROR:", error);
+    alert(error.message);
+    return;
+  }
 
-.update({
+  clearPaymentForm();
 
-amount:Number(amount),
+  await loadPayments();
 
-payment_method:method,
+  // IMPORTANT:
+  // Recalculate deposit and balance in jobs table
+  await updateJobPaymentSummary();
 
-notes:notes
-
-})
-
-.eq(
-"id",
-editingPayment.id
-);
-
-
-
-if(error){
-
-alert(error.message);
-
-return;
-
+  alert("Payment updated and job balance updated!");
 }
 
-
-
-clearPaymentForm();
-
-loadPayments();
-
-}
 if(!job){
 
 return (
@@ -460,29 +538,20 @@ Loading...
 
 
 const totalPaid = payments.reduce(
-
-(sum,payment)=>
-
-sum + Number(payment.amount || 0),
-
-0
-
+  (sum, payment) =>
+    sum + Number(payment.amount || 0),
+  0
 );
 
+const totalPrice = Number(job.price || 0);
+const discount = Number(job.discount || 0);
 
+const finalTotal = Math.max(
+  totalPrice - discount,
+  0
+);
 
-const balance =
-
-Number(job.price || 0)
-
--
-
-Number(job.discount || 0)
-
--
-
-totalPaid;
-
+const balance = finalTotal - totalPaid;
 
 
 let paymentStatus="Unpaid";
@@ -1247,163 +1316,94 @@ style={styles.invoiceButton}
 
 
 
-const styles={
-
-
-page:{
-
-padding:"30px",
-
-background:"#f1f5f9",
-
-minHeight:"100vh"
-
-},
-
-
-
-card:{
-
-background:"white",
-
-padding:"25px",
-
-borderRadius:"15px",
-
-maxWidth:"700px",
-
-boxShadow:"0 5px 15px rgba(0,0,0,.1)"
-
-},
-
-
-
-service:{
-
-border:"1px solid #ddd",
-
-padding:"15px",
-
-borderRadius:"10px",
-
-marginBottom:"15px"
-
-},
-
-
-
-paymentBox:{
-
-border:"1px solid #ddd",
-
-padding:"12px",
-
-borderRadius:"10px",
-
-marginBottom:"10px",
-
-background:"#fafafa"
-
-},
-
-
-
-button:{
-
-background:"#16a34a",
-
-color:"white",
-
-border:"none",
-
-padding:"12px 20px",
-
-borderRadius:"10px",
-
-cursor:"pointer",
-
-marginTop:"10px"
-
-},
-
-
-
-editButton:{
-
-background:"#f59e0b",
-
-color:"white",
-
-border:"none",
-
-padding:"8px 15px",
-
-borderRadius:"8px",
-
-cursor:"pointer",
-
-marginRight:"10px"
-
-},
-
-
-
-deleteButton:{
-
-background:"#dc2626",
-
-color:"white",
-
-border:"none",
-
-padding:"8px 15px",
-
-borderRadius:"8px",
-
-cursor:"pointer"
-
-},
-
-
-
-cancelButton:{
-
-background:"#6b7280",
-
-color:"white",
-
-border:"none",
-
-padding:"12px 20px",
-
-borderRadius:"10px",
-
-cursor:"pointer",
-
-marginLeft:"10px"
-
-},
-
-
-
-invoiceButton:{
-
-background:"#2563eb",
-
-color:"white",
-
-border:"none",
-
-padding:"12px 20px",
-
-borderRadius:"10px",
-
-cursor:"pointer"
-
-}
-
-
+const styles = {
+  page: {
+    padding: "30px",
+    background: "var(--bg)",
+    minHeight: "100vh",
+    color: "#1e293b",
+  },
+
+  card: {
+    background: "var(--card, #ffffff)",
+    padding: "30px",
+    borderRadius: "18px",
+    maxWidth: "700px",
+    boxShadow: "0 8px 25px rgba(0,0,0,0.08)",
+    border: "1px solid #e2e8f0",
+  },
+
+  service: {
+    border: "1px solid #e2e8f0",
+    padding: "18px",
+    borderRadius: "12px",
+    marginBottom: "15px",
+    background: "#f8fafc",
+  },
+
+  paymentBox: {
+    border: "1px solid #e2e8f0",
+    padding: "15px",
+    borderRadius: "12px",
+    marginBottom: "12px",
+    background: "#f8fafc",
+  },
+
+  button: {
+    background: "#16a34a",
+    color: "white",
+    border: "none",
+    padding: "12px 20px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    marginTop: "10px",
+    fontSize: "14px",
+    fontWeight: "700",
+  },
+
+  editButton: {
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    padding: "9px 16px",
+    borderRadius: "9px",
+    cursor: "pointer",
+    marginRight: "10px",
+    fontWeight: "600",
+  },
+
+  deleteButton: {
+    background: "#dc2626",
+    color: "white",
+    border: "none",
+    padding: "9px 16px",
+    borderRadius: "9px",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  cancelButton: {
+    background: "#64748b",
+    color: "white",
+    border: "none",
+    padding: "12px 20px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    marginLeft: "10px",
+    fontWeight: "600",
+  },
+
+  invoiceButton: {
+    background: "#7c3aed",
+    color: "white",
+    border: "none",
+    padding: "12px 20px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontWeight: "700",
+  },
 };
+
 
 
 

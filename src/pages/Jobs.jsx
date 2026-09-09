@@ -501,46 +501,61 @@ useEffect(() => {
 }
 
 // -----------------------------------
-// STYLES
+// STYLES — SAME BLACK & GOLD THEME
 // -----------------------------------
 
 const styles = {
   page: {
+    minHeight: "100vh",
     padding: "30px",
-    background: "var(--bg)",
-    minHeight: "100vh"
+    background: "#0b0b0b",
+    color: "#f5f5f5",
+    boxSizing: "border-box"
   },
 
   search: {
-    padding: "12px",
     width: "300px",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    padding: "13px",
     marginBottom: "15px",
-    borderRadius: "8px"
+    borderRadius: "8px",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#fff",
+    fontSize: "16px"
   },
 
   filter: {
-    padding: "12px",
+    padding: "13px",
     marginLeft: "10px",
-    borderRadius: "8px"
+    marginBottom: "15px",
+    borderRadius: "8px",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#fff",
+    fontSize: "16px",
+    cursor: "pointer"
   },
 
   jobCard: {
-    background: "white",
+    background: "#151515",
     padding: "25px",
     marginBottom: "20px",
-    borderRadius: "18px",
-    boxShadow:
-      "0 8px 20px rgba(0,0,0,0.08)"
+    borderRadius: "12px",
+    border: "1px solid #3b321c",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.35)"
   },
 
   jobHeader: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "center",
+    gap: "15px"
   },
 
   badge: {
-    color: "white",
+    color: "#fff",
     padding: "8px 15px",
     borderRadius: "20px",
     fontWeight: "bold"
@@ -554,51 +569,62 @@ const styles = {
   money: {
     fontSize: "18px",
     fontWeight: "bold",
-    color: "#16a34a"
+    color: "#d4af37"
   },
 
   status: {
-    padding: "8px",
-    borderRadius: "8px"
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "10px",
+    borderRadius: "8px",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#fff",
+    fontSize: "15px",
+    cursor: "pointer"
   },
 
   editButton: {
-    background: "#2563eb",
-    color: "white",
+    background: "#d4af37",
+    color: "#080808",
     border: "none",
     padding: "10px 18px",
     borderRadius: "10px",
     marginRight: "10px",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: "bold"
   },
 
   techButton: {
-    background: "#7c3aed",
-    color: "white",
+    background: "#8b6f1d",
+    color: "#fff",
     border: "none",
     padding: "10px 18px",
     borderRadius: "10px",
     marginRight: "10px",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: "bold"
   },
 
   invoiceButton: {
     background: "#16a34a",
-    color: "white",
+    color: "#fff",
     border: "none",
     padding: "10px 18px",
     borderRadius: "10px",
     marginRight: "10px",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: "bold"
   },
 
   deleteButton: {
-    background: "#dc2626",
-    color: "white",
+    background: "#991b1b",
+    color: "#fff",
     border: "none",
     padding: "10px 18px",
     borderRadius: "10px",
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: "bold"
   }
 };
 

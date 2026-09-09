@@ -1305,74 +1305,87 @@ function NewJob() {
 }
 
 // ============================================
-// STYLES
+// STYLES — DARK BLACK & GOLD THEME ONLY
 // ============================================
 
 const styles = {
   page: {
-    padding: "30px",
-    background: "var(--bg)",
     minHeight: "100vh",
+    padding: "30px",
+    background: "#0b0b0b",
+    color: "#f5f5f5",
+    boxSizing: "border-box",
   },
 
   form: {
-    background: "#fff",
+    width: "100%",
+    maxWidth: "700px",
+    margin: "0 auto",
+    background: "#151515",
     padding: "25px",
+    border: "1px solid #3b321c",
     borderRadius: "12px",
-    maxWidth: "650px",
     display: "flex",
     flexDirection: "column",
     gap: "12px",
+    boxSizing: "border-box",
   },
 
   serviceBox: {
-    border: "1px solid #ddd",
-    padding: "12px",
+    border: "1px solid #444",
+    background: "#1d1d1d",
+    padding: "15px",
     borderRadius: "10px",
-    marginBottom: "10px",
+    marginBottom: "8px",
   },
 
   teyseerBox: {
-    background: "#FFF8E7",
-    border: "1px solid #C9A24E",
+    background: "#1c190f",
+    border: "1px solid #d4af37",
     padding: "14px",
     borderRadius: "10px",
     display: "flex",
     flexDirection: "column",
     gap: "8px",
+    color: "#f5f5f5",
   },
 
   teyseerLabel: {
     marginLeft: "10px",
-    color: "#B8860B",
+    color: "#d4af37",
     fontSize: "12px",
     fontWeight: "700",
   },
 
   teyseerNotice: {
-    background: "#FFF8E7",
-    color: "#8A6500",
+    background: "#1c190f",
+    color: "#d4af37",
     padding: "10px",
+    border: "1px solid #3b321c",
     borderRadius: "8px",
     fontSize: "13px",
     fontWeight: "600",
   },
 
   summary: {
-    borderTop: "2px solid #ddd",
-    paddingTop: "10px",
+    background: "#111",
+    border: "2px solid #d4af37",
+    borderRadius: "12px",
+    padding: "18px",
     marginTop: "10px",
+    color: "#f5f5f5",
   },
 
   button: {
-    background: "#16a34a",
-    color: "white",
+    background: "#d4af37",
+    color: "#080808",
     border: "none",
-    padding: "14px",
+    padding: "15px 20px",
     borderRadius: "10px",
-    fontSize: "16px",
+    fontSize: "17px",
     cursor: "pointer",
     fontWeight: "700",
+    marginTop: "5px",
   },
 };
 
