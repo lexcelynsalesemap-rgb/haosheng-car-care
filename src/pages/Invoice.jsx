@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase/client";
+import gaLogo from "../assets/ga-logo.png";
 
 function Invoice() {
 
@@ -89,11 +90,11 @@ if (!job) {
 
     {/* GA LOGO */}
     <div style={styles.logoContainer}>
-      <img
-        src="/ga-logo.png"
-        alt="GA Logo"
-        style={styles.logo}
-      />
+     <img
+  src={gaLogo}
+  alt="GA Logo"
+  style={styles.logo}
+/>
     </div>
 
     {/* COMPANY INFORMATION */}
@@ -753,11 +754,11 @@ job.serviceDetails?.[service]?.discount || 0
 
   <p dir="rtl">
     • لا يغطي الضمان استبدال الأجزاء التالفة بسبب الخدوش الشديدة
-    أو الحوادث. سيقوم فنيو الشركة بتقييم الضرر لتحديد تكلفة الاستبدال.
+    أو الحوادث. سيقوم الفريق الفني للشركة بتقييم الضرر لتحديد تكلفة الاستبدال.
   </p>
 
   <p dir="rtl">
-    • يجب على العميل إحضار المركبة للصيانة بعد ستة أيام من تركيب الحماية.
+    • يجب على العميل إحضار المركبة للصيانة بعد 6 أيام من تركيب الحماية.
   </p>
 
   <p dir="rtl">
@@ -766,7 +767,7 @@ job.serviceDetails?.[service]?.discount || 0
   </p>
 
   <p dir="rtl">
-    • يُبطل الضمان غسل السيارة بمواد تُتلف الحماية، أو تُسبب خدوشاً
+    • يُبطل الضمان عند غسل السيارة بمواد تُتلف الحماية، أو تُسبب خدوشاً
     أو اصفراراً.
   </p>
 
