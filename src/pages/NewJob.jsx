@@ -4,25 +4,25 @@ import { supabase } from "../supabase/client";
 function NewJob() {
   const today = new Date().toISOString().split("T")[0];
 
-  // ==========================================
+  // ============================================
   // CUSTOMER
-  // ==========================================
+  // ============================================
 
   const [customer, setCustomer] = useState("");
   const [phone, setPhone] = useState("");
   const [date, setDate] = useState(today);
 
-  // ==========================================
+  // ============================================
   // SOURCE
-  // ==========================================
+  // ============================================
 
   const [source, setSource] = useState("");
   const [otherSource, setOtherSource] = useState("");
   const [voucherNumber, setVoucherNumber] = useState("");
 
-  // ==========================================
+  // ============================================
   // VEHICLE
-  // ==========================================
+  // ============================================
 
   const [carModel, setCarModel] = useState("");
   const [carType, setCarType] = useState("");
@@ -30,54 +30,66 @@ function NewJob() {
   const [chassis, setChassis] = useState("");
   const [plate, setPlate] = useState("");
 
-  // ==========================================
+  // ============================================
   // SERVICES
-  // ==========================================
+  // ============================================
 
   const [services, setServices] = useState([]);
   const [serviceDetails, setServiceDetails] = useState({});
 
-  // ==========================================
+  // ============================================
   // PAYMENT
-  // ==========================================
+  // ============================================
 
   const [deposit, setDeposit] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("");
 
-  // ==========================================
+  // ============================================
   // TECHNICIANS
-  // ==========================================
+  // ============================================
 
   const [technicians, setTechnicians] = useState([]);
   const [serviceList, setServiceList] = useState([]);
 
-  // ==========================================
+  // ============================================
+  // TEYSEER CHECK
+  // ============================================
+
+  function isTeyseerSource(sourceName) {
+    return (
+      sourceName === "Teyseer Motors" ||
+      sourceName === "Teyseer Motors - Bahaa" ||
+      sourceName === "Teyseer Motors - Salah"
+    );
+  }
+
+  function isWttService(serviceName) {
+    return serviceName
+      ?.toLowerCase()
+      .includes("wtt");
+  }
+
+  // ============================================
   // LOAD SERVICES
-  // ==========================================
+  // ============================================
 
   async function loadServices() {
-    console.log("URL:", supabase.supabaseUrl);
-
-    const { data, error, status } = await supabase
+    const { data, error } = await supabase
       .from("services")
       .select("*");
 
-    console.log("STATUS:", status);
-    console.log("DATA:", data);
-    console.log("ERROR:", error);
-
     if (error) {
-      console.error("SERVICE LOAD ERROR:", error);
+      console.error("SERVICES ERROR:", error);
       return;
     }
 
     setServiceList(data || []);
   }
 
-  // ==========================================
+  // ============================================
   // LOAD TECHNICIANS
-  // ==========================================
+  // ============================================
 
   async function loadTechnicians() {
     const { data, error } = await supabase
@@ -86,60 +98,116 @@ function NewJob() {
       .eq("active", true);
 
     if (error) {
-      console.log("TECHNICIAN ERROR:", error);
+      console.error("TECHNICIANS ERROR:", error);
       return;
     }
 
     setTechnicians(data || []);
   }
 
-  // ==========================================
+  // ============================================
   // INITIAL LOAD
-  // ==========================================
+  // ============================================
 
   useEffect(() => {
     loadTechnicians();
     loadServices();
   }, []);
 
-  // ==========================================
-  // CALCULATE TOTAL
-  // ==========================================
+  // ============================================
+  // TOTAL OF ALL SERVICES
+  //
+  // This is the internal total.
+  // It can include WTT.
+  // ============================================
 
   const total = services.reduce((sum, serviceName) => {
     const details = serviceDetails[serviceName] || {};
 
     const price = Number(details.price || 0);
-    const serviceDiscount = Number(details.discount || 0);
     const quantity = Number(details.quantity || 1);
+    const serviceDiscount = Number(details.discount || 0);
 
     return (
       sum +
-      Math.max(price * quantity - serviceDiscount, 0)
+      Math.max(
+        price * quantity - serviceDiscount,
+        0
+      )
     );
   }, 0);
 
-  // ==========================================
-  // FINAL AMOUNT
-  // ==========================================
+  // ============================================
+  // CUSTOMER PAYABLE TOTAL
+  //
+  // IMPORTANT:
+  //
+  // If this is a Teyseer job:
+  // WTT is paid by Teyseer.
+  //
+  // Therefore WTT is excluded from the
+  // customer's payable amount.
+  // ============================================
 
-  const finalAmount = Math.max(
-    total - Number(discount || 0),
+  const customerServicesTotal = services.reduce(
+    (sum, serviceName) => {
+      const details =
+        serviceDetails[serviceName] || {};
+
+      // WTT is paid by Teyseer
+      if (
+        isTeyseerSource(source) &&
+        isWttService(serviceName)
+      ) {
+        return sum;
+      }
+
+      const price = Number(details.price || 0);
+      const quantity = Number(details.quantity || 1);
+      const serviceDiscount =
+        Number(details.discount || 0);
+
+      return (
+        sum +
+        Math.max(
+          price * quantity - serviceDiscount,
+          0
+        )
+      );
+    },
     0
   );
 
-  const balance = Math.max(
-    finalAmount - Number(deposit || 0),
+  // ============================================
+  // FINAL CUSTOMER NET AMOUNT
+  //
+  // This is what the customer actually pays.
+  // ============================================
+
+  const finalNetAmount = Math.max(
+    customerServicesTotal -
+      Number(discount || 0),
     0
   );
 
-  // ==========================================
+  // ============================================
+  // CUSTOMER BALANCE
+  //
+  // Deposit is only against customer's amount.
+  // WTT is NOT part of this.
+  // ============================================
+
+  const finalBalance = Math.max(
+    finalNetAmount -
+      Number(deposit || 0),
+    0
+  );
+
+  // ============================================
   // CHOOSE SERVICE
-  // ==========================================
+  // ============================================
 
   function chooseService(service, price) {
-    console.log("CHOOSING SERVICE:", service, price);
-
     if (services.includes(service)) {
       setServices((prev) =>
         prev.filter((s) => s !== service)
@@ -147,13 +215,15 @@ function NewJob() {
 
       setServiceDetails((prev) => {
         const copy = { ...prev };
+
         delete copy[service];
+
         return copy;
       });
     } else {
       setServices((prev) => [
         ...prev,
-        service
+        service,
       ]);
 
       setServiceDetails((prev) => ({
@@ -163,21 +233,18 @@ function NewJob() {
           price: Number(price || 0),
           discount: 0,
           quantity: 1,
-          technicians: []
-        }
+          technicians: [],
+        },
       }));
     }
   }
 
-  // ==========================================
-  // TEYSEER FULL WTT PRICING
-  // ==========================================
+  // ============================================
+  // TEYSEER WTT PRICE
+  // ============================================
 
   useEffect(() => {
-    const isTeyseer =
-      source === "Teyseer Motors" ||
-      source === "Teyseer Motors - Bahaa" ||
-      source === "Teyseer Motors - Salah";
+    const isTeyseer = isTeyseerSource(source);
 
     if (
       !isTeyseer ||
@@ -190,7 +257,9 @@ function NewJob() {
 
     if (carType === "GWM") {
       price = 1000;
-    } else if (carType === "Suzuki") {
+    }
+
+    if (carType === "Suzuki") {
       price = 800;
     }
 
@@ -203,46 +272,57 @@ function NewJob() {
 
       "Full WTT": {
         ...prev["Full WTT"],
-        price: price
-      }
+        price,
+      },
     }));
   }, [source, carType, services]);
 
-  // ==========================================
+  // ============================================
   // SAVE JOB
-  // ==========================================
+  // ============================================
 
   async function saveJob() {
-    console.log("SAVE CLICKED");
+    // --------------------------------------------
+    // BASIC VALIDATION
+    // --------------------------------------------
 
-    // -----------------------------------------
-    // VALIDATE PAYMENT METHOD
-    // -----------------------------------------
-
-    if (!paymentMethod) {
-      alert("Please select a payment method.");
+    if (!customer.trim()) {
+      alert("Please enter customer name.");
       return;
     }
 
-    // -----------------------------------------
+    // --------------------------------------------
+    // TEYSEER VOUCHER VALIDATION
+    // --------------------------------------------
+
+    const isTeyseer = isTeyseerSource(source);
+
+    if (isTeyseer && !voucherNumber.trim()) {
+      alert(
+        "Please enter the Teyseer Voucher Number."
+      );
+      return;
+    }
+
+    // --------------------------------------------
     // GET NEXT RECEIPT NUMBER
-    // -----------------------------------------
+    // --------------------------------------------
 
     const {
       data: lastJob,
-      error: receiptError
+      error: receiptError,
     } = await supabase
       .from("jobs")
       .select("receipt_number")
       .not("receipt_number", "is", null)
       .order("receipt_number", {
-        ascending: false
+        ascending: false,
       })
       .limit(1)
       .maybeSingle();
 
     if (receiptError) {
-      console.log(
+      console.error(
         "RECEIPT NUMBER ERROR:",
         receiptError
       );
@@ -251,32 +331,33 @@ function NewJob() {
       return;
     }
 
-    // -----------------------------------------
-    // NEXT RECEIPT NUMBER
-    // -----------------------------------------
-
     const nextReceiptNumber =
       lastJob?.receipt_number
         ? Number(lastJob.receipt_number) + 1
         : 2718;
 
-    console.log(
-      "NEXT RECEIPT NUMBER:",
-      nextReceiptNumber
-    );
+    // --------------------------------------------
+    // PAYMENT METHOD
+    // --------------------------------------------
 
-    // -----------------------------------------
-    // FINAL SOURCE
-    // -----------------------------------------
+    const savedPaymentMethod =
+      paymentMethod &&
+      paymentMethod.trim() !== ""
+        ? paymentMethod
+        : null;
 
-    const finalSource =
+    // --------------------------------------------
+    // SOURCE
+    // --------------------------------------------
+
+    const savedSource =
       source === "Other"
         ? otherSource
         : source;
 
-    // -----------------------------------------
+    // --------------------------------------------
     // CREATE JOB
-    // -----------------------------------------
+    // --------------------------------------------
 
     const job = {
       customer,
@@ -288,10 +369,12 @@ function NewJob() {
       receipt_number:
         nextReceiptNumber,
 
-      source:
-        finalSource,
+      source: savedSource,
 
-      voucherNumber,
+      // KEEP TEYSEER VOUCHER NUMBER
+      voucherNumber: isTeyseer
+        ? voucherNumber
+        : "",
 
       carModel,
 
@@ -307,25 +390,25 @@ function NewJob() {
 
       serviceDetails,
 
-      // IMPORTANT:
-      // Database column is payment_method
-      payment_method:
-        paymentMethod,
+      paymentMethod:
+        savedPaymentMethod,
 
-      price:
-        Number(total),
+      // INTERNAL TOTAL OF ALL SERVICES
+      price: Number(total),
 
       discount:
-        Number(discount),
+        Number(discount || 0),
 
+      // CUSTOMER'S ACTUAL DEPOSIT
       deposit:
-        Number(deposit),
+        Number(deposit || 0),
 
+      // CUSTOMER'S BALANCE
+      // WTT IS ALREADY PAID BY TEYSEER
       balance:
-        Number(balance),
+        Number(finalBalance),
 
-      status:
-        "New"
+      status: "New",
     };
 
     console.log(
@@ -333,13 +416,13 @@ function NewJob() {
       job
     );
 
-    // -----------------------------------------
+    // --------------------------------------------
     // INSERT JOB
-    // -----------------------------------------
+    // --------------------------------------------
 
     const {
       data: jobData,
-      error: jobError
+      error: jobError,
     } = await supabase
       .from("jobs")
       .insert([job])
@@ -347,7 +430,7 @@ function NewJob() {
       .single();
 
     if (jobError) {
-      console.log(
+      console.error(
         "JOB ERROR:",
         jobError
       );
@@ -356,88 +439,71 @@ function NewJob() {
       return;
     }
 
-    console.log(
-      "JOB CREATED:",
-      jobData
-    );
-
-    // -----------------------------------------
-    // CREATE PAYMENT
-    // -----------------------------------------
+    // --------------------------------------------
+    // CREATE CUSTOMER PAYMENT
+    //
+    // ONLY THE CUSTOMER'S DEPOSIT.
+    //
+    // NO TEYSEER MONTHLY PAYMENT IS CREATED.
+    // --------------------------------------------
 
     if (Number(deposit) > 0) {
       const {
-        error: paymentError
+        error: paymentError,
       } = await supabase
         .from("payments")
         .insert([
           {
-            job_id:
-              jobData.id,
+            job_id: jobData.id,
 
             amount:
               Number(deposit),
 
             payment_method:
-              paymentMethod,
+              savedPaymentMethod,
 
             payment_source:
-              finalSource,
+              savedSource,
 
             payment_date:
               new Date(),
 
             notes:
-              "Initial deposit"
-          }
+              "Customer payment",
+          },
         ]);
 
       if (paymentError) {
-        console.log(
+        console.error(
           "PAYMENT ERROR:",
           paymentError
         );
       }
     }
 
-    // -----------------------------------------
+    // --------------------------------------------
     // CREATE JOB SERVICES
-    // -----------------------------------------
+    //
+    // WTT = TEYSEER
+    // EVERYTHING ELSE = SALES TEAM
+    // --------------------------------------------
 
-    for (
-      const serviceName of services
-    ) {
+    for (const serviceName of services) {
       const details =
         serviceDetails[serviceName] || {};
 
-      const isTeyseer =
-        finalSource ===
-          "Teyseer Motors" ||
-        finalSource ===
-          "Teyseer Motors - Bahaa" ||
-        finalSource ===
-          "Teyseer Motors - Salah";
-
-      let owner =
-        "Sales Team";
+      let owner = "Sales Team";
 
       if (
         isTeyseer &&
-        serviceName
-          .toLowerCase()
-          .includes("wtt")
+        isWttService(serviceName)
       ) {
-        owner =
-          "Teyseer";
+        owner = "Teyseer";
       }
-
-      // ---------------------------------------
-      // INSERT JOB SERVICE
-      // ---------------------------------------
 
       const {
         data: serviceRow,
-        error: serviceError
+        error: serviceError,
       } = await supabase
         .from("job_services")
         .insert([
@@ -458,90 +524,122 @@ function NewJob() {
                 details.discount || 0
               ),
 
-            owner:
-              owner
-          }
+            owner,
+          },
         ])
         .select()
         .single();
 
-      console.log(
-        "INSERT JOB SERVICE",
-        serviceRow,
-        serviceError
-      );
-
       if (serviceError) {
+        console.error(
+          "SERVICE ERROR:",
+          serviceError
+        );
+
         continue;
       }
 
-      // ---------------------------------------
+      // ------------------------------------------
       // TECHNICIANS
-      // ---------------------------------------
+      // ------------------------------------------
 
       const techRows =
-        (
-          details.technicians ||
-          []
-        ).map((technician) => ({
-          service_id:
-            serviceRow.id,
+        (details.technicians || []).map(
+          (technician) => ({
+            service_id:
+              serviceRow.id,
 
-          technician_id:
-            technician.id,
+            technician_id:
+              technician.id,
 
-          commission:
-            Number(
-              technician.commission ||
-              0
-            )
-        }));
-
-      if (techRows.length) {
-        const {
-          error: techError
-        } = await supabase
-          .from("service_technicians")
-          .insert(
-            techRows
-          );
-
-        console.log(
-          "TECH INSERT",
-          techError
+            commission:
+              Number(
+                technician.commission || 0
+              ),
+          })
         );
+
+      if (techRows.length > 0) {
+        const {
+          error: techError,
+        } = await supabase
+          .from(
+            "service_technicians"
+          )
+          .insert(techRows);
+
+        if (techError) {
+          console.error(
+            "TECHNICIAN ERROR:",
+            techError
+          );
+        }
       }
     }
 
-    // -----------------------------------------
-    // SUCCESS
-    // -----------------------------------------
+    // --------------------------------------------
+    // SUCCESS MESSAGE
+    // --------------------------------------------
 
-    alert(
-      `Job Saved Successfully!
+    let successMessage =
+      `Job Saved Successfully!\n\n` +
+      `Receipt Number: ${nextReceiptNumber}\n\n`;
 
-Receipt Number: ${nextReceiptNumber}
+    if (isTeyseer) {
+      successMessage +=
+        `Teyseer Voucher: ${voucherNumber}\n\n` +
+        `WTT: Paid through Teyseer\n\n` +
+        `Customer Net Amount: QAR ${finalNetAmount.toFixed(
+          2
+        )}`;
+    } else {
+      successMessage +=
+        `Customer Net Amount: QAR ${finalNetAmount.toFixed(
+          2
+        )}`;
+    }
 
-Payment Method: ${paymentMethod}`
-    );
+    alert(successMessage);
+
+    // --------------------------------------------
+    // RESET FORM
+    // --------------------------------------------
+
+    setCustomer("");
+    setPhone("");
+    setDate(today);
+
+    setSource("");
+    setOtherSource("");
+    setVoucherNumber("");
+
+    setCarModel("");
+    setCarType("");
+    setColor("");
+    setChassis("");
+    setPlate("");
+
+    setServices([]);
+    setServiceDetails({});
+
+    setDeposit(0);
+    setDiscount(0);
+    setPaymentMethod("");
   }
 
-  // ==========================================
-  // UI
-  // ==========================================
+  // ============================================
+  // RENDER
+  // ============================================
 
   return (
     <div style={styles.page}>
-
-      <h1>
-        New Job
-      </h1>
+      <h1>New Job</h1>
 
       <div style={styles.form}>
 
-        {/* ====================================
+        {/* =====================================
             CUSTOMER
-        ==================================== */}
+        ====================================== */}
 
         <h2>
           Customer Information
@@ -551,9 +649,7 @@ Payment Method: ${paymentMethod}`
           placeholder="Customer Name"
           value={customer}
           onChange={(e) =>
-            setCustomer(
-              e.target.value
-            )
+            setCustomer(e.target.value)
           }
         />
 
@@ -561,9 +657,7 @@ Payment Method: ${paymentMethod}`
           placeholder="Phone Number"
           value={phone}
           onChange={(e) =>
-            setPhone(
-              e.target.value
-            )
+            setPhone(e.target.value)
           }
         />
 
@@ -575,15 +669,13 @@ Payment Method: ${paymentMethod}`
           type="date"
           value={date}
           onChange={(e) =>
-            setDate(
-              e.target.value
-            )
+            setDate(e.target.value)
           }
         />
 
-        {/* ====================================
+        {/* =====================================
             SOURCE
-        ==================================== */}
+        ====================================== */}
 
         <h2>
           Source
@@ -592,9 +684,7 @@ Payment Method: ${paymentMethod}`
         <select
           value={source}
           onChange={(e) =>
-            setSource(
-              e.target.value
-            )
+            setSource(e.target.value)
           }
         >
           <option value="">
@@ -630,6 +720,8 @@ Payment Method: ${paymentMethod}`
           </option>
         </select>
 
+        {/* OTHER SOURCE */}
+
         {source === "Other" && (
           <input
             placeholder="Other Source"
@@ -642,28 +734,35 @@ Payment Method: ${paymentMethod}`
           />
         )}
 
-        {(
-          source ===
-            "Teyseer Motors" ||
-          source ===
-            "Teyseer Motors - Bahaa" ||
-          source ===
-            "Teyseer Motors - Salah"
-        ) && (
-          <input
-            placeholder="Voucher Number"
-            value={voucherNumber}
-            onChange={(e) =>
-              setVoucherNumber(
-                e.target.value
-              )
-            }
-          />
+        {/* =====================================
+            TEYSEER VOUCHER
+        ====================================== */}
+
+        {isTeyseerSource(source) && (
+          <div style={styles.teyseerBox}>
+            <strong>
+              TEYSEER JOB
+            </strong>
+
+            <span>
+              WTT will be paid through Teyseer.
+            </span>
+
+            <input
+              placeholder="Teyseer Voucher Number"
+              value={voucherNumber}
+              onChange={(e) =>
+                setVoucherNumber(
+                  e.target.value
+                )
+              }
+            />
+          </div>
         )}
 
-        {/* ====================================
+        {/* =====================================
             VEHICLE
-        ==================================== */}
+        ====================================== */}
 
         <h2>
           Vehicle Information
@@ -673,9 +772,7 @@ Payment Method: ${paymentMethod}`
           placeholder="Car Model"
           value={carModel}
           onChange={(e) =>
-            setCarModel(
-              e.target.value
-            )
+            setCarModel(e.target.value)
           }
         />
 
@@ -686,9 +783,7 @@ Payment Method: ${paymentMethod}`
         <select
           value={carType}
           onChange={(e) =>
-            setCarType(
-              e.target.value
-            )
+            setCarType(e.target.value)
           }
         >
           <option value="">
@@ -752,9 +847,7 @@ Payment Method: ${paymentMethod}`
           placeholder="Color"
           value={color}
           onChange={(e) =>
-            setColor(
-              e.target.value
-            )
+            setColor(e.target.value)
           }
         />
 
@@ -762,9 +855,7 @@ Payment Method: ${paymentMethod}`
           placeholder="Chassis Number"
           value={chassis}
           onChange={(e) =>
-            setChassis(
-              e.target.value
-            )
+            setChassis(e.target.value)
           }
         />
 
@@ -772,15 +863,13 @@ Payment Method: ${paymentMethod}`
           placeholder="Plate Number"
           value={plate}
           onChange={(e) =>
-            setPlate(
-              e.target.value
-            )
+            setPlate(e.target.value)
           }
         />
 
-        {/* ====================================
+        {/* =====================================
             SERVICES
-        ==================================== */}
+        ====================================== */}
 
         <h2>
           Services
@@ -791,18 +880,21 @@ Payment Method: ${paymentMethod}`
             const service =
               serviceItem.name;
 
+            const isWtt =
+              isWttService(service);
+
+            const isTeyseerWtt =
+              isTeyseerSource(source) &&
+              isWtt;
+
             return (
               <div
-                key={
-                  serviceItem.id
-                }
+                key={serviceItem.id}
                 style={
                   styles.serviceBox
                 }
               >
-
                 <label>
-
                   <input
                     type="checkbox"
                     checked={services.includes(
@@ -820,13 +912,23 @@ Payment Method: ${paymentMethod}`
 
                   {service}
 
+                  {/* INTERNAL LABEL ONLY */}
+
+                  {isTeyseerWtt && (
+                    <span
+                      style={
+                        styles.teyseerLabel
+                      }
+                    >
+                      Paid through Teyseer
+                    </span>
+                  )}
                 </label>
 
                 {services.includes(
                   service
                 ) && (
                   <div>
-
                     <br />
 
                     {/* PRICE */}
@@ -851,41 +953,9 @@ Payment Method: ${paymentMethod}`
 
                               price:
                                 Number(
-                                  e.target
-                                    .value
-                                )
-                            }
-                          })
-                        );
-                      }}
-                    />
-
-                    {/* DISCOUNT */}
-
-                    <input
-                      type="number"
-                      placeholder="Discount"
-                      value={
-                        serviceDetails?.[
-                          service
-                        ]?.discount || 0
-                      }
-                      onChange={(e) => {
-                        setServiceDetails(
-                          (prev) => ({
-                            ...prev,
-
-                            [service]: {
-                              ...(prev[
-                                service
-                              ] || {}),
-
-                              discount:
-                                Number(
-                                  e.target
-                                    .value
-                                )
-                            }
+                                  e.target.value
+                                ),
+                            },
                           })
                         );
                       }}
@@ -914,10 +984,39 @@ Payment Method: ${paymentMethod}`
 
                               quantity:
                                 Number(
-                                  e.target
-                                    .value
-                                ) || 1
-                            }
+                                  e.target.value
+                                ) || 1,
+                            },
+                          })
+                        );
+                      }}
+                    />
+
+                    {/* DISCOUNT */}
+
+                    <input
+                      type="number"
+                      placeholder="Discount"
+                      value={
+                        serviceDetails?.[
+                          service
+                        ]?.discount || 0
+                      }
+                      onChange={(e) => {
+                        setServiceDetails(
+                          (prev) => ({
+                            ...prev,
+
+                            [service]: {
+                              ...(prev[
+                                service
+                              ] || {}),
+
+                              discount:
+                                Number(
+                                  e.target.value
+                                ),
+                            },
                           })
                         );
                       }}
@@ -934,13 +1033,11 @@ Payment Method: ${paymentMethod}`
                         const selected =
                           serviceDetails[
                             service
-                          ]
-                            ?.technicians
-                            ?.find(
-                              (t) =>
-                                t.id ===
-                                person.id
-                            );
+                          ]?.technicians?.find(
+                            (t) =>
+                              t.id ===
+                              person.id
+                          );
 
                         return (
                           <div
@@ -948,9 +1045,7 @@ Payment Method: ${paymentMethod}`
                               person.id
                             }
                           >
-
                             <label>
-
                               <input
                                 type="checkbox"
                                 checked={
@@ -962,8 +1057,7 @@ Payment Method: ${paymentMethod}`
                                   const oldTech =
                                     serviceDetails[
                                       service
-                                    ]
-                                      ?.technicians ||
+                                    ]?.technicians ||
                                     [];
 
                                   let updated;
@@ -975,13 +1069,13 @@ Payment Method: ${paymentMethod}`
                                     updated =
                                       [
                                         ...oldTech,
-
                                         {
                                           id:
                                             person.id,
 
-                                          commission: 0
-                                        }
+                                          commission:
+                                            0,
+                                        },
                                       ];
                                   } else {
                                     updated =
@@ -1002,8 +1096,8 @@ Payment Method: ${paymentMethod}`
                                         ] || {}),
 
                                         technicians:
-                                          updated
-                                      }
+                                          updated,
+                                      },
                                     })
                                   );
                                 }}
@@ -1012,7 +1106,6 @@ Payment Method: ${paymentMethod}`
                               {" "}
 
                               {person.name}
-
                             </label>
 
                             {selected && (
@@ -1035,26 +1128,24 @@ Payment Method: ${paymentMethod}`
                                             ?.technicians ||
                                           []
                                         ).map(
-                                          (
-                                            technician
-                                          ) => {
+                                          (t) => {
                                             if (
-                                              technician.id ===
+                                              t.id ===
                                               person.id
                                             ) {
                                               return {
-                                                ...technician,
+                                                ...t,
 
                                                 commission:
                                                   Number(
                                                     e
                                                       .target
                                                       .value
-                                                  )
+                                                  ),
                                               };
                                             }
 
-                                            return technician;
+                                            return t;
                                           }
                                         );
 
@@ -1067,31 +1158,28 @@ Payment Method: ${paymentMethod}`
                                           ] || {}),
 
                                           technicians:
-                                            updated
-                                        }
+                                            updated,
+                                        },
                                       };
                                     }
                                   );
                                 }}
                               />
                             )}
-
                           </div>
                         );
                       }
                     )}
-
                   </div>
                 )}
-
               </div>
             );
           }
         )}
 
-        {/* ====================================
+        {/* =====================================
             PAYMENT
-        ==================================== */}
+        ====================================== */}
 
         <h2>
           Payment
@@ -1099,6 +1187,15 @@ Payment Method: ${paymentMethod}`
 
         <label>
           Payment Method
+          <span
+            style={{
+              color: "#888",
+              fontSize: "12px",
+              marginLeft: "8px",
+            }}
+          >
+            Optional — can be added later
+          </span>
         </label>
 
         <select
@@ -1140,75 +1237,59 @@ Payment Method: ${paymentMethod}`
           value={discount}
           onChange={(e) =>
             setDiscount(
-              Number(
-                e.target.value
-              )
+              Number(e.target.value)
             )
           }
         />
 
         <label>
-          Deposit Paid
+          Customer Deposit Paid
         </label>
 
         <input
           type="number"
-          placeholder="Enter deposit"
+          placeholder="Enter customer deposit"
           value={deposit}
           onChange={(e) =>
             setDeposit(
-              Number(
-                e.target.value
-              )
+              Number(e.target.value)
             )
           }
         />
 
-        {/* ====================================
+        {/* =====================================
             TOTALS
-        ==================================== */}
+        ====================================== */}
 
         <div style={styles.summary}>
 
           <h3>
-            Total:
-            {" "}
-            QAR {total.toFixed(2)}
+            All Services Total: QAR{" "}
+            {total.toFixed(2)}
+          </h3>
+
+          {isTeyseerSource(source) && (
+            <p style={styles.teyseerNotice}>
+              WTT is paid through Teyseer and is
+              excluded from the customer's amount.
+            </p>
+          )}
+
+          <h3>
+            Customer Net Amount: QAR{" "}
+            {finalNetAmount.toFixed(2)}
           </h3>
 
           <h3>
-            Discount:
-            {" "}
-            QAR {Number(
-              discount || 0
-            ).toFixed(2)}
-          </h3>
-
-          <h3>
-            Net Amount:
-            {" "}
-            QAR {finalAmount.toFixed(2)}
-          </h3>
-
-          <h3>
-            Deposit:
-            {" "}
-            QAR {Number(
-              deposit || 0
-            ).toFixed(2)}
-          </h3>
-
-          <h3>
-            Balance Due:
-            {" "}
-            QAR {balance.toFixed(2)}
+            Customer Balance: QAR{" "}
+            {finalBalance.toFixed(2)}
           </h3>
 
         </div>
 
-        {/* ====================================
+        {/* =====================================
             SAVE
-        ==================================== */}
+        ====================================== */}
 
         <button
           type="button"
@@ -1223,15 +1304,15 @@ Payment Method: ${paymentMethod}`
   );
 }
 
-// ==========================================
+// ============================================
 // STYLES
-// ==========================================
+// ============================================
 
 const styles = {
   page: {
     padding: "30px",
     background: "var(--bg)",
-    minHeight: "100vh"
+    minHeight: "100vh",
   },
 
   form: {
@@ -1241,21 +1322,46 @@ const styles = {
     maxWidth: "650px",
     display: "flex",
     flexDirection: "column",
-    gap: "12px"
+    gap: "12px",
   },
 
   serviceBox: {
     border: "1px solid #ddd",
     padding: "12px",
     borderRadius: "10px",
-    marginBottom: "10px"
+    marginBottom: "10px",
+  },
+
+  teyseerBox: {
+    background: "#FFF8E7",
+    border: "1px solid #C9A24E",
+    padding: "14px",
+    borderRadius: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+
+  teyseerLabel: {
+    marginLeft: "10px",
+    color: "#B8860B",
+    fontSize: "12px",
+    fontWeight: "700",
+  },
+
+  teyseerNotice: {
+    background: "#FFF8E7",
+    color: "#8A6500",
+    padding: "10px",
+    borderRadius: "8px",
+    fontSize: "13px",
+    fontWeight: "600",
   },
 
   summary: {
-    background: "#f8fafc",
-    padding: "15px",
-    borderRadius: "10px",
-    border: "1px solid #e2e8f0"
+    borderTop: "2px solid #ddd",
+    paddingTop: "10px",
+    marginTop: "10px",
   },
 
   button: {
@@ -1266,8 +1372,8 @@ const styles = {
     borderRadius: "10px",
     fontSize: "16px",
     cursor: "pointer",
-    fontWeight: "700"
-  }
+    fontWeight: "700",
+  },
 };
 
 export default NewJob;

@@ -29,18 +29,18 @@ function EditJob() {
 
   // PAYMENT
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Visa");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [paymentNotes, setPaymentNotes] = useState("");
   const [payments, setPayments] = useState([]);
 
-useEffect(() => {
-  loadJob();
-  loadServices();
-  loadPayments();
-}, [id]);
+  useEffect(() => {
+    loadJob();
+    loadServices();
+    loadPayments();
+  }, [id]);
 
   // -----------------------------------
   // LOAD SERVICES
@@ -87,19 +87,24 @@ useEffect(() => {
     setCarType(data.carType || "");
     setColor(data.color || "");
     setPlate(data.plate || "");
+
+    // -----------------------------------
+    // JOB DATE
+    // -----------------------------------
+
     if (data.created_at) {
-  const date = new Date(data.created_at);
+      const date = new Date(data.created_at);
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
 
-  setJobDate(`${year}-${month}-${day}`);
-} else {
-  setJobDate(
-    new Date().toISOString().split("T")[0]
-  );
-}
+      setJobDate(`${year}-${month}-${day}`);
+    } else {
+      setJobDate(
+        new Date().toISOString().split("T")[0]
+      );
+    }
 
     // -----------------------------------
     // SOURCE
@@ -170,6 +175,27 @@ useEffect(() => {
   }
 
   // -----------------------------------
+  // LOAD PAYMENTS
+  // -----------------------------------
+
+  async function loadPayments() {
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("job_id", Number(id))
+      .order("payment_date", {
+        ascending: false
+      });
+
+    if (error) {
+      console.error("LOAD PAYMENTS ERROR:", error);
+      return;
+    }
+
+    setPayments(data || []);
+  }
+
+  // -----------------------------------
   // TOGGLE SERVICE
   // -----------------------------------
 
@@ -178,7 +204,9 @@ useEffect(() => {
 
     if (services.includes(serviceName)) {
       setServices((prev) =>
-        prev.filter((service) => service !== serviceName)
+        prev.filter(
+          (service) => service !== serviceName
+        )
       );
 
       setServiceDetails((prev) => {
@@ -196,7 +224,8 @@ useEffect(() => {
         ...prev,
         [serviceName]: {
           price: Number(serviceItem.price || 0),
-          discount: 0
+          discount: 0,
+          technicians: []
         }
       }));
     }
@@ -220,7 +249,10 @@ useEffect(() => {
   // UPDATE SERVICE DISCOUNT
   // -----------------------------------
 
-  function updateServiceDiscount(serviceName, discount) {
+  function updateServiceDiscount(
+    serviceName,
+    discount
+  ) {
     setServiceDetails((prev) => ({
       ...prev,
       [serviceName]: {
@@ -231,57 +263,59 @@ useEffect(() => {
   }
 
   // -----------------------------------
-  // SAVE JOB
+  // DELETE PAYMENT
   // -----------------------------------
-async function deletePayment(paymentId) {
-  const confirmDelete = window.confirm(
-    "Are you sure you want to delete this payment?"
-  );
 
-  if (!confirmDelete) {
-    return;
-  }
+  async function deletePayment(paymentId) {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this payment?"
+    );
 
-  try {
-    // 1. DELETE PAYMENT
-    const { error: deleteError } = await supabase
-      .from("payments")
-      .delete()
-      .eq("id", paymentId);
-
-    if (deleteError) {
-      console.error("DELETE PAYMENT ERROR:", deleteError);
-      alert(deleteError.message);
+    if (!confirmDelete) {
       return;
     }
 
-    // 2. LOAD PAYMENTS AGAIN FROM DATABASE
-    const { data: remainingPayments, error: paymentsError } =
-      await supabase
-        .from("payments")
-        .select("*")
-        .eq("job_id", Number(id))
-        .order("payment_date", { ascending: false });
+    try {
+      const { error: deleteError } =
+        await supabase
+          .from("payments")
+          .delete()
+          .eq("id", paymentId);
 
-    if (paymentsError) {
-      throw new Error(
-        "Could not reload payments: " +
-        paymentsError.message
+      if (deleteError) {
+        console.error(
+          "DELETE PAYMENT ERROR:",
+          deleteError
+        );
+
+        alert(deleteError.message);
+        return;
+      }
+
+      await recalculateJobBalance();
+      await loadPayments();
+
+      alert("Payment deleted successfully.");
+
+    } catch (error) {
+      console.error(
+        "DELETE PAYMENT ERROR:",
+        error
+      );
+
+      alert(
+        error.message ||
+        "Something went wrong."
       );
     }
+  }
 
-    // 3. UPDATE PAYMENT LIST ON SCREEN
-    setPayments(remainingPayments || []);
+  // -----------------------------------
+  // RECALCULATE BALANCE
+  // -----------------------------------
 
-    // 4. CALCULATE TOTAL PAID
-    const totalPaid = (remainingPayments || []).reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-    // 5. GET CURRENT JOB TOTAL
-    const { data: jobData, error: jobError } =
+  async function recalculateJobBalance() {
+    const { data: job, error: jobError } =
       await supabase
         .from("jobs")
         .select("price, discount")
@@ -295,59 +329,76 @@ async function deletePayment(paymentId) {
       );
     }
 
-    const totalPrice = Number(jobData.price || 0);
-    const totalDiscount = Number(jobData.discount || 0);
+    const {
+      data: paymentsData,
+      error: paymentsError
+    } = await supabase
+      .from("payments")
+      .select("amount")
+      .eq("job_id", Number(id));
+
+    if (paymentsError) {
+      throw new Error(
+        "Could not load payments: " +
+        paymentsError.message
+      );
+    }
+
+    const totalPrice =
+      Number(job.price || 0);
+
+    const totalDiscount =
+      Number(job.discount || 0);
 
     const finalTotal = Math.max(
       totalPrice - totalDiscount,
       0
     );
 
-    const newBalance = Math.max(
+    const totalPaid =
+      (paymentsData || []).reduce(
+        (sum, payment) =>
+          sum + Number(payment.amount || 0),
+        0
+      );
+
+    const balance = Math.max(
       finalTotal - totalPaid,
       0
     );
 
-    // 6. UPDATE JOB
-    const { data: updatedJob, error: updateError } =
-      await supabase
-        .from("jobs")
-        .update({
-          deposit: totalPaid,
-          balance: newBalance
-        })
-        .eq("id", Number(id))
-        .select()
-        .single();
+    const {
+      data: updatedJob,
+      error: updateError
+    } = await supabase
+      .from("jobs")
+      .update({
+        deposit: totalPaid,
+        balance: balance
+      })
+      .eq("id", Number(id))
+      .select()
+      .single();
 
     if (updateError) {
       throw new Error(
-        "Could not update job balance: " +
+        "Could not update balance: " +
         updateError.message
       );
     }
 
-    // 7. UPDATE JOB STATE IMMEDIATELY
-    setPayments(remainingPayments || []);
-
-    console.log("PAYMENT DELETED");
-    console.log("TOTAL PAID:", totalPaid);
-    console.log("NEW BALANCE:", newBalance);
-    console.log("UPDATED JOB:", updatedJob);
-
-    alert(
-      `Payment deleted successfully.\nNew Balance: QAR ${newBalance.toFixed(2)}`
+    console.log(
+      "BALANCE RECALCULATED:",
+      updatedJob
     );
 
-  } catch (error) {
-    console.error("DELETE PAYMENT ERROR:", error);
-
-    alert(
-      error.message ||
-      "Something went wrong while deleting the payment."
-    );
+    return updatedJob;
   }
-}
+
+  // -----------------------------------
+  // SAVE JOB
+  // -----------------------------------
+
   async function save() {
     if (saving) return;
 
@@ -355,7 +406,7 @@ async function deletePayment(paymentId) {
 
     try {
       // -----------------------------------
-      // 1. CALCULATE TOTAL PRICE + DISCOUNT
+      // CALCULATE TOTALS
       // -----------------------------------
 
       const totals = services.reduce(
@@ -363,8 +414,11 @@ async function deletePayment(paymentId) {
           const details =
             serviceDetails[serviceName] || {};
 
-          const price = Number(details.price || 0);
-          const discount = Number(details.discount || 0);
+          const price =
+            Number(details.price || 0);
+
+          const discount =
+            Number(details.discount || 0);
 
           result.price += price;
           result.discount += discount;
@@ -380,17 +434,13 @@ async function deletePayment(paymentId) {
       const totalPrice = totals.price;
       const totalDiscount = totals.discount;
 
-      // -----------------------------------
-      // 2. CALCULATE FINAL TOTAL
-      // -----------------------------------
-
       const finalTotal = Math.max(
         totalPrice - totalDiscount,
         0
       );
 
       // -----------------------------------
-      // 3. SOURCE
+      // SOURCE
       // -----------------------------------
 
       const finalSource =
@@ -399,20 +449,47 @@ async function deletePayment(paymentId) {
           : source;
 
       // -----------------------------------
-      // 4. ADD PAYMENT IF ENTERED
+      // PAYMENT
       // -----------------------------------
 
-      const amount = Number(paymentAmount || 0);
+      const amount =
+        Number(paymentAmount || 0);
+
+      /*
+       * IMPORTANT:
+       *
+       * A payment method is ONLY required
+       * when the user enters a payment amount.
+       *
+       * The job itself can be saved with
+       * NO payment method.
+       */
+
+      if (amount > 0 && !paymentMethod) {
+        alert(
+          "Please select a payment method."
+        );
+
+        setSaving(false);
+        return;
+      }
+
+      // -----------------------------------
+      // ADD PAYMENT
+      // -----------------------------------
 
       if (amount > 0) {
-        const { error: paymentError } = await supabase
+        const {
+          error: paymentError
+        } = await supabase
           .from("payments")
           .insert({
             job_id: Number(id),
             amount: amount,
             payment_method: paymentMethod,
             payment_date: paymentDate,
-            notes: paymentNotes.trim() || null
+            notes:
+              paymentNotes.trim() || null
           });
 
         if (paymentError) {
@@ -429,7 +506,7 @@ async function deletePayment(paymentId) {
       }
 
       // -----------------------------------
-      // 5. GET ALL PAYMENTS
+      // GET ALL PAYMENTS
       // -----------------------------------
 
       const {
@@ -448,17 +525,18 @@ async function deletePayment(paymentId) {
       }
 
       // -----------------------------------
-      // 6. TOTAL PAID
+      // TOTAL PAID
       // -----------------------------------
 
-      const totalPaid = (paymentData || []).reduce(
-        (sum, payment) =>
-          sum + Number(payment.amount || 0),
-        0
-      );
+      const totalPaid =
+        (paymentData || []).reduce(
+          (sum, payment) =>
+            sum + Number(payment.amount || 0),
+          0
+        );
 
       // -----------------------------------
-      // 7. NEW BALANCE
+      // BALANCE
       // -----------------------------------
 
       const balance = Math.max(
@@ -466,23 +544,11 @@ async function deletePayment(paymentId) {
         0
       );
 
-      console.log(
-        "========== SAVING JOB =========="
-      );
-
-      console.log("JOB ID:", id);
-      console.log("TOTAL PRICE:", totalPrice);
-      console.log("TOTAL DISCOUNT:", totalDiscount);
-      console.log("FINAL TOTAL:", finalTotal);
-      console.log("TOTAL PAID:", totalPaid);
-      console.log("NEW BALANCE:", balance);
-
       // -----------------------------------
-      // 8. UPDATE JOB
+      // UPDATE JOB
       // -----------------------------------
 
       const {
-        data: updatedJob,
         error: jobError
       } = await supabase
         .from("jobs")
@@ -495,9 +561,13 @@ async function deletePayment(paymentId) {
           carType,
           color,
           plate,
-created_at: jobDate
-  ? new Date(`${jobDate}T12:00:00`).toISOString()
-  : undefined,
+
+          created_at: jobDate
+            ? new Date(
+                `${jobDate}T12:00:00`
+              ).toISOString()
+            : undefined,
+
           services,
           serviceDetails,
 
@@ -507,9 +577,7 @@ created_at: jobDate
           deposit: totalPaid,
           balance: balance
         })
-        .eq("id", Number(id))
-        .select()
-        .single();
+        .eq("id", Number(id));
 
       if (jobError) {
         console.error(
@@ -523,36 +591,12 @@ created_at: jobDate
         );
       }
 
-      console.log(
-        "========== DATABASE RESULT =========="
-      );
-
-      console.log(
-        "DATABASE PRICE:",
-        updatedJob.price
-      );
-
-      console.log(
-        "DATABASE DISCOUNT:",
-        updatedJob.discount
-      );
-
-      console.log(
-        "DATABASE DEPOSIT:",
-        updatedJob.deposit
-      );
-
-      console.log(
-        "DATABASE BALANCE:",
-        updatedJob.balance
-      );
-
       // -----------------------------------
-      // 9. CLEAR PAYMENT FORM
+      // CLEAR PAYMENT FORM
       // -----------------------------------
 
       setPaymentAmount("");
-      setPaymentMethod("Visa");
+      setPaymentMethod("");
 
       setPaymentDate(
         new Date().toISOString().split("T")[0]
@@ -561,20 +605,19 @@ created_at: jobDate
       setPaymentNotes("");
 
       // -----------------------------------
-      // 10. SUCCESS
+      // RELOAD
       // -----------------------------------
 
-     // Reload everything from database before leaving
-await loadJob();
-await loadPayments();
+      await loadJob();
+      await loadPayments();
 
-alert(
-  amount > 0
-    ? "Job and payment saved successfully!"
-    : "Job updated successfully!"
-);
+      alert(
+        amount > 0
+          ? "Job and payment saved successfully!"
+          : "Job updated successfully!"
+      );
 
-navigate(`/jobs/${id}`);
+      navigate(`/jobs/${id}`);
 
     } catch (error) {
       console.error(
@@ -591,102 +634,17 @@ navigate(`/jobs/${id}`);
       setSaving(false);
     }
   }
-  async function recalculateJobBalance() {
-  // Get the latest job price/discount
-  const { data: job, error: jobError } = await supabase
-    .from("jobs")
-    .select("price, discount")
-    .eq("id", Number(id))
-    .single();
 
-  if (jobError) {
-    throw new Error(
-      "Could not load job totals: " + jobError.message
-    );
-  }
-
-  // Get ALL current payments
-  const { data: paymentsData, error: paymentsError } =
-    await supabase
-      .from("payments")
-      .select("amount")
-      .eq("job_id", Number(id));
-
-  if (paymentsError) {
-    throw new Error(
-      "Could not load payments: " +
-      paymentsError.message
-    );
-  }
-
-  const totalPrice = Number(job.price || 0);
-  const totalDiscount = Number(job.discount || 0);
-
-  const finalTotal = Math.max(
-    totalPrice - totalDiscount,
-    0
-  );
-
-  const totalPaid = (paymentsData || []).reduce(
-    (sum, payment) =>
-      sum + Number(payment.amount || 0),
-    0
-  );
-
-  const balance = Math.max(
-    finalTotal - totalPaid,
-    0
-  );
-
-  // Save the calculated values
-  const { data: updatedJob, error: updateError } =
-    await supabase
-      .from("jobs")
-      .update({
-        deposit: totalPaid,
-        balance: balance
-      })
-      .eq("id", Number(id))
-      .select()
-      .single();
-
-  if (updateError) {
-    throw new Error(
-      "Could not update balance: " +
-      updateError.message
-    );
-  }
-
-  console.log("BALANCE RECALCULATED:", {
-    totalPrice,
-    totalDiscount,
-    finalTotal,
-    totalPaid,
-    balance
-  });
-
-  return updatedJob;
-}
-async function loadPayments() {
-  const { data, error } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("job_id", Number(id))
-    .order("payment_date", { ascending: false });
-
-  if (error) {
-    console.error("LOAD PAYMENTS ERROR:", error);
-    return;
-  }
-
-  setPayments(data || []);
-}
   // -----------------------------------
   // LOADING
   // -----------------------------------
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div style={styles.loading}>
+        Loading...
+      </div>
+    );
   }
 
   // -----------------------------------
@@ -694,498 +652,698 @@ async function loadPayments() {
   // -----------------------------------
 
   return (
-    
-
     <div style={styles.page}>
 
-      <h2>Edit Job #{id}</h2>
+      <div style={styles.container}>
 
-      {/* CUSTOMER */}
+        <h2 style={styles.title}>
+          Edit Job #{id}
+        </h2>
 
-      <input
-        value={customer}
-        onChange={(e) =>
-          setCustomer(e.target.value)
-        }
-        placeholder="Customer"
-        style={styles.input}
-      />
+        {/* CUSTOMER */}
 
-      <input
-        value={phone}
-        onChange={(e) =>
-          setPhone(e.target.value)
-        }
-        placeholder="Phone"
-        style={styles.input}
-      />
+        <div style={styles.section}>
 
-      <input
-        value={carModel}
-        onChange={(e) =>
-          setCarModel(e.target.value)
-        }
-        placeholder="Model"
-        style={styles.input}
-      />
+          <h3 style={styles.sectionTitle}>
+            Customer Information
+          </h3>
 
-      <input
-        value={carType}
-        onChange={(e) =>
-          setCarType(e.target.value)
-        }
-        placeholder="Type"
-        style={styles.input}
-      />
+          <label>Customer</label>
 
-      <input
-        value={color}
-        onChange={(e) =>
-          setColor(e.target.value)
-        }
-        placeholder="Color"
-        style={styles.input}
-      />
+          <input
+            value={customer}
+            onChange={(e) =>
+              setCustomer(e.target.value)
+            }
+            placeholder="Customer"
+            style={styles.input}
+          />
 
-      <input
-  value={plate}
-  onChange={(e) =>
-    setPlate(e.target.value)
-  }
-  placeholder="Plate"
-  style={styles.input}
-/>
+          <label>Phone</label>
 
-{/* JOB DATE */}
+          <input
+            value={phone}
+            onChange={(e) =>
+              setPhone(e.target.value)
+            }
+            placeholder="Phone"
+            style={styles.input}
+          />
 
-<label style={{ fontWeight: "bold" }}>
-  Job Date
-</label>
+          <label>Job Date</label>
 
-<input
-  type="date"
-  value={jobDate}
-  onChange={(e) =>
-    setJobDate(e.target.value)
-  }
-  style={styles.input}
-/>
+          <input
+            type="date"
+            value={jobDate}
+            onChange={(e) =>
+              setJobDate(e.target.value)
+            }
+            style={styles.input}
+          />
 
-<small style={{ color: "#64748b" }}>
-  Change this if the job was actually received on another date.
-</small>
-
-{/* SOURCE */}
-
-<label style={{ fontWeight: "bold" }}>
-  Source
-</label>
-
-      <select
-        value={source}
-        onChange={(e) =>
-          setSource(e.target.value)
-        }
-        style={styles.sourceSelect}
-      >
-        <option value="">
-          Select Source
-        </option>
-
-        <option value="Teyseer Motors">
-          Teyseer Motors
-        </option>
-
-        <option value="Teyseer Motors - Bahaa">
-          Teyseer Motors - Bahaa
-        </option>
-
-        <option value="Teyseer Motors - Salah">
-          Teyseer Motors - Salah
-        </option>
-
-        <option value="Bahaa">
-          Bahaa
-        </option>
-
-        <option value="Salah">
-          Salah
-        </option>
-
-        <option value="Walk-in">
-          Walk-in
-        </option>
-
-        <option value="Other">
-          Other
-        </option>
-      </select>
-
-      {source === "Other" && (
-        <input
-          value={otherSource}
-          onChange={(e) =>
-            setOtherSource(e.target.value)
-          }
-          placeholder="Enter source"
-          style={styles.input}
-        />
-      )}
-
-      {/* SERVICES */}
-
-      <h3>Services</h3>
-
-      {serviceList.map((item) => {
-        const selected =
-          services.includes(item.name);
-
-        const details =
-          serviceDetails[item.name] || {
-            price: item.price || 0,
-            discount: 0
-          };
-
-        return (
-          <div
-            key={item.id}
-            style={styles.serviceBox}
-          >
-
-            <label>
-
-              <input
-                type="checkbox"
-                checked={selected}
-                onChange={() =>
-                  toggleService(item)
-                }
-              />
-
-              {" "}
-
-              {item.name}
-
-            </label>
-
-            {selected && (
-              <div style={styles.serviceDetails}>
-
-                <label>
-                  Price
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={details.price || 0}
-                  onChange={(e) =>
-                    updateServicePrice(
-                      item.name,
-                      e.target.value
-                    )
-                  }
-                  style={styles.input}
-                />
-
-                <label>
-                  Discount
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={details.discount || 0}
-                  onChange={(e) =>
-                    updateServiceDiscount(
-                      item.name,
-                      e.target.value
-                    )
-                  }
-                  style={styles.input}
-                />
-
-                <div>
-                  Final: QAR{" "}
-                  {Math.max(
-                    Number(details.price || 0) -
-                      Number(details.discount || 0),
-                    0
-                  )}
-                </div>
-
-              </div>
-            )}
-
-          </div>
-        );
-      })}
-
-      {/* TOTAL */}
-
-      <div style={styles.total}>
-
-        Total: QAR{" "}
-
-        {services.reduce(
-          (sum, serviceName) => {
-            const details =
-              serviceDetails[serviceName] || {};
-
-            return (
-              sum +
-              Math.max(
-                Number(details.price || 0) -
-                  Number(details.discount || 0),
-                0
-              )
-            );
-          },
-          0
-        )}
-
-      </div>
-{/* EXISTING PAYMENTS */}
-
-<div style={styles.paymentBox}>
-
-  <h3>Payment History</h3>
-
-  {payments.length === 0 ? (
-    <p>No payments recorded.</p>
-  ) : (
-    payments.map((payment) => (
-      <div
-        key={payment.id}
-        style={styles.paymentRow}
-      >
-
-        <div>
-          <strong>
-            QAR {Number(payment.amount || 0).toFixed(2)}
-          </strong>
-
-          <div>
-            Method: {payment.payment_method || "N/A"}
-          </div>
-
-          <div>
-            Date: {payment.payment_date || "N/A"}
-          </div>
-
-          {payment.notes && (
-            <div>
-              Notes: {payment.notes}
-            </div>
-          )}
         </div>
 
+        {/* VEHICLE */}
+
+        <div style={styles.section}>
+
+          <h3 style={styles.sectionTitle}>
+            Vehicle Information
+          </h3>
+
+          <input
+            value={carModel}
+            onChange={(e) =>
+              setCarModel(e.target.value)
+            }
+            placeholder="Model"
+            style={styles.input}
+          />
+
+          <input
+            value={carType}
+            onChange={(e) =>
+              setCarType(e.target.value)
+            }
+            placeholder="Type"
+            style={styles.input}
+          />
+
+          <input
+            value={color}
+            onChange={(e) =>
+              setColor(e.target.value)
+            }
+            placeholder="Color"
+            style={styles.input}
+          />
+
+          <input
+            value={plate}
+            onChange={(e) =>
+              setPlate(e.target.value)
+            }
+            placeholder="Plate"
+            style={styles.input}
+          />
+
+        </div>
+
+        {/* SOURCE */}
+
+        <div style={styles.section}>
+
+          <h3 style={styles.sectionTitle}>
+            Source
+          </h3>
+
+          <select
+            value={source}
+            onChange={(e) =>
+              setSource(e.target.value)
+            }
+            style={styles.select}
+          >
+
+            <option value="">
+              Select Source
+            </option>
+
+            <option value="Teyseer Motors">
+              Teyseer Motors
+            </option>
+
+            <option value="Teyseer Motors - Bahaa">
+              Teyseer Motors - Bahaa
+            </option>
+
+            <option value="Teyseer Motors - Salah">
+              Teyseer Motors - Salah
+            </option>
+
+            <option value="Bahaa">
+              Bahaa
+            </option>
+
+            <option value="Salah">
+              Salah
+            </option>
+
+            <option value="Walk-in">
+              Walk-in
+            </option>
+
+            <option value="Other">
+              Other
+            </option>
+
+          </select>
+
+          {source === "Other" && (
+            <input
+              value={otherSource}
+              onChange={(e) =>
+                setOtherSource(e.target.value)
+              }
+              placeholder="Enter source"
+              style={styles.input}
+            />
+          )}
+
+        </div>
+
+        {/* SERVICES */}
+
+        <div style={styles.section}>
+
+          <h3 style={styles.sectionTitle}>
+            Services
+          </h3>
+
+          {serviceList.map((item) => {
+
+            const selected =
+              services.includes(item.name);
+
+            const details =
+              serviceDetails[item.name] || {
+                price: item.price || 0,
+                discount: 0
+              };
+
+            return (
+              <div
+                key={item.id}
+                style={styles.serviceBox}
+              >
+
+                <label style={styles.serviceLabel}>
+
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() =>
+                      toggleService(item)
+                    }
+                  />
+
+                  <span>
+                    {item.name}
+                  </span>
+
+                </label>
+
+                {selected && (
+                  <div
+                    style={
+                      styles.serviceDetails
+                    }
+                  >
+
+                    <label>
+                      Price
+                    </label>
+
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={
+                        details.price || 0
+                      }
+                      onChange={(e) =>
+                        updateServicePrice(
+                          item.name,
+                          e.target.value
+                        )
+                      }
+                      style={styles.input}
+                    />
+
+                    <label>
+                      Discount
+                    </label>
+
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={
+                        details.discount || 0
+                      }
+                      onChange={(e) =>
+                        updateServiceDiscount(
+                          item.name,
+                          e.target.value
+                        )
+                      }
+                      style={styles.input}
+                    />
+
+                    <div
+                      style={
+                        styles.finalService
+                      }
+                    >
+                      Final: QAR{" "}
+                      {Math.max(
+                        Number(
+                          details.price || 0
+                        ) -
+                          Number(
+                            details.discount || 0
+                          ),
+                        0
+                      ).toFixed(2)}
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
+            );
+          })}
+
+        </div>
+
+        {/* TOTAL */}
+
+        <div style={styles.totalBox}>
+
+          <div style={styles.total}>
+
+            Total: QAR{" "}
+
+            {services.reduce(
+              (sum, serviceName) => {
+
+                const details =
+                  serviceDetails[
+                    serviceName
+                  ] || {};
+
+                return (
+                  sum +
+                  Math.max(
+                    Number(
+                      details.price || 0
+                    ) -
+                      Number(
+                        details.discount || 0
+                      ),
+                    0
+                  )
+                );
+
+              },
+              0
+            ).toFixed(2)}
+
+          </div>
+
+        </div>
+
+        {/* PAYMENT HISTORY */}
+
+        <div style={styles.paymentBox}>
+
+          <h3 style={styles.sectionTitle}>
+            Payment History
+          </h3>
+
+          {payments.length === 0 ? (
+
+            <p style={styles.noPayments}>
+              No payments recorded.
+            </p>
+
+          ) : (
+
+            payments.map((payment) => (
+
+              <div
+                key={payment.id}
+                style={styles.paymentRow}
+              >
+
+                <div>
+
+                  <strong>
+                    QAR{" "}
+                    {Number(
+                      payment.amount || 0
+                    ).toFixed(2)}
+                  </strong>
+
+                  <div>
+                    Method:{" "}
+                    {payment.payment_method ||
+                      "N/A"}
+                  </div>
+
+                  <div>
+                    Date:{" "}
+                    {payment.payment_date ||
+                      "N/A"}
+                  </div>
+
+                  {payment.notes && (
+                    <div>
+                      Notes:{" "}
+                      {payment.notes}
+                    </div>
+                  )}
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    deletePayment(
+                      payment.id
+                    )
+                  }
+                  style={
+                    styles.deletePaymentButton
+                  }
+                >
+                  🗑 Delete
+                </button>
+
+              </div>
+
+            ))
+          )}
+
+        </div>
+
+        {/* MAKE PAYMENT */}
+
+        <div style={styles.makePaymentBox}>
+
+          <h3 style={styles.sectionTitle}>
+            Make Payment
+          </h3>
+
+          <p style={styles.paymentInfo}>
+            If the customer has not paid yet,
+            leave Payment Amount empty.
+          </p>
+
+          <label>
+            Payment Amount
+          </label>
+
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={paymentAmount}
+            onChange={(e) =>
+              setPaymentAmount(
+                e.target.value
+              )
+            }
+            placeholder="Enter payment amount"
+            style={styles.input}
+          />
+
+          <label>
+            Payment Method
+          </label>
+
+          <select
+            value={paymentMethod}
+            onChange={(e) =>
+              setPaymentMethod(
+                e.target.value
+              )
+            }
+            style={styles.select}
+          >
+
+            <option value="">
+              Select Payment Method
+            </option>
+
+            <option value="Cash">
+              Cash
+            </option>
+
+            <option value="Visa">
+              Visa
+            </option>
+
+            <option value="Mastercard">
+              Mastercard
+            </option>
+
+            <option value="PayLater">
+              PayLater
+            </option>
+
+            <option value="Bank Transfer">
+              Bank Transfer
+            </option>
+
+          </select>
+
+          <label>
+            Payment Date
+          </label>
+
+          <input
+            type="date"
+            value={paymentDate}
+            onChange={(e) =>
+              setPaymentDate(
+                e.target.value
+              )
+            }
+            style={styles.input}
+          />
+
+          <label>
+            Notes
+          </label>
+
+          <input
+            value={paymentNotes}
+            onChange={(e) =>
+              setPaymentNotes(
+                e.target.value
+              )
+            }
+            placeholder="Payment notes"
+            style={styles.input}
+          />
+
+        </div>
+
+        {/* SAVE */}
+
         <button
-          type="button"
-          onClick={() =>
-            deletePayment(payment.id)
-          }
-          style={styles.deletePaymentButton}
+          onClick={save}
+          disabled={saving}
+          style={{
+            ...styles.saveButton,
+            opacity: saving ? 0.6 : 1
+          }}
         >
-          🗑 Delete Payment
+
+          {saving
+            ? "SAVING..."
+            : "SAVE CHANGES"}
+
         </button>
 
       </div>
-    ))
-  )}
-
-</div>
-      {/* PAYMENT */}
-
-      <div style={styles.paymentBox}>
-
-        <h3>Make Payment</h3>
-
-        <label>
-          Payment Amount
-        </label>
-
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={paymentAmount}
-          onChange={(e) =>
-            setPaymentAmount(e.target.value)
-          }
-          placeholder="Enter payment amount"
-          style={styles.input}
-        />
-
-        <label>
-          Payment Method
-        </label>
-
-        <select
-          value={paymentMethod}
-          onChange={(e) =>
-            setPaymentMethod(e.target.value)
-          }
-          style={styles.sourceSelect}
-        >
-
-          <option value="Visa">
-            Visa
-          </option>
-
-          <option value="Mastercard">
-            Mastercard
-          </option>
-
-          <option value="PayLater">
-            PayLater
-          </option>
-
-          <option value="Cash">
-            Cash
-          </option>
-
-          <option value="Bank Transfer">
-            Bank Transfer
-          </option>
-
-        </select>
-
-        <label>
-          Payment Date
-        </label>
-
-        <input
-          type="date"
-          value={paymentDate}
-          onChange={(e) =>
-            setPaymentDate(e.target.value)
-          }
-          style={styles.input}
-        />
-
-        <label>
-          Notes
-        </label>
-
-        <input
-          value={paymentNotes}
-          onChange={(e) =>
-            setPaymentNotes(e.target.value)
-          }
-          placeholder="Payment notes"
-          style={styles.input}
-        />
-
-      </div>
-
-      {/* SAVE */}
-
-      <button
-        onClick={save}
-        disabled={saving}
-        style={{
-          ...styles.saveButton,
-          opacity: saving ? 0.6 : 1
-        }}
-      >
-        {saving
-          ? "SAVING..."
-          : "SAVE CHANGES"}
-      </button>
 
     </div>
   );
 }
 
+// -----------------------------------
+// STYLES
+// -----------------------------------
+
 const styles = {
+
   page: {
+    minHeight: "100vh",
     padding: "30px",
+    background: "#0b0b0b",
+    color: "#f5f5f5"
+  },
+
+  container: {
+    width: "100%",
+    maxWidth: "700px",
+    margin: "0 auto",
     display: "flex",
     flexDirection: "column",
-    gap: "12px",
-    maxWidth: "600px"
+    gap: "18px"
+  },
+
+  title: {
+    color: "#d4af37",
+    fontSize: "30px",
+    marginBottom: "5px"
+  },
+
+  section: {
+    background: "#151515",
+    border: "1px solid #3b321c",
+    borderRadius: "12px",
+    padding: "20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px"
+  },
+
+  sectionTitle: {
+    color: "#d4af37",
+    marginTop: 0,
+    marginBottom: "10px"
+  },
+
+  input: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "13px",
+    borderRadius: "8px",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#fff",
+    fontSize: "16px"
+  },
+
+  select: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "13px",
+    borderRadius: "8px",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#fff",
+    fontSize: "16px",
+    cursor: "pointer"
   },
 
   serviceBox: {
+    border: "1px solid #444",
+    background: "#1d1d1d",
     padding: "15px",
-    border: "1px solid #ddd",
-    borderRadius: "10px"
+    borderRadius: "10px",
+    marginBottom: "8px"
+  },
+
+  serviceLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    fontSize: "17px",
+    cursor: "pointer"
   },
 
   serviceDetails: {
     display: "flex",
     flexDirection: "column",
     gap: "8px",
-    marginTop: "10px",
+    marginTop: "15px",
     paddingLeft: "25px"
   },
 
+  finalService: {
+    color: "#d4af37",
+    fontWeight: "bold",
+    fontSize: "16px",
+    marginTop: "5px"
+  },
+
+  totalBox: {
+    background: "#111",
+    border: "2px solid #d4af37",
+    borderRadius: "12px",
+    padding: "18px"
+  },
+
+  total: {
+    color: "#d4af37",
+    fontSize: "24px",
+    fontWeight: "bold"
+  },
+
   paymentBox: {
-    marginTop: "20px",
+    background: "#151515",
+    border: "1px solid #3b321c",
+    borderRadius: "12px",
+    padding: "20px"
+  },
+
+  makePaymentBox: {
+    background: "#151515",
+    border: "2px solid #d4af37",
+    borderRadius: "12px",
     padding: "20px",
-    border: "2px solid #2563eb",
-    borderRadius: "10px",
     display: "flex",
     flexDirection: "column",
     gap: "10px"
   },
 
-  total: {
-    fontSize: "20px",
-    fontWeight: "bold",
-    marginTop: "10px"
+  paymentInfo: {
+    color: "#aaa",
+    marginTop: "-5px",
+    fontSize: "14px"
   },
 
-  saveButton: {
-    background: "#2563eb",
-    color: "white",
+  noPayments: {
+    color: "#999"
+  },
+
+  paymentRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "15px",
+    padding: "15px",
+    marginBottom: "10px",
+    background: "#222",
+    border: "1px solid #444",
+    borderRadius: "10px"
+  },
+
+  deletePaymentButton: {
+    background: "#991b1b",
+    color: "#fff",
     border: "none",
-    padding: "12px 20px",
-    borderRadius: "10px",
+    padding: "9px 14px",
+    borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "bold"
   },
 
-  sourceSelect: {
-    padding: "12px",
-    border: "1px solid #ccc",
-    borderRadius: "8px",
-    background: "white",
-    color: "#111",
-    fontSize: "15px",
-    cursor: "pointer"
+  saveButton: {
+    background: "#d4af37",
+    color: "#080808",
+    border: "none",
+    padding: "15px 20px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: "17px"
   },
 
-  input: {
-    padding: "12px",
-    border: "1px solid #ccc",
-    borderRadius: "8px",
-    fontSize: "15px"
-  },
-  paymentRow: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "15px",
-  padding: "15px",
-  marginBottom: "10px",
-  background: "#f8fafc",
-  border: "1px solid #ddd",
-  borderRadius: "10px"
-},
+  loading: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#0b0b0b",
+    color: "#d4af37",
+    fontSize: "20px"
+  }
 
-deletePaymentButton: {
-  background: "#dc2626",
-  color: "white",
-  border: "none",
-  padding: "9px 14px",
-  borderRadius: "8px",
-  cursor: "pointer",
-  fontWeight: "bold"
-},
 };
 
 export default EditJob;

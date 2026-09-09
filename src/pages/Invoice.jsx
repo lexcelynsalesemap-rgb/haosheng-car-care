@@ -9,26 +9,41 @@ function Invoice() {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // =========================================================
+  // LOAD JOB
+  // =========================================================
+
   useEffect(() => {
-    loadJob();
+    loadInvoice();
   }, [id]);
 
-  async function loadJob() {
-    const { data, error } = await supabase
-      .from("jobs")
-      .select("*")
-      .eq("id", id)
-      .single();
+  async function loadInvoice() {
+    setLoading(true);
 
-    if (error) {
-      console.error(error);
-      setLoading(false);
-      return;
+    try {
+      const { data, error } = await supabase
+        .from("jobs")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error("LOAD INVOICE ERROR:", error);
+        setLoading(false);
+        return;
+      }
+
+      setJob(data);
+    } catch (error) {
+      console.error("INVOICE ERROR:", error);
     }
 
-    setJob(data);
     setLoading(false);
   }
+
+  // =========================================================
+  // LOADING
+  // =========================================================
 
   if (loading) {
     return (
@@ -38,6 +53,10 @@ function Invoice() {
     );
   }
 
+  // =========================================================
+  // NOT FOUND
+  // =========================================================
+
   if (!job) {
     return (
       <div style={styles.loading}>
@@ -46,37 +65,176 @@ function Invoice() {
     );
   }
 
-  /* =========================================================
-     TOTALS
-  ========================================================= */
+  // =========================================================
+  // TEYSEER DETECTION
+  // =========================================================
+
+  const isTeyseer =
+    job.source === "Teyseer Motors" ||
+    job.source === "Teyseer Motors - Bahaa" ||
+    job.source === "Teyseer Motors - Salah";
+
+  // =========================================================
+  // CHECK WTT
+  // =========================================================
+
+  const isWTTService = (service) =>
+    service?.toLowerCase().includes("wtt");
+
+  // =========================================================
+  // TOTAL AMOUNT
+  //
+  // This is the full value of all services.
+  // WTT is included here only as reference.
+  // =========================================================
 
   const totalAmount =
     job.services?.reduce((total, service) => {
-      const details = job.serviceDetails?.[service] || {};
+      const details =
+        job.serviceDetails?.[service] || {};
 
-      const price = Number(details.price) || 0;
-      const quantity = Number(details.quantity) || 1;
+      const price =
+        Number(details.price) || 0;
+
+      const quantity =
+        Number(details.quantity) || 1;
 
       return total + price * quantity;
     }, 0) || 0;
 
+  // =========================================================
+  // TOTAL DISCOUNT
+  //
+  // Only customer-paid services are included.
+  // =========================================================
+
   const totalDiscount =
     job.services?.reduce((total, service) => {
-      const details = job.serviceDetails?.[service] || {};
+      const details =
+        job.serviceDetails?.[service] || {};
 
-      return total + (Number(details.discount) || 0);
+      // WTT is paid through Teyseer.
+      if (
+        isTeyseer &&
+        isWTTService(service)
+      ) {
+        return total;
+      }
+
+      return (
+        total +
+        (Number(details.discount) || 0)
+      );
     }, 0) || 0;
+
+  // =========================================================
+  // CUSTOMER NET AMOUNT
+  //
+  // If this is a Teyseer job:
+  // WTT is NOT included in the customer amount.
+  //
+  // Example:
+  //
+  // WTT       = QAR 1,000
+  // PPF       = QAR 2,000
+  // Customer  = QAR 2,000
+  //
+  // WTT is paid by Teyseer.
+  // =========================================================
 
   const netAmount =
     job.services?.reduce((total, service) => {
-      const details = job.serviceDetails?.[service] || {};
+      const details =
+        job.serviceDetails?.[service] || {};
 
-      const price = Number(details.price) || 0;
-      const quantity = Number(details.quantity) || 1;
-      const discount = Number(details.discount) || 0;
+      const isWTT =
+        isWTTService(service);
 
-      return total + Math.max(price * quantity - discount, 0);
+      // -----------------------------------------
+      // TEYSEER WTT
+      // -----------------------------------------
+
+      if (
+        isTeyseer &&
+        isWTT
+      ) {
+        return total;
+      }
+
+      // -----------------------------------------
+      // CUSTOMER SERVICE
+      // -----------------------------------------
+
+      const price =
+        Number(details.price) || 0;
+
+      const quantity =
+        Number(details.quantity) || 1;
+
+      const discount =
+        Number(details.discount) || 0;
+
+      return (
+        total +
+        Math.max(
+          price * quantity - discount,
+          0
+        )
+      );
     }, 0) || 0;
+
+  // =========================================================
+  // WTT TOTAL
+  // =========================================================
+
+  const teyseerWTTAmount =
+    isTeyseer
+      ? job.services?.reduce(
+          (total, service) => {
+            if (
+              !isWTTService(service)
+            ) {
+              return total;
+            }
+
+            const details =
+              job.serviceDetails?.[
+                service
+              ] || {};
+
+            const price =
+              Number(details.price) || 0;
+
+            const quantity =
+              Number(details.quantity) || 1;
+
+            const discount =
+              Number(details.discount) || 0;
+
+            return (
+              total +
+              Math.max(
+                price * quantity -
+                  discount,
+                0
+              )
+            );
+          },
+          0
+        ) || 0
+      : 0;
+
+  // =========================================================
+  // PRINT
+  // =========================================================
+
+  function printInvoice() {
+    window.print();
+  }
+
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
     <div style={styles.page}>
@@ -90,7 +248,7 @@ function Invoice() {
         style={styles.invoice}
       >
 
-        {/* TOP BLACK / GOLD BAR */}
+        {/* TOP BAR */}
 
         <div style={styles.topBar}></div>
 
@@ -101,7 +259,7 @@ function Invoice() {
 
         <header style={styles.header}>
 
-          {/* GA LOGO */}
+          {/* LOGO */}
 
           <div style={styles.logoArea}>
 
@@ -114,7 +272,7 @@ function Invoice() {
           </div>
 
 
-          {/* COMPANY INFORMATION */}
+          {/* COMPANY */}
 
           <div style={styles.companyInfo}>
 
@@ -134,9 +292,13 @@ function Invoice() {
 
             <p style={styles.contact}>
               Tel: +974 3368 1888
-              <span style={styles.separator}>|</span>
+              <span style={styles.separator}>
+                |
+              </span>
               C.R.NO: 199725
-              <span style={styles.separator}>|</span>
+              <span style={styles.separator}>
+                |
+              </span>
               info@haoshengcar.com
             </p>
 
@@ -165,12 +327,12 @@ function Invoice() {
 
 
         {/* =================================================
-            CUSTOMER + PAYMENT
+            CUSTOMER + BILLING
         ================================================== */}
 
         <div style={styles.infoGrid}>
 
-          {/* CUSTOMER */}
+          {/* CUSTOMER INFORMATION */}
 
           <div style={styles.infoCard}>
 
@@ -181,6 +343,7 @@ function Invoice() {
             <div style={styles.cardBody}>
 
               <div style={styles.infoRow}>
+
                 <span style={styles.infoLabel}>
                   CUSTOMER NAME
                 </span>
@@ -188,10 +351,12 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.customer || "-"}
                 </span>
+
               </div>
 
 
               <div style={styles.infoRow}>
+
                 <span style={styles.infoLabel}>
                   MOBILE NUMBER
                 </span>
@@ -199,17 +364,32 @@ function Invoice() {
                 <span style={styles.infoValue}>
                   {job.phone || "-"}
                 </span>
+
               </div>
 
 
-              <div style={styles.infoRow}>
+              <div
+                style={{
+                  ...styles.infoRow,
+                  borderBottom: "none",
+                }}
+              >
+
                 <span style={styles.infoLabel}>
                   INVOICE DATE
                 </span>
 
                 <span style={styles.infoValue}>
-                  {job.date || "-"}
+                  {job.date ||
+                    (job.created_at
+                      ? new Date(
+                          job.created_at
+                        ).toLocaleDateString(
+                          "en-GB"
+                        )
+                      : "-")}
                 </span>
+
               </div>
 
             </div>
@@ -217,61 +397,117 @@ function Invoice() {
           </div>
 
 
-          {/* PAYMENT */}
+          {/* BILLING INFORMATION */}
 
           <div style={styles.infoCard}>
 
             <div style={styles.cardHeader}>
-              PAYMENT INFORMATION
+              BILLING INFORMATION
             </div>
 
             <div style={styles.cardBody}>
 
-              <div style={styles.infoRow}>
+              {/* NORMAL JOB */}
 
-                <span style={styles.infoLabel}>
-                  PAYMENT METHOD
-                </span>
-
-                <span style={styles.paymentValue}>
-                  {job.payment_method ||
-                    job.paymentMethod ||
-                    "Not Selected"}
-                </span>
-
-              </div>
-
-
-              <div style={styles.infoRow}>
-
-                <span style={styles.infoLabel}>
-                  طريقة الدفع
-                </span>
-
-                <span
-                  style={styles.infoValue}
-                  dir="rtl"
+              {!isTeyseer && (
+                <div
+                  style={{
+                    ...styles.billingMessage,
+                    borderBottom:
+                      "none",
+                  }}
                 >
-                  {job.payment_method ||
-                    job.paymentMethod ||
-                    "غير محدد"}
-                </span>
 
-              </div>
-
-
-              {job.voucherNumber && (
-                <div style={styles.infoRow}>
-
-                  <span style={styles.infoLabel}>
-                    VOUCHER NUMBER
+                  <span>
+                    CUSTOMER AMOUNT
                   </span>
 
-                  <span style={styles.infoValue}>
-                    {job.voucherNumber}
-                  </span>
+                  <strong>
+                    QAR{" "}
+                    {netAmount.toFixed(2)}
+                  </strong>
 
                 </div>
+              )}
+
+
+              {/* TEYSEER JOB */}
+
+              {isTeyseer && (
+                <>
+                  <div style={styles.infoRow}>
+
+                    <span
+                      style={styles.infoLabel}
+                    >
+                      CUSTOMER AMOUNT
+                    </span>
+
+                    <strong
+                      style={{
+                        ...styles.infoValue,
+                        color: colors.black,
+                      }}
+                    >
+                      QAR{" "}
+                      {netAmount.toFixed(2)}
+                    </strong>
+
+                  </div>
+
+
+                  {/* KEEP THIS PAID THROUGH TEYSEER NOTICE */}
+
+                  <div style={styles.teyseerNotice}>
+
+                    <div
+                      style={
+                        styles.teyseerNoticeTitle
+                      }
+                    >
+                      WTT
+                    </div>
+
+                    <div
+                      style={
+                        styles.teyseerNoticeText
+                      }
+                    >
+                      PAID THROUGH TEYSEER
+                    </div>
+
+                  </div>
+
+
+                  {job.voucherNumber && (
+                    <div
+                      style={{
+                        ...styles.infoRow,
+                        borderBottom:
+                          "none",
+                      }}
+                    >
+
+                      <span
+                        style={
+                          styles.infoLabel
+                        }
+                      >
+                        TEYSEER VOUCHER NO.
+                      </span>
+
+                      <strong
+                        style={
+                          styles.voucherValue
+                        }
+                      >
+                        {job.voucherNumber}
+                      </strong>
+
+                    </div>
+                  )}
+
+                </>
               )}
 
             </div>
@@ -442,63 +678,160 @@ function Invoice() {
 
           <tbody>
 
-            {job.services?.map((service, index) => {
+            {job.services?.map(
+              (service, index) => {
 
-              const details =
-                job.serviceDetails?.[service] || {};
+                const details =
+                  job.serviceDetails?.[
+                    service
+                  ] || {};
 
-              const price =
-                Number(details.price) || 0;
+                const price =
+                  Number(details.price) ||
+                  0;
 
-              const quantity =
-                Number(details.quantity) || 1;
+                const quantity =
+                  Number(
+                    details.quantity
+                  ) || 1;
 
-              const serviceDiscount =
-                Number(details.discount) || 0;
+                const serviceDiscount =
+                  Number(
+                    details.discount
+                  ) || 0;
 
-              const serviceTotal =
-                Math.max(
-                  price * quantity - serviceDiscount,
-                  0
+                const serviceTotal =
+                  Math.max(
+                    price * quantity -
+                      serviceDiscount,
+                    0
+                  );
+
+                const wttPaidByTeyseer =
+                  isTeyseer &&
+                  isWTTService(service);
+
+                return (
+                  <tr key={index}>
+
+                    {/* SERVICE */}
+
+                    <td
+                      style={{
+                        ...styles.serviceCell,
+                        textAlign: "left",
+                        fontWeight: "600",
+                      }}
+                    >
+
+                      <div>
+                        {service}
+                      </div>
+
+                      {wttPaidByTeyseer && (
+                        <div
+                          style={
+                            styles.wttPaidLabel
+                          }
+                        >
+                          PAID THROUGH TEYSEER
+                        </div>
+                      )}
+
+                    </td>
+
+
+                    {/* PRICE */}
+
+                    <td
+                      style={
+                        styles.serviceCell
+                      }
+                    >
+
+                      {wttPaidByTeyseer ? (
+                        <span
+                          style={
+                            styles.paidThroughText
+                          }
+                        >
+                          TEYSEER
+                        </span>
+                      ) : (
+                        <>
+                          QAR{" "}
+                          {price.toFixed(2)}
+                        </>
+                      )}
+
+                    </td>
+
+
+                    {/* QTY */}
+
+                    <td
+                      style={
+                        styles.serviceCell
+                      }
+                    >
+                      {quantity}
+                    </td>
+
+
+                    {/* DISCOUNT */}
+
+                    <td
+                      style={
+                        styles.serviceCell
+                      }
+                    >
+
+                      {wttPaidByTeyseer ? (
+                        "-"
+                      ) : (
+                        <>
+                          QAR{" "}
+                          {serviceDiscount.toFixed(
+                            2
+                          )}
+                        </>
+                      )}
+
+                    </td>
+
+
+                    {/* TOTAL */}
+
+                    <td
+                      style={{
+                        ...styles.serviceCell,
+                        fontWeight: "800",
+                      }}
+                    >
+
+                      {wttPaidByTeyseer ? (
+                        <span
+                          style={
+                            styles.paidThroughText
+                          }
+                        >
+                          PAID
+                        </span>
+                      ) : (
+                        <>
+                          QAR{" "}
+                          {serviceTotal.toFixed(
+                            2
+                          )}
+                        </>
+                      )}
+
+                    </td>
+
+                  </tr>
                 );
-
-              return (
-                <tr key={index}>
-
-                  <td
-                    style={{
-                      ...styles.serviceCell,
-                      textAlign: "left",
-                      fontWeight: "600",
-                    }}
-                  >
-                    {service}
-                  </td>
-
-                  <td style={styles.serviceCell}>
-                    QAR {price.toFixed(2)}
-                  </td>
-
-                  <td style={styles.serviceCell}>
-                    {quantity}
-                  </td>
-
-                  <td style={styles.serviceCell}>
-                    QAR {serviceDiscount.toFixed(2)}
-                  </td>
-
-                  <td
-                    style={{
-                      ...styles.serviceCell,
-                      fontWeight: "800",
-                    }}
-                  >
-                    QAR {serviceTotal.toFixed(2)}
-                  </td>
-
-                </tr>
-              );
-            })}
+              }
+            )}
 
 
             {(!job.services ||
@@ -523,7 +856,7 @@ function Invoice() {
 
 
         {/* =================================================
-            TOTALS
+            NET AMOUNT
         ================================================== */}
 
         <div style={styles.totalArea}>
@@ -533,37 +866,12 @@ function Invoice() {
             <div style={styles.totalRow}>
 
               <span>
-                TOTAL AMOUNT
-              </span>
-
-              <strong>
-                QAR {totalAmount.toFixed(2)}
-              </strong>
-
-            </div>
-
-
-            <div style={styles.totalRow}>
-
-              <span>
-                DISCOUNT
-              </span>
-
-              <strong>
-                QAR {totalDiscount.toFixed(2)}
-              </strong>
-
-            </div>
-
-
-            <div style={styles.netRow}>
-
-              <span>
                 NET AMOUNT
               </span>
 
               <strong>
-                QAR {netAmount.toFixed(2)}
+                QAR{" "}
+                {netAmount.toFixed(2)}
               </strong>
 
             </div>
@@ -699,9 +1007,7 @@ function Invoice() {
         <div style={styles.termsDivider}></div>
 
 
-        {/* =================================================
-            ENGLISH TERMS
-        ================================================== */}
+        {/* ENGLISH TERMS */}
 
         <div style={styles.termsSection}>
 
@@ -805,9 +1111,7 @@ function Invoice() {
         <div style={styles.termsDivider}></div>
 
 
-        {/* =================================================
-            ARABIC TERMS
-        ================================================== */}
+        {/* ARABIC TERMS */}
 
         <div
           style={styles.arabicTerms}
@@ -912,11 +1216,11 @@ function Invoice() {
         </div>
 
 
-        {/* PRINT */}
+        {/* PRINT BUTTON */}
 
         <button
           className="print-button"
-          onClick={() => window.print()}
+          onClick={printInvoice}
           style={styles.printButton}
         >
           🖨 Print Invoice
@@ -968,7 +1272,8 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    fontFamily: "Arial, Helvetica, sans-serif",
+    fontFamily:
+      "Arial, Helvetica, sans-serif",
   },
 
 
@@ -1011,7 +1316,8 @@ const styles = {
 
   header: {
     display: "grid",
-    gridTemplateColumns: "24% 56% 20%",
+    gridTemplateColumns:
+      "24% 56% 20%",
     alignItems: "center",
     minHeight: "100px",
   },
@@ -1111,12 +1417,13 @@ const styles = {
 
 
   /* =====================================================
-     CUSTOMER / PAYMENT
+     CUSTOMER / BILLING
   ====================================================== */
 
   infoGrid: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns:
+      "1fr 1fr",
     gap: "10px",
     marginTop: "10px",
   },
@@ -1172,19 +1479,51 @@ const styles = {
   },
 
 
-  paymentValue: {
+  billingMessage: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "9px 0",
     fontSize: "10px",
     fontWeight: "900",
+  },
+
+
+  voucherValue: {
+    fontSize: "10px",
     color: colors.black,
-    textAlign: "right",
-    borderBottom:
-      `2px solid ${colors.gold}`,
-    paddingBottom: "2px",
+    fontWeight: "900",
+  },
+
+
+  teyseerNotice: {
+    background: "#F7F0DF",
+    border:
+      `1px solid ${colors.gold}`,
+    borderRadius: "3px",
+    padding: "6px 8px",
+    margin: "4px 0",
+    textAlign: "center",
+  },
+
+
+  teyseerNoticeTitle: {
+    fontSize: "8px",
+    fontWeight: "900",
+    color: colors.black,
+  },
+
+
+  teyseerNoticeText: {
+    fontSize: "8px",
+    fontWeight: "900",
+    color: colors.gold,
+    marginTop: "2px",
   },
 
 
   /* =====================================================
-     SECTION HEADINGS
+     VEHICLE
   ====================================================== */
 
   sectionHeading: {
@@ -1209,10 +1548,6 @@ const styles = {
     color: colors.gold,
   },
 
-
-  /* =====================================================
-     VEHICLE
-  ====================================================== */
 
   vehicleGrid: {
     display: "grid",
@@ -1303,8 +1638,25 @@ const styles = {
   },
 
 
+  wttPaidLabel: {
+    display: "inline-block",
+    marginTop: "3px",
+    fontSize: "6.5px",
+    color: colors.gold,
+    fontWeight: "900",
+    letterSpacing: "0.3px",
+  },
+
+
+  paidThroughText: {
+    color: colors.gold,
+    fontWeight: "900",
+    fontSize: "8px",
+  },
+
+
   /* =====================================================
-     TOTALS
+     TOTAL
   ====================================================== */
 
   totalArea: {
@@ -1326,21 +1678,11 @@ const styles = {
   totalRow: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "7px 9px",
-    fontSize: "9px",
-    borderBottom:
-      `1px solid ${colors.border}`,
-  },
-
-
-  netRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "10px",
-    background: colors.black,
-    color: colors.gold,
-    fontSize: "11px",
+    padding: "9px",
+    fontSize: "10px",
     fontWeight: "900",
+    borderBottom:
+      `2px solid ${colors.gold}`,
   },
 
 
@@ -1385,7 +1727,8 @@ const styles = {
 
   signatureArea: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns:
+      "1fr 1fr",
     gap: "70px",
     marginTop: "18px",
   },
@@ -1665,6 +2008,7 @@ if (typeof document !== "undefined") {
 
           page-break-before: always !important;
           page-break-after: avoid !important;
+
           break-before: page !important;
           break-after: avoid !important;
         }
