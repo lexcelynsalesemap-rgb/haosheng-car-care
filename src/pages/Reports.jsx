@@ -799,274 +799,120 @@ function Reports() {
 
         <style>
 
-          * {
-            box-sizing: border-box;
-          }
+  * {
+    box-sizing: border-box;
+  }
 
-          html,
-          body {
-            margin: 0;
-            padding: 0;
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-          }
+  body {
+    font-family: Arial, sans-serif;
+    color: #111;
+    padding: 20px;
+    margin: 0;
+  }
 
-          body {
-            font-family: Arial, Helvetica, sans-serif;
-            color: #111827;
-          }
+  .company {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
 
-          .invoice {
-            width: 194mm;
-            min-height: 281mm;
-            margin: 0 auto;
-            padding: 8mm 0;
-            position: relative;
-          }
+  h1 {
+    margin: 0;
+    font-size: 30px;
+  }
 
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding-bottom: 5mm;
-            border-bottom: 2px solid #d4af37;
-          }
+  .date {
+    color: #475569;
+    font-size: 15px;
+    margin-top: 8px;
+    margin-bottom: 15px;
+  }
 
-          .logo {
-            width: 125px;
-            max-height: 60px;
-            object-fit: contain;
-          }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
 
-          .company {
-            text-align: right;
-          }
+  .summaryBox {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px;
+    background: #f8fafc;
+  }
 
-          .companyName {
-            font-size: 15px;
-            font-weight: bold;
-            color: #111827;
-          }
+  .summaryLabel {
+    font-size: 13px;
+    color: #475569;
+    font-weight: bold;
+  }
 
-          .companyDetails {
-            margin-top: 4px;
-            font-size: 8px;
-            color: #64748b;
-            line-height: 1.4;
-          }
+  .summaryValue {
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 5px;
+  }
 
-          .titleSection {
-            margin-top: 5mm;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-          }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
 
-          .title {
-            font-size: 22px;
-            font-weight: 800;
-            color: #111827;
-            margin: 0;
-          }
+  th {
+    background: #111827;
+    color: white;
+    padding: 9px 7px;
+    border: 1px solid #111827;
+    text-align: left;
+    font-size: 13px;
+  }
 
-          .subtitle {
-            margin-top: 3px;
-            font-size: 9px;
-            color: #64748b;
-          }
+  td {
+    padding: 9px 7px;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+  }
 
-          .invoiceInfo {
-            text-align: right;
-            font-size: 9px;
-            line-height: 1.5;
-          }
+  tr:nth-child(even) {
+    background: #f8fafc;
+  }
 
-          .invoiceInfo strong {
-            color: #111827;
-          }
+  .footer {
+    margin-top: 20px;
+    border-top: 1px solid #cbd5e1;
+    padding-top: 10px;
+    text-align: center;
+    font-size: 12px;
+    color: #475569;
+  }
 
-          .customerBox {
-            margin-top: 4mm;
-            padding: 3mm 4mm;
-            background: #fafafa;
-            border: 1px solid #e5e7eb;
-            border-left: 4px solid #d4af37;
-            border-radius: 4px;
-          }
+  @media print {
 
-          .customerLabel {
-            font-size: 8px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-          }
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
 
-          .customerName {
-            margin-top: 2px;
-            font-size: 14px;
-            font-weight: bold;
-          }
+    body {
+      padding: 0;
+      margin: 0;
+    }
 
-          .period {
-            margin-top: 2px;
-            font-size: 8px;
-            color: #64748b;
-          }
+    table {
+      font-size: 12px;
+    }
 
-          .summary {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 3mm;
-            margin: 4mm 0;
-          }
+    th,
+    td {
+      font-size: 12px;
+      padding: 7px 6px;
+    }
 
-          .summaryBox {
-            border: 1px solid #e5e7eb;
-            padding: 3mm;
-            border-radius: 4px;
-            background: #fff;
-          }
+  }
 
-          .summaryLabel {
-            font-size: 7px;
-            color: #64748b;
-            text-transform: uppercase;
-          }
-
-          .summaryValue {
-            margin-top: 2px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #111827;
-          }
-
-          .summaryBox.net {
-            background: #fffdf0;
-            border-color: #d4af37;
-          }
-
-          .summaryBox.net .summaryValue {
-            color: #92710c;
-          }
-
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 2mm;
-            font-size: 7.5px;
-          }
-
-          th {
-            background: #111827;
-            color: white;
-            padding: 5px 4px;
-            text-align: left;
-            border: 1px solid #111827;
-            white-space: nowrap;
-          }
-
-          td {
-            padding: 4px 4px;
-            border: 1px solid #d1d5db;
-            vertical-align: middle;
-          }
-
-          tr:nth-child(even) {
-            background: #f9fafb;
-          }
-
-          .money {
-            text-align: right;
-            white-space: nowrap;
-          }
-
-          .total {
-            font-weight: bold;
-            color: #92710c;
-          }
-
-          .grandTotal {
-            margin-top: 3mm;
-            margin-left: auto;
-            width: 70mm;
-            border-top: 1.5px solid #111827;
-            padding-top: 2mm;
-          }
-
-          .grandTotalRow {
-            display: flex;
-            justify-content: space-between;
-            padding: 1px 0;
-            font-size: 8px;
-          }
-
-          .grandTotalRow.final {
-            margin-top: 2px;
-            padding-top: 2px;
-            border-top: 1px solid #d1d5db;
-            font-size: 12px;
-            font-weight: bold;
-            color: #92710c;
-          }
-
-          .signature {
-            margin-top: 8mm;
-            display: flex;
-            justify-content: space-between;
-            gap: 10mm;
-          }
-
-          .signatureBox {
-            width: 45mm;
-            text-align: center;
-            border-top: 1px solid #111827;
-            padding-top: 2px;
-            font-size: 7px;
-            color: #374151;
-          }
-
-          .footer {
-            margin-top: 6mm;
-            padding-top: 2mm;
-            border-top: 1px solid #d1d5db;
-            text-align: center;
-            font-size: 7px;
-            color: #64748b;
-            line-height: 1.4;
-          }
-
-          @media print {
-
-            @page {
-              size: A4 portrait;
-              margin: 8mm;
-            }
-
-            html,
-            body {
-              width: 210mm;
-              height: 297mm;
-              margin: 0;
-              padding: 0;
-            }
-
-            body {
-              overflow: hidden;
-            }
-
-            .invoice {
-              width: 194mm;
-              height: 281mm;
-              min-height: 281mm;
-              margin: 0 auto;
-              padding: 0;
-              overflow: hidden;
-            }
-
-          }
-
-        </style>
+</style>
 
       </head>
 
@@ -2800,9 +2646,7 @@ function Reports() {
                     Date
                   </th>
 
-                  <th style={tableHeader}>
-                    Customer
-                  </th>
+                  
 
                   <th style={tableHeader}>
                     Car
@@ -2856,9 +2700,7 @@ function Reports() {
                         {getJobDate(job) || "-"}
                       </td>
 
-                      <td style={tableCell}>
-                        {job.customer || "-"}
-                      </td>
+                      
 
                       <td style={tableCell}>
                         {job.carMake ||
