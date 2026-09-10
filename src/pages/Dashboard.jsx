@@ -218,6 +218,16 @@ function Dashboard() {
       filteredJobIds.has(payment.job_id)
   );
 
+  // =============================
+  // CUSTOMER / SALES PAYMENTS
+  //
+  // Payments are NOT Teyseer payments.
+  //
+  // Teyseer WTT is paid monthly by Teyseer,
+  // so customer deposits/payments belong
+  // to the Sales side.
+  // =============================
+
   const paid = filteredPayments.reduce(
     (sum, payment) =>
       sum + Number(payment.amount || 0),
@@ -258,6 +268,8 @@ function Dashboard() {
     }
   };
 
+  // Keep track of jobs that contain
+  // Teyseer-owned WTT.
   const teyseerJobIds = new Set();
 
   filteredJobs.forEach((job) => {
@@ -278,20 +290,26 @@ function Dashboard() {
 
       let reportSource = "Sales Team";
 
+      // =============================
       // DIRECT TEYSEER
+      // =============================
+
       if (
         job.source === "Teyseer Motors"
       ) {
         reportSource = "Teyseer Motors";
       }
 
-      // SALAH
+      // =============================
+      // TEYSEER - SALAH
+      // =============================
+
       else if (
         job.source ===
         "Teyseer Motors - Salah"
       ) {
         if (
-          serviceName.includes("full wtt")
+          serviceName.includes("wtt")
         ) {
           reportSource = "Teyseer Motors";
         } else {
@@ -299,13 +317,16 @@ function Dashboard() {
         }
       }
 
-      // BAHA
+      // =============================
+      // TEYSEER - BAHA
+      // =============================
+
       else if (
         job.source ===
         "Teyseer Motors - Bahaa"
       ) {
         if (
-          serviceName.includes("full wtt")
+          serviceName.includes("wtt")
         ) {
           reportSource = "Teyseer Motors";
         } else {
@@ -313,14 +334,20 @@ function Dashboard() {
         }
       }
 
+      // =============================
       // DIRECT BAHA
+      // =============================
+
       else if (
         job.source === "Bahaa"
       ) {
         reportSource = "Bahaa";
       }
 
+      // =============================
       // DIRECT SALAH
+      // =============================
+
       else if (
         job.source === "Salah"
       ) {
@@ -339,6 +366,10 @@ function Dashboard() {
       sourceReport[reportSource].sales +=
         amount;
 
+      // =============================
+      // TEYSEER SALES
+      // =============================
+
       if (
         reportSource ===
         "Teyseer Motors"
@@ -346,7 +377,13 @@ function Dashboard() {
         teyseerNetSales += amount;
 
         teyseerJobIds.add(job.id);
-      } else {
+      }
+
+      // =============================
+      // SALES TEAM
+      // =============================
+
+      else {
         salesTeamNetSales += amount;
       }
     });
@@ -354,41 +391,28 @@ function Dashboard() {
 
   // =============================
   // PAYMENT SPLIT
+  //
+  // IMPORTANT:
+  //
+  // Payments are CUSTOMER / SALES
+  // payments.
+  //
+  // They are NOT Teyseer payments.
+  //
+  // Teyseer WTT is paid monthly by Teyseer.
   // =============================
 
-  const teyseerPaid =
-    filteredPayments
-      .filter((payment) =>
-        teyseerJobIds.has(
-          payment.job_id
-        )
-      )
-      .reduce(
-        (sum, payment) =>
-          sum +
-          Number(payment.amount || 0),
-        0
-      );
-
   const salesTeamPaid =
-    filteredPayments
-      .filter(
-        (payment) =>
-          !teyseerJobIds.has(
-            payment.job_id
-          )
-      )
-      .reduce(
-        (sum, payment) =>
-          sum +
-          Number(payment.amount || 0),
-        0
-      );
+    filteredPayments.reduce(
+      (sum, payment) =>
+        sum +
+        Number(payment.amount || 0),
+      0
+    );
 
-  const teyseerBalance = Math.max(
-    teyseerNetSales - teyseerPaid,
-    0
-  );
+  // =============================
+  // SALES TEAM BALANCE
+  // =============================
 
   const salesTeamBalance = Math.max(
     salesTeamNetSales - salesTeamPaid,
@@ -581,18 +605,6 @@ function Dashboard() {
             title="Sales Team Sales"
             value={`QAR ${salesTeamNetSales.toFixed(2)}`}
             icon="👥"
-          />
-
-          <Card
-            title="Teyseer Paid"
-            value={`QAR ${teyseerPaid.toFixed(2)}`}
-            icon="🏢💳"
-          />
-
-          <Card
-            title="Teyseer Balance"
-            value={`QAR ${teyseerBalance.toFixed(2)}`}
-            icon="🏢⚠️"
           />
 
           <Card
@@ -964,8 +976,6 @@ function Card({
     "Net Sales": "#d4af37",
     "Teyseer Sales": "#d4af37",
     "Sales Team Sales": "#0891b2",
-    "Teyseer Paid": "#22c55e",
-    "Teyseer Balance": "#dc2626",
     "Sales Team Paid": "#22c55e",
     "Sales Team Balance": "#f59e0b",
     Paid: "#22c55e",
