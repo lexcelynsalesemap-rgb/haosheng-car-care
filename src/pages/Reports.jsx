@@ -1000,7 +1000,7 @@ function Reports() {
             </td>
 
             <td>
-              ${job.voucher_number || "-"}
+              ${job.voucherNumber || "-"}
             </td>
 
             <td>
@@ -2633,7 +2633,7 @@ function Reports() {
                         </td>
 
                         <td style={tableCell}>
-                          {job.voucher_number || "-"}
+                          {job.voucherNumber || "-"}
                         </td>
 
                         <td style={tableCell}>
