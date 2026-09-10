@@ -60,7 +60,10 @@ function TechnicianEarnings() {
       const jobDate = new Date(job.created_at);
 
       const jobYear = jobDate.getFullYear();
-      const jobMonth = String(jobDate.getMonth() + 1).padStart(2, "0");
+      const jobMonth = String(jobDate.getMonth() + 1).padStart(
+        2,
+        "0"
+      );
 
       const jobMonthValue = `${jobYear}-${jobMonth}`;
 
@@ -98,8 +101,11 @@ function TechnicianEarnings() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="earnings-page">
 
+      {/* =========================
+          SCREEN HEADER
+      ========================== */}
       <div style={styles.header} className="no-print">
 
         <div>
@@ -121,7 +127,13 @@ function TechnicianEarnings() {
 
       </div>
 
-      <div style={styles.filterCard} className="no-print">
+      {/* =========================
+          FILTERS
+      ========================== */}
+      <div
+        style={styles.filterCard}
+        className="no-print"
+      >
 
         <div style={styles.filterGroup}>
 
@@ -131,7 +143,9 @@ function TechnicianEarnings() {
 
           <select
             value={staffFilter}
-            onChange={(e) => setStaffFilter(e.target.value)}
+            onChange={(e) =>
+              setStaffFilter(e.target.value)
+            }
             style={styles.select}
           >
             <option value="All">
@@ -139,7 +153,10 @@ function TechnicianEarnings() {
             </option>
 
             {staffNames.map((name) => (
-              <option key={name} value={name}>
+              <option
+                key={name}
+                value={name}
+              >
                 {name}
               </option>
             ))}
@@ -156,7 +173,9 @@ function TechnicianEarnings() {
           <input
             type="month"
             value={monthFilter}
-            onChange={(e) => setMonthFilter(e.target.value)}
+            onChange={(e) =>
+              setMonthFilter(e.target.value)
+            }
             style={styles.select}
           />
 
@@ -174,7 +193,10 @@ function TechnicianEarnings() {
 
       </div>
 
-      <div style={styles.printHeader}>
+      {/* =========================
+          PRINT HEADER
+      ========================== */}
+      <div className="printHeader">
 
         <h1>
           Staff Earnings Report
@@ -192,7 +214,7 @@ function TechnicianEarnings() {
           <strong>
             {monthFilter
               ? new Date(
-                  monthFilter + "-01"
+                  `${monthFilter}-01`
                 ).toLocaleDateString("en-US", {
                   month: "long",
                   year: "numeric",
@@ -203,7 +225,13 @@ function TechnicianEarnings() {
 
       </div>
 
-      <div style={styles.totalCard}>
+      {/* =========================
+          TOTALS
+      ========================== */}
+      <div
+        style={styles.totalCard}
+        className="totalCard"
+      >
 
         <div>
           <div style={styles.totalTitle}>
@@ -227,7 +255,13 @@ function TechnicianEarnings() {
 
       </div>
 
-      <div style={styles.card}>
+      {/* =========================
+          EARNINGS TABLE
+      ========================== */}
+      <div
+        style={styles.card}
+        className="print-card"
+      >
 
         <h2 style={styles.heading}>
           Earnings Report
@@ -281,7 +315,8 @@ function TechnicianEarnings() {
                   colSpan="7"
                   style={styles.empty}
                 >
-                  No earnings found for the selected filters.
+                  No earnings found for the selected
+                  filters.
                 </td>
 
               </tr>
@@ -290,12 +325,14 @@ function TechnicianEarnings() {
 
               filteredEarnings.map((row) => {
 
-                const job = row.job_services?.jobs;
+                const job =
+                  row.job_services?.jobs;
 
                 return (
 
                   <tr key={row.id}>
 
+                    {/* DATE */}
                     <td style={styles.td}>
                       {job?.created_at
                         ? new Date(
@@ -304,22 +341,29 @@ function TechnicianEarnings() {
                         : "-"}
                     </td>
 
+                    {/* CAR MODEL */}
                     <td style={styles.td}>
                       {job?.carModel || "-"}
                     </td>
 
+                    {/* PLATE */}
                     <td style={styles.td}>
                       {job?.plate || "-"}
                     </td>
 
+                    {/* SERVICE */}
                     <td style={styles.td}>
-                      {row.job_services?.service_name || "-"}
+                      {row.job_services
+                        ?.service_name || "-"}
                     </td>
 
+                    {/* TECHNICIAN */}
                     <td style={styles.td}>
-                      {row.technicians?.name || "Unknown"}
+                      {row.technicians?.name ||
+                        "Unknown"}
                     </td>
 
+                    {/* COMMISSION */}
                     <td style={styles.commission}>
                       QAR{" "}
                       {Number(
@@ -327,25 +371,35 @@ function TechnicianEarnings() {
                       ).toFixed(2)}
                     </td>
 
+                    {/* REMARKS */}
                     <td style={styles.td}>
 
-                      <div style={styles.remarkContainer}>
+                      <div
+                        style={styles.remarkContainer}
+                      >
 
                         <input
                           type="text"
-                          value={row.remarks || ""}
+                          value={
+                            row.remarks || ""
+                          }
                           placeholder="Add remark..."
                           onChange={(e) => {
 
-                            setEarnings((current) =>
-                              current.map((item) =>
-                                item.id === row.id
-                                  ? {
-                                      ...item,
-                                      remarks: e.target.value,
-                                    }
-                                  : item
-                              )
+                            setEarnings(
+                              (current) =>
+                                current.map(
+                                  (item) =>
+                                    item.id ===
+                                    row.id
+                                      ? {
+                                          ...item,
+                                          remarks:
+                                            e.target
+                                              .value,
+                                        }
+                                      : item
+                                )
                             );
 
                           }}
@@ -355,11 +409,17 @@ function TechnicianEarnings() {
                               e.target.value
                             )
                           }
-                          style={styles.remarkInput}
+                          style={
+                            styles.remarkInput
+                          }
                         />
 
                         {saving === row.id && (
-                          <span style={styles.saving}>
+                          <span
+                            style={
+                              styles.saving
+                            }
+                          >
                             Saving...
                           </span>
                         )}
@@ -382,133 +442,230 @@ function TechnicianEarnings() {
 
       </div>
 
-   <style>
-  {`
-    @media print {
+      {/* =========================
+          PRINT CSS
+      ========================== */}
 
-      @page {
-        size: landscape;
-        margin: 5mm;
-      }
+      <style>
+        {`
 
-      html,
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
-      }
+          /* =========================
+             NORMAL SCREEN
+          ========================== */
 
-      .no-print {
-        display: none !important;
-      }
+          .printHeader {
+            display: none;
+          }
 
-      .printHeader {
-        display: block !important;
-        margin: 0 0 8px 0 !important;
-        padding: 0 !important;
-      }
 
-      .printHeader h1 {
-        font-size: 18px !important;
-        margin: 0 0 3px 0 !important;
-      }
+          /* =========================
+             PRINT
+          ========================== */
 
-      .printHeader p {
-        font-size: 9px !important;
-        margin: 1px 0 !important;
-      }
+          @media print {
 
-      /* Remove large spacing from the report cards */
-      div {
-        box-shadow: none !important;
-      }
+            @page {
+              size: landscape;
+              margin: 5mm;
+            }
 
-      /* Total section */
-      div[style*="totalCard"] {
-        margin: 0 0 8px 0 !important;
-        padding: 8px 12px !important;
-      }
+            /* Remove browser/page spacing */
+            html,
+            body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+            }
 
-      /* Main earnings card */
-      div[style*="card"] {
-        margin: 0 !important;
-        padding: 0 !important;
-        border-radius: 0 !important;
-      }
+            /* Remove React root spacing */
+            #root {
+              margin: 0 !important;
+              padding: 0 !important;
+            }
 
-      h2 {
-        font-size: 13px !important;
-        margin: 0 0 5px 0 !important;
-      }
+            /* Remove our normal page padding */
+            .earnings-page {
+              margin: 0 !important;
+              padding: 0 !important;
+              min-height: 0 !important;
+              width: 100% !important;
+              max-width: none !important;
+              background: white !important;
+            }
 
-      table {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border-collapse: collapse !important;
-        table-layout: fixed !important;
-        font-size: 9px !important;
-      }
+            /* Hide screen controls */
+            .no-print {
+              display: none !important;
+            }
 
-      th {
-        padding: 4px 5px !important;
-        font-size: 9px !important;
-        line-height: 1.1 !important;
-      }
+            /* =========================
+               PRINT HEADER
+            ========================== */
 
-      td {
-        padding: 4px 5px !important;
-        font-size: 9px !important;
-        line-height: 1.1 !important;
-        white-space: normal !important;
-        word-wrap: break-word !important;
-      }
+            .printHeader {
+              display: block !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+            }
 
-      input {
-        border: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        font-size: 9px !important;
-        width: 100% !important;
-      }
+            .printHeader h1 {
+              margin: 0 0 2px 0 !important;
+              padding: 0 !important;
+              font-size: 18px !important;
+              line-height: 1.2 !important;
+            }
 
-      tr {
-        page-break-inside: avoid !important;
-      }
+            .printHeader p {
+              margin: 1px 0 !important;
+              padding: 0 !important;
+              font-size: 9px !important;
+              line-height: 1.2 !important;
+            }
 
-      .remarkContainer {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
+            /* =========================
+               TOTAL CARD
+            ========================== */
 
-      .saving {
-        display: none !important;
-      }
-    }
+            .totalCard {
+              margin: 6px 0 !important;
+              padding: 7px 10px !important;
+              border-radius: 5px !important;
+              box-shadow: none !important;
+            }
 
-    .printHeader {
-      display: none;
-    }
-  `}
-</style>
+            /* =========================
+               REPORT CARD
+            ========================== */
+
+            .print-card {
+              margin: 0 !important;
+              padding: 0 !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
+              overflow: visible !important;
+            }
+
+            .print-card h2 {
+              margin: 3px 0 5px 0 !important;
+              padding: 0 !important;
+              font-size: 13px !important;
+              line-height: 1.2 !important;
+            }
+
+            /* =========================
+               TABLE
+            ========================== */
+
+            table {
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border-collapse: collapse !important;
+              table-layout: fixed !important;
+              font-size: 9px !important;
+            }
+
+            th {
+              padding: 4px 5px !important;
+              font-size: 9px !important;
+              line-height: 1.1 !important;
+              white-space: normal !important;
+            }
+
+            td {
+              padding: 4px 5px !important;
+              font-size: 9px !important;
+              line-height: 1.1 !important;
+              white-space: normal !important;
+              word-wrap: break-word !important;
+              vertical-align: top !important;
+            }
+
+            /* =========================
+               REMARK INPUT
+            ========================== */
+
+            input {
+              border: none !important;
+              outline: none !important;
+              background: transparent !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              font-size: 9px !important;
+              width: 100% !important;
+              height: auto !important;
+              color: black !important;
+            }
+
+            input::placeholder {
+              color: #555 !important;
+              opacity: 1 !important;
+            }
+
+            .saving {
+              display: none !important;
+            }
+
+            /* =========================
+               TABLE ROWS
+            ========================== */
+
+            tr {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+
+            thead {
+              display: table-header-group;
+            }
+
+            /* =========================
+               REMOVE EXTRA SPACING
+            ========================== */
+
+            div {
+              box-shadow: none !important;
+            }
+
+            h1,
+            h2,
+            h3,
+            p {
+              page-break-after: avoid !important;
+            }
+
+          }
+
+        `}
+      </style>
 
     </div>
   );
 }
 
 const styles = {
+
+  /* =========================
+     PAGE
+  ========================== */
+
   page: {
     padding: "30px",
     background: "var(--bg)",
     minHeight: "100vh",
   },
 
+  /* =========================
+     HEADER
+  ========================== */
+
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "20px",
+    gap: "20px",
   },
 
   title: {
@@ -520,6 +677,10 @@ const styles = {
     marginTop: "5px",
   },
 
+  /* =========================
+     BUTTON
+  ========================== */
+
   printButton: {
     background: "#111827",
     color: "white",
@@ -529,6 +690,10 @@ const styles = {
     cursor: "pointer",
     fontWeight: "600",
   },
+
+  /* =========================
+     FILTERS
+  ========================== */
 
   filterCard: {
     background: "white",
@@ -570,9 +735,17 @@ const styles = {
     cursor: "pointer",
   },
 
+  /* =========================
+     PRINT HEADER
+  ========================== */
+
   printHeader: {
     marginBottom: "20px",
   },
+
+  /* =========================
+     TOTAL CARD
+  ========================== */
 
   totalCard: {
     background: "white",
@@ -599,6 +772,10 @@ const styles = {
     fontWeight: "700",
     color: "#16a34a",
   },
+
+  /* =========================
+     TABLE CARD
+  ========================== */
 
   card: {
     background: "white",
@@ -642,6 +819,10 @@ const styles = {
     whiteSpace: "nowrap",
   },
 
+  /* =========================
+     REMARKS
+  ========================== */
+
   remarkContainer: {
     display: "flex",
     alignItems: "center",
@@ -661,6 +842,10 @@ const styles = {
     fontSize: "11px",
     color: "#888",
   },
+
+  /* =========================
+     EMPTY
+  ========================== */
 
   empty: {
     textAlign: "center",
