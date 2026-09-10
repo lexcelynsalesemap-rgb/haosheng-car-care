@@ -1036,10 +1036,6 @@ function Reports() {
 
       <head>
 
-        <title>
-          Teyseer Motors Report
-        </title>
-
         <style>
 
           * {
@@ -1047,7 +1043,7 @@ function Reports() {
           }
 
           @page {
-            size: A4 landscape;
+            size: A4 portrait;
             margin: 10mm;
           }
 
@@ -1094,7 +1090,7 @@ function Reports() {
           }
 
           .logo {
-            width: 105px;
+            width: 115px;
             height: 105px;
             object-fit: contain;
           }
@@ -1165,14 +1161,6 @@ function Reports() {
 
           .customerValue {
             flex: 1;
-          }
-
-          .reportTitle {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 15px 0 4px;
-            border-top: 1px solid #000;
-            padding-top: 10px;
           }
 
           .period {
