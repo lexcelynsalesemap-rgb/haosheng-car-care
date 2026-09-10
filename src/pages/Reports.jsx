@@ -850,49 +850,50 @@ function Reports() {
         ============================ */
 
         .companyHeader {
-          width: 100%;
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          margin-bottom: 25px;
-        }
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 18px;
+  margin-bottom: 25px;
+}
 
-        .companyInfo {
-          width: 70%;
-          padding-top: 8px;
-        }
+.logoContainer {
+  width: 105px;
+  text-align: left;
+  flex-shrink: 0;
+}
 
-        .companyName {
-          font-size: 17px;
-          font-weight: bold;
-          letter-spacing: 0.3px;
-          margin-bottom: 8px;
-        }
+.logo {
+  width: 105px;
+  height: 105px;
+  object-fit: contain;
+}
 
-        .arabicName {
-          font-size: 15px;
-          font-weight: bold;
-          margin-bottom: 8px;
-          direction: rtl;
-          text-align: left;
-        }
+.companyInfo {
+  flex: 1;
+  padding-top: 8px;
+}
 
-        .companyAddress {
-          font-size: 11px;
-          line-height: 1.5;
-        }
+.companyName {
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
 
-        .logoContainer {
-          width: 25%;
-          text-align: right;
-        }
+.arabicName {
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  direction: rtl;
+  text-align: left;
+}
 
-        .logo {
-          width: 105px;
-          height: 105px;
-          object-fit: contain;
-        }
-
+.companyAddress {
+  font-size: 11px;
+  line-height: 1.5;
+}
         /* ============================
            CUSTOMER INFORMATION
         ============================ */
@@ -1047,35 +1048,35 @@ function Reports() {
 
         <!-- COMPANY HEADER -->
 
-        <div class="companyHeader">
+<div class="companyHeader">
 
-          <div class="companyInfo">
+  <div class="logoContainer">
 
-            <div class="companyName">
-              HAOSHENG CAR SERVICE AND ACCESSORIES
-            </div>
+    <img
+      src="${gaLogo}"
+      class="logo"
+      alt="Haosheng Logo"
+    />
 
-            <div class="arabicName">
-              هاوشنغ لخدمات وزينة السيارات
-            </div>
+  </div>
 
-            <div class="companyAddress">
-              Building 358, Salwa Road, Doha - Qatar
-            </div>
+  <div class="companyInfo">
 
-          </div>
+    <div class="companyName">
+      HAOSHENG CAR SERVICE AND ACCESSORIES
+    </div>
 
-          <div class="logoContainer">
+    <div class="arabicName">
+      هاوشنغ لخدمات وزينة السيارات
+    </div>
 
-            <img
-              src="${gaLogo}"
-              class="logo"
-              alt="Haosheng Logo"
-            />
+    <div class="companyAddress">
+      Building 358, Salwa Road, Doha - Qatar
+    </div>
 
-          </div>
+  </div>
 
-        </div>
+</div>
 
 
         <!-- CUSTOMER INFORMATION -->
