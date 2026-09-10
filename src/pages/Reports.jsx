@@ -725,7 +725,6 @@ function Reports() {
 
   // =========================================================
   // AL NUSOOR PRINT REPORT
-  // A4 PORTRAIT / ONE PAGE
   // =========================================================
 
   function printAlnusoorReport() {
@@ -736,32 +735,55 @@ function Reports() {
 
     const rows = alnusoorJobs
       .map((job, index) => {
-        const price = Number(job.price || 0);
-        const discount = Number(job.discount || 0);
-        const total = Math.max(price - discount, 0);
+        const price =
+          Number(job.price || 0);
+
+        const discount =
+          Number(job.discount || 0);
+
+        const total =
+          Math.max(
+            price - discount,
+            0
+          );
 
         return `
           <tr>
-            <td>${index + 1}</td>
-            <td>${getJobDate(job) || "-"}</td>
-            <td>${job.customer || "-"}</td>
-            <td>${job.carMake || job.carType || "-"}</td>
-            <td>${job.carModel || "-"}</td>
-            <td>${job.plate || "-"}</td>
+            <td class="number">${index + 1}</td>
+
+            <td>
+              ${getJobDate(job) || "-"}
+            </td>
+
+            <td>
+              ${job.carMake || job.carType || "-"}
+              ${
+                job.carModel
+                  ? `<div class="model">${job.carModel}</div>`
+                  : ""
+              }
+            </td>
+
+            <td>
+              ${job.plate || "-"}
+            </td>
+
             <td class="money">
-              QAR ${price.toLocaleString(undefined, {
+              ${price.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </td>
-            <td class="money">
-              QAR ${discount.toLocaleString(undefined, {
+
+            <td class="money discount">
+              ${discount.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </td>
+
             <td class="money total">
-              QAR ${total.toLocaleString(undefined, {
+              ${total.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
@@ -774,7 +796,7 @@ function Reports() {
     const printWindow = window.open(
       "",
       "_blank",
-      "width=1000,height=1200"
+      "width=1000,height=1000"
     );
 
     if (!printWindow) {
@@ -794,206 +816,470 @@ function Reports() {
       <head>
 
         <title>
-          Al Nusoor Invoice
+          Al Nusoor Report
         </title>
 
         <style>
 
-  * {
-    box-sizing: border-box;
-  }
+          * {
+            box-sizing: border-box;
+          }
 
-  body {
-    font-family: Arial, sans-serif;
-    color: #111;
-    padding: 20px;
-    margin: 0;
-  }
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
 
-  .company {
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 6px;
-  }
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
 
-  h1 {
-    margin: 0;
-    font-size: 30px;
-  }
+          body {
+            font-family:
+              Arial,
+              Helvetica,
+              sans-serif;
 
-  .date {
-    color: #475569;
-    font-size: 15px;
-    margin-top: 8px;
-    margin-bottom: 15px;
-  }
+            color: #111827;
 
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-  }
+            font-size: 12px;
 
-  .summaryBox {
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    padding: 12px;
-    background: #f8fafc;
-  }
+            padding: 8px;
+          }
 
-  .summaryLabel {
-    font-size: 13px;
-    color: #475569;
-    font-weight: bold;
-  }
+          .page {
+            width: 100%;
+            max-width: 190mm;
+            margin: 0 auto;
+          }
 
-  .summaryValue {
-    font-size: 22px;
-    font-weight: bold;
-    margin-top: 5px;
-  }
+          /* ============================
+             HEADER
+          ============================ */
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
+          .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
 
-  th {
-    background: #111827;
-    color: white;
-    padding: 9px 7px;
-    border: 1px solid #111827;
-    text-align: left;
-    font-size: 13px;
-  }
+            padding-bottom: 12px;
 
-  td {
-    padding: 9px 7px;
-    border: 1px solid #cbd5e1;
-    font-size: 13px;
-  }
+            border-bottom:
+              3px solid #111827;
 
-  tr:nth-child(even) {
-    background: #f8fafc;
-  }
+            margin-bottom: 12px;
+          }
 
-  .footer {
-    margin-top: 20px;
-    border-top: 1px solid #cbd5e1;
-    padding-top: 10px;
-    text-align: center;
-    font-size: 12px;
-    color: #475569;
-  }
+          .companySection {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+          }
 
-  @media print {
+          .companyName {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.15;
+            max-width: 190px;
+            color: #111827;
+          }
 
-    @page {
-      size: A4 portrait;
-      margin: 8mm;
-    }
+          .logo {
+            width: 95px;
+            height: 95px;
+            object-fit: contain;
+          }
 
-    body {
-      padding: 0;
-      margin: 0;
-    }
+          .reportSection {
+            text-align: right;
+          }
 
-    table {
-      font-size: 12px;
-    }
+          .reportTitle {
+            font-size: 23px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            color: #111827;
+            margin-bottom: 5px;
+          }
 
-    th,
-    td {
-      font-size: 12px;
-      padding: 7px 6px;
-    }
+          .reportSubtitle {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 600;
+          }
 
-  }
+          /* ============================
+             CUSTOMER TITLE
+          ============================ */
 
-</style>
+          .customerBanner {
+            background: #111827;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .customerName {
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+          }
+
+          .dateRange {
+            font-size: 11px;
+            color: #e5e7eb;
+            text-align: right;
+          }
+
+          /* ============================
+             SUMMARY
+          ============================ */
+
+          .summary {
+            display: grid;
+            grid-template-columns:
+              repeat(3, 1fr);
+
+            gap: 10px;
+
+            margin-bottom: 14px;
+          }
+
+          .summaryBox {
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+
+            padding: 10px 12px;
+
+            background: #f8fafc;
+          }
+
+          .summaryLabel {
+            font-size: 9px;
+            font-weight: 700;
+            color: #64748b;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.5px;
+          }
+
+          .summaryValue {
+            font-size: 18px;
+            font-weight: 900;
+
+            margin-top: 4px;
+
+            color: #111827;
+          }
+
+          .summaryBox.net {
+            background: #fffdf0;
+            border-color: #d4af37;
+          }
+
+          .summaryBox.net .summaryValue {
+            color: #92710c;
+          }
+
+          /* ============================
+             TABLE
+          ============================ */
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+
+            table-layout: fixed;
+
+            font-size: 11px;
+          }
+
+          thead {
+            display: table-header-group;
+          }
+
+          th {
+            background: #111827;
+            color: white;
+
+            padding: 8px 6px;
+
+            border: 1px solid #111827;
+
+            text-align: left;
+
+            font-size: 10px;
+
+            font-weight: 800;
+
+            text-transform: uppercase;
+          }
+
+          td {
+            padding: 7px 6px;
+
+            border:
+              1px solid #d1d5db;
+
+            vertical-align: middle;
+
+            font-size: 11px;
+
+            line-height: 1.2;
+          }
+
+          tbody tr:nth-child(even) {
+            background: #f8fafc;
+          }
+
+          .number {
+            width: 7%;
+            text-align: center;
+            font-weight: 700;
+          }
+
+          th:nth-child(1) {
+            width: 7%;
+            text-align: center;
+          }
+
+          th:nth-child(2) {
+            width: 16%;
+          }
+
+          th:nth-child(3) {
+            width: 25%;
+          }
+
+          th:nth-child(4) {
+            width: 15%;
+          }
+
+          th:nth-child(5) {
+            width: 13%;
+            text-align: right;
+          }
+
+          th:nth-child(6) {
+            width: 12%;
+            text-align: right;
+          }
+
+          th:nth-child(7) {
+            width: 14%;
+            text-align: right;
+          }
+
+          .money {
+            text-align: right;
+            white-space: nowrap;
+            font-weight: 600;
+          }
+
+          .discount {
+            color: #dc2626;
+          }
+
+          .total {
+            color: #92710c;
+            font-weight: 900;
+          }
+
+          .model {
+            color: #64748b;
+            font-size: 9px;
+            margin-top: 2px;
+          }
+
+          /* ============================
+             TOTAL FOOTER
+          ============================ */
+
+          .grandTotal {
+            margin-top: 12px;
+
+            display: flex;
+            justify-content: flex-end;
+          }
+
+          .grandTotalBox {
+            width: 280px;
+
+            border:
+              2px solid #111827;
+
+            border-radius: 6px;
+
+            overflow: hidden;
+          }
+
+          .grandRow {
+            display: flex;
+            justify-content: space-between;
+
+            padding: 7px 10px;
+
+            border-bottom:
+              1px solid #d1d5db;
+
+            font-size: 11px;
+          }
+
+          .grandRow:last-child {
+            border-bottom: none;
+          }
+
+          .grandRow.final {
+            background: #111827;
+            color: white;
+
+            font-size: 15px;
+            font-weight: 900;
+          }
+
+          .grandRow .amount {
+            font-weight: 800;
+          }
+
+          /* ============================
+             FOOTER
+          ============================ */
+
+          .footer {
+            margin-top: 14px;
+
+            padding-top: 8px;
+
+            border-top:
+              1px solid #d1d5db;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            font-size: 9px;
+
+            color: #64748b;
+          }
+
+          .footerCompany {
+            font-weight: 700;
+            color: #475569;
+          }
+
+          .footerContact {
+            text-align: right;
+          }
+
+          /* ============================
+             PRINT
+          ============================ */
+
+          @media print {
+
+            html,
+            body {
+              width: 210mm;
+              min-height: 297mm;
+            }
+
+            body {
+              padding: 0;
+            }
+
+            .page {
+              width: 100%;
+              max-width: none;
+            }
+
+            tr {
+              page-break-inside: avoid;
+            }
+
+            .header,
+            .summary,
+            .customerBanner,
+            .grandTotal {
+              page-break-inside: avoid;
+            }
+
+          }
+
+        </style>
 
       </head>
 
       <body>
 
-        <div class="invoice">
+        <div class="page">
+
+          <!-- HEADER -->
 
           <div class="header">
 
-            <div>
-              <img
-                class="logo"
-                src="${gaLogo}"
-                alt="Company Logo"
-              />
-            </div>
-
-            <div class="company">
+            <div class="companySection">
 
               <div class="companyName">
-                HAOSHENG CAR SERVICE AND ACCESSORIES
+                HAOSHENG CAR SERVICE<br />
+                AND ACCESSORIES
               </div>
 
-              <div class="companyDetails">
-                Al Nusoor Center Account
-                <br />
-                Tel: +974 3368 1888
+              <img
+                src="${gaLogo}"
+                class="logo"
+                alt="Company Logo"
+              />
+
+            </div>
+
+            <div class="reportSection">
+
+              <div class="reportTitle">
+                AL NUSOOR REPORT
+              </div>
+
+              <div class="reportSubtitle">
+                Service & Vehicle Summary
               </div>
 
             </div>
 
           </div>
 
-          <div class="titleSection">
+          <!-- AL NUSOOR -->
 
-            <div>
-
-              <h1 class="title">
-                AL NUSOOR INVOICE
-              </h1>
-
-              <div class="subtitle">
-                Account Statement / Service Invoice
-              </div>
-
-            </div>
-
-            <div class="invoiceInfo">
-
-              <strong>Report Date:</strong>
-              ${new Date().toLocaleDateString("en-GB", {
-                timeZone: "Asia/Qatar",
-              })}
-
-              <br />
-
-              <strong>Reference:</strong>
-              AL-NUSOOR
-
-            </div>
-
-          </div>
-
-          <div class="customerBox">
-
-            <div class="customerLabel">
-              Customer
-            </div>
+          <div class="customerBanner">
 
             <div class="customerName">
               AL NUSOOR CENTER
             </div>
 
-            <div class="period">
-              Period:
+            <div class="dateRange">
+
+              From:
               ${alnusoorStartDate || "All Dates"}
-              &nbsp;&nbsp;–&nbsp;&nbsp;
+
+              &nbsp;&nbsp;
+
+              To:
               ${alnusoorEndDate || "All Dates"}
+
             </div>
 
           </div>
+
+          <!-- SUMMARY -->
 
           <div class="summary">
 
@@ -1016,7 +1302,8 @@ function Reports() {
               </div>
 
               <div class="summaryValue">
-                QAR ${alnusoorAmount.toLocaleString(undefined, {
+                QAR
+                ${alnusoorAmount.toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
@@ -1031,7 +1318,8 @@ function Reports() {
               </div>
 
               <div class="summaryValue">
-                QAR ${alnusoorNet.toLocaleString(undefined, {
+                QAR
+                ${alnusoorNet.toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
@@ -1041,20 +1329,42 @@ function Reports() {
 
           </div>
 
+          <!-- VEHICLE TABLE -->
+
           <table>
 
             <thead>
 
               <tr>
-                <th>#</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Car Make</th>
-                <th>Car Model</th>
-                <th>Plate</th>
-                <th>Price</th>
-                <th>Discount</th>
-                <th>Total</th>
+
+                <th>
+                  #
+                </th>
+
+                <th>
+                  Date
+                </th>
+
+                <th>
+                  Vehicle
+                </th>
+
+                <th>
+                  Plate Number
+                </th>
+
+                <th>
+                  Price
+                </th>
+
+                <th>
+                  Discount
+                </th>
+
+                <th>
+                  Total
+                </th>
+
               </tr>
 
             </thead>
@@ -1067,80 +1377,85 @@ function Reports() {
 
           </table>
 
+          <!-- TOTALS -->
+
           <div class="grandTotal">
 
-            <div class="grandTotalRow">
+            <div class="grandTotalBox">
 
-              <span>
-                Subtotal
-              </span>
+              <div class="grandRow">
 
-              <span>
-                QAR ${alnusoorAmount.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
+                <span>
+                  Total Amount
+                </span>
 
-            </div>
+                <span class="amount">
+                  QAR
+                  ${alnusoorAmount.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
 
-            <div class="grandTotalRow">
+              </div>
 
-              <span>
-                Discount
-              </span>
+              <div class="grandRow">
 
-              <span>
-                QAR ${alnusoorDiscount.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
+                <span>
+                  Total Discount
+                </span>
 
-            </div>
+                <span
+                  class="amount"
+                  style="color:#dc2626;"
+                >
+                  QAR
+                  ${alnusoorDiscount.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
 
-            <div class="grandTotalRow final">
+              </div>
 
-              <span>
-                NET TOTAL
-              </span>
+              <div class="grandRow final">
 
-              <span>
-                QAR ${alnusoorNet.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
+                <span>
+                  NET TOTAL
+                </span>
 
-            </div>
+                <span>
+                  QAR
+                  ${alnusoorNet.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
 
-          </div>
+              </div>
 
-          <div class="signature">
-
-            <div class="signatureBox">
-              Prepared By
-            </div>
-
-            <div class="signatureBox">
-              Checked By
-            </div>
-
-            <div class="signatureBox">
-              Al Nusoor Representative
             </div>
 
           </div>
+
+          <!-- FOOTER -->
 
           <div class="footer">
 
-            HAOSHENG CAR SERVICE AND ACCESSORIES
-            <br />
+            <div class="footerCompany">
 
-            Al Nusoor Center Account Statement
-            <br />
+              HAOSHENG CAR SERVICE AND ACCESSORIES
 
-            Tel: +974 3368 1888
+            </div>
+
+            <div class="footerContact">
+
+              Tel: +974 3368 1888
+              <br />
+
+              Al Nusoor Center Report
+
+            </div>
 
           </div>
 
@@ -1157,7 +1472,7 @@ function Reports() {
       setTimeout(() => {
         printWindow.focus();
         printWindow.print();
-      }, 500);
+      }, 700);
     };
   }
 
@@ -2646,7 +2961,9 @@ function Reports() {
                     Date
                   </th>
 
-                  
+                  <th style={tableHeader}>
+                    Customer
+                  </th>
 
                   <th style={tableHeader}>
                     Car
@@ -2700,7 +3017,9 @@ function Reports() {
                         {getJobDate(job) || "-"}
                       </td>
 
-                      
+                      <td style={tableCell}>
+                        {job.customer || "-"}
+                      </td>
 
                       <td style={tableCell}>
                         {job.carMake ||
