@@ -12,6 +12,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import TechnicianEarnings from "./pages/TechnicianEarnings";
 import AssignTechnician from "./pages/AssignTechnician";
 import Reports from "./pages/Reports";
+
 function App() {
 
   return (
@@ -124,6 +125,7 @@ function App() {
     </Routes>
 
     </BrowserRouter>
+    
   );
 }
 

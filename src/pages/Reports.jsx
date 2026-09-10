@@ -33,6 +33,13 @@ function Reports() {
   });
 
   // =========================================================
+  // AL NUSOOR DATE FILTER
+  // =========================================================
+
+  const [alnusoorStartDate, setAlnusoorStartDate] = useState("");
+  const [alnusoorEndDate, setAlnusoorEndDate] = useState("");
+
+  // =========================================================
   // LOAD DATA
   // =========================================================
 
@@ -42,10 +49,6 @@ function Reports() {
   }, []);
 
   async function loadReports() {
-    // IMPORTANT:
-    // No created_at ordering because your jobs table
-    // does not have a created_at column.
-
     const { data: jobData, error: jobError } = await supabase
       .from("jobs")
       .select("*");
@@ -92,8 +95,6 @@ function Reports() {
       console.error("REPORT SETTINGS ERROR:", error);
       return;
     }
-
-    console.log("REPORT SETTINGS:", data);
 
     if (!data) return;
 
@@ -142,9 +143,11 @@ function Reports() {
 
       if (findError) {
         console.error("FIND SETTING ERROR:", findError);
+
         alert(
           `Could not save ${settingName}: ${findError.message}`
         );
+
         return;
       }
 
@@ -257,7 +260,6 @@ function Reports() {
 
   // =========================================================
   // PAYMENT METHODS
-  // Visa + Mastercard = CARD
   // =========================================================
 
   function getPaymentMethod(payment) {
@@ -325,7 +327,6 @@ function Reports() {
 
   // =========================================================
   // DAILY PAYMENTS
-  // Uses payments.payment_date
   // =========================================================
 
   const dailyPayments = {};
@@ -353,9 +354,7 @@ function Reports() {
 
     if (isCash(payment)) {
       dailyPayments[date].cash += amount;
-    } else if (
-      method.includes("visa")
-    ) {
+    } else if (method.includes("visa")) {
       dailyPayments[date].visa += amount;
     } else if (
       method.includes("mastercard") ||
@@ -369,11 +368,10 @@ function Reports() {
     }
   });
 
-  const dailyPaymentRows = Object.entries(dailyPayments)
-    .sort(
-      ([dateA], [dateB]) =>
-        dateB.localeCompare(dateA)
-    );
+  const dailyPaymentRows = Object.entries(dailyPayments).sort(
+    ([dateA], [dateB]) =>
+      dateB.localeCompare(dateA)
+  );
 
   // =========================================================
   // SELECTED DATE PAYMENT
@@ -537,10 +535,6 @@ function Reports() {
     return `${year}-${month}-${day}`;
   }
 
-  // NOTE:
-  // Your jobs table previously caused a created_at error.
-  // This supports several possible date column names.
-
   function getJobDate(job) {
     const possibleDate =
       job.created_at ||
@@ -663,14 +657,374 @@ function Reports() {
   });
 
   const dailyCarRows =
-    Object.entries(dailyCars)
-      .sort(
-        ([dateA], [dateB]) =>
-          dateB.localeCompare(dateA)
-      );
+    Object.entries(dailyCars).sort(
+      ([dateA], [dateB]) =>
+        dateB.localeCompare(dateA)
+    );
 
   // =========================================================
-  // PRINT DAILY REPORT
+  // AL NUSOOR REPORT
+  // IMPORTANT:
+  // AL NUSOOR IS IDENTIFIED FROM CUSTOMER FIELD
+  // NOT SOURCE FIELD.
+  // SOURCE CAN BE "WALK IN".
+  // =========================================================
+
+  const alnusoorJobs = jobs.filter(job => {
+    const customer = String(
+      job.customer || ""
+    )
+      .toLowerCase()
+      .trim();
+
+    const isAlnusoor =
+      customer.includes("al nusoor") ||
+      customer.includes("alnusoor");
+
+    if (!isAlnusoor) {
+      return false;
+    }
+
+    const jobDate = getJobDate(job);
+
+    if (
+      alnusoorStartDate &&
+      jobDate &&
+      jobDate < alnusoorStartDate
+    ) {
+      return false;
+    }
+
+    if (
+      alnusoorEndDate &&
+      jobDate &&
+      jobDate > alnusoorEndDate
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const alnusoorAmount = alnusoorJobs.reduce(
+    (sum, job) =>
+      sum +
+      Number(job.price || 0),
+    0
+  );
+
+  const alnusoorDiscount = alnusoorJobs.reduce(
+    (sum, job) =>
+      sum +
+      Number(job.discount || 0),
+    0
+  );
+
+  const alnusoorNet = Math.max(
+    alnusoorAmount -
+      alnusoorDiscount,
+    0
+  );
+
+  // =========================================================
+  // AL NUSOOR PRINT REPORT
+  // =========================================================
+
+  function printAlnusoorReport() {
+    if (alnusoorJobs.length === 0) {
+      alert("No Al Nusoor jobs found.");
+      return;
+    }
+
+    const rows = alnusoorJobs
+      .map((job, index) => {
+        const price =
+          Number(job.price || 0);
+
+        const discount =
+          Number(job.discount || 0);
+
+        const total =
+          Math.max(
+            price - discount,
+            0
+          );
+
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${getJobDate(job) || "-"}</td>
+            <td>${job.customer || "-"}</td>
+            <td>${job.carMake || job.carType || job.carModel || "-"}</td>
+            <td>${job.carModel || "-"}</td>
+            <td>${job.plate || "-"}</td>
+            <td>QAR ${price.toFixed(2)}</td>
+            <td>QAR ${discount.toFixed(2)}</td>
+            <td>QAR ${total.toFixed(2)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const printWindow = window.open(
+      "",
+      "_blank",
+      "width=1400,height=900"
+    );
+
+    if (!printWindow) {
+      alert(
+        "Please allow pop-ups for this website."
+      );
+      return;
+    }
+
+    printWindow.document.open();
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+
+      <html>
+
+      <head>
+
+        <title>
+          Al Nusoor Report
+        </title>
+
+        <style>
+
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            font-family: Arial, sans-serif;
+            color: #111;
+            padding: 30px;
+            margin: 0;
+          }
+
+          h1 {
+            margin: 0;
+            font-size: 28px;
+          }
+
+          .company {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+
+          .date {
+            color: #64748b;
+            margin-top: 8px;
+            margin-bottom: 25px;
+          }
+
+          .summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+          }
+
+          .summaryBox {
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 18px;
+            background: #f8fafc;
+          }
+
+          .summaryLabel {
+            font-size: 12px;
+            color: #64748b;
+          }
+
+          .summaryValue {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 7px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+          }
+
+          th {
+            background: #111827;
+            color: white;
+            padding: 9px;
+            border: 1px solid #111827;
+            text-align: left;
+          }
+
+          td {
+            padding: 8px;
+            border: 1px solid #d1d5db;
+          }
+
+          tr:nth-child(even) {
+            background: #f8fafc;
+          }
+
+          .footer {
+            margin-top: 40px;
+            border-top: 1px solid #d1d5db;
+            padding-top: 15px;
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+          }
+
+          @media print {
+
+            @page {
+              size: landscape;
+              margin: 10mm;
+            }
+
+            body {
+              padding: 5px;
+            }
+
+          }
+
+        </style>
+
+      </head>
+
+      <body>
+
+        <div class="company">
+          HAOSHENG CAR SERVICE AND ACCESSORIES
+        </div>
+
+        <h1>
+          AL NUSOOR REPORT
+        </h1>
+
+        <div class="date">
+          Customer: AL NUSOOR CENTER
+        </div>
+
+        <div class="date">
+          From:
+          ${alnusoorStartDate || "All Dates"}
+          &nbsp;&nbsp;&nbsp;
+          To:
+          ${alnusoorEndDate || "All Dates"}
+        </div>
+
+        <div class="summary">
+
+          <div class="summaryBox">
+
+            <div class="summaryLabel">
+              TOTAL CARS
+            </div>
+
+            <div class="summaryValue">
+              ${alnusoorJobs.length}
+            </div>
+
+          </div>
+
+          <div class="summaryBox">
+
+            <div class="summaryLabel">
+              TOTAL AMOUNT
+            </div>
+
+            <div class="summaryValue">
+              QAR ${alnusoorAmount.toLocaleString()}
+            </div>
+
+          </div>
+
+          <div class="summaryBox">
+
+            <div class="summaryLabel">
+              NET AMOUNT
+            </div>
+
+            <div class="summaryValue">
+              QAR ${alnusoorNet.toLocaleString()}
+            </div>
+
+          </div>
+
+        </div>
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>#</th>
+
+              <th>Date</th>
+
+              <th>Customer</th>
+
+              <th>Car Make</th>
+
+              <th>Car Model</th>
+
+              <th>Plate Number</th>
+
+              <th>Price</th>
+
+              <th>Discount</th>
+
+              <th>Total</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            ${rows}
+
+          </tbody>
+
+        </table>
+
+        <div class="footer">
+
+          HAOSHENG CAR SERVICE AND ACCESSORIES
+
+          <br />
+
+          Tel: +974 3368 1888
+
+          <br />
+
+          Al Nusoor Report
+
+        </div>
+
+      </body>
+
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    printWindow.onload = function () {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 500);
+    };
+  }
+
+  // =========================================================
+  // DAILY REPORT
   // =========================================================
 
   function printDailyReport() {
@@ -869,9 +1223,13 @@ function Reports() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Daily Workshop Report</title>
+
+        <title>
+          Daily Workshop Report
+        </title>
 
         <style>
+
           * {
             box-sizing: border-box;
           }
@@ -985,6 +1343,7 @@ function Reports() {
           }
 
           @media print {
+
             @page {
               size: landscape;
               margin: 10mm;
@@ -993,8 +1352,11 @@ function Reports() {
             body {
               padding: 5px;
             }
+
           }
+
         </style>
+
       </head>
 
       <body>
@@ -1056,7 +1418,9 @@ function Reports() {
         </h2>
 
         <table>
+
           <thead>
+
             <tr>
               <th>#</th>
               <th>Time</th>
@@ -1070,11 +1434,13 @@ function Reports() {
               <th>Paid</th>
               <th>Balance</th>
             </tr>
+
           </thead>
 
           <tbody>
             ${reportRows}
           </tbody>
+
         </table>
 
         <h2>
@@ -1082,17 +1448,21 @@ function Reports() {
         </h2>
 
         <table>
+
           <thead>
+
             <tr>
               <th>Date</th>
               <th>Payment Method</th>
               <th>Amount</th>
             </tr>
+
           </thead>
 
           <tbody>
             ${paymentRows}
           </tbody>
+
         </table>
 
         <div class="signature">
@@ -1162,7 +1532,7 @@ function Reports() {
       </h1>
 
       {/* =====================================================
-          DATE
+          DAILY REPORT DATE
       ===================================================== */}
 
       <div
@@ -1174,6 +1544,7 @@ function Reports() {
           flexWrap: "wrap",
         }}
       >
+
         <label
           style={{
             fontWeight: "bold",
@@ -1196,6 +1567,7 @@ function Reports() {
             fontSize: "16px",
           }}
         />
+
       </div>
 
       <button
@@ -1232,6 +1604,7 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         <FinancialCard
           title="Total Sales"
           value={netSales}
@@ -1259,6 +1632,7 @@ function Reports() {
           color="#9333ea"
           icon="🏢"
         />
+
       </div>
 
       {/* =====================================================
@@ -1278,6 +1652,7 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         <FinancialCard
           title="Cash"
           value={cashPaid}
@@ -1298,6 +1673,7 @@ function Reports() {
           color="#7c3aed"
           icon="🏦"
         />
+
       </div>
 
       {/* =====================================================
@@ -1307,8 +1683,6 @@ function Reports() {
       <h2>
         💳 Daily Payments
       </h2>
-
-      {/* SELECTED DAY PAYMENT */}
 
       <div
         style={{
@@ -1321,6 +1695,7 @@ function Reports() {
           borderTop: "5px solid #16a34a",
         }}
       >
+
         <h3>
           Payments on {reportDate}
         </h3>
@@ -1345,9 +1720,8 @@ function Reports() {
             ? ""
             : "s"} received
         </p>
-      </div>
 
-      {/* DAILY PAYMENT TABLE */}
+      </div>
 
       <div
         style={{
@@ -1359,6 +1733,7 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         {dailyPaymentRows.length === 0 ? (
           <p>
             No payment records found.
@@ -1369,14 +1744,18 @@ function Reports() {
               overflowX: "auto",
             }}
           >
+
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
               }}
             >
+
               <thead>
+
                 <tr>
+
                   <th style={tableHeader}>
                     Date
                   </th>
@@ -1404,12 +1783,16 @@ function Reports() {
                   <th style={tableHeader}>
                     Total
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
+
                 {dailyPaymentRows.map(
                   ([date, values]) => {
+
                     const formattedDate =
                       new Date(
                         `${date}T00:00:00`
@@ -1472,10 +1855,14 @@ function Reports() {
                     );
                   }
                 )}
+
               </tbody>
+
             </table>
+
           </div>
         )}
+
       </div>
 
       {/* =====================================================
@@ -1495,6 +1882,7 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         <ManualCard
           title="June Pending"
           value={manualPending.June}
@@ -1521,6 +1909,7 @@ function Reports() {
           }
           onChange={changeAugust}
         />
+
       </div>
 
       {/* =====================================================
@@ -1541,6 +1930,7 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         <h3>
           Previous Teyseer Amount
         </h3>
@@ -1582,6 +1972,7 @@ function Reports() {
           QAR{" "}
           {manualTeyseer.toLocaleString()}
         </h2>
+
       </div>
 
       {/* =====================================================
@@ -1601,6 +1992,7 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         <FinancialCard
           title="Total Cars"
           value={jobs.length}
@@ -1632,6 +2024,7 @@ function Reports() {
           icon="🗓️"
           noCurrency
         />
+
       </div>
 
       {/* =====================================================
@@ -1648,6 +2041,7 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         <h2>
           📊 Cars Received Per Day
         </h2>
@@ -1662,14 +2056,18 @@ function Reports() {
               overflowX: "auto",
             }}
           >
+
             <table
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
               }}
             >
+
               <thead>
+
                 <tr>
+
                   <th style={tableHeader}>
                     Date
                   </th>
@@ -1677,12 +2075,16 @@ function Reports() {
                   <th style={tableHeader}>
                     Cars Received
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
+
                 {dailyCarRows.map(
                   ([date, count]) => {
+
                     const formattedDate =
                       new Date(
                         `${date}T00:00:00`
@@ -1698,6 +2100,7 @@ function Reports() {
 
                     return (
                       <tr key={date}>
+
                         <td style={tableCell}>
                           <strong>
                             {formattedDate}
@@ -1705,6 +2108,7 @@ function Reports() {
                         </td>
 
                         <td style={tableCell}>
+
                           <span
                             style={{
                               background:
@@ -1721,15 +2125,21 @@ function Reports() {
                           >
                             🚗 {count}
                           </span>
+
                         </td>
+
                       </tr>
                     );
                   }
                 )}
+
               </tbody>
+
             </table>
+
           </div>
         )}
+
       </div>
 
       {/* =====================================================
@@ -1749,7 +2159,9 @@ function Reports() {
           marginBottom: "30px",
         }}
       >
+
         <div style={sourceCardStyle}>
+
           <h2>
             🏢 Teyseer
           </h2>
@@ -1767,9 +2179,11 @@ function Reports() {
             Paid: QAR{" "}
             {teyseerPaid.toLocaleString()}
           </p>
+
         </div>
 
         <div style={sourceCardStyle}>
+
           <h2>
             👤 Customers / Other
           </h2>
@@ -1792,7 +2206,415 @@ function Reports() {
             Balance: QAR{" "}
             {customerBalance.toLocaleString()}
           </p>
+
         </div>
+
+      </div>
+
+      {/* =====================================================
+          AL NUSOOR REPORT
+      ===================================================== */}
+
+      <h2>
+        🏢 Al Nusoor Report
+      </h2>
+
+      <div
+        style={{
+          background: "white",
+          padding: "25px",
+          borderRadius: "18px",
+          boxShadow:
+            "0 8px 20px rgba(0,0,0,0.08)",
+          marginBottom: "30px",
+          borderTop: "5px solid #d4af37",
+        }}
+      >
+
+        <h3>
+          Al Nusoor Center
+        </h3>
+
+        <p
+          style={{
+            color: "#64748b",
+            marginBottom: "20px",
+          }}
+        >
+          Al Nusoor is detected automatically from
+          the Customer field. The Source can remain
+          "Walk In".
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "15px",
+            flexWrap: "wrap",
+            alignItems: "end",
+            marginBottom: "25px",
+          }}
+        >
+
+          <div>
+
+            <label
+              style={{
+                display: "block",
+                fontWeight: "bold",
+                marginBottom: "7px",
+              }}
+            >
+              From Date
+            </label>
+
+            <input
+              type="date"
+              value={alnusoorStartDate}
+              onChange={e =>
+                setAlnusoorStartDate(
+                  e.target.value
+                )
+              }
+              style={{
+                padding: "10px",
+                border:
+                  "1px solid #cbd5e1",
+                borderRadius: "8px",
+              }}
+            />
+
+          </div>
+
+          <div>
+
+            <label
+              style={{
+                display: "block",
+                fontWeight: "bold",
+                marginBottom: "7px",
+              }}
+            >
+              To Date
+            </label>
+
+            <input
+              type="date"
+              value={alnusoorEndDate}
+              onChange={e =>
+                setAlnusoorEndDate(
+                  e.target.value
+                )
+              }
+              style={{
+                padding: "10px",
+                border:
+                  "1px solid #cbd5e1",
+                borderRadius: "8px",
+              }}
+            />
+
+          </div>
+
+          <button
+            onClick={printAlnusoorReport}
+            style={{
+              background: "#111827",
+              color: "white",
+              border: "none",
+              padding: "11px 20px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            🖨️ PRINT AL NUSOOR REPORT
+          </button>
+
+          <button
+            onClick={() => {
+              setAlnusoorStartDate("");
+              setAlnusoorEndDate("");
+            }}
+            style={{
+              background: "#e5e7eb",
+              color: "#111827",
+              border: "none",
+              padding: "11px 20px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            CLEAR
+          </button>
+
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fit,minmax(200px,1fr))",
+            gap: "15px",
+            marginBottom: "25px",
+          }}
+        >
+
+          <div
+            style={{
+              background: "#f8fafc",
+              padding: "20px",
+              borderRadius: "12px",
+              border:
+                "1px solid #e2e8f0",
+            }}
+          >
+
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "13px",
+              }}
+            >
+              AL NUSOOR CARS
+            </div>
+
+            <h2>
+              {alnusoorJobs.length}
+            </h2>
+
+          </div>
+
+          <div
+            style={{
+              background: "#f8fafc",
+              padding: "20px",
+              borderRadius: "12px",
+              border:
+                "1px solid #e2e8f0",
+            }}
+          >
+
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "13px",
+              }}
+            >
+              TOTAL AMOUNT
+            </div>
+
+            <h2>
+              QAR{" "}
+              {alnusoorAmount.toLocaleString()}
+            </h2>
+
+          </div>
+
+          <div
+            style={{
+              background: "#f8fafc",
+              padding: "20px",
+              borderRadius: "12px",
+              border:
+                "1px solid #e2e8f0",
+            }}
+          >
+
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "13px",
+              }}
+            >
+              TOTAL DISCOUNT
+            </div>
+
+            <h2>
+              QAR{" "}
+              {alnusoorDiscount.toLocaleString()}
+            </h2>
+
+          </div>
+
+          <div
+            style={{
+              background: "#fefce8",
+              padding: "20px",
+              borderRadius: "12px",
+              border:
+                "1px solid #d4af37",
+            }}
+          >
+
+            <div
+              style={{
+                color: "#64748b",
+                fontSize: "13px",
+              }}
+            >
+              NET AMOUNT
+            </div>
+
+            <h2
+              style={{
+                color: "#92710c",
+              }}
+            >
+              QAR{" "}
+              {alnusoorNet.toLocaleString()}
+            </h2>
+
+          </div>
+
+        </div>
+
+        {alnusoorJobs.length === 0 ? (
+
+          <div
+            style={{
+              padding: "30px",
+              textAlign: "center",
+              background: "#f8fafc",
+              borderRadius: "10px",
+              color: "#64748b",
+            }}
+          >
+            No Al Nusoor jobs found.
+          </div>
+
+        ) : (
+
+          <div
+            style={{
+              overflowX: "auto",
+            }}
+          >
+
+            <table
+              style={{
+                width: "100%",
+                borderCollapse:
+                  "collapse",
+              }}
+            >
+
+              <thead>
+
+                <tr>
+
+                  <th style={tableHeader}>
+                    Date
+                  </th>
+
+                  <th style={tableHeader}>
+                    Customer
+                  </th>
+
+                  <th style={tableHeader}>
+                    Car
+                  </th>
+
+                  <th style={tableHeader}>
+                    Plate
+                  </th>
+
+                  <th style={tableHeader}>
+                    Price
+                  </th>
+
+                  <th style={tableHeader}>
+                    Discount
+                  </th>
+
+                  <th style={tableHeader}>
+                    Total
+                  </th>
+
+                </tr>
+
+              </thead>
+
+              <tbody>
+
+                {alnusoorJobs.map(job => {
+
+                  const price =
+                    Number(
+                      job.price || 0
+                    );
+
+                  const discount =
+                    Number(
+                      job.discount || 0
+                    );
+
+                  const total =
+                    Math.max(
+                      price -
+                        discount,
+                      0
+                    );
+
+                  return (
+                    <tr key={job.id}>
+
+                      <td style={tableCell}>
+                        {getJobDate(job) || "-"}
+                      </td>
+
+                      <td style={tableCell}>
+                        {job.customer || "-"}
+                      </td>
+
+                      <td style={tableCell}>
+                        {job.carMake ||
+                          job.carType ||
+                          job.carModel ||
+                          "-"}
+                      </td>
+
+                      <td style={tableCell}>
+                        {job.plate || "-"}
+                      </td>
+
+                      <td style={tableCell}>
+                        QAR{" "}
+                        {price.toLocaleString()}
+                      </td>
+
+                      <td style={tableCell}>
+                        QAR{" "}
+                        {discount.toLocaleString()}
+                      </td>
+
+                      <td
+                        style={{
+                          ...tableCell,
+                          fontWeight:
+                            "bold",
+                          color:
+                            "#92710c",
+                        }}
+                      >
+                        QAR{" "}
+                        {total.toLocaleString()}
+                      </td>
+
+                    </tr>
+                  );
+
+                })}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        )}
+
       </div>
 
     </div>
@@ -1823,6 +2645,7 @@ function FinancialCard({
           `5px solid ${color}`,
       }}
     >
+
       <div
         style={{
           fontSize: "35px",
@@ -1843,6 +2666,7 @@ function FinancialCard({
               value
             ).toLocaleString()}`}
       </h2>
+
     </div>
   );
 }
@@ -1869,6 +2693,7 @@ function ManualCard({
           "5px solid #dc2626",
       }}
     >
+
       <h3>
         {title}
       </h3>
@@ -1919,6 +2744,7 @@ function ManualCard({
         QAR{" "}
         {Number(value).toLocaleString()}
       </h2>
+
     </div>
   );
 }
