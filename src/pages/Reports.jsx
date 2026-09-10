@@ -1053,74 +1053,152 @@ function Reports() {
 
           body {
             font-family: Arial, sans-serif;
-            color: #111827;
+            color: #000;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             font-size: 10px;
           }
 
-          .header {
-            display: flex;
-            align-items: center;
-            gap: 18px;
+          /*
+            TEYSEER HEADER
+            Matches the header you provided:
+            
+            HAOSHENG CAR SERVICE AND ACCESSORIES
+            هاوشنغ لخدمات وزينة السيارات
+            Building 358, Salwa Road, Doha - Qatar
+
+            INVOICE
+            DATE
+            INVOICE NO.
+            NAME/COMPANY
+            ADDRESS
+            CONTACT NUMBER
+          */
+
+          .invoiceHeader {
+            width: 100%;
             margin-bottom: 20px;
+          }
+
+          .topHeader {
+            display: flex;
+            width: 100%;
+            min-height: 125px;
+          }
+
+          .logoSection {
+            width: 22%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
           }
 
           .logo {
-            width: 90px;
-            height: 90px;
+            width: 105px;
+            height: 105px;
             object-fit: contain;
           }
 
+          .companySection {
+            width: 48%;
+            padding-top: 5px;
+          }
+
           .companyName {
-            font-size: 20px;
+            font-size: 17px;
             font-weight: bold;
+            margin-bottom: 9px;
           }
 
           .arabicName {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
-            margin-top: 7px;
+            margin-bottom: 9px;
           }
 
-          .address {
-            font-size: 12px;
-            margin-top: 7px;
+          .companyAddress {
+            font-size: 11px;
+          }
+
+          .invoiceSection {
+            width: 30%;
+            text-align: center;
+            padding-top: 5px;
+          }
+
+          .invoiceWord {
+            font-size: 19px;
+            font-weight: bold;
+            margin-bottom: 18px;
+          }
+
+          .invoiceDetails {
+            width: 100%;
+            font-size: 10px;
+          }
+
+          .invoiceDetailsRow {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+          }
+
+          .invoiceLabel {
+            font-weight: bold;
+          }
+
+          .customerInfo {
+            width: 70%;
+            margin-top: 5px;
+            margin-bottom: 18px;
+          }
+
+          .customerRow {
+            display: flex;
+            margin-bottom: 9px;
+          }
+
+          .customerLabel {
+            width: 145px;
+            font-weight: bold;
+          }
+
+          .customerValue {
+            flex: 1;
           }
 
           .reportTitle {
-            font-size: 24px;
+            font-size: 18px;
             font-weight: bold;
-            margin: 10px 0 5px;
+            margin: 15px 0 4px;
+            border-top: 1px solid #000;
+            padding-top: 10px;
           }
 
           .period {
-            color: #64748b;
-            font-size: 11px;
-            margin-bottom: 20px;
+            font-size: 10px;
+            margin-bottom: 15px;
           }
 
           .summary {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 25px;
+            gap: 10px;
+            margin-bottom: 18px;
           }
 
           .box {
-            border: 1px solid #d1d5db;
-            padding: 12px;
-            background: #f8fafc;
+            border: 1px solid #999;
+            padding: 9px;
           }
 
           .boxLabel {
-            color: #64748b;
-            font-size: 10px;
-            margin-bottom: 5px;
+            font-size: 9px;
+            margin-bottom: 4px;
           }
 
           .boxValue {
-            font-size: 17px;
+            font-size: 14px;
             font-weight: bold;
           }
 
@@ -1128,19 +1206,19 @@ function Reports() {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 9px;
+            font-size: 8.5px;
           }
 
           th {
             background: #111827;
             color: white;
-            padding: 8px 5px;
+            padding: 7px 4px;
             text-align: left;
             border: 1px solid #111827;
           }
 
           td {
-            padding: 7px 5px;
+            padding: 6px 4px;
             border: 1px solid #d1d5db;
             vertical-align: top;
             word-wrap: break-word;
@@ -1160,15 +1238,15 @@ function Reports() {
           }
 
           .totals {
-            margin-top: 20px;
+            margin-top: 15px;
             margin-left: auto;
-            width: 300px;
+            width: 280px;
           }
 
           .totalRow {
             display: flex;
             justify-content: space-between;
-            padding: 7px 0;
+            padding: 6px 0;
             border-bottom: 1px solid #d1d5db;
           }
 
@@ -1177,18 +1255,16 @@ function Reports() {
           }
 
           .netAmount {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
-            color: #9333ea;
           }
 
           .footer {
-            margin-top: 30px;
-            padding-top: 10px;
-            border-top: 1px solid #d1d5db;
+            margin-top: 25px;
+            padding-top: 9px;
+            border-top: 1px solid #000;
             text-align: center;
-            font-size: 9px;
-            color: #64748b;
+            font-size: 8px;
             line-height: 1.5;
           }
 
@@ -1214,31 +1290,123 @@ function Reports() {
 
       <body>
 
-        <div class="header">
+        <!-- ========================= -->
+        <!-- TEYSEER INVOICE HEADER -->
+        <!-- ========================= -->
 
-          <img
-            src="${gaLogo}"
-            class="logo"
-            alt="Haosheng Logo"
-          />
+        <div class="invoiceHeader">
 
-          <div>
+          <div class="topHeader">
 
-            <div class="companyName">
-              HAOSHENG CAR SERVICE AND ACCESSORIES
+            <div class="logoSection">
+
+              <img
+                src="${gaLogo}"
+                class="logo"
+                alt="Haosheng Logo"
+              />
+
             </div>
 
-            <div class="arabicName">
-              هاوشنغ لخدمات وزينة السيارات
+            <div class="companySection">
+
+              <div class="companyName">
+                HAOSHENG CAR SERVICE AND ACCESSORIES
+              </div>
+
+              <div class="arabicName">
+                هاوشنغ لخدمات وزينة السيارات
+              </div>
+
+              <div class="companyAddress">
+                Building 358, Salwa Road, Doha - Qatar
+              </div>
+
             </div>
 
-            <div class="address">
-              Building 358, Salwa Road, Doha - Qatar
+            <div class="invoiceSection">
+
+              <div class="invoiceWord">
+                INVOICE
+              </div>
+
+              <div class="invoiceDetails">
+
+                <div class="invoiceDetailsRow">
+
+                  <span class="invoiceLabel">
+                    DATE:
+                  </span>
+
+                  <span>
+                    ${teyseerEndDate || reportDate}
+                  </span>
+
+                </div>
+
+                <div class="invoiceDetailsRow">
+
+                  <span class="invoiceLabel">
+                    INVOICE NO.
+                  </span>
+
+                  <span>
+                    0006
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="customerInfo">
+
+            <div class="customerRow">
+
+              <div class="customerLabel">
+                NAME/COMPANY:
+              </div>
+
+              <div class="customerValue">
+                TEYSEER MOTORS CO. WLL.
+              </div>
+
+            </div>
+
+            <div class="customerRow">
+
+              <div class="customerLabel">
+                ADDRESS:
+              </div>
+
+              <div class="customerValue">
+                AIRPORT St. DOHA, QATAR
+              </div>
+
+            </div>
+
+            <div class="customerRow">
+
+              <div class="customerLabel">
+                CONTACT NUMBER:
+              </div>
+
+              <div class="customerValue">
+                50900458
+              </div>
+
             </div>
 
           </div>
 
         </div>
+
+        <!-- ========================= -->
+        <!-- REPORT -->
+        <!-- ========================= -->
 
         <div class="reportTitle">
           TEYSEER MOTORS REPORT
@@ -1359,11 +1527,13 @@ function Reports() {
 
         <div class="footer">
 
-          Tel: +974 3368 1888
-          &nbsp; | &nbsp;
-          C.R.NO: 199725
-          &nbsp; | &nbsp;
-          E-mail: info@haoshengcar.com
+          <strong>
+            Tel: +974 3368 1888
+            &nbsp;-&nbsp;
+            C.R.NO: 199725
+            &nbsp;-&nbsp;
+            E-mail: info@haoshengcar.com
+          </strong>
 
           <br />
 
