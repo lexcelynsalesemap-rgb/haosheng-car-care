@@ -7,10 +7,6 @@ function Reports() {
   const [payments, setPayments] = useState([]);
   const [jobServices, setJobServices] = useState([]);
 
-  // =========================================================
-  // MANUAL REPORT SETTINGS
-  // =========================================================
-
   const [manualPending, setManualPending] = useState({
     June: 7000,
     July: 10000,
@@ -18,31 +14,19 @@ function Reports() {
   });
 
   const [manualTeyseer, setManualTeyseer] = useState(181200);
-
   const [savingSetting, setSavingSetting] = useState("");
 
-  // =========================================================
-  // REPORT DATE
-  // =========================================================
-
   const [reportDate, setReportDate] = useState(() => {
-    const date = new Date();
-
-    return date.toLocaleDateString("en-CA", {
+    return new Date().toLocaleDateString("en-CA", {
       timeZone: "Asia/Qatar",
     });
   });
 
-  // =========================================================
-  // AL NUSOOR DATE FILTER
-  // =========================================================
-
   const [alnusoorStartDate, setAlnusoorStartDate] = useState("");
   const [alnusoorEndDate, setAlnusoorEndDate] = useState("");
 
-  // =========================================================
-  // LOAD DATA
-  // =========================================================
+  const [teyseerStartDate, setTeyseerStartDate] = useState("");
+  const [teyseerEndDate, setTeyseerEndDate] = useState("");
 
   useEffect(() => {
     loadReports();
@@ -62,30 +46,14 @@ function Reports() {
       .from("job_services")
       .select("*");
 
-    console.log("REPORT JOBS:", jobData);
-    console.log("REPORT PAYMENTS:", paymentData);
-    console.log("REPORT SERVICES:", serviceData);
-
-    if (jobError) {
-      console.error("JOB ERROR:", jobError);
-    }
-
-    if (paymentError) {
-      console.error("PAYMENT ERROR:", paymentError);
-    }
-
-    if (serviceError) {
-      console.error("SERVICE ERROR:", serviceError);
-    }
+    if (jobError) console.error("JOB ERROR:", jobError);
+    if (paymentError) console.error("PAYMENT ERROR:", paymentError);
+    if (serviceError) console.error("SERVICE ERROR:", serviceError);
 
     setJobs(jobData || []);
     setPayments(paymentData || []);
     setJobServices(serviceData || []);
   }
-
-  // =========================================================
-  // LOAD REPORT SETTINGS
-  // =========================================================
 
   async function loadReportSettings() {
     const { data, error } = await supabase
@@ -126,10 +94,6 @@ function Reports() {
     }
   }
 
-  // =========================================================
-  // SAVE REPORT SETTING
-  // =========================================================
-
   async function saveSetting(settingName, amount) {
     try {
       setSavingSetting(settingName);
@@ -144,11 +108,6 @@ function Reports() {
 
       if (findError) {
         console.error("FIND SETTING ERROR:", findError);
-
-        alert(
-          `Could not save ${settingName}: ${findError.message}`
-        );
-
         return;
       }
 
@@ -162,11 +121,6 @@ function Reports() {
 
         if (error) {
           console.error("UPDATE SETTING ERROR:", error);
-
-          alert(
-            `Could not save ${settingName}: ${error.message}`
-          );
-
           return;
         }
       } else {
@@ -179,24 +133,12 @@ function Reports() {
 
         if (error) {
           console.error("INSERT SETTING ERROR:", error);
-
-          alert(
-            `Could not save ${settingName}: ${error.message}`
-          );
-
-          return;
         }
       }
-
-      console.log(`${settingName} saved:`, numericAmount);
     } finally {
       setSavingSetting("");
     }
   }
-
-  // =========================================================
-  // CHANGE MANUAL VALUES
-  // =========================================================
 
   function changeJune(value) {
     const amount = Number(value) || 0;
@@ -235,13 +177,8 @@ function Reports() {
     const amount = Number(value) || 0;
 
     setManualTeyseer(amount);
-
     saveSetting("Previous Teyseer", amount);
   }
-
-  // =========================================================
-  // FINANCIAL SUMMARY
-  // =========================================================
 
   const netSales = jobs.reduce(
     (sum, job) =>
@@ -259,10 +196,6 @@ function Reports() {
 
   const balance = netSales - paid;
 
-  // =========================================================
-  // PAYMENT METHODS
-  // =========================================================
-
   function getPaymentMethod(payment) {
     return String(
       payment.payment_method ||
@@ -275,9 +208,7 @@ function Reports() {
   }
 
   function isCash(payment) {
-    const method = getPaymentMethod(payment);
-
-    return method.includes("cash");
+    return getPaymentMethod(payment).includes("cash");
   }
 
   function isCard(payment) {
@@ -326,10 +257,6 @@ function Reports() {
       0
     );
 
-  // =========================================================
-  // DAILY PAYMENTS
-  // =========================================================
-
   const dailyPayments = {};
 
   payments.forEach(payment => {
@@ -374,10 +301,6 @@ function Reports() {
       dateB.localeCompare(dateA)
   );
 
-  // =========================================================
-  // SELECTED DATE PAYMENT
-  // =========================================================
-
   const selectedDatePayments = payments.filter(payment => {
     if (!payment.payment_date) return false;
 
@@ -394,10 +317,6 @@ function Reports() {
       0
     );
 
-  // =========================================================
-  // TEYSEER
-  // =========================================================
-
   const teyseerSources = [
     "Teyseer Motors",
     "Teyseer Motors - Bahaa",
@@ -412,115 +331,6 @@ function Reports() {
     job =>
       !teyseerSources.includes(job.source)
   );
-
-  // =========================================================
-  // TEYSEER SALES
-  // =========================================================
-
-  let teyseerSales = 0;
-
-  teyseerJobs.forEach(job => {
-    const services = jobServices.filter(
-      service =>
-        String(service.job_id) ===
-        String(job.id)
-    );
-
-    services.forEach(service => {
-      const amount = Number(service.price || 0);
-
-      const serviceName = String(
-        service.service_name ||
-          service.name ||
-          ""
-      ).toLowerCase();
-
-      let reportSource = "Sales Team";
-
-      if (job.source === "Teyseer Motors") {
-        reportSource = "Teyseer Motors";
-      } else if (
-        job.source === "Teyseer Motors - Salah"
-      ) {
-        if (serviceName.includes("full wtt")) {
-          reportSource = "Teyseer Motors";
-        } else {
-          reportSource = "Salah";
-        }
-      } else if (
-        job.source === "Teyseer Motors - Bahaa"
-      ) {
-        if (serviceName.includes("full wtt")) {
-          reportSource = "Teyseer Motors";
-        } else {
-          reportSource = "Bahaa";
-        }
-      }
-
-      if (reportSource === "Teyseer Motors") {
-        teyseerSales += amount;
-      }
-    });
-  });
-
-  // =========================================================
-  // CUSTOMER SALES
-  // =========================================================
-
-  const customerSales = customerJobs.reduce(
-    (sum, job) =>
-      sum +
-      Number(job.price || 0) -
-      Number(job.discount || 0),
-    0
-  );
-
-  // =========================================================
-  // TEYSEER PAID
-  // =========================================================
-
-  const teyseerIds = teyseerJobs.map(job => job.id);
-
-  const teyseerPaid = payments
-    .filter(payment =>
-      teyseerIds.some(
-        id =>
-          String(id) ===
-          String(payment.job_id)
-      )
-    )
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-  // =========================================================
-  // CUSTOMER PAID
-  // =========================================================
-
-  const customerIds = customerJobs.map(job => job.id);
-
-  const customerPaid = payments
-    .filter(payment =>
-      customerIds.some(
-        id =>
-          String(id) ===
-          String(payment.job_id)
-      )
-    )
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-  const customerBalance =
-    customerSales - customerPaid;
-
-  // =========================================================
-  // DATE HELPERS
-  // =========================================================
 
   function getDateString(date) {
     const year = date.getFullYear();
@@ -543,27 +353,125 @@ function Reports() {
       job.date ||
       job.createdDate;
 
-    if (!possibleDate) {
-      return null;
-    }
+    if (!possibleDate) return null;
 
     const date = new Date(possibleDate);
 
-    if (isNaN(date.getTime())) {
-      return null;
-    }
+    if (isNaN(date.getTime())) return null;
 
-    return date.toLocaleDateString(
-      "en-CA",
-      {
-        timeZone: "Asia/Qatar",
-      }
-    );
+    return date.toLocaleDateString("en-CA", {
+      timeZone: "Asia/Qatar",
+    });
   }
 
-  // =========================================================
-  // TODAY
-  // =========================================================
+  function getTeyseerReportSource(job, service) {
+    const serviceName = String(
+      service?.service_name ||
+        service?.name ||
+        service?.title ||
+        ""
+    ).toLowerCase();
+
+    if (job.source === "Teyseer Motors") {
+      return "Teyseer Motors";
+    }
+
+    if (job.source === "Teyseer Motors - Salah") {
+      if (serviceName.includes("full wtt")) {
+        return "Teyseer Motors";
+      }
+
+      return "Salah";
+    }
+
+    if (job.source === "Teyseer Motors - Bahaa") {
+      if (serviceName.includes("full wtt")) {
+        return "Teyseer Motors";
+      }
+
+      return "Bahaa";
+    }
+
+    return "Teyseer Motors";
+  }
+
+  function getTeyseerJobAmount(job) {
+    const services = jobServices.filter(
+      service =>
+        String(service.job_id) ===
+        String(job.id)
+    );
+
+    if (services.length === 0) {
+      return Math.max(
+        Number(job.price || 0) -
+          Number(job.discount || 0),
+        0
+      );
+    }
+
+    return services.reduce((sum, service) => {
+      const source = getTeyseerReportSource(
+        job,
+        service
+      );
+
+      if (source !== "Teyseer Motors") {
+        return sum;
+      }
+
+      return sum + Number(service.price || 0);
+    }, 0);
+  }
+
+  const teyseerSales = teyseerJobs.reduce(
+    (sum, job) =>
+      sum + getTeyseerJobAmount(job),
+    0
+  );
+
+  const customerSales = customerJobs.reduce(
+    (sum, job) =>
+      sum +
+      Number(job.price || 0) -
+      Number(job.discount || 0),
+    0
+  );
+
+  const teyseerIds = teyseerJobs.map(job => job.id);
+
+  const teyseerPaid = payments
+    .filter(payment =>
+      teyseerIds.some(
+        id =>
+          String(id) ===
+          String(payment.job_id)
+      )
+    )
+    .reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+  const customerIds = customerJobs.map(job => job.id);
+
+  const customerPaid = payments
+    .filter(payment =>
+      customerIds.some(
+        id =>
+          String(id) ===
+          String(payment.job_id)
+      )
+    )
+    .reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+  const customerBalance =
+    customerSales - customerPaid;
 
   const today = new Date().toLocaleDateString(
     "en-CA",
@@ -576,10 +484,6 @@ function Reports() {
     job =>
       getJobDate(job) === today
   ).length;
-
-  // =========================================================
-  // THIS WEEK
-  // =========================================================
 
   const currentDate = new Date();
 
@@ -616,10 +520,6 @@ function Reports() {
     );
   }).length;
 
-  // =========================================================
-  // THIS MONTH
-  // =========================================================
-
   const startOfMonth = new Date(
     currentDate.getFullYear(),
     currentDate.getMonth(),
@@ -638,10 +538,6 @@ function Reports() {
       jobDate <= today
     );
   }).length;
-
-  // =========================================================
-  // DAILY CARS
-  // =========================================================
 
   const dailyCars = {};
 
@@ -663,10 +559,6 @@ function Reports() {
         dateB.localeCompare(dateA)
     );
 
-  // =========================================================
-  // AL NUSOOR REPORT
-  // =========================================================
-
   const alnusoorJobs = jobs.filter(job => {
     const customer = String(
       job.customer || ""
@@ -678,9 +570,7 @@ function Reports() {
       customer.includes("al nusoor") ||
       customer.includes("alnusoor");
 
-    if (!isAlnusoor) {
-      return false;
-    }
+    if (!isAlnusoor) return false;
 
     const jobDate = getJobDate(job);
 
@@ -705,15 +595,13 @@ function Reports() {
 
   const alnusoorAmount = alnusoorJobs.reduce(
     (sum, job) =>
-      sum +
-      Number(job.price || 0),
+      sum + Number(job.price || 0),
     0
   );
 
   const alnusoorDiscount = alnusoorJobs.reduce(
     (sum, job) =>
-      sum +
-      Number(job.discount || 0),
+      sum + Number(job.discount || 0),
     0
   );
 
@@ -723,545 +611,637 @@ function Reports() {
     0
   );
 
-  // =========================================================
-  // AL NUSOOR PRINT REPORT
-  // =========================================================
+  const filteredTeyseerJobs =
+    teyseerJobs.filter(job => {
+      const jobDate = getJobDate(job);
 
- function printAlnusoorReport() {
-  if (alnusoorJobs.length === 0) {
-    alert("No Al Nusoor jobs found.");
-    return;
-  }
+      if (
+        teyseerStartDate &&
+        jobDate &&
+        jobDate < teyseerStartDate
+      ) {
+        return false;
+      }
 
-  const rows = alnusoorJobs
-    .map((job, index) => {
-      const price = Number(job.price || 0);
-      const discount = Number(job.discount || 0);
-      const total = Math.max(price - discount, 0);
+      if (
+        teyseerEndDate &&
+        jobDate &&
+        jobDate > teyseerEndDate
+      ) {
+        return false;
+      }
 
-      return `
-        <tr>
-          <td>${getJobDate(job) || "-"}</td>
+      return true;
+    });
 
-          <td>
-            ${job.carMake || job.carType || job.carModel || "-"}
-          </td>
+  const filteredTeyseerSales =
+    filteredTeyseerJobs.reduce(
+      (sum, job) =>
+        sum + getTeyseerJobAmount(job),
+      0
+    );
 
-          <td>
-            ${job.plate || "-"}
-          </td>
+  function printAlnusoorReport() {
+    if (alnusoorJobs.length === 0) {
+      alert("No Al Nusoor jobs found.");
+      return;
+    }
 
-          <td class="money">
-            ${price.toLocaleString("en-US", {
+    const rows = alnusoorJobs
+      .map(job => {
+        const price = Number(job.price || 0);
+        const discount = Number(job.discount || 0);
+        const total = Math.max(
+          price - discount,
+          0
+        );
+
+        return `
+          <tr>
+            <td>${getJobDate(job) || "-"}</td>
+            <td>${job.customer || "-"}</td>
+            <td>${job.carMake || job.carType || job.carModel || "-"}</td>
+            <td>${job.plate || "-"}</td>
+            <td class="money">${price.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </td>
-
-          <td class="money">
-            ${discount.toLocaleString("en-US", {
+            })}</td>
+            <td class="money">${discount.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </td>
-
-          <td class="money">
-            ${total.toLocaleString("en-US", {
+            })}</td>
+            <td class="money">${total.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </td>
-        </tr>
-      `;
-    })
-    .join("");
+            })}</td>
+          </tr>
+        `;
+      })
+      .join("");
 
-  const printWindow = window.open(
-    "",
-    "_blank",
-    "width=1000,height=1000"
-  );
+    const printWindow = window.open(
+      "",
+      "_blank",
+      "width=1000,height=1000"
+    );
 
-  if (!printWindow) {
-    alert("Please allow pop-ups for this website.");
-    return;
-  }
+    if (!printWindow) {
+      alert("Please allow pop-ups for this website.");
+      return;
+    }
 
-  const reportDateText = new Date(
-    `${alnusoorEndDate || reportDate}T00:00:00`
-  ).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Al Nusoor Center Report</title>
 
-  printWindow.document.open();
+        <style>
+          * {
+            box-sizing: border-box;
+          }
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-
-    <html>
-
-    <head>
-
-      <title>
-        Al Nusoor Center Report
-      </title>
-
-      <style>
-
-        * {
-          box-sizing: border-box;
-        }
-
-        @page {
-          size: A4 portrait;
-          margin: 12mm;
-        }
-
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: white;
-        }
-
-        body {
-          font-family:
-            Arial,
-            Helvetica,
-            sans-serif;
-
-          color: #000;
-
-          font-size: 12px;
-
-          padding: 10px;
-        }
-
-        .page {
-          width: 100%;
-          max-width: 190mm;
-          margin: 0 auto;
-        }
-
-        /* ============================
-           COMPANY HEADER
-        ============================ */
-
-        .companyHeader {
-  width: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 18px;
-  margin-bottom: 25px;
-}
-
-.logoContainer {
-  width: 105px;
-  text-align: left;
-  flex-shrink: 0;
-}
-
-.logo {
-  width: 105px;
-  height: 105px;
-  object-fit: contain;
-}
-
-.companyInfo {
-  flex: 1;
-  padding-top: 8px;
-}
-
-.companyName {
-  font-size: 17px;
-  font-weight: bold;
-  letter-spacing: 0.3px;
-  margin-bottom: 8px;
-}
-
-.arabicName {
-  font-size: 15px;
-  font-weight: bold;
-  margin-bottom: 8px;
-  direction: rtl;
-  text-align: left;
-}
-
-.companyAddress {
-  font-size: 11px;
-  line-height: 1.5;
-}
-        /* ============================
-           CUSTOMER INFORMATION
-        ============================ */
-
-        .customerInfo {
-          width: 100%;
-          margin-top: 10px;
-          margin-bottom: 25px;
-        }
-
-        .infoRow {
-          display: flex;
-          width: 100%;
-          margin-bottom: 10px;
-          min-height: 20px;
-        }
-
-        .infoLabel {
-          width: 145px;
-          font-weight: bold;
-          font-size: 11px;
-        }
-
-        .infoValue {
-          flex: 1;
-          font-size: 11px;
-        }
-
-        /* ============================
-           VEHICLE TABLE
-        ============================ */
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 10px;
-        }
-
-        th {
-          font-size: 11px;
-          font-weight: bold;
-          text-align: left;
-          padding: 9px 7px;
-          border-top: 1px solid #000;
-          border-bottom: 1px solid #000;
-        }
-
-        td {
-          font-size: 11px;
-          padding: 8px 7px;
-          border-bottom: 1px solid #d1d5db;
-        }
-
-        .money {
-          text-align: right;
-        }
-
-        /* ============================
-           TOTALS
-        ============================ */
-
-        .totals {
-          width: 100%;
-          margin-top: 25px;
-        }
-
-        .totalRow {
-          display: flex;
-          margin-bottom: 10px;
-          font-size: 12px;
-        }
-
-        .totalLabel {
-          width: 145px;
-          font-weight: bold;
-        }
-
-        .totalValue {
-          font-weight: bold;
-        }
-
-        .netAmount {
-          font-size: 14px;
-          font-weight: bold;
-        }
-
-        /* ============================
-           PAYMENT
-        ============================ */
-
-        .paymentSection {
-          margin-top: 25px;
-        }
-
-        .paymentTitle {
-          font-weight: bold;
-          font-size: 12px;
-          margin-bottom: 8px;
-        }
-
-        .paymentMethods {
-          font-size: 11px;
-        }
-
-        /* ============================
-           FOOTER
-        ============================ */
-
-        .footer {
-          margin-top: 55px;
-          padding-top: 12px;
-          border-top: 1px solid #000;
-          text-align: center;
-          font-size: 9px;
-          line-height: 1.6;
-        }
-
-        .footer strong {
-          font-weight: bold;
-        }
-
-        @media print {
-
-          html,
-          body {
-            width: 210mm;
-            min-height: 297mm;
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
           }
 
           body {
-            padding: 0;
+            font-family: Arial, sans-serif;
+            color: #000;
+            font-size: 12px;
+            margin: 0;
+            padding: 10px;
           }
 
-          .page {
+          .header {
+            display: flex;
+            gap: 18px;
+            margin-bottom: 25px;
+          }
+
+          .logo {
+            width: 105px;
+            height: 105px;
+            object-fit: contain;
+          }
+
+          .companyInfo {
+            padding-top: 8px;
+          }
+
+          .companyName {
+            font-size: 17px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+
+          .arabicName {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+
+          .address {
+            font-size: 11px;
+          }
+
+          .info {
+            margin-bottom: 25px;
+          }
+
+          .infoRow {
+            display: flex;
+            margin-bottom: 10px;
+          }
+
+          .label {
+            width: 145px;
+            font-weight: bold;
+          }
+
+          table {
             width: 100%;
-            max-width: none;
+            border-collapse: collapse;
           }
 
-          tr {
-            page-break-inside: avoid;
+          th {
+            text-align: left;
+            padding: 9px 7px;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
           }
 
-        }
+          td {
+            padding: 8px 7px;
+            border-bottom: 1px solid #d1d5db;
+          }
 
-      </style>
+          .money {
+            text-align: right;
+          }
 
-    </head>
+          .totals {
+            margin-top: 25px;
+          }
 
-    <body>
+          .totalRow {
+            display: flex;
+            margin-bottom: 10px;
+          }
 
-      <div class="page">
+          .totalLabel {
+            width: 145px;
+            font-weight: bold;
+          }
 
-        <!-- COMPANY HEADER -->
+          .net {
+            font-size: 14px;
+            font-weight: bold;
+          }
 
-<div class="companyHeader">
+          .footer {
+            margin-top: 55px;
+            padding-top: 12px;
+            border-top: 1px solid #000;
+            text-align: center;
+            font-size: 9px;
+            line-height: 1.6;
+          }
+        </style>
+      </head>
 
-  <div class="logoContainer">
+      <body>
 
-    <img
-      src="${gaLogo}"
-      class="logo"
-      alt="Haosheng Logo"
-    />
+        <div class="header">
+          <img
+            src="${gaLogo}"
+            class="logo"
+            alt="Haosheng Logo"
+          />
 
-  </div>
+          <div class="companyInfo">
+            <div class="companyName">
+              HAOSHENG CAR SERVICE AND ACCESSORIES
+            </div>
 
-  <div class="companyInfo">
+            <div class="arabicName">
+              هاوشنغ لخدمات وزينة السيارات
+            </div>
 
-    <div class="companyName">
-      HAOSHENG CAR SERVICE AND ACCESSORIES
-    </div>
+            <div class="address">
+              Building 358, Salwa Road, Doha - Qatar
+            </div>
+          </div>
+        </div>
 
-    <div class="arabicName">
-      هاوشنغ لخدمات وزينة السيارات
-    </div>
-
-    <div class="companyAddress">
-      Building 358, Salwa Road, Doha - Qatar
-    </div>
-
-  </div>
-
-</div>
-
-
-        <!-- CUSTOMER INFORMATION -->
-
-        <div class="customerInfo">
-
+        <div class="info">
           <div class="infoRow">
-
-            <div class="infoLabel">
-              DATE:
-            </div>
-
-            <div class="infoValue">
-              ${reportDateText}
-            </div>
-
+            <div class="label">DATE:</div>
+            <div>${alnusoorEndDate || reportDate}</div>
           </div>
 
-
           <div class="infoRow">
-
-            <div class="infoLabel">
-              NAME/COMPANY:
-            </div>
-
-            <div class="infoValue">
-              AL NUSOOR CENTER
-            </div>
-
+            <div class="label">NAME/COMPANY:</div>
+            <div>AL NUSOOR CENTER</div>
           </div>
 
-
           <div class="infoRow">
-
-            <div class="infoLabel">
-              ADDRESS:
-            </div>
-
-            <div class="infoValue">
-              SALWA ROAD
-            </div>
-
+            <div class="label">ADDRESS:</div>
+            <div>SALWA ROAD</div>
           </div>
 
-
           <div class="infoRow">
+            <div class="label">CONTACT NUMBER:</div>
+            <div>30124444</div>
+          </div>
+        </div>
 
-            <div class="infoLabel">
-              CONTACT NUMBER:
+        <table>
+          <thead>
+            <tr>
+              <th>DATE</th>
+              <th>CUSTOMER</th>
+              <th>CAR</th>
+              <th>PLATE</th>
+              <th class="money">PRICE</th>
+              <th class="money">DISCOUNT</th>
+              <th class="money">TOTAL</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+
+        <div class="totals">
+
+          <div class="totalRow">
+            <div class="totalLabel">AMOUNT:</div>
+            <div>
+              ${alnusoorAmount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </div>
+          </div>
+
+          <div class="totalRow">
+            <div class="totalLabel">TOTAL DISCOUNT:</div>
+            <div>
+              ${alnusoorDiscount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </div>
+          </div>
+
+          <div class="totalRow net">
+            <div class="totalLabel">NET AMOUNT:</div>
+            <div>
+              ${alnusoorNet.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </div>
+          </div>
+
+        </div>
+
+        <div style="margin-top:25px;">
+          <strong>PAYMENT METHOD:</strong>
+          <br />
+          CASH / VISA / MASTERCARD / AMEX / NAPS
+        </div>
+
+        <div class="footer">
+          <strong>
+            Tel: +974 3368 1888
+            &nbsp;-&nbsp;
+            C.R.NO: 199725
+            &nbsp;-&nbsp;
+            E-mail: info@haoshengcar.com
+          </strong>
+
+          <br />
+
+          Fereej Al Manaseer, Zone 55,
+          St. 340, Bldg 358,
+          Salwa Road, Doha, Qatar
+        </div>
+
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    printWindow.onload = function () {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 500);
+    };
+  }
+
+  function printTeyseerReport() {
+    if (filteredTeyseerJobs.length === 0) {
+      alert("No Teyseer jobs found.");
+      return;
+    }
+
+    const rows = filteredTeyseerJobs
+      .map((job, index) => {
+        const amount = getTeyseerJobAmount(job);
+
+        const services = jobServices.filter(
+          service =>
+            String(service.job_id) ===
+            String(job.id)
+        );
+
+        const serviceNames = services
+          .map(service =>
+            service.service_name ||
+            service.name ||
+            service.title ||
+            ""
+          )
+          .filter(Boolean)
+          .join(", ");
+
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${getJobDate(job) || "-"}</td>
+            <td>${job.customer || "-"}</td>
+            <td>${job.carMake || job.carType || job.carModel || "-"}</td>
+            <td>${job.plate || "-"}</td>
+            <td>${job.source || "-"}</td>
+            <td>${serviceNames || "-"}</td>
+            <td class="money">
+              QAR ${amount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const printWindow = window.open(
+      "",
+      "_blank",
+      "width=1400,height=900"
+    );
+
+    if (!printWindow) {
+      alert("Please allow pop-ups for this website.");
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+
+      <html>
+
+      <head>
+
+        <title>Teyseer Motors Report</title>
+
+        <style>
+
+          * {
+            box-sizing: border-box;
+          }
+
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+
+          body {
+            font-family: Arial, sans-serif;
+            color: #111827;
+            margin: 0;
+            padding: 20px;
+          }
+
+          .header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 25px;
+          }
+
+          .logo {
+            width: 90px;
+            height: 90px;
+            object-fit: contain;
+          }
+
+          .companyName {
+            font-size: 20px;
+            font-weight: bold;
+          }
+
+          .arabicName {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 7px;
+          }
+
+          .address {
+            font-size: 12px;
+            margin-top: 7px;
+          }
+
+          h1 {
+            margin: 0 0 5px 0;
+            font-size: 25px;
+          }
+
+          .date {
+            color: #64748b;
+            margin-bottom: 25px;
+          }
+
+          .summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+          }
+
+          .box {
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            padding: 15px;
+            background: #f8fafc;
+          }
+
+          .label {
+            color: #64748b;
+            font-size: 12px;
+          }
+
+          .value {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+          }
+
+          th {
+            background: #111827;
+            color: white;
+            padding: 9px 6px;
+            text-align: left;
+          }
+
+          td {
+            padding: 8px 6px;
+            border: 1px solid #d1d5db;
+            vertical-align: top;
+          }
+
+          tr:nth-child(even) {
+            background: #f8fafc;
+          }
+
+          .money {
+            text-align: right;
+            white-space: nowrap;
+          }
+
+          .footer {
+            margin-top: 30px;
+            padding-top: 12px;
+            border-top: 1px solid #d1d5db;
+            text-align: center;
+            font-size: 10px;
+            color: #64748b;
+          }
+
+        </style>
+
+      </head>
+
+      <body>
+
+        <div class="header">
+
+          <img
+            src="${gaLogo}"
+            class="logo"
+            alt="Haosheng Logo"
+          />
+
+          <div>
+
+            <div class="companyName">
+              HAOSHENG CAR SERVICE AND ACCESSORIES
             </div>
 
-            <div class="infoValue">
-              30124444
+            <div class="arabicName">
+              هاوشنغ لخدمات وزينة السيارات
+            </div>
+
+            <div class="address">
+              Building 358, Salwa Road, Doha - Qatar
             </div>
 
           </div>
 
         </div>
 
+        <h1>
+          TEYSEER MOTORS REPORT
+        </h1>
 
-        <!-- VEHICLE TABLE -->
+        <div class="date">
+
+          Period:
+          ${teyseerStartDate || "All dates"}
+          -
+          ${teyseerEndDate || "All dates"}
+
+        </div>
+
+        <div class="summary">
+
+          <div class="box">
+
+            <div class="label">
+              TEYSEER CARS
+            </div>
+
+            <div class="value">
+              ${filteredTeyseerJobs.length}
+            </div>
+
+          </div>
+
+          <div class="box">
+
+            <div class="label">
+              TEYSEER SALES
+            </div>
+
+            <div class="value">
+              QAR ${filteredTeyseerSales.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </div>
+
+          </div>
+
+          <div class="box">
+
+            <div class="label">
+              TOTAL PAID
+            </div>
+
+            <div class="value">
+              QAR ${teyseerPaid.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </div>
+
+          </div>
+
+        </div>
 
         <table>
 
           <thead>
 
             <tr>
-
-              <th>
-                DATE
-              </th>
-
-              <th>
-                CAR MAKE
-              </th>
-
-              <th>
-                PLATE NUMBER
-              </th>
-
-              <th class="money">
-                PRICE
-              </th>
-
-              <th class="money">
-                DISCOUNT
-              </th>
-
-              <th class="money">
-                TOTAL
-              </th>
-
+              <th>#</th>
+              <th>DATE</th>
+              <th>CUSTOMER</th>
+              <th>CAR</th>
+              <th>PLATE</th>
+              <th>SOURCE</th>
+              <th>SERVICES</th>
+              <th>AMOUNT</th>
             </tr>
 
           </thead>
 
           <tbody>
-
             ${rows}
-
           </tbody>
 
         </table>
 
-
-        <!-- TOTALS -->
-
-        <div class="totals">
-
-          <div class="totalRow">
-
-            <div class="totalLabel">
-              AMOUNT:
-            </div>
-
-            <div class="totalValue">
-              ${alnusoorAmount.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </div>
-
-          </div>
-
-
-          <div class="totalRow">
-
-            <div class="totalLabel">
-              TOTAL DISCOUNT:
-            </div>
-
-            <div class="totalValue">
-              ${alnusoorDiscount.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </div>
-
-          </div>
-
-
-          <div class="totalRow netAmount">
-
-            <div class="totalLabel">
-              NET AMOUNT:
-            </div>
-
-            <div class="totalValue">
-              ${alnusoorNet.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <!-- PAYMENT METHOD -->
-
-        <div class="paymentSection">
-
-          <div class="paymentTitle">
-            PAYMENT METHOD:
-          </div>
-
-          <div class="paymentMethods">
-            CASH / VISA / MASTERCARD / AMEX / NAPS
-          </div>
-
-        </div>
-
-
-        <!-- FOOTER -->
-
         <div class="footer">
 
-          <strong>
-            Tel: +974 3368 1888
-            &nbsp;–&nbsp;
-            C.R.NO: 199725
-            &nbsp;–&nbsp;
-            E-mail: info@haoshengcar.com
-          </strong>
+          Tel: +974 3368 1888
+          &nbsp; | &nbsp;
+          C.R.NO: 199725
+          &nbsp; | &nbsp;
+          E-mail: info@haoshengcar.com
 
           <br />
 
@@ -1271,25 +1251,20 @@ function Reports() {
 
         </div>
 
-      </div>
+      </body>
 
-    </body>
+      </html>
+    `);
 
-    </html>
-  `);
+    printWindow.document.close();
 
-  printWindow.document.close();
-
-  printWindow.onload = function () {
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 700);
-  };
-}
-  // =========================================================
-  // DAILY REPORT
-  // =========================================================
+    printWindow.onload = function () {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 500);
+    };
+  }
 
   function printDailyReport() {
     const selectedDate = reportDate;
@@ -1363,33 +1338,6 @@ function Reports() {
         const jobBalance =
           netAmount - jobPaid;
 
-        let jobTime = "";
-
-        const possibleDate =
-          job.created_at ||
-          job.job_date ||
-          job.date ||
-          job.createdDate;
-
-        if (possibleDate) {
-          const date = new Date(
-            possibleDate
-          );
-
-          if (!isNaN(date.getTime())) {
-            jobTime =
-              date.toLocaleTimeString(
-                "en-US",
-                {
-                  timeZone:
-                    "Asia/Qatar",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }
-              );
-          }
-        }
-
         let services = "No services";
 
         if (Array.isArray(job.services)) {
@@ -1423,7 +1371,6 @@ function Reports() {
         return `
           <tr>
             <td>${index + 1}</td>
-            <td>${jobTime}</td>
             <td>${job.customer || ""}</td>
             <td>${job.phone || ""}</td>
             <td>${job.carModel || ""}</td>
@@ -1433,10 +1380,10 @@ function Reports() {
             <td class="money">
               QAR ${netAmount.toLocaleString()}
             </td>
-            <td class="money paid">
+            <td class="money">
               QAR ${jobPaid.toLocaleString()}
             </td>
-            <td class="money balance">
+            <td class="money">
               QAR ${jobBalance.toLocaleString()}
             </td>
           </tr>
@@ -1474,18 +1421,15 @@ function Reports() {
     );
 
     if (!printWindow) {
-      alert(
-        "Please allow pop-ups for this website."
-      );
-
+      alert("Please allow pop-ups for this website.");
       return;
     }
 
-    printWindow.document.open();
-
     printWindow.document.write(`
       <!DOCTYPE html>
+
       <html>
+
       <head>
 
         <title>
@@ -1507,17 +1451,11 @@ function Reports() {
 
           h1 {
             margin: 0;
-            font-size: 28px;
-          }
-
-          h2 {
-            margin-top: 30px;
           }
 
           .date {
             color: #64748b;
-            margin-top: 5px;
-            margin-bottom: 25px;
+            margin: 5px 0 25px;
           }
 
           .summary {
@@ -1545,6 +1483,10 @@ function Reports() {
             margin-top: 5px;
           }
 
+          h2 {
+            margin-top: 30px;
+          }
+
           table {
             width: 100%;
             border-collapse: collapse;
@@ -1555,59 +1497,19 @@ function Reports() {
             background: #111827;
             color: white;
             padding: 9px 6px;
-            border: 1px solid #111827;
             text-align: left;
           }
 
           td {
             padding: 8px 6px;
             border: 1px solid #d1d5db;
-            vertical-align: top;
-          }
-
-          tr:nth-child(even) {
-            background: #f8fafc;
           }
 
           .money {
             text-align: right;
-            white-space: nowrap;
-          }
-
-          .paid {
-            color: #15803d;
-          }
-
-          .balance {
-            color: #dc2626;
-          }
-
-          .signature {
-            margin-top: 45px;
-            display: flex;
-            justify-content: space-between;
-          }
-
-          .signatureBox {
-            width: 200px;
-            text-align: center;
-            border-top: 1px solid #111827;
-            padding-top: 8px;
-            font-size: 12px;
-          }
-
-          .footer {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #d1d5db;
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: #64748b;
           }
 
           @media print {
-
             @page {
               size: landscape;
               margin: 10mm;
@@ -1616,7 +1518,6 @@ function Reports() {
             body {
               padding: 5px;
             }
-
           }
 
         </style>
@@ -1626,7 +1527,7 @@ function Reports() {
       <body>
 
         <h1>
-          🚗 Daily Workshop Report
+          Daily Workshop Report
         </h1>
 
         <div class="date">
@@ -1678,7 +1579,7 @@ function Reports() {
         </div>
 
         <h2>
-          🚗 Cars
+          Cars
         </h2>
 
         <table>
@@ -1687,7 +1588,6 @@ function Reports() {
 
             <tr>
               <th>#</th>
-              <th>Time</th>
               <th>Customer</th>
               <th>Phone</th>
               <th>Car</th>
@@ -1708,7 +1608,7 @@ function Reports() {
         </table>
 
         <h2>
-          💳 Payments Received
+          Payments Received
         </h2>
 
         <table>
@@ -1729,42 +1629,8 @@ function Reports() {
 
         </table>
 
-        <div class="signature">
-
-          <div class="signatureBox">
-            Prepared By
-          </div>
-
-          <div class="signatureBox">
-            Checked By
-          </div>
-
-          <div class="signatureBox">
-            Manager
-          </div>
-
-        </div>
-
-        <div class="footer">
-
-          <span>
-            Workshop Daily Report
-          </span>
-
-          <span>
-            Printed:
-            ${new Date().toLocaleString(
-              "en-US",
-              {
-                timeZone:
-                  "Asia/Qatar",
-              }
-            )}
-          </span>
-
-        </div>
-
       </body>
+
       </html>
     `);
 
@@ -1778,10 +1644,6 @@ function Reports() {
     };
   }
 
-  // =========================================================
-  // DISPLAY
-  // =========================================================
-
   return (
     <div
       style={{
@@ -1792,12 +1654,8 @@ function Reports() {
     >
 
       <h1>
-        📊 Reports
+        Reports
       </h1>
-
-      {/* =====================================================
-          DAILY REPORT DATE
-      ===================================================== */}
 
       <div
         style={{
@@ -1812,10 +1670,9 @@ function Reports() {
         <label
           style={{
             fontWeight: "bold",
-            fontSize: "16px",
           }}
         >
-          📅 Report Date:
+          Report Date:
         </label>
 
         <input
@@ -1824,50 +1681,23 @@ function Reports() {
           onChange={e =>
             setReportDate(e.target.value)
           }
-          style={{
-            padding: "10px 12px",
-            borderRadius: "8px",
-            border: "1px solid #cbd5e1",
-            fontSize: "16px",
-          }}
+          style={inputStyle}
         />
 
       </div>
 
       <button
         onClick={printDailyReport}
-        style={{
-          background: "#111827",
-          color: "white",
-          border: "none",
-          padding: "12px 20px",
-          borderRadius: "10px",
-          cursor: "pointer",
-          fontSize: "16px",
-          fontWeight: "bold",
-          marginBottom: "25px",
-        }}
+        style={darkButton}
       >
-        🖨️ Print Daily Report
+        Print Daily Report
       </button>
 
-      {/* =====================================================
-          FINANCIAL SUMMARY
-      ===================================================== */}
-
       <h2>
-        💰 Financial Summary
+        Financial Summary
       </h2>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(220px,1fr))",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div style={gridStyle}>
 
         <FinancialCard
           title="Total Sales"
@@ -1899,23 +1729,11 @@ function Reports() {
 
       </div>
 
-      {/* =====================================================
-          PAYMENT METHODS
-      ===================================================== */}
-
       <h2>
-        💳 Payment Methods
+        Payment Methods
       </h2>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(220px,1fr))",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div style={gridStyle}>
 
         <FinancialCard
           title="Cash"
@@ -1940,25 +1758,11 @@ function Reports() {
 
       </div>
 
-      {/* =====================================================
-          DAILY PAYMENTS
-      ===================================================== */}
-
       <h2>
-        💳 Daily Payments
+        Daily Payments
       </h2>
 
-      <div
-        style={{
-          background: "white",
-          padding: "25px",
-          borderRadius: "18px",
-          boxShadow:
-            "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom: "20px",
-          borderTop: "5px solid #16a34a",
-        }}
-      >
+      <div style={whiteCardStyle}>
 
         <h3>
           Payments on {reportDate}
@@ -1967,18 +1771,12 @@ function Reports() {
         <h1
           style={{
             color: "#16a34a",
-            margin: "10px 0",
           }}
         >
-          QAR{" "}
-          {selectedDatePaymentTotal.toLocaleString()}
+          QAR {selectedDatePaymentTotal.toLocaleString()}
         </h1>
 
-        <p
-          style={{
-            color: "#64748b",
-          }}
-        >
+        <p>
           {selectedDatePayments.length} payment
           {selectedDatePayments.length === 1
             ? ""
@@ -1987,67 +1785,25 @@ function Reports() {
 
       </div>
 
-      <div
-        style={{
-          background: "white",
-          padding: "25px",
-          borderRadius: "18px",
-          boxShadow:
-            "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom: "30px",
-        }}
-      >
+      <div style={whiteCardStyle}>
 
         {dailyPaymentRows.length === 0 ? (
-          <p>
-            No payment records found.
-          </p>
+          <p>No payment records found.</p>
         ) : (
-          <div
-            style={{
-              overflowX: "auto",
-            }}
-          >
+          <div style={{ overflowX: "auto" }}>
 
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-              }}
-            >
+            <table style={tableStyle}>
 
               <thead>
 
                 <tr>
-
-                  <th style={tableHeader}>
-                    Date
-                  </th>
-
-                  <th style={tableHeader}>
-                    Cash
-                  </th>
-
-                  <th style={tableHeader}>
-                    Visa
-                  </th>
-
-                  <th style={tableHeader}>
-                    Mastercard
-                  </th>
-
-                  <th style={tableHeader}>
-                    Bank Transfer
-                  </th>
-
-                  <th style={tableHeader}>
-                    Other
-                  </th>
-
-                  <th style={tableHeader}>
-                    Total
-                  </th>
-
+                  <th style={tableHeader}>Date</th>
+                  <th style={tableHeader}>Cash</th>
+                  <th style={tableHeader}>Visa</th>
+                  <th style={tableHeader}>Mastercard</th>
+                  <th style={tableHeader}>Bank Transfer</th>
+                  <th style={tableHeader}>Other</th>
+                  <th style={tableHeader}>Total</th>
                 </tr>
 
               </thead>
@@ -2055,69 +1811,45 @@ function Reports() {
               <tbody>
 
                 {dailyPaymentRows.map(
-                  ([date, values]) => {
+                  ([date, values]) => (
+                    <tr key={date}>
 
-                    const formattedDate =
-                      new Date(
-                        `${date}T00:00:00`
-                      ).toLocaleDateString(
-                        "en-US",
-                        {
-                          weekday: "short",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        }
-                      );
+                      <td style={tableCell}>
+                        {date}
+                      </td>
 
-                    return (
-                      <tr key={date}>
+                      <td style={tableCell}>
+                        QAR {values.cash.toLocaleString()}
+                      </td>
 
-                        <td style={tableCell}>
-                          <strong>
-                            {formattedDate}
-                          </strong>
-                        </td>
+                      <td style={tableCell}>
+                        QAR {values.visa.toLocaleString()}
+                      </td>
 
-                        <td style={tableCell}>
-                          QAR{" "}
-                          {values.cash.toLocaleString()}
-                        </td>
+                      <td style={tableCell}>
+                        QAR {values.mastercard.toLocaleString()}
+                      </td>
 
-                        <td style={tableCell}>
-                          QAR{" "}
-                          {values.visa.toLocaleString()}
-                        </td>
+                      <td style={tableCell}>
+                        QAR {values.bankTransfer.toLocaleString()}
+                      </td>
 
-                        <td style={tableCell}>
-                          QAR{" "}
-                          {values.mastercard.toLocaleString()}
-                        </td>
+                      <td style={tableCell}>
+                        QAR {values.other.toLocaleString()}
+                      </td>
 
-                        <td style={tableCell}>
-                          QAR{" "}
-                          {values.bankTransfer.toLocaleString()}
-                        </td>
+                      <td
+                        style={{
+                          ...tableCell,
+                          fontWeight: "bold",
+                          color: "#16a34a",
+                        }}
+                      >
+                        QAR {values.total.toLocaleString()}
+                      </td>
 
-                        <td style={tableCell}>
-                          QAR{" "}
-                          {values.other.toLocaleString()}
-                        </td>
-
-                        <td
-                          style={{
-                            ...tableCell,
-                            fontWeight: "bold",
-                            color: "#16a34a",
-                          }}
-                        >
-                          QAR{" "}
-                          {values.total.toLocaleString()}
-                        </td>
-
-                      </tr>
-                    );
-                  }
+                    </tr>
+                  )
                 )}
 
               </tbody>
@@ -2129,71 +1861,40 @@ function Reports() {
 
       </div>
 
-      {/* =====================================================
-          PREVIOUS MONTH PENDING
-      ===================================================== */}
-
       <h2>
-        📅 Previous Month Pending
+        Previous Month Pending
       </h2>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(220px,1fr))",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div style={gridStyle}>
 
         <ManualCard
           title="June Pending"
           value={manualPending.June}
-          saving={
-            savingSetting === "June Pending"
-          }
+          saving={savingSetting === "June Pending"}
           onChange={changeJune}
         />
 
         <ManualCard
           title="July Pending"
           value={manualPending.July}
-          saving={
-            savingSetting === "July Pending"
-          }
+          saving={savingSetting === "July Pending"}
           onChange={changeJuly}
         />
 
         <ManualCard
           title="August Pending"
           value={manualPending.August}
-          saving={
-            savingSetting === "August Pending"
-          }
+          saving={savingSetting === "August Pending"}
           onChange={changeAugust}
         />
 
       </div>
 
-      {/* =====================================================
-          PREVIOUS TEYSEER
-      ===================================================== */}
-
       <h2>
-        🏢 Previous Teyseer
+        Previous Teyseer
       </h2>
 
-      <div
-        style={{
-          background: "white",
-          padding: "25px",
-          borderRadius: "18px",
-          boxShadow:
-            "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom: "30px",
-        }}
-      >
+      <div style={whiteCardStyle}>
 
         <h3>
           Previous Teyseer Amount
@@ -2206,56 +1907,29 @@ function Reports() {
             changeTeyseer(e.target.value)
           }
           style={{
-            width: "100%",
-            maxWidth: "350px",
-            padding: "12px",
-            fontSize: "18px",
-            border: "1px solid #cbd5e1",
-            borderRadius: "8px",
+            ...inputStyle,
+            width: "350px",
+            maxWidth: "100%",
           }}
         />
 
-        {savingSetting ===
-          "Previous Teyseer" && (
-          <div
-            style={{
-              color: "#16a34a",
-              marginTop: "8px",
-              fontSize: "14px",
-            }}
-          >
-            ✓ Saving...
-          </div>
+        {savingSetting === "Previous Teyseer" && (
+          <p style={{ color: "#16a34a" }}>
+            Saving...
+          </p>
         )}
 
-        <h2
-          style={{
-            color: "#9333ea",
-          }}
-        >
-          QAR{" "}
-          {manualTeyseer.toLocaleString()}
+        <h2 style={{ color: "#9333ea" }}>
+          QAR {manualTeyseer.toLocaleString()}
         </h2>
 
       </div>
 
-      {/* =====================================================
-          CAR REPORT
-      ===================================================== */}
-
       <h2>
-        🚗 Car Reports
+        Car Reports
       </h2>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(220px,1fr))",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div style={gridStyle}>
 
         <FinancialCard
           title="Total Cars"
@@ -2291,143 +1965,61 @@ function Reports() {
 
       </div>
 
-      {/* =====================================================
-          DAILY CARS
-      ===================================================== */}
+      <h2>
+        Cars Received Per Day
+      </h2>
 
-      <div
-        style={{
-          background: "white",
-          padding: "25px",
-          borderRadius: "18px",
-          boxShadow:
-            "0 8px 20px rgba(0,0,0,0.08)",
-          marginBottom: "30px",
-        }}
-      >
-
-        <h2>
-          📊 Cars Received Per Day
-        </h2>
+      <div style={whiteCardStyle}>
 
         {dailyCarRows.length === 0 ? (
-          <p>
-            No car records found.
-          </p>
+          <p>No car records found.</p>
         ) : (
-          <div
-            style={{
-              overflowX: "auto",
-            }}
-          >
+          <table style={tableStyle}>
 
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-              }}
-            >
+            <thead>
 
-              <thead>
+              <tr>
+                <th style={tableHeader}>Date</th>
+                <th style={tableHeader}>Cars Received</th>
+              </tr>
 
-                <tr>
+            </thead>
 
-                  <th style={tableHeader}>
-                    Date
-                  </th>
+            <tbody>
 
-                  <th style={tableHeader}>
-                    Cars Received
-                  </th>
+              {dailyCarRows.map(
+                ([date, count]) => (
+                  <tr key={date}>
 
-                </tr>
+                    <td style={tableCell}>
+                      {date}
+                    </td>
 
-              </thead>
+                    <td style={tableCell}>
+                      🚗 {count}
+                    </td>
 
-              <tbody>
+                  </tr>
+                )
+              )}
 
-                {dailyCarRows.map(
-                  ([date, count]) => {
+            </tbody>
 
-                    const formattedDate =
-                      new Date(
-                        `${date}T00:00:00`
-                      ).toLocaleDateString(
-                        "en-US",
-                        {
-                          weekday: "short",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        }
-                      );
-
-                    return (
-                      <tr key={date}>
-
-                        <td style={tableCell}>
-                          <strong>
-                            {formattedDate}
-                          </strong>
-                        </td>
-
-                        <td style={tableCell}>
-
-                          <span
-                            style={{
-                              background:
-                                "#dbeafe",
-                              color:
-                                "#1d4ed8",
-                              padding:
-                                "7px 15px",
-                              borderRadius:
-                                "20px",
-                              fontWeight:
-                                "bold",
-                            }}
-                          >
-                            🚗 {count}
-                          </span>
-
-                        </td>
-
-                      </tr>
-                    );
-                  }
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
+          </table>
         )}
 
       </div>
 
-      {/* =====================================================
-          SOURCE REPORT
-      ===================================================== */}
-
       <h2>
-        🏢 Source Reports
+        Source Reports
       </h2>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit,minmax(250px,1fr))",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div style={gridStyle}>
 
         <div style={sourceCardStyle}>
 
           <h2>
-            🏢 Teyseer
+            Teyseer
           </h2>
 
           <p>
@@ -2435,13 +2027,11 @@ function Reports() {
           </p>
 
           <p>
-            Sales: QAR{" "}
-            {teyseerSales.toLocaleString()}
+            Sales: QAR {teyseerSales.toLocaleString()}
           </p>
 
           <p>
-            Paid: QAR{" "}
-            {teyseerPaid.toLocaleString()}
+            Paid: QAR {teyseerPaid.toLocaleString()}
           </p>
 
         </div>
@@ -2449,7 +2039,7 @@ function Reports() {
         <div style={sourceCardStyle}>
 
           <h2>
-            👤 Customers / Other
+            Customers / Other
           </h2>
 
           <p>
@@ -2457,437 +2047,411 @@ function Reports() {
           </p>
 
           <p>
-            Sales: QAR{" "}
-            {customerSales.toLocaleString()}
+            Sales: QAR {customerSales.toLocaleString()}
           </p>
 
           <p>
-            Paid: QAR{" "}
-            {customerPaid.toLocaleString()}
+            Paid: QAR {customerPaid.toLocaleString()}
           </p>
 
           <p>
-            Balance: QAR{" "}
-            {customerBalance.toLocaleString()}
+            Balance: QAR {customerBalance.toLocaleString()}
           </p>
 
         </div>
 
       </div>
 
-      {/* =====================================================
-          AL NUSOOR REPORT
-      ===================================================== */}
-
-      <h2>
-        🏢 Al Nusoor Report
-      </h2>
-
       <div
         style={{
-          background: "white",
-          padding: "25px",
-          borderRadius: "18px",
-          boxShadow:
-            "0 8px 20px rgba(0,0,0,0.08)",
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit,minmax(400px,1fr))",
+          gap: "25px",
           marginBottom: "30px",
-          borderTop: "5px solid #d4af37",
         }}
       >
 
-        <h3>
-          Al Nusoor Center
-        </h3>
-
-        <p
-          style={{
-            color: "#64748b",
-            marginBottom: "20px",
-          }}
-        >
-          Al Nusoor is detected automatically from
-          the Customer field. The Source can remain
-          "Walk In".
-        </p>
+        {/* AL NUSOOR */}
 
         <div
           style={{
-            display: "flex",
-            gap: "15px",
-            flexWrap: "wrap",
-            alignItems: "end",
-            marginBottom: "25px",
+            ...whiteCardStyle,
+            borderTop: "5px solid #d4af37",
           }}
         >
 
-          <div>
+          <h2>
+            Al Nusoor Report
+          </h2>
 
-            <label
-              style={{
-                display: "block",
-                fontWeight: "bold",
-                marginBottom: "7px",
-              }}
+          <p style={{ color: "#64748b" }}>
+            Al Nusoor is detected automatically from
+            the Customer field.
+          </p>
+
+          <div style={filterStyle}>
+
+            <div>
+
+              <label style={labelStyle}>
+                From Date
+              </label>
+
+              <input
+                type="date"
+                value={alnusoorStartDate}
+                onChange={e =>
+                  setAlnusoorStartDate(
+                    e.target.value
+                  )
+                }
+                style={inputStyle}
+              />
+
+            </div>
+
+            <div>
+
+              <label style={labelStyle}>
+                To Date
+              </label>
+
+              <input
+                type="date"
+                value={alnusoorEndDate}
+                onChange={e =>
+                  setAlnusoorEndDate(
+                    e.target.value
+                  )
+                }
+                style={inputStyle}
+              />
+
+            </div>
+
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+              marginBottom: "20px",
+            }}
+          >
+
+            <button
+              onClick={printAlnusoorReport}
+              style={darkButton}
             >
-              From Date
-            </label>
+              Print Al Nusoor
+            </button>
 
-            <input
-              type="date"
-              value={alnusoorStartDate}
-              onChange={e =>
-                setAlnusoorStartDate(
-                  e.target.value
-                )
-              }
-              style={{
-                padding: "10px",
-                border:
-                  "1px solid #cbd5e1",
-                borderRadius: "8px",
+            <button
+              onClick={() => {
+                setAlnusoorStartDate("");
+                setAlnusoorEndDate("");
               }}
+              style={clearButton}
+            >
+              Clear
+            </button>
+
+          </div>
+
+          <div style={miniGrid}>
+
+            <MiniBox
+              title="Cars"
+              value={alnusoorJobs.length}
+            />
+
+            <MiniBox
+              title="Amount"
+              value={`QAR ${alnusoorAmount.toLocaleString()}`}
+            />
+
+            <MiniBox
+              title="Discount"
+              value={`QAR ${alnusoorDiscount.toLocaleString()}`}
+            />
+
+            <MiniBox
+              title="Net"
+              value={`QAR ${alnusoorNet.toLocaleString()}`}
             />
 
           </div>
 
-          <div>
+          {alnusoorJobs.length === 0 ? (
+            <p>
+              No Al Nusoor jobs found.
+            </p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
 
-            <label
+              <table style={tableStyle}>
+
+                <thead>
+
+                  <tr>
+                    <th style={tableHeader}>Date</th>
+                    <th style={tableHeader}>Customer</th>
+                    <th style={tableHeader}>Car</th>
+                    <th style={tableHeader}>Plate</th>
+                    <th style={tableHeader}>Total</th>
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {alnusoorJobs.map(job => {
+
+                    const price =
+                      Number(job.price || 0);
+
+                    const discount =
+                      Number(job.discount || 0);
+
+                    const total =
+                      Math.max(
+                        price - discount,
+                        0
+                      );
+
+                    return (
+                      <tr key={job.id}>
+
+                        <td style={tableCell}>
+                          {getJobDate(job) || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.customer || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.carMake ||
+                            job.carType ||
+                            job.carModel ||
+                            "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.plate || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          QAR {total.toLocaleString()}
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+
+                </tbody>
+
+              </table>
+
+            </div>
+          )}
+
+        </div>
+
+        {/* TEYSEER */}
+
+        <div
+          style={{
+            ...whiteCardStyle,
+            borderTop: "5px solid #9333ea",
+          }}
+        >
+
+          <h2>
+            Teyseer Report
+          </h2>
+
+          <p style={{ color: "#64748b" }}>
+            Teyseer Motors, Bahaa and Salah jobs
+            are included automatically.
+          </p>
+
+          <div style={filterStyle}>
+
+            <div>
+
+              <label style={labelStyle}>
+                From Date
+              </label>
+
+              <input
+                type="date"
+                value={teyseerStartDate}
+                onChange={e =>
+                  setTeyseerStartDate(
+                    e.target.value
+                  )
+                }
+                style={inputStyle}
+              />
+
+            </div>
+
+            <div>
+
+              <label style={labelStyle}>
+                To Date
+              </label>
+
+              <input
+                type="date"
+                value={teyseerEndDate}
+                onChange={e =>
+                  setTeyseerEndDate(
+                    e.target.value
+                  )
+                }
+                style={inputStyle}
+              />
+
+            </div>
+
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+              marginBottom: "20px",
+            }}
+          >
+
+            <button
+              onClick={printTeyseerReport}
               style={{
-                display: "block",
-                fontWeight: "bold",
-                marginBottom: "7px",
+                ...darkButton,
+                background: "#9333ea",
               }}
             >
-              To Date
-            </label>
+              Print Teyseer
+            </button>
 
-            <input
-              type="date"
-              value={alnusoorEndDate}
-              onChange={e =>
-                setAlnusoorEndDate(
-                  e.target.value
-                )
-              }
-              style={{
-                padding: "10px",
-                border:
-                  "1px solid #cbd5e1",
-                borderRadius: "8px",
+            <button
+              onClick={() => {
+                setTeyseerStartDate("");
+                setTeyseerEndDate("");
               }}
+              style={clearButton}
+            >
+              Clear
+            </button>
+
+          </div>
+
+          <div style={miniGrid}>
+
+            <MiniBox
+              title="Cars"
+              value={filteredTeyseerJobs.length}
+            />
+
+            <MiniBox
+              title="Sales"
+              value={`QAR ${filteredTeyseerSales.toLocaleString()}`}
+            />
+
+            <MiniBox
+              title="Paid"
+              value={`QAR ${teyseerPaid.toLocaleString()}`}
+            />
+
+            <MiniBox
+              title="Balance"
+              value={`QAR ${(filteredTeyseerSales - teyseerPaid).toLocaleString()}`}
             />
 
           </div>
 
-          <button
-            onClick={printAlnusoorReport}
-            style={{
-              background: "#111827",
-              color: "white",
-              border: "none",
-              padding: "11px 20px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            🖨️ PRINT AL NUSOOR REPORT
-          </button>
+          {filteredTeyseerJobs.length === 0 ? (
+            <p>
+              No Teyseer jobs found.
+            </p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
 
-          <button
-            onClick={() => {
-              setAlnusoorStartDate("");
-              setAlnusoorEndDate("");
-            }}
-            style={{
-              background: "#e5e7eb",
-              color: "#111827",
-              border: "none",
-              padding: "11px 20px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            CLEAR
-          </button>
+              <table style={tableStyle}>
+
+                <thead>
+
+                  <tr>
+                    <th style={tableHeader}>Date</th>
+                    <th style={tableHeader}>Customer</th>
+                    <th style={tableHeader}>Car</th>
+                    <th style={tableHeader}>Plate</th>
+                    <th style={tableHeader}>Source</th>
+                    <th style={tableHeader}>Amount</th>
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {filteredTeyseerJobs.map(job => {
+
+                    const amount =
+                      getTeyseerJobAmount(job);
+
+                    return (
+                      <tr key={job.id}>
+
+                        <td style={tableCell}>
+                          {getJobDate(job) || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.customer || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.carMake ||
+                            job.carType ||
+                            job.carModel ||
+                            "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.plate || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.source || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          QAR {amount.toLocaleString()}
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+
+                </tbody>
+
+              </table>
+
+            </div>
+          )}
 
         </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(200px,1fr))",
-            gap: "15px",
-            marginBottom: "25px",
-          }}
-        >
-
-          <div
-            style={{
-              background: "#f8fafc",
-              padding: "20px",
-              borderRadius: "12px",
-              border:
-                "1px solid #e2e8f0",
-            }}
-          >
-
-            <div
-              style={{
-                color: "#64748b",
-                fontSize: "13px",
-              }}
-            >
-              AL NUSOOR CARS
-            </div>
-
-            <h2>
-              {alnusoorJobs.length}
-            </h2>
-
-          </div>
-
-          <div
-            style={{
-              background: "#f8fafc",
-              padding: "20px",
-              borderRadius: "12px",
-              border:
-                "1px solid #e2e8f0",
-            }}
-          >
-
-            <div
-              style={{
-                color: "#64748b",
-                fontSize: "13px",
-              }}
-            >
-              TOTAL AMOUNT
-            </div>
-
-            <h2>
-              QAR{" "}
-              {alnusoorAmount.toLocaleString()}
-            </h2>
-
-          </div>
-
-          <div
-            style={{
-              background: "#f8fafc",
-              padding: "20px",
-              borderRadius: "12px",
-              border:
-                "1px solid #e2e8f0",
-            }}
-          >
-
-            <div
-              style={{
-                color: "#64748b",
-                fontSize: "13px",
-              }}
-            >
-              TOTAL DISCOUNT
-            </div>
-
-            <h2>
-              QAR{" "}
-              {alnusoorDiscount.toLocaleString()}
-            </h2>
-
-          </div>
-
-          <div
-            style={{
-              background: "#fefce8",
-              padding: "20px",
-              borderRadius: "12px",
-              border:
-                "1px solid #d4af37",
-            }}
-          >
-
-            <div
-              style={{
-                color: "#64748b",
-                fontSize: "13px",
-              }}
-            >
-              NET AMOUNT
-            </div>
-
-            <h2
-              style={{
-                color: "#92710c",
-              }}
-            >
-              QAR{" "}
-              {alnusoorNet.toLocaleString()}
-            </h2>
-
-          </div>
-
-        </div>
-
-        {alnusoorJobs.length === 0 ? (
-
-          <div
-            style={{
-              padding: "30px",
-              textAlign: "center",
-              background: "#f8fafc",
-              borderRadius: "10px",
-              color: "#64748b",
-            }}
-          >
-            No Al Nusoor jobs found.
-          </div>
-
-        ) : (
-
-          <div
-            style={{
-              overflowX: "auto",
-            }}
-          >
-
-            <table
-              style={{
-                width: "100%",
-                borderCollapse:
-                  "collapse",
-              }}
-            >
-
-              <thead>
-
-                <tr>
-
-                  <th style={tableHeader}>
-                    Date
-                  </th>
-
-                  <th style={tableHeader}>
-                    Customer
-                  </th>
-
-                  <th style={tableHeader}>
-                    Car
-                  </th>
-
-                  <th style={tableHeader}>
-                    Plate
-                  </th>
-
-                  <th style={tableHeader}>
-                    Price
-                  </th>
-
-                  <th style={tableHeader}>
-                    Discount
-                  </th>
-
-                  <th style={tableHeader}>
-                    Total
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {alnusoorJobs.map(job => {
-
-                  const price =
-                    Number(
-                      job.price || 0
-                    );
-
-                  const discount =
-                    Number(
-                      job.discount || 0
-                    );
-
-                  const total =
-                    Math.max(
-                      price -
-                        discount,
-                      0
-                    );
-
-                  return (
-                    <tr key={job.id}>
-
-                      <td style={tableCell}>
-                        {getJobDate(job) || "-"}
-                      </td>
-
-                      <td style={tableCell}>
-                        {job.customer || "-"}
-                      </td>
-
-                      <td style={tableCell}>
-                        {job.carMake ||
-                          job.carType ||
-                          job.carModel ||
-                          "-"}
-                      </td>
-
-                      <td style={tableCell}>
-                        {job.plate || "-"}
-                      </td>
-
-                      <td style={tableCell}>
-                        QAR{" "}
-                        {price.toLocaleString()}
-                      </td>
-
-                      <td style={tableCell}>
-                        QAR{" "}
-                        {discount.toLocaleString()}
-                      </td>
-
-                      <td
-                        style={{
-                          ...tableCell,
-                          fontWeight:
-                            "bold",
-                          color:
-                            "#92710c",
-                        }}
-                      >
-                        QAR{" "}
-                        {total.toLocaleString()}
-                      </td>
-
-                    </tr>
-                  );
-
-                })}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        )}
 
       </div>
 
     </div>
   );
 }
-
-// =========================================================
-// FINANCIAL CARD
-// =========================================================
 
 function FinancialCard({
   title,
@@ -2913,7 +2477,6 @@ function FinancialCard({
       <div
         style={{
           fontSize: "35px",
-          marginBottom: "10px",
         }}
       >
         {icon}
@@ -2926,18 +2489,12 @@ function FinancialCard({
       <h2>
         {noCurrency
           ? Number(value).toLocaleString()
-          : `QAR ${Number(
-              value
-            ).toLocaleString()}`}
+          : `QAR ${Number(value).toLocaleString()}`}
       </h2>
 
     </div>
   );
 }
-
-// =========================================================
-// MANUAL CARD
-// =========================================================
 
 function ManualCard({
   title,
@@ -2962,16 +2519,6 @@ function ManualCard({
         {title}
       </h3>
 
-      <label
-        style={{
-          display: "block",
-          color: "#64748b",
-          marginBottom: "8px",
-        }}
-      >
-        Enter amount
-      </label>
-
       <input
         type="number"
         value={value}
@@ -2993,29 +2540,72 @@ function ManualCard({
           style={{
             color: "#16a34a",
             marginTop: "8px",
-            fontSize: "14px",
           }}
         >
-          ✓ Saving...
+          Saving...
         </div>
       )}
 
-      <h2
-        style={{
-          color: "#dc2626",
-        }}
-      >
-        QAR{" "}
-        {Number(value).toLocaleString()}
+      <h2 style={{ color: "#dc2626" }}>
+        QAR {Number(value).toLocaleString()}
       </h2>
 
     </div>
   );
 }
 
-// =========================================================
-// SOURCE CARD
-// =========================================================
+function MiniBox({ title, value }) {
+  return (
+    <div
+      style={{
+        background: "#f8fafc",
+        padding: "15px",
+        borderRadius: "10px",
+        border: "1px solid #e2e8f0",
+      }}
+    >
+
+      <div
+        style={{
+          color: "#64748b",
+          fontSize: "12px",
+        }}
+      >
+        {title}
+      </div>
+
+      <h3>
+        {value}
+      </h3>
+
+    </div>
+  );
+}
+
+const gridStyle = {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit,minmax(220px,1fr))",
+  gap: "20px",
+  marginBottom: "30px",
+};
+
+const miniGrid = {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit,minmax(130px,1fr))",
+  gap: "10px",
+  marginBottom: "20px",
+};
+
+const whiteCardStyle = {
+  background: "white",
+  padding: "25px",
+  borderRadius: "18px",
+  boxShadow:
+    "0 8px 20px rgba(0,0,0,0.08)",
+  marginBottom: "30px",
+};
 
 const sourceCardStyle = {
   background: "white",
@@ -3025,22 +2615,62 @@ const sourceCardStyle = {
     "0 8px 20px rgba(0,0,0,0.08)",
 };
 
-// =========================================================
-// TABLE
-// =========================================================
+const inputStyle = {
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #cbd5e1",
+  fontSize: "14px",
+};
+
+const labelStyle = {
+  display: "block",
+  fontWeight: "bold",
+  marginBottom: "7px",
+};
+
+const filterStyle = {
+  display: "flex",
+  gap: "12px",
+  flexWrap: "wrap",
+  alignItems: "end",
+  marginBottom: "15px",
+};
+
+const darkButton = {
+  background: "#111827",
+  color: "white",
+  border: "none",
+  padding: "11px 20px",
+  borderRadius: "8px",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const clearButton = {
+  background: "#e5e7eb",
+  color: "#111827",
+  border: "none",
+  padding: "11px 20px",
+  borderRadius: "8px",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const tableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
+};
 
 const tableHeader = {
   textAlign: "left",
-  padding: "14px",
+  padding: "12px",
   background: "#f8fafc",
-  borderBottom:
-    "2px solid #e2e8f0",
+  borderBottom: "2px solid #e2e8f0",
 };
 
 const tableCell = {
-  padding: "15px",
-  borderBottom:
-    "1px solid #e2e8f0",
+  padding: "12px",
+  borderBottom: "1px solid #e2e8f0",
 };
 
 export default Reports;
