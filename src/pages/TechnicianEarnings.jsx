@@ -382,14 +382,20 @@ function TechnicianEarnings() {
 
       </div>
 
-      <style>
+   <style>
   {`
     @media print {
 
+      @page {
+        size: landscape;
+        margin: 5mm;
+      }
+
+      html,
       body {
-        background: white !important;
         margin: 0 !important;
         padding: 0 !important;
+        background: white !important;
       }
 
       .no-print {
@@ -398,27 +404,62 @@ function TechnicianEarnings() {
 
       .printHeader {
         display: block !important;
+        margin: 0 0 8px 0 !important;
+        padding: 0 !important;
       }
 
-      @page {
-        size: landscape;
-        margin: 8mm;
+      .printHeader h1 {
+        font-size: 18px !important;
+        margin: 0 0 3px 0 !important;
+      }
+
+      .printHeader p {
+        font-size: 9px !important;
+        margin: 1px 0 !important;
+      }
+
+      /* Remove large spacing from the report cards */
+      div {
+        box-shadow: none !important;
+      }
+
+      /* Total section */
+      div[style*="totalCard"] {
+        margin: 0 0 8px 0 !important;
+        padding: 8px 12px !important;
+      }
+
+      /* Main earnings card */
+      div[style*="card"] {
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+      }
+
+      h2 {
+        font-size: 13px !important;
+        margin: 0 0 5px 0 !important;
       }
 
       table {
         width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-collapse: collapse !important;
         table-layout: fixed !important;
-        font-size: 10px !important;
+        font-size: 9px !important;
       }
 
       th {
-        padding: 6px 4px !important;
-        font-size: 10px !important;
+        padding: 4px 5px !important;
+        font-size: 9px !important;
+        line-height: 1.1 !important;
       }
 
       td {
-        padding: 6px 4px !important;
-        font-size: 10px !important;
+        padding: 4px 5px !important;
+        font-size: 9px !important;
+        line-height: 1.1 !important;
         white-space: normal !important;
         word-wrap: break-word !important;
       }
@@ -427,30 +468,22 @@ function TechnicianEarnings() {
         border: none !important;
         background: transparent !important;
         padding: 0 !important;
-        font-size: 10px !important;
+        margin: 0 !important;
+        font-size: 9px !important;
         width: 100% !important;
       }
 
       tr {
-        page-break-inside: avoid;
+        page-break-inside: avoid !important;
       }
 
-      h1 {
-        font-size: 20px !important;
-        margin: 0 0 5px 0 !important;
+      .remarkContainer {
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
-      h2 {
-        font-size: 14px !important;
-      }
-
-      p {
-        font-size: 10px !important;
-        margin: 3px 0 !important;
-      }
-
-      .printHeader {
-        margin-bottom: 10px !important;
+      .saving {
+        display: none !important;
       }
     }
 
