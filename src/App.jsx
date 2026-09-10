@@ -12,6 +12,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import TechnicianEarnings from "./pages/TechnicianEarnings";
 import AssignTechnician from "./pages/AssignTechnician";
 import Reports from "./pages/Reports";
+import Inventory from "./pages/Inventory";
 
 function App() {
 
@@ -119,6 +120,14 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+  path="/inventory"
+  element={
+    <ProtectedRoute>
+      <Inventory />
+    </ProtectedRoute>
+  }
+/>
 
 <Route path="/reports" element={<Reports />} />
 

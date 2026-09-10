@@ -501,7 +501,18 @@ function Dashboard() {
                 + New Job
               </button>
             </Link>
-
+<Link
+  to="/inventory"
+  style={{
+    textDecoration: "none"
+  }}
+>
+  <button
+    style={styles.secondaryButton}
+  >
+    📦 Inventory
+  </button>
+</Link>
             <Link
               to="/technician-earnings"
               style={{
@@ -950,7 +961,23 @@ function Dashboard() {
             </p>
           </Link>
 
-        </div>
+    {/* INVENTORY */}
+  <Link
+    to="/inventory"
+    style={styles.actionCard}
+  >
+    <div style={styles.actionIcon}>
+      📦
+    </div>
+
+    <h3>Inventory</h3>
+
+    <p>
+      Manage products and stock
+    </p>
+  </Link>
+
+</div>
 
       </div>
     </div>
