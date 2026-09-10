@@ -861,56 +861,67 @@ function Reports() {
           ============================ */
 
           .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 3px solid #111827;
+  margin-bottom: 12px;
+}
 
-            padding-bottom: 12px;
+.companySection {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
 
-            border-bottom:
-              3px solid #111827;
+.logo {
+  width: 95px;
+  height: 95px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 
-            margin-bottom: 12px;
-          }
+.companyName {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #111827;
+  padding-top: 5px;
+}
 
-          .companySection {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-          }
+.arabicName {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 8px;
+  direction: rtl;
+}
 
-          .companyName {
-            font-size: 18px;
-            font-weight: 800;
-            line-height: 1.15;
-            max-width: 190px;
-            color: #111827;
-          }
+.companyAddress {
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 6px;
+}
 
-          .logo {
-            width: 95px;
-            height: 95px;
-            object-fit: contain;
-          }
+.reportSection {
+  text-align: right;
+  padding-top: 5px;
+}
 
-          .reportSection {
-            text-align: right;
-          }
+.reportTitle {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #111827;
+  margin-bottom: 5px;
+}
 
-          .reportTitle {
-            font-size: 23px;
-            font-weight: 900;
-            letter-spacing: 0.5px;
-            color: #111827;
-            margin-bottom: 5px;
-          }
-
-          .reportSubtitle {
-            font-size: 13px;
-            color: #64748b;
-            font-weight: 600;
-          }
-
+.reportSubtitle {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
           /* ============================
              CUSTOMER TITLE
           ============================ */
@@ -1226,37 +1237,41 @@ function Reports() {
 
           <!-- HEADER -->
 
-          <div class="header">
+<div class="header">
 
-            <div class="companySection">
+  <div class="companySection">
 
-              <div class="companyName">
-                HAOSHENG CAR SERVICE<br />
-                AND ACCESSORIES
-              </div>
+    <img
+      src="${gaLogo}"
+      class="logo"
+      alt="Haosheng Logo"
+    />
 
-              <img
-                src="${gaLogo}"
-                class="logo"
-                alt="Company Logo"
-              />
+    <div class="companyName">
+      HAOSHENG CAR SERVICE AND ACCESSORIES
+      <div class="arabicName">
+        هاوشنغ لخدمات وزينة السيارات
+      </div>
+      <div class="companyAddress">
+        Building 358, Salwa Road, Doha - Qatar
+      </div>
+    </div>
 
-            </div>
+  </div>
 
-            <div class="reportSection">
+  <div class="reportSection">
 
-              <div class="reportTitle">
-                AL NUSOOR REPORT
-              </div>
+    <div class="reportTitle">
+      AL NUSOOR REPORT
+    </div>
 
-              <div class="reportSubtitle">
-                Service & Vehicle Summary
-              </div>
+    <div class="reportSubtitle">
+      Service & Vehicle Summary
+    </div>
 
-            </div>
+  </div>
 
-          </div>
-
+</div>
           <!-- AL NUSOOR -->
 
           <div class="customerBanner">
