@@ -395,17 +395,21 @@ function Reports() {
     return "Teyseer Motors";
   }
 
-  function getTeyseerJobAmount(job) {
-    const services = jobServices.filter(
+  function getTeyseerServices(job) {
+    return jobServices.filter(
       service =>
         String(service.job_id) ===
         String(job.id)
     );
+  }
+
+  function getTeyseerJobAmount(job) {
+    const services = getTeyseerServices(job);
 
     if (services.length === 0) {
       return Math.max(
         Number(job.price || 0) -
-          Number(job.discount || 0),
+        Number(job.discount || 0),
         0
       );
     }
@@ -424,6 +428,20 @@ function Reports() {
     }, 0);
   }
 
+  function getTeyseerServiceNames(job) {
+    const services = getTeyseerServices(job);
+
+    return services
+      .map(service =>
+        service.service_name ||
+        service.name ||
+        service.title ||
+        ""
+      )
+      .filter(Boolean)
+      .join(", ");
+  }
+
   const teyseerSales = teyseerJobs.reduce(
     (sum, job) =>
       sum + getTeyseerJobAmount(job),
@@ -437,22 +455,6 @@ function Reports() {
       Number(job.discount || 0),
     0
   );
-
-  const teyseerIds = teyseerJobs.map(job => job.id);
-
-  const teyseerPaid = payments
-    .filter(payment =>
-      teyseerIds.some(
-        id =>
-          String(id) ===
-          String(payment.job_id)
-      )
-    )
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
 
   const customerIds = customerJobs.map(job => job.id);
 
@@ -607,7 +609,7 @@ function Reports() {
 
   const alnusoorNet = Math.max(
     alnusoorAmount -
-      alnusoorDiscount,
+    alnusoorDiscount,
     0
   );
 
@@ -651,6 +653,7 @@ function Reports() {
       .map(job => {
         const price = Number(job.price || 0);
         const discount = Number(job.discount || 0);
+
         const total = Math.max(
           price - discount,
           0
@@ -662,15 +665,24 @@ function Reports() {
             <td>${job.customer || "-"}</td>
             <td>${job.carMake || job.carType || job.carModel || "-"}</td>
             <td>${job.plate || "-"}</td>
-            <td class="money">${price.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-            })}</td>
-            <td class="money">${discount.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-            })}</td>
-            <td class="money">${total.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-            })}</td>
+
+            <td class="money">
+              ${price.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </td>
+
+            <td class="money">
+              ${discount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </td>
+
+            <td class="money">
+              ${total.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+              })}
+            </td>
           </tr>
         `;
       })
@@ -811,6 +823,7 @@ function Reports() {
       <body>
 
         <div class="header">
+
           <img
             src="${gaLogo}"
             class="logo"
@@ -818,6 +831,7 @@ function Reports() {
           />
 
           <div class="companyInfo">
+
             <div class="companyName">
               HAOSHENG CAR SERVICE AND ACCESSORIES
             </div>
@@ -829,10 +843,13 @@ function Reports() {
             <div class="address">
               Building 358, Salwa Road, Doha - Qatar
             </div>
+
           </div>
+
         </div>
 
         <div class="info">
+
           <div class="infoRow">
             <div class="label">DATE:</div>
             <div>${alnusoorEndDate || reportDate}</div>
@@ -852,9 +869,11 @@ function Reports() {
             <div class="label">CONTACT NUMBER:</div>
             <div>30124444</div>
           </div>
+
         </div>
 
         <table>
+
           <thead>
             <tr>
               <th>DATE</th>
@@ -870,6 +889,7 @@ function Reports() {
           <tbody>
             ${rows}
           </tbody>
+
         </table>
 
         <div class="totals">
@@ -910,6 +930,7 @@ function Reports() {
         </div>
 
         <div class="footer">
+
           <strong>
             Tel: +974 3368 1888
             &nbsp;-&nbsp;
@@ -923,6 +944,7 @@ function Reports() {
           Fereej Al Manaseer, Zone 55,
           St. 340, Bldg 358,
           Salwa Road, Doha, Qatar
+
         </div>
 
       </body>
@@ -945,40 +967,52 @@ function Reports() {
       return;
     }
 
-    const rows = filteredTeyseerJobs
+    const reportRows = filteredTeyseerJobs
       .map((job, index) => {
         const amount = getTeyseerJobAmount(job);
-
-        const services = jobServices.filter(
-          service =>
-            String(service.job_id) ===
-            String(job.id)
-        );
-
-        const serviceNames = services
-          .map(service =>
-            service.service_name ||
-            service.name ||
-            service.title ||
-            ""
-          )
-          .filter(Boolean)
-          .join(", ");
+        const serviceNames =
+          getTeyseerServiceNames(job);
 
         return `
           <tr>
-            <td>${index + 1}</td>
-            <td>${getJobDate(job) || "-"}</td>
-            <td>${job.customer || "-"}</td>
-            <td>${job.carMake || job.carType || job.carModel || "-"}</td>
-            <td>${job.plate || "-"}</td>
-            <td>${job.source || "-"}</td>
-            <td>${serviceNames || "-"}</td>
+
+            <td class="center">
+              ${index + 1}
+            </td>
+
+            <td>
+              ${getJobDate(job) || "-"}
+            </td>
+
+            <td>
+              ${job.carMake ||
+                job.carType ||
+                job.carModel ||
+                "-"}
+            </td>
+
+            <td>
+              ${job.plate || "-"}
+            </td>
+
+            <td>
+              ${serviceNames || "-"}
+            </td>
+
+            <td>
+              ${job.voucher_number || "-"}
+            </td>
+
+            <td>
+              ${job.receipt_number || "-"}
+            </td>
+
             <td class="money">
               QAR ${amount.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
               })}
             </td>
+
           </tr>
         `;
       })
@@ -987,7 +1021,7 @@ function Reports() {
     const printWindow = window.open(
       "",
       "_blank",
-      "width=1400,height=900"
+      "width=1500,height=1000"
     );
 
     if (!printWindow) {
@@ -1002,7 +1036,9 @@ function Reports() {
 
       <head>
 
-        <title>Teyseer Motors Report</title>
+        <title>
+          Teyseer Motors Report
+        </title>
 
         <style>
 
@@ -1020,13 +1056,14 @@ function Reports() {
             color: #111827;
             margin: 0;
             padding: 20px;
+            font-size: 10px;
           }
 
           .header {
             display: flex;
             align-items: center;
             gap: 18px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
           }
 
           .logo {
@@ -1051,62 +1088,70 @@ function Reports() {
             margin-top: 7px;
           }
 
-          h1 {
-            margin: 0 0 5px 0;
-            font-size: 25px;
+          .reportTitle {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0 5px;
           }
 
-          .date {
+          .period {
             color: #64748b;
-            margin-bottom: 25px;
+            font-size: 11px;
+            margin-bottom: 20px;
           }
 
           .summary {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
             margin-bottom: 25px;
           }
 
           .box {
             border: 1px solid #d1d5db;
-            border-radius: 10px;
-            padding: 15px;
+            padding: 12px;
             background: #f8fafc;
           }
 
-          .label {
+          .boxLabel {
             color: #64748b;
-            font-size: 12px;
+            font-size: 10px;
+            margin-bottom: 5px;
           }
 
-          .value {
-            font-size: 20px;
+          .boxValue {
+            font-size: 17px;
             font-weight: bold;
-            margin-top: 5px;
           }
 
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
+            table-layout: fixed;
+            font-size: 9px;
           }
 
           th {
             background: #111827;
             color: white;
-            padding: 9px 6px;
+            padding: 8px 5px;
             text-align: left;
+            border: 1px solid #111827;
           }
 
           td {
-            padding: 8px 6px;
+            padding: 7px 5px;
             border: 1px solid #d1d5db;
             vertical-align: top;
+            word-wrap: break-word;
           }
 
           tr:nth-child(even) {
             background: #f8fafc;
+          }
+
+          .center {
+            text-align: center;
           }
 
           .money {
@@ -1114,13 +1159,53 @@ function Reports() {
             white-space: nowrap;
           }
 
+          .totals {
+            margin-top: 20px;
+            margin-left: auto;
+            width: 300px;
+          }
+
+          .totalRow {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px solid #d1d5db;
+          }
+
+          .totalLabel {
+            font-weight: bold;
+          }
+
+          .netAmount {
+            font-size: 14px;
+            font-weight: bold;
+            color: #9333ea;
+          }
+
           .footer {
             margin-top: 30px;
-            padding-top: 12px;
+            padding-top: 10px;
             border-top: 1px solid #d1d5db;
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             color: #64748b;
+            line-height: 1.5;
+          }
+
+          @media print {
+
+            body {
+              padding: 5px;
+            }
+
+            thead {
+              display: table-header-group;
+            }
+
+            tr {
+              page-break-inside: avoid;
+            }
+
           }
 
         </style>
@@ -1155,11 +1240,11 @@ function Reports() {
 
         </div>
 
-        <h1>
+        <div class="reportTitle">
           TEYSEER MOTORS REPORT
-        </h1>
+        </div>
 
-        <div class="date">
+        <div class="period">
 
           Period:
           ${teyseerStartDate || "All dates"}
@@ -1172,11 +1257,11 @@ function Reports() {
 
           <div class="box">
 
-            <div class="label">
+            <div class="boxLabel">
               TEYSEER CARS
             </div>
 
-            <div class="value">
+            <div class="boxValue">
               ${filteredTeyseerJobs.length}
             </div>
 
@@ -1184,28 +1269,17 @@ function Reports() {
 
           <div class="box">
 
-            <div class="label">
-              TEYSEER SALES
+            <div class="boxLabel">
+              NET AMOUNT
             </div>
 
-            <div class="value">
-              QAR ${filteredTeyseerSales.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-              })}
-            </div>
-
-          </div>
-
-          <div class="box">
-
-            <div class="label">
-              TOTAL PAID
-            </div>
-
-            <div class="value">
-              QAR ${teyseerPaid.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-              })}
+            <div class="boxValue">
+              QAR ${filteredTeyseerSales.toLocaleString(
+                "en-US",
+                {
+                  minimumFractionDigits: 2,
+                }
+              )}
             </div>
 
           </div>
@@ -1217,23 +1291,71 @@ function Reports() {
           <thead>
 
             <tr>
-              <th>#</th>
-              <th>DATE</th>
-              <th>CUSTOMER</th>
-              <th>CAR</th>
-              <th>PLATE</th>
-              <th>SOURCE</th>
-              <th>SERVICES</th>
-              <th>AMOUNT</th>
+
+              <th style="width:4%;">
+                #
+              </th>
+
+              <th style="width:9%;">
+                DATE
+              </th>
+
+              <th style="width:12%;">
+                CAR
+              </th>
+
+              <th style="width:9%;">
+                PLATE
+              </th>
+
+              <th style="width:28%;">
+                SERVICES
+              </th>
+
+              <th style="width:12%;">
+                VOUCHER NO.
+              </th>
+
+              <th style="width:12%;">
+                RECEIPT NO.
+              </th>
+
+              <th style="width:14%;">
+                NET AMOUNT
+              </th>
+
             </tr>
 
           </thead>
 
           <tbody>
-            ${rows}
+
+            ${reportRows}
+
           </tbody>
 
         </table>
+
+        <div class="totals">
+
+          <div class="totalRow netAmount">
+
+            <span class="totalLabel">
+              NET AMOUNT
+            </span>
+
+            <span>
+              QAR ${filteredTeyseerSales.toLocaleString(
+                "en-US",
+                {
+                  minimumFractionDigits: 2,
+                }
+              )}
+            </span>
+
+          </div>
+
+        </div>
 
         <div class="footer">
 
@@ -1377,15 +1499,19 @@ function Reports() {
             <td>${job.plate || ""}</td>
             <td>${job.source || "Not specified"}</td>
             <td>${services}</td>
+
             <td class="money">
               QAR ${netAmount.toLocaleString()}
             </td>
+
             <td class="money">
               QAR ${jobPaid.toLocaleString()}
             </td>
+
             <td class="money">
               QAR ${jobBalance.toLocaleString()}
             </td>
+
           </tr>
         `;
       })
@@ -1402,13 +1528,21 @@ function Reports() {
 
           return `
             <tr>
-              <td>${payment.payment_date || ""}</td>
-              <td>${method}</td>
+
+              <td>
+                ${payment.payment_date || ""}
+              </td>
+
+              <td>
+                ${method}
+              </td>
+
               <td class="money">
                 QAR ${Number(
                   payment.amount || 0
                 ).toLocaleString()}
               </td>
+
             </tr>
           `;
         })
@@ -1510,6 +1644,7 @@ function Reports() {
           }
 
           @media print {
+
             @page {
               size: landscape;
               margin: 10mm;
@@ -1518,6 +1653,7 @@ function Reports() {
             body {
               padding: 5px;
             }
+
           }
 
         </style>
@@ -1537,6 +1673,7 @@ function Reports() {
         <div class="summary">
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               TOTAL CARS
             </div>
@@ -1544,9 +1681,11 @@ function Reports() {
             <div class="summaryValue">
               ${todayJobs.length}
             </div>
+
           </div>
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               NET SALES
             </div>
@@ -1554,9 +1693,11 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalSales.toLocaleString()}
             </div>
+
           </div>
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               PAYMENTS TODAY
             </div>
@@ -1564,9 +1705,11 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalPaid.toLocaleString()}
             </div>
+
           </div>
 
           <div class="summaryBox">
+
             <div class="summaryLabel">
               BALANCE DUE
             </div>
@@ -1574,6 +1717,7 @@ function Reports() {
             <div class="summaryValue">
               QAR ${totalBalance.toLocaleString()}
             </div>
+
           </div>
 
         </div>
@@ -1587,6 +1731,7 @@ function Reports() {
           <thead>
 
             <tr>
+
               <th>#</th>
               <th>Customer</th>
               <th>Phone</th>
@@ -1597,6 +1742,7 @@ function Reports() {
               <th>Amount</th>
               <th>Paid</th>
               <th>Balance</th>
+
             </tr>
 
           </thead>
@@ -1616,9 +1762,11 @@ function Reports() {
           <thead>
 
             <tr>
+
               <th>Date</th>
               <th>Payment Method</th>
               <th>Amount</th>
+
             </tr>
 
           </thead>
@@ -1788,7 +1936,9 @@ function Reports() {
       <div style={whiteCardStyle}>
 
         {dailyPaymentRows.length === 0 ? (
-          <p>No payment records found.</p>
+          <p>
+            No payment records found.
+          </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
 
@@ -1797,13 +1947,35 @@ function Reports() {
               <thead>
 
                 <tr>
-                  <th style={tableHeader}>Date</th>
-                  <th style={tableHeader}>Cash</th>
-                  <th style={tableHeader}>Visa</th>
-                  <th style={tableHeader}>Mastercard</th>
-                  <th style={tableHeader}>Bank Transfer</th>
-                  <th style={tableHeader}>Other</th>
-                  <th style={tableHeader}>Total</th>
+
+                  <th style={tableHeader}>
+                    Date
+                  </th>
+
+                  <th style={tableHeader}>
+                    Cash
+                  </th>
+
+                  <th style={tableHeader}>
+                    Visa
+                  </th>
+
+                  <th style={tableHeader}>
+                    Mastercard
+                  </th>
+
+                  <th style={tableHeader}>
+                    Bank Transfer
+                  </th>
+
+                  <th style={tableHeader}>
+                    Other
+                  </th>
+
+                  <th style={tableHeader}>
+                    Total
+                  </th>
+
                 </tr>
 
               </thead>
@@ -1972,15 +2144,24 @@ function Reports() {
       <div style={whiteCardStyle}>
 
         {dailyCarRows.length === 0 ? (
-          <p>No car records found.</p>
+          <p>
+            No car records found.
+          </p>
         ) : (
           <table style={tableStyle}>
 
             <thead>
 
               <tr>
-                <th style={tableHeader}>Date</th>
-                <th style={tableHeader}>Cars Received</th>
+
+                <th style={tableHeader}>
+                  Date
+                </th>
+
+                <th style={tableHeader}>
+                  Cars Received
+                </th>
+
               </tr>
 
             </thead>
@@ -2027,11 +2208,7 @@ function Reports() {
           </p>
 
           <p>
-            Sales: QAR {teyseerSales.toLocaleString()}
-          </p>
-
-          <p>
-            Paid: QAR {teyseerPaid.toLocaleString()}
+            Net Amount: QAR {teyseerSales.toLocaleString()}
           </p>
 
         </div>
@@ -2196,11 +2373,27 @@ function Reports() {
                 <thead>
 
                   <tr>
-                    <th style={tableHeader}>Date</th>
-                    <th style={tableHeader}>Customer</th>
-                    <th style={tableHeader}>Car</th>
-                    <th style={tableHeader}>Plate</th>
-                    <th style={tableHeader}>Total</th>
+
+                    <th style={tableHeader}>
+                      Date
+                    </th>
+
+                    <th style={tableHeader}>
+                      Customer
+                    </th>
+
+                    <th style={tableHeader}>
+                      Car
+                    </th>
+
+                    <th style={tableHeader}>
+                      Plate
+                    </th>
+
+                    <th style={tableHeader}>
+                      Total
+                    </th>
+
                   </tr>
 
                 </thead>
@@ -2359,18 +2552,8 @@ function Reports() {
             />
 
             <MiniBox
-              title="Sales"
+              title="Net Amount"
               value={`QAR ${filteredTeyseerSales.toLocaleString()}`}
-            />
-
-            <MiniBox
-              title="Paid"
-              value={`QAR ${teyseerPaid.toLocaleString()}`}
-            />
-
-            <MiniBox
-              title="Balance"
-              value={`QAR ${(filteredTeyseerSales - teyseerPaid).toLocaleString()}`}
             />
 
           </div>
@@ -2387,12 +2570,35 @@ function Reports() {
                 <thead>
 
                   <tr>
-                    <th style={tableHeader}>Date</th>
-                    <th style={tableHeader}>Customer</th>
-                    <th style={tableHeader}>Car</th>
-                    <th style={tableHeader}>Plate</th>
-                    <th style={tableHeader}>Source</th>
-                    <th style={tableHeader}>Amount</th>
+
+                    <th style={tableHeader}>
+                      Date
+                    </th>
+
+                    <th style={tableHeader}>
+                      Car
+                    </th>
+
+                    <th style={tableHeader}>
+                      Plate
+                    </th>
+
+                    <th style={tableHeader}>
+                      Services
+                    </th>
+
+                    <th style={tableHeader}>
+                      Voucher No.
+                    </th>
+
+                    <th style={tableHeader}>
+                      Receipt No.
+                    </th>
+
+                    <th style={tableHeader}>
+                      Net Amount
+                    </th>
+
                   </tr>
 
                 </thead>
@@ -2412,10 +2618,6 @@ function Reports() {
                         </td>
 
                         <td style={tableCell}>
-                          {job.customer || "-"}
-                        </td>
-
-                        <td style={tableCell}>
                           {job.carMake ||
                             job.carType ||
                             job.carModel ||
@@ -2427,7 +2629,15 @@ function Reports() {
                         </td>
 
                         <td style={tableCell}>
-                          {job.source || "-"}
+                          {getTeyseerServiceNames(job) || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.voucher_number || "-"}
+                        </td>
+
+                        <td style={tableCell}>
+                          {job.receipt_number || "-"}
                         </td>
 
                         <td style={tableCell}>
