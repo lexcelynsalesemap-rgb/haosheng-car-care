@@ -586,12 +586,10 @@ function EditJob() {
       // CUSTOMER NET AMOUNT
       // -----------------------------------
 
-      const customerNetAmount =
-        Math.max(
-          customerServicesTotal -
-            Number(totalDiscount || 0),
-          0
-        );
+     const customerNetAmount = Math.max(
+  customerServicesTotal,
+  0
+);
 
       // -----------------------------------
       // PAYMENT
@@ -790,104 +788,81 @@ function EditJob() {
   }
 
   // -----------------------------------
-  // CALCULATED DISPLAY TOTALS
-  // -----------------------------------
+// CALCULATED DISPLAY TOTALS
+// -----------------------------------
 
-  const allServicesTotal =
-    services.reduce(
-      (sum, serviceName) => {
-        const details =
-          serviceDetails[serviceName] || {};
+const allServicesTotal = services.reduce(
+  (sum, serviceName) => {
+    const details = serviceDetails[serviceName] || {};
 
-        const price =
-          Number(details.price || 0);
+    const price = Number(details.price || 0);
+    const quantity = Number(details.quantity || 1);
+    const discount = Number(details.discount || 0);
 
-        const quantity =
-          Number(details.quantity || 1);
+    return sum + Math.max(price * quantity - discount, 0);
+  },
+  0
+);
 
-        const serviceDiscount =
-          Number(details.discount || 0);
+// Customer total after service discounts.
+// WTT is excluded for Teyseer jobs.
+const customerServicesTotal = services.reduce(
+  (sum, serviceName) => {
+    if (
+      isTeyseerSource(source) &&
+      isWttService(serviceName)
+    ) {
+      return sum;
+    }
 
-        return (
-          sum +
-          Math.max(
-            price * quantity -
-              serviceDiscount,
-            0
-          )
-        );
-      },
-      0
+    const details = serviceDetails[serviceName] || {};
+
+    const price = Number(details.price || 0);
+    const quantity = Number(details.quantity || 1);
+    const discount = Number(details.discount || 0);
+
+    return (
+      sum +
+      Math.max(
+        price * quantity - discount,
+        0
+      )
     );
+  },
+  0
+);
 
-  const customerServicesTotal =
-    services.reduce(
-      (sum, serviceName) => {
-        if (
-          isTeyseerSource(source) &&
-          isWttService(serviceName)
-        ) {
-          return sum;
-        }
+// Total discounts for display/internal tracking
+const totalServiceDiscount = services.reduce(
+  (sum, serviceName) => {
+    const details = serviceDetails[serviceName] || {};
 
-        const details =
-          serviceDetails[serviceName] || {};
-
-        const price =
-          Number(details.price || 0);
-
-        const quantity =
-          Number(details.quantity || 1);
-
-        const serviceDiscount =
-          Number(details.discount || 0);
-
-        return (
-          sum +
-          Math.max(
-            price * quantity -
-              serviceDiscount,
-            0
-          )
-        );
-      },
-      0
+    return (
+      sum +
+      Number(details.discount || 0)
     );
+  },
+  0
+);
 
-  const totalServiceDiscount =
-    services.reduce(
-      (sum, serviceName) => {
-        const details =
-          serviceDetails[serviceName] || {};
+// IMPORTANT:
+// Do NOT subtract totalServiceDiscount again.
+// The discount was already removed above.
+const customerNetAmount = Math.max(
+  customerServicesTotal,
+  0
+);
 
-        return (
-          sum +
-          Number(details.discount || 0)
-        );
-      },
-      0
-    );
+const totalPaid = payments.reduce(
+  (sum, payment) =>
+    sum + Number(payment.amount || 0),
+  0
+);
 
-  const customerNetAmount =
-    Math.max(
-      customerServicesTotal -
-        totalServiceDiscount,
-      0
-    );
-
-  const totalPaid =
-    payments.reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-  const customerBalance =
-    Math.max(
-      customerNetAmount - totalPaid,
-      0
-    );
-
+const customerBalance = Math.max(
+  customerNetAmount - totalPaid,
+  0
+);
   // -----------------------------------
   // LOADING
   // -----------------------------------
