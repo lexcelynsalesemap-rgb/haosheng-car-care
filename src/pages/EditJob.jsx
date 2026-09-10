@@ -404,14 +404,10 @@ function EditJob() {
         0
       );
 
-    const jobDiscount =
-      Number(job.discount || 0);
-
-    const finalTotal = Math.max(
-      customerServicesTotal -
-        jobDiscount,
-      0
-    );
+   const finalTotal = Math.max(
+  customerServicesTotal,
+  0
+);
 
     // -----------------------------------
     // TOTAL PAID
