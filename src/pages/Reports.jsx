@@ -1246,7 +1246,48 @@ function Reports() {
             font-size: 13px;
             font-weight: bold;
           }
+.paymentSection {
+  margin-top: 25px;
+  padding-top: 12px;
+  border-top: 1px solid #000;
+}
 
+.paymentTitle {
+  font-weight: bold;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.paymentMethods {
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.signatureSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  margin-top: 70px;
+  margin-bottom: 35px;
+}
+
+.signatureBox {
+  text-align: center;
+  min-height: 60px;
+}
+
+.arabicSignature {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.englishSignature {
+  font-size: 10px;
+  font-weight: bold;
+  padding-top: 8px;
+  border-top: 1px solid #000;
+}
           .footer {
             margin-top: 25px;
             padding-top: 9px;
@@ -1513,23 +1554,61 @@ function Reports() {
 
         </div>
 
-        <div class="footer">
+     <div class="paymentSection">
 
-          <strong>
-            Tel: +974 3368 1888
-            &nbsp;-&nbsp;
-            C.R.NO: 199725
-            &nbsp;-&nbsp;
-            E-mail: info@haoshengcar.com
-          </strong>
+  <div class="paymentTitle">
+    PAYMENT METHOD:
+  </div>
 
-          <br />
+  <div class="paymentMethods">
+    CASH / VISA / MASTERCARD / AMEX / NAPS / BANK TRANSFER
+  </div>
 
-          Fereej Al Manaseer, Zone 55,
-          St. 340, Bldg 358,
-          Salwa Road, Doha, Qatar
+</div>
 
-        </div>
+<div class="signatureSection">
+
+  <div class="signatureBox">
+
+    <div class="arabicSignature">
+      توقيع العميل
+    </div>
+
+    <div class="englishSignature">
+      CUSTOMER'S SIGNATURE
+    </div>
+
+  </div>
+
+  <div class="signatureBox">
+
+    <div class="arabicSignature">
+      توقيع المعتمد
+    </div>
+
+    <div class="englishSignature">
+      AUTHORIZED SIGNATURE
+    </div>
+
+  </div>
+
+</div>
+
+<div class="footer">
+
+  Tel: +974 3368 1888
+  &nbsp; | &nbsp;
+  C.R.NO: 199725
+  &nbsp; | &nbsp;
+  E-mail: info@haoshengcar.com
+
+  <br />
+
+  Fereej Al Manaseer, Zone 55,
+  St. 340, Bldg 358,
+  Salwa Road, Doha, Qatar
+
+</div>
 
       </body>
 
