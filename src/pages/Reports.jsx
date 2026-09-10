@@ -727,770 +727,565 @@ function Reports() {
   // AL NUSOOR PRINT REPORT
   // =========================================================
 
-  function printAlnusoorReport() {
-    if (alnusoorJobs.length === 0) {
-      alert("No Al Nusoor jobs found.");
-      return;
-    }
+ function printAlnusoorReport() {
+  if (alnusoorJobs.length === 0) {
+    alert("No Al Nusoor jobs found.");
+    return;
+  }
 
-    const rows = alnusoorJobs
-      .map((job, index) => {
-        const price =
-          Number(job.price || 0);
+  const rows = alnusoorJobs
+    .map((job, index) => {
+      const price = Number(job.price || 0);
+      const discount = Number(job.discount || 0);
+      const total = Math.max(price - discount, 0);
 
-        const discount =
-          Number(job.discount || 0);
+      return `
+        <tr>
+          <td>${getJobDate(job) || "-"}</td>
 
-        const total =
-          Math.max(
-            price - discount,
-            0
-          );
+          <td>
+            ${job.carMake || job.carType || job.carModel || "-"}
+          </td>
 
-        return `
-          <tr>
-            <td class="number">${index + 1}</td>
+          <td>
+            ${job.plate || "-"}
+          </td>
 
-            <td>
-              ${getJobDate(job) || "-"}
-            </td>
+          <td class="money">
+            ${price.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </td>
 
-            <td>
-              ${job.carMake || job.carType || "-"}
-              ${
-                job.carModel
-                  ? `<div class="model">${job.carModel}</div>`
-                  : ""
-              }
-            </td>
+          <td class="money">
+            ${discount.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </td>
 
-            <td>
-              ${job.plate || "-"}
-            </td>
+          <td class="money">
+            ${total.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
 
-            <td class="money">
-              ${price.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </td>
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1000,height=1000"
+  );
 
-            <td class="money discount">
-              ${discount.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </td>
+  if (!printWindow) {
+    alert("Please allow pop-ups for this website.");
+    return;
+  }
 
-            <td class="money total">
-              ${total.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
+  const reportDateText = new Date(
+    `${alnusoorEndDate || reportDate}T00:00:00`
+  ).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 
-    const printWindow = window.open(
-      "",
-      "_blank",
-      "width=1000,height=1000"
-    );
+  printWindow.document.open();
 
-    if (!printWindow) {
-      alert(
-        "Please allow pop-ups for this website."
-      );
-      return;
-    }
+  printWindow.document.write(`
+    <!DOCTYPE html>
 
-    printWindow.document.open();
+    <html>
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
+    <head>
 
-      <html>
+      <title>
+        Al Nusoor Center Report
+      </title>
 
-      <head>
+      <style>
 
-        <title>
-          Al Nusoor Report
-        </title>
+        * {
+          box-sizing: border-box;
+        }
 
-        <style>
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
 
-          * {
-            box-sizing: border-box;
-          }
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          background: white;
+        }
 
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
-          }
+        body {
+          font-family:
+            Arial,
+            Helvetica,
+            sans-serif;
+
+          color: #000;
+
+          font-size: 12px;
+
+          padding: 10px;
+        }
+
+        .page {
+          width: 100%;
+          max-width: 190mm;
+          margin: 0 auto;
+        }
+
+        /* ============================
+           COMPANY HEADER
+        ============================ */
+
+        .companyHeader {
+          width: 100%;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 25px;
+        }
+
+        .companyInfo {
+          width: 70%;
+          padding-top: 8px;
+        }
+
+        .companyName {
+          font-size: 17px;
+          font-weight: bold;
+          letter-spacing: 0.3px;
+          margin-bottom: 8px;
+        }
+
+        .arabicName {
+          font-size: 15px;
+          font-weight: bold;
+          margin-bottom: 8px;
+          direction: rtl;
+          text-align: left;
+        }
+
+        .companyAddress {
+          font-size: 11px;
+          line-height: 1.5;
+        }
+
+        .logoContainer {
+          width: 25%;
+          text-align: right;
+        }
+
+        .logo {
+          width: 105px;
+          height: 105px;
+          object-fit: contain;
+        }
+
+        /* ============================
+           CUSTOMER INFORMATION
+        ============================ */
+
+        .customerInfo {
+          width: 100%;
+          margin-top: 10px;
+          margin-bottom: 25px;
+        }
+
+        .infoRow {
+          display: flex;
+          width: 100%;
+          margin-bottom: 10px;
+          min-height: 20px;
+        }
+
+        .infoLabel {
+          width: 145px;
+          font-weight: bold;
+          font-size: 11px;
+        }
+
+        .infoValue {
+          flex: 1;
+          font-size: 11px;
+        }
+
+        /* ============================
+           VEHICLE TABLE
+        ============================ */
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+        }
+
+        th {
+          font-size: 11px;
+          font-weight: bold;
+          text-align: left;
+          padding: 9px 7px;
+          border-top: 1px solid #000;
+          border-bottom: 1px solid #000;
+        }
+
+        td {
+          font-size: 11px;
+          padding: 8px 7px;
+          border-bottom: 1px solid #d1d5db;
+        }
+
+        .money {
+          text-align: right;
+        }
+
+        /* ============================
+           TOTALS
+        ============================ */
+
+        .totals {
+          width: 100%;
+          margin-top: 25px;
+        }
+
+        .totalRow {
+          display: flex;
+          margin-bottom: 10px;
+          font-size: 12px;
+        }
+
+        .totalLabel {
+          width: 145px;
+          font-weight: bold;
+        }
+
+        .totalValue {
+          font-weight: bold;
+        }
+
+        .netAmount {
+          font-size: 14px;
+          font-weight: bold;
+        }
+
+        /* ============================
+           PAYMENT
+        ============================ */
+
+        .paymentSection {
+          margin-top: 25px;
+        }
+
+        .paymentTitle {
+          font-weight: bold;
+          font-size: 12px;
+          margin-bottom: 8px;
+        }
+
+        .paymentMethods {
+          font-size: 11px;
+        }
+
+        /* ============================
+           FOOTER
+        ============================ */
+
+        .footer {
+          margin-top: 55px;
+          padding-top: 12px;
+          border-top: 1px solid #000;
+          text-align: center;
+          font-size: 9px;
+          line-height: 1.6;
+        }
+
+        .footer strong {
+          font-weight: bold;
+        }
+
+        @media print {
 
           html,
           body {
-            margin: 0;
-            padding: 0;
-            background: white;
+            width: 210mm;
+            min-height: 297mm;
           }
 
           body {
-            font-family:
-              Arial,
-              Helvetica,
-              sans-serif;
-
-            color: #111827;
-
-            font-size: 12px;
-
-            padding: 8px;
+            padding: 0;
           }
 
           .page {
             width: 100%;
-            max-width: 190mm;
-            margin: 0 auto;
+            max-width: none;
           }
 
-          /* ============================
-             HEADER
-          ============================ */
-
-          .header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 3px solid #111827;
-  margin-bottom: 12px;
-}
-
-.companySection {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.logo {
-  width: 95px;
-  height: 95px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.companyName {
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.2;
-  color: #111827;
-  padding-top: 5px;
-}
-
-.arabicName {
-  font-size: 14px;
-  font-weight: 700;
-  margin-top: 8px;
-  direction: rtl;
-}
-
-.companyAddress {
-  font-size: 10px;
-  font-weight: 500;
-  color: #64748b;
-  margin-top: 6px;
-}
-
-.reportSection {
-  text-align: right;
-  padding-top: 5px;
-}
-
-.reportTitle {
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 0.5px;
-  color: #111827;
-  margin-bottom: 5px;
-}
-
-.reportSubtitle {
-  font-size: 13px;
-  color: #64748b;
-  font-weight: 600;
-}
-          /* ============================
-             CUSTOMER TITLE
-          ============================ */
-
-          .customerBanner {
-            background: #111827;
-            color: white;
-            padding: 10px 14px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+          tr {
+            page-break-inside: avoid;
           }
 
-          .customerName {
-            font-size: 17px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-          }
+        }
 
-          .dateRange {
-            font-size: 11px;
-            color: #e5e7eb;
-            text-align: right;
-          }
+      </style>
 
-          /* ============================
-             SUMMARY
-          ============================ */
+    </head>
 
-          .summary {
-            display: grid;
-            grid-template-columns:
-              repeat(3, 1fr);
+    <body>
 
-            gap: 10px;
+      <div class="page">
 
-            margin-bottom: 14px;
-          }
+        <!-- COMPANY HEADER -->
 
-          .summaryBox {
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+        <div class="companyHeader">
 
-            padding: 10px 12px;
+          <div class="companyInfo">
 
-            background: #f8fafc;
-          }
+            <div class="companyName">
+              HAOSHENG CAR SERVICE AND ACCESSORIES
+            </div>
 
-          .summaryLabel {
-            font-size: 9px;
-            font-weight: 700;
-            color: #64748b;
+            <div class="arabicName">
+              هاوشنغ لخدمات وزينة السيارات
+            </div>
 
-            text-transform: uppercase;
+            <div class="companyAddress">
+              Building 358, Salwa Road, Doha - Qatar
+            </div>
 
-            letter-spacing: 0.5px;
-          }
+          </div>
 
-          .summaryValue {
-            font-size: 18px;
-            font-weight: 900;
+          <div class="logoContainer">
 
-            margin-top: 4px;
+            <img
+              src="${gaLogo}"
+              class="logo"
+              alt="Haosheng Logo"
+            />
 
-            color: #111827;
-          }
+          </div>
 
-          .summaryBox.net {
-            background: #fffdf0;
-            border-color: #d4af37;
-          }
+        </div>
 
-          .summaryBox.net .summaryValue {
-            color: #92710c;
-          }
 
-          /* ============================
-             TABLE
-          ============================ */
+        <!-- CUSTOMER INFORMATION -->
 
-          table {
-            width: 100%;
-            border-collapse: collapse;
+        <div class="customerInfo">
 
-            table-layout: fixed;
+          <div class="infoRow">
 
-            font-size: 11px;
-          }
+            <div class="infoLabel">
+              DATE:
+            </div>
 
-          thead {
-            display: table-header-group;
-          }
+            <div class="infoValue">
+              ${reportDateText}
+            </div>
 
-          th {
-            background: #111827;
-            color: white;
+          </div>
 
-            padding: 8px 6px;
 
-            border: 1px solid #111827;
+          <div class="infoRow">
 
-            text-align: left;
+            <div class="infoLabel">
+              NAME/COMPANY:
+            </div>
 
-            font-size: 10px;
-
-            font-weight: 800;
-
-            text-transform: uppercase;
-          }
-
-          td {
-            padding: 7px 6px;
-
-            border:
-              1px solid #d1d5db;
-
-            vertical-align: middle;
-
-            font-size: 11px;
-
-            line-height: 1.2;
-          }
-
-          tbody tr:nth-child(even) {
-            background: #f8fafc;
-          }
-
-          .number {
-            width: 7%;
-            text-align: center;
-            font-weight: 700;
-          }
-
-          th:nth-child(1) {
-            width: 7%;
-            text-align: center;
-          }
-
-          th:nth-child(2) {
-            width: 16%;
-          }
-
-          th:nth-child(3) {
-            width: 25%;
-          }
-
-          th:nth-child(4) {
-            width: 15%;
-          }
-
-          th:nth-child(5) {
-            width: 13%;
-            text-align: right;
-          }
-
-          th:nth-child(6) {
-            width: 12%;
-            text-align: right;
-          }
-
-          th:nth-child(7) {
-            width: 14%;
-            text-align: right;
-          }
-
-          .money {
-            text-align: right;
-            white-space: nowrap;
-            font-weight: 600;
-          }
-
-          .discount {
-            color: #dc2626;
-          }
-
-          .total {
-            color: #92710c;
-            font-weight: 900;
-          }
-
-          .model {
-            color: #64748b;
-            font-size: 9px;
-            margin-top: 2px;
-          }
-
-          /* ============================
-             TOTAL FOOTER
-          ============================ */
-
-          .grandTotal {
-            margin-top: 12px;
-
-            display: flex;
-            justify-content: flex-end;
-          }
-
-          .grandTotalBox {
-            width: 280px;
-
-            border:
-              2px solid #111827;
-
-            border-radius: 6px;
-
-            overflow: hidden;
-          }
-
-          .grandRow {
-            display: flex;
-            justify-content: space-between;
-
-            padding: 7px 10px;
-
-            border-bottom:
-              1px solid #d1d5db;
-
-            font-size: 11px;
-          }
-
-          .grandRow:last-child {
-            border-bottom: none;
-          }
-
-          .grandRow.final {
-            background: #111827;
-            color: white;
-
-            font-size: 15px;
-            font-weight: 900;
-          }
-
-          .grandRow .amount {
-            font-weight: 800;
-          }
-
-          /* ============================
-             FOOTER
-          ============================ */
-
-          .footer {
-            margin-top: 14px;
-
-            padding-top: 8px;
-
-            border-top:
-              1px solid #d1d5db;
-
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            font-size: 9px;
-
-            color: #64748b;
-          }
-
-          .footerCompany {
-            font-weight: 700;
-            color: #475569;
-          }
-
-          .footerContact {
-            text-align: right;
-          }
-
-          /* ============================
-             PRINT
-          ============================ */
-
-          @media print {
-
-            html,
-            body {
-              width: 210mm;
-              min-height: 297mm;
-            }
-
-            body {
-              padding: 0;
-            }
-
-            .page {
-              width: 100%;
-              max-width: none;
-            }
-
-            tr {
-              page-break-inside: avoid;
-            }
-
-            .header,
-            .summary,
-            .customerBanner,
-            .grandTotal {
-              page-break-inside: avoid;
-            }
-
-          }
-
-        </style>
-
-      </head>
-
-      <body>
-
-        <div class="page">
-
-          <!-- HEADER -->
-
-<div class="header">
-
-  <div class="companySection">
-
-    <img
-      src="${gaLogo}"
-      class="logo"
-      alt="Haosheng Logo"
-    />
-
-    <div class="companyName">
-      HAOSHENG CAR SERVICE AND ACCESSORIES
-      <div class="arabicName">
-        هاوشنغ لخدمات وزينة السيارات
-      </div>
-      <div class="companyAddress">
-        Building 358, Salwa Road, Doha - Qatar
-      </div>
-    </div>
-
-  </div>
-
-  <div class="reportSection">
-
-    <div class="reportTitle">
-      AL NUSOOR REPORT
-    </div>
-
-    <div class="reportSubtitle">
-      Service & Vehicle Summary
-    </div>
-
-  </div>
-
-</div>
-          <!-- AL NUSOOR -->
-
-          <div class="customerBanner">
-
-            <div class="customerName">
+            <div class="infoValue">
               AL NUSOOR CENTER
             </div>
 
-            <div class="dateRange">
+          </div>
 
-              From:
-              ${alnusoorStartDate || "All Dates"}
 
-              &nbsp;&nbsp;
+          <div class="infoRow">
 
-              To:
-              ${alnusoorEndDate || "All Dates"}
+            <div class="infoLabel">
+              ADDRESS:
+            </div>
 
+            <div class="infoValue">
+              SALWA ROAD
             </div>
 
           </div>
 
-          <!-- SUMMARY -->
 
-          <div class="summary">
+          <div class="infoRow">
 
-            <div class="summaryBox">
-
-              <div class="summaryLabel">
-                Total Cars
-              </div>
-
-              <div class="summaryValue">
-                ${alnusoorJobs.length}
-              </div>
-
+            <div class="infoLabel">
+              CONTACT NUMBER:
             </div>
 
-            <div class="summaryBox">
-
-              <div class="summaryLabel">
-                Total Amount
-              </div>
-
-              <div class="summaryValue">
-                QAR
-                ${alnusoorAmount.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </div>
-
-            </div>
-
-            <div class="summaryBox net">
-
-              <div class="summaryLabel">
-                Net Amount
-              </div>
-
-              <div class="summaryValue">
-                QAR
-                ${alnusoorNet.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </div>
-
-            </div>
-
-          </div>
-
-          <!-- VEHICLE TABLE -->
-
-          <table>
-
-            <thead>
-
-              <tr>
-
-                <th>
-                  #
-                </th>
-
-                <th>
-                  Date
-                </th>
-
-                <th>
-                  Vehicle
-                </th>
-
-                <th>
-                  Plate Number
-                </th>
-
-                <th>
-                  Price
-                </th>
-
-                <th>
-                  Discount
-                </th>
-
-                <th>
-                  Total
-                </th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              ${rows}
-
-            </tbody>
-
-          </table>
-
-          <!-- TOTALS -->
-
-          <div class="grandTotal">
-
-            <div class="grandTotalBox">
-
-              <div class="grandRow">
-
-                <span>
-                  Total Amount
-                </span>
-
-                <span class="amount">
-                  QAR
-                  ${alnusoorAmount.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-
-              </div>
-
-              <div class="grandRow">
-
-                <span>
-                  Total Discount
-                </span>
-
-                <span
-                  class="amount"
-                  style="color:#dc2626;"
-                >
-                  QAR
-                  ${alnusoorDiscount.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-
-              </div>
-
-              <div class="grandRow final">
-
-                <span>
-                  NET TOTAL
-                </span>
-
-                <span>
-                  QAR
-                  ${alnusoorNet.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          <!-- FOOTER -->
-
-          <div class="footer">
-
-            <div class="footerCompany">
-
-              HAOSHENG CAR SERVICE AND ACCESSORIES
-
-            </div>
-
-            <div class="footerContact">
-
-              Tel: +974 3368 1888
-              <br />
-
-              Al Nusoor Center Report
-
+            <div class="infoValue">
+              30124444
             </div>
 
           </div>
 
         </div>
 
-      </body>
 
-      </html>
-    `);
+        <!-- VEHICLE TABLE -->
 
-    printWindow.document.close();
+        <table>
 
-    printWindow.onload = function () {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 700);
-    };
-  }
+          <thead>
 
+            <tr>
+
+              <th>
+                DATE
+              </th>
+
+              <th>
+                CAR MAKE
+              </th>
+
+              <th>
+                PLATE NUMBER
+              </th>
+
+              <th class="money">
+                PRICE
+              </th>
+
+              <th class="money">
+                DISCOUNT
+              </th>
+
+              <th class="money">
+                TOTAL
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            ${rows}
+
+          </tbody>
+
+        </table>
+
+
+        <!-- TOTALS -->
+
+        <div class="totals">
+
+          <div class="totalRow">
+
+            <div class="totalLabel">
+              AMOUNT:
+            </div>
+
+            <div class="totalValue">
+              ${alnusoorAmount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+
+          </div>
+
+
+          <div class="totalRow">
+
+            <div class="totalLabel">
+              TOTAL DISCOUNT:
+            </div>
+
+            <div class="totalValue">
+              ${alnusoorDiscount.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+
+          </div>
+
+
+          <div class="totalRow netAmount">
+
+            <div class="totalLabel">
+              NET AMOUNT:
+            </div>
+
+            <div class="totalValue">
+              ${alnusoorNet.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- PAYMENT METHOD -->
+
+        <div class="paymentSection">
+
+          <div class="paymentTitle">
+            PAYMENT METHOD:
+          </div>
+
+          <div class="paymentMethods">
+            CASH / VISA / MASTERCARD / AMEX / NAPS
+          </div>
+
+        </div>
+
+
+        <!-- FOOTER -->
+
+        <div class="footer">
+
+          <strong>
+            Tel: +974 3368 1888
+            &nbsp;–&nbsp;
+            C.R.NO: 199725
+            &nbsp;–&nbsp;
+            E-mail: info@haoshengcar.com
+          </strong>
+
+          <br />
+
+          Fereej Al Manaseer, Zone 55,
+          St. 340, Bldg 358,
+          Salwa Road, Doha, Qatar
+
+        </div>
+
+      </div>
+
+    </body>
+
+    </html>
+  `);
+
+  printWindow.document.close();
+
+  printWindow.onload = function () {
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 700);
+  };
+}
   // =========================================================
   // DAILY REPORT
   // =========================================================
