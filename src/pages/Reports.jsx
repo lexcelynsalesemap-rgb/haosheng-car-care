@@ -932,7 +932,7 @@ function Reports() {
         <div class="footer">
 
           <strong>
-            Tel: +974 3368 1888
+            Tel: +974 4441 5866
             &nbsp;-&nbsp;
             C.R.NO: 199725
             &nbsp;-&nbsp;
@@ -1596,7 +1596,7 @@ function Reports() {
 
 <div class="footer">
 
-  Tel: +974 3368 1888
+  Tel: +974 4441 5866
   &nbsp; | &nbsp;
   C.R.NO: 199725
   &nbsp; | &nbsp;
