@@ -421,7 +421,6 @@ function Reports() {
   function getTeyseerJobAmount(job) {
   const services = getTeyseerServices(job);
 
-  // If there are no service records, don't include the job
   if (services.length === 0) {
     return 0;
   }
@@ -434,14 +433,27 @@ function Reports() {
       ""
     ).toLowerCase();
 
-    // ONLY WTT is included in Teyseer report
-    if (!serviceName.includes("wtt")) {
+    // Teyseer Motors = ALL services
+    if (job.source === "Teyseer Motors") {
+      return sum + Number(service.price || 0);
+    }
+
+    // Salah and Bahaa = ONLY WTT
+    if (
+      job.source === "Teyseer Motors - Salah" ||
+      job.source === "Teyseer Motors - Bahaa"
+    ) {
+      if (serviceName.includes("wtt")) {
+        return sum + Number(service.price || 0);
+      }
+
       return sum;
     }
 
-    return sum + Number(service.price || 0);
+    return sum;
   }, 0);
 }
+
 
 function getTeyseerServiceNames(job) {
   const services = getTeyseerServices(job);
@@ -455,8 +467,20 @@ function getTeyseerServiceNames(job) {
         ""
       ).toLowerCase();
 
-      // ONLY show WTT services
-      return serviceName.includes("wtt");
+      // Teyseer Motors = ALL services
+      if (job.source === "Teyseer Motors") {
+        return true;
+      }
+
+      // Salah and Bahaa = ONLY WTT
+      if (
+        job.source === "Teyseer Motors - Salah" ||
+        job.source === "Teyseer Motors - Bahaa"
+      ) {
+        return serviceName.includes("wtt");
+      }
+
+      return false;
     })
     .map(service =>
       service.service_name ||
@@ -467,7 +491,6 @@ function getTeyseerServiceNames(job) {
     .filter(Boolean)
     .join(", ");
 }
-
   const teyseerSales = teyseerJobs.reduce(
     (sum, job) =>
       sum + getTeyseerJobAmount(job),
