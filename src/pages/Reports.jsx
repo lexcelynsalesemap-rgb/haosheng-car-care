@@ -323,9 +323,24 @@ function Reports() {
     "Teyseer Motors - Salah",
   ];
 
-  const teyseerJobs = jobs.filter(job =>
-    teyseerSources.includes(job.source)
-  );
+ const teyseerJobs = jobs.filter(job => {
+  if (!teyseerSources.includes(job.source)) {
+    return false;
+  }
+
+  const services = getTeyseerServices(job);
+
+  return services.some(service => {
+    const serviceName = String(
+      service?.service_name ||
+      service?.name ||
+      service?.title ||
+      ""
+    ).toLowerCase();
+
+    return serviceName.includes("full wtt");
+  });
+});
 
   const customerJobs = jobs.filter(
     job =>
@@ -404,43 +419,54 @@ function Reports() {
   }
 
   function getTeyseerJobAmount(job) {
-    const services = getTeyseerServices(job);
+  const services = getTeyseerServices(job);
 
-    if (services.length === 0) {
-      return Math.max(
-        Number(job.price || 0) -
-        Number(job.discount || 0),
-        0
-      );
-    }
-
-    return services.reduce((sum, service) => {
-      const source = getTeyseerReportSource(
-        job,
-        service
-      );
-
-      if (source !== "Teyseer Motors") {
-        return sum;
-      }
-
-      return sum + Number(service.price || 0);
-    }, 0);
+  // If there are no service records, don't include the job
+  if (services.length === 0) {
+    return 0;
   }
 
-  function getTeyseerServiceNames(job) {
-    const services = getTeyseerServices(job);
+  return services.reduce((sum, service) => {
+    const serviceName = String(
+      service.service_name ||
+      service.name ||
+      service.title ||
+      ""
+    ).toLowerCase();
 
-    return services
-      .map(service =>
+    // ONLY WTT is included in Teyseer report
+    if (!serviceName.includes("wtt")) {
+      return sum;
+    }
+
+    return sum + Number(service.price || 0);
+  }, 0);
+}
+
+function getTeyseerServiceNames(job) {
+  const services = getTeyseerServices(job);
+
+  return services
+    .filter(service => {
+      const serviceName = String(
         service.service_name ||
         service.name ||
         service.title ||
         ""
-      )
-      .filter(Boolean)
-      .join(", ");
-  }
+      ).toLowerCase();
+
+      // ONLY show WTT services
+      return serviceName.includes("wtt");
+    })
+    .map(service =>
+      service.service_name ||
+      service.name ||
+      service.title ||
+      ""
+    )
+    .filter(Boolean)
+    .join(", ");
+}
 
   const teyseerSales = teyseerJobs.reduce(
     (sum, job) =>
@@ -613,28 +639,33 @@ function Reports() {
     0
   );
 
-  const filteredTeyseerJobs =
-    teyseerJobs.filter(job => {
-      const jobDate = getJobDate(job);
+ const filteredTeyseerJobs = teyseerJobs.filter(job => {
+  const amount = getTeyseerJobAmount(job);
 
-      if (
-        teyseerStartDate &&
-        jobDate &&
-        jobDate < teyseerStartDate
-      ) {
-        return false;
-      }
+  if (amount <= 0) {
+    return false;
+  }
 
-      if (
-        teyseerEndDate &&
-        jobDate &&
-        jobDate > teyseerEndDate
-      ) {
-        return false;
-      }
+  const jobDate = getJobDate(job);
 
-      return true;
-    });
+  if (
+    teyseerStartDate &&
+    jobDate &&
+    jobDate < teyseerStartDate
+  ) {
+    return false;
+  }
+
+  if (
+    teyseerEndDate &&
+    jobDate &&
+    jobDate > teyseerEndDate
+  ) {
+    return false;
+  }
+
+  return true;
+});
 
   const filteredTeyseerSales =
     filteredTeyseerJobs.reduce(
@@ -1729,27 +1760,30 @@ function Reports() {
 
         return `
           <tr>
-            <td>${index + 1}</td>
-            <td>${job.customer || ""}</td>
-            <td>${job.phone || ""}</td>
-            <td>${job.carModel || ""}</td>
-            <td>${job.plate || ""}</td>
-            <td>${job.source || "Not specified"}</td>
-            <td>${services}</td>
+  <td>${index + 1}</td>
+  <td>${job.customer || ""}</td>
+  <td>${job.phone || ""}</td>
+  <td>${job.carModel || ""}</td>
+  <td>${job.plate || ""}</td>
+  <td>${job.source || "Not specified"}</td>
+  <td>${services}</td>
 
-            <td class="money">
-              QAR ${netAmount.toLocaleString()}
-            </td>
+  <td class="money">
+    QAR ${price.toLocaleString()}
+  </td>
 
-            <td class="money">
-              QAR ${jobPaid.toLocaleString()}
-            </td>
+  <td class="money">
+    QAR ${discount.toLocaleString()}
+  </td>
 
-            <td class="money">
-              QAR ${jobBalance.toLocaleString()}
-            </td>
+  <td class="money">
+    QAR ${jobPaid.toLocaleString()}
+  </td>
 
-          </tr>
+  <td class="money">
+    QAR ${jobBalance.toLocaleString()}
+  </td>
+</tr>
         `;
       })
       .join("");
@@ -1968,19 +2002,18 @@ function Reports() {
           <thead>
 
             <tr>
-
-              <th>#</th>
-              <th>Customer</th>
-              <th>Phone</th>
-              <th>Car</th>
-              <th>Plate</th>
-              <th>Source</th>
-              <th>Services</th>
-              <th>Amount</th>
-              <th>Paid</th>
-              <th>Balance</th>
-
-            </tr>
+  <th>#</th>
+  <th>Customer</th>
+  <th>Phone</th>
+  <th>Car</th>
+  <th>Plate</th>
+  <th>Source</th>
+  <th>Services</th>
+  <th>Amount</th>
+  <th>Discount</th>
+  <th>Paid</th>
+  <th>Balance</th>
+</tr>
 
           </thead>
 
