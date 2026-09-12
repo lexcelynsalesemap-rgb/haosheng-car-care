@@ -1248,7 +1248,7 @@ function getTeyseerServiceNames(job) {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 8.5px;
+            font-size: 10px;
           }
 
           th {
