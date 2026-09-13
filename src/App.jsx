@@ -13,130 +13,133 @@ import TechnicianEarnings from "./pages/TechnicianEarnings";
 import AssignTechnician from "./pages/AssignTechnician";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
+import Users from "./pages/Users";
+import RoleRoute from "./components/RoleRoute";
 
 function App() {
-
   return (
     <BrowserRouter>
-
       <Routes>
 
-  {/* Public */}
-  <Route 
-    path="/login" 
-    element={<Login />} 
-  />
+        {/* PUBLIC */}
+        <Route
+          path="/login"
+          element={<Login />}
+        />
 
+        {/* ADMIN ONLY */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-  {/* Protected */}
-  <Route
-  path="/"
+        <Route
+          path="/new-job"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <NewJob />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/jobs"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Jobs />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/invoice/:id"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Invoice />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/jobs/:id"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <JobDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/edit-job/:id"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <EditJob />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/technician-earnings"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <TechnicianEarnings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/assign-technician/:id"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AssignTechnician />
+            </ProtectedRoute>
+          }
+        />
+
+    <Route
+  path="/reports"
   element={
-    <ProtectedRoute>
-      <Dashboard />
-    </ProtectedRoute>
+    <RoleRoute allowedRoles={["admin"]}>
+      <Reports />
+    </RoleRoute>
   }
 />
 
-
-  <Route 
-    path="/new-job" 
-    element={
-      <ProtectedRoute>
-        <NewJob />
-      </ProtectedRoute>
-    } 
-  />
-
-
-  <Route 
-    path="/jobs" 
-    element={
-      <ProtectedRoute>
-        <Jobs />
-      </ProtectedRoute>
-    } 
-  />
-
-
-  <Route 
-    path="/invoice/:id" 
-    element={
-      <ProtectedRoute>
-        <Invoice />
-      </ProtectedRoute>
-    } 
-  />
-
-
-<Route
-  path="/jobs/:id"
+        <Route
+  path="/users"
   element={
-    <ProtectedRoute>
-      <JobDetails />
-    </ProtectedRoute>
+    <RoleRoute allowedRoles={["admin"]}>
+      <Users />
+    </RoleRoute>
   }
 />
 
+        {/* ADMIN + STAFF */}
+        <Route
+          path="/inventory"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "staff"]}>
+              <Inventory />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/edit-job/:id"
-  element={
-    <ProtectedRoute>
-      <EditJob />
-    </ProtectedRoute>
-  }
-/>
-
-
-  <Route 
-    path="/settings" 
-    element={
-      <ProtectedRoute>
-        <Settings />
-      </ProtectedRoute>
-    } 
-  />
-
-
-      
-
-
-      <Route
-        path="/technician-earnings"
-        element={
-          <ProtectedRoute>
-            <TechnicianEarnings />
-          </ProtectedRoute>
-        }
-      />
-
-
-      <Route
-        path="/assign-technician/:id"
-        element={
-          <ProtectedRoute>
-            <AssignTechnician />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-  path="/inventory"
-  element={
-    <ProtectedRoute>
-      <Inventory />
-    </ProtectedRoute>
-  }
-/>
-
-<Route path="/reports" element={<Reports />} />
-
-    </Routes>
-
+      </Routes>
     </BrowserRouter>
-    
   );
 }
-
 
 export default App;

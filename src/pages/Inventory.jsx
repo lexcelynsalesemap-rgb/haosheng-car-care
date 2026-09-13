@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
+import { canSeeInventoryCost } from "../utils/permissions";
 
 function Inventory() {
+  const loggedInUser = JSON.parse(
+    localStorage.getItem("user") || "null"
+  );
+
+  const showCost = canSeeInventoryCost(loggedInUser);
+
+  const isAdmin = loggedInUser?.role === "admin";
+  const isStaff = loggedInUser?.role === "staff";
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
 
@@ -46,11 +56,43 @@ function Inventory() {
     loadCategories();
   }, []);
 
-  async function loadProducts() {
-    setLoading(true);
-    setError("");
+ async function loadProducts() {
+  setLoading(true);
+  setError("");
 
-    const { data, error } = await supabase
+  const loggedInUser = JSON.parse(
+    localStorage.getItem("user") || "null"
+  );
+
+  if (!loggedInUser?.shop_id) {
+    setError("Your account is not connected to a shop.");
+    setProducts([]);
+    setLoading(false);
+    return;
+  }
+
+  let query;
+
+  if (loggedInUser.role === "staff") {
+    query = supabase
+      .from("inventory_products_staff")
+      .select(`
+        id,
+        sku,
+        name,
+        unit,
+        current_stock,
+        minimum_stock,
+        active,
+        description,
+        category_id,
+        shop_id,
+        inventory_categories (
+          name
+        )
+      `);
+  } else {
+    query = supabase
       .from("inventory_products")
       .select(`
         id,
@@ -63,21 +105,26 @@ function Inventory() {
         active,
         description,
         category_id,
+        shop_id,
         inventory_categories (
           name
         )
-      `)
-      .order("name");
-
-    if (error) {
-      console.error(error);
-      setError(error.message);
-    } else {
-      setProducts(data || []);
-    }
-
-    setLoading(false);
+      `);
   }
+
+  const { data, error } = await query
+    .eq("shop_id", loggedInUser.shop_id)
+    .order("name");
+
+  if (error) {
+    console.error("LOAD INVENTORY ERROR:", error);
+    setError(error.message);
+  } else {
+    setProducts(data || []);
+  }
+
+  setLoading(false);
+}
 
   async function loadCategories() {
     const { data, error } = await supabase
@@ -195,8 +242,13 @@ function Inventory() {
     setError("");
   }
 
-  async function saveProduct(event) {
+ async function saveProduct(event) {
   event.preventDefault();
+
+  if (loggedInUser?.role !== "admin") {
+    setError("Only administrators can add products.");
+    return;
+  }
 
   if (!productForm.sku.trim()) {
     setError("SKU is required.");
@@ -210,6 +262,11 @@ function Inventory() {
 
   if (Number(productForm.current_stock) < 0) {
     setError("Stock cannot be negative.");
+    return;
+  }
+
+  if (!loggedInUser?.shop_id) {
+    setError("Your account is not connected to a shop.");
     return;
   }
 
@@ -228,6 +285,7 @@ function Inventory() {
       current_stock: Number(productForm.current_stock) || 0,
       minimum_stock: Number(productForm.minimum_stock) || 0,
       description: productForm.description.trim() || null,
+      shop_id: loggedInUser.shop_id,
     });
 
   setSaving(false);
@@ -243,6 +301,7 @@ function Inventory() {
 
   await loadProducts();
 }
+
   function openMovement(product, type) {
     setSelectedProduct(product);
     setMovementType(type);
@@ -349,12 +408,14 @@ function Inventory() {
           </p>
         </div>
 
-        <button
-          style={styles.primaryButton}
-          onClick={openAddProduct}
-        >
-          + Add Product
-        </button>
+     {isAdmin && (
+  <button
+    style={styles.primaryButton}
+    onClick={openAddProduct}
+  >
+    + Add Product
+  </button>
+)}
       </div>
 
       {/* MESSAGE */}
@@ -405,14 +466,16 @@ function Inventory() {
           </div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            Inventory Value
-          </div>
-          <div style={styles.cardValue}>
-            QAR {inventoryValue.toFixed(2)}
-          </div>
-        </div>
+    {isAdmin && (
+  <div style={styles.card}>
+    <div style={styles.cardLabel}>
+      Inventory Value
+    </div>
+    <div style={styles.cardValue}>
+      QAR {inventoryValue.toFixed(2)}
+    </div>
+  </div>
+)}
       </div>
 
       {/* FILTERS */}
@@ -483,7 +546,9 @@ function Inventory() {
                 <th style={styles.th}>Category</th>
                 <th style={styles.th}>Stock</th>
                 <th style={styles.th}>Min.</th>
-                <th style={styles.th}>Cost</th>
+               {isAdmin && (
+  <th style={styles.th}>Cost</th>
+)}
                 <th style={styles.th}>Status</th>
                 <th style={styles.th}>Actions</th>
               </tr>
@@ -519,12 +584,14 @@ function Inventory() {
                       {product.minimum_stock}
                     </td>
 
-                    <td style={styles.td}>
-                      QAR{" "}
-                      {Number(
-                        product.cost_price
-                      ).toFixed(2)}
-                    </td>
+                  {isAdmin && (
+  <td style={styles.td}>
+    QAR{" "}
+    {Number(
+      product.cost_price || 0
+    ).toFixed(2)}
+  </td>
+)}
 
                     <td style={styles.td}>
                       <span
@@ -878,23 +945,25 @@ function Inventory() {
                 />
               </label>
 
-              <label style={styles.label}>
-                Unit Cost (QAR)
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  style={styles.input}
-                  value={movementForm.unit_cost}
-                  onChange={(e) =>
-                    setMovementForm({
-                      ...movementForm,
-                      unit_cost:
-                        e.target.value,
-                    })
-                  }
-                />
-              </label>
+              {showCost && (
+  <label style={styles.label}>
+    Unit Cost (QAR)
+
+    <input
+      type="number"
+      min="0"
+      step="0.01"
+      style={styles.input}
+      value={movementForm.unit_cost}
+      onChange={(e) =>
+        setMovementForm({
+          ...movementForm,
+          unit_cost: e.target.value,
+        })
+      }
+    />
+  </label>
+)}
 
               <label style={styles.label}>
                 Reference
