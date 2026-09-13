@@ -360,14 +360,16 @@ function NewJob() {
     // --------------------------------------------
 
     const job = {
-      customer,
+  shop_id: 1,
 
-      phone,
+  customer,
 
-      date,
+  phone,
 
-      receipt_number:
-        nextReceiptNumber,
+  date,
+
+  receipt_number:
+    nextReceiptNumber,
 
       source: savedSource,
 
