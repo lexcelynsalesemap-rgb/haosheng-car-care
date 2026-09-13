@@ -11,40 +11,93 @@ function Login(){
   const navigate = useNavigate();
 
 
-  async function login(){
+  async function login() {
+  if (!email || !password) {
+    alert("Please enter email and password.");
+    return;
+  }
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("email", email)
-      .eq("password", password)
-      .single();
+  // -----------------------------------
+  // SUPABASE AUTH LOGIN
+  // -----------------------------------
 
+  const { data: authData, error: authError } =
+    await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password
+    });
 
-    console.log("LOGIN DATA:", data);
-    console.log("LOGIN ERROR:", error);
+  console.log("AUTH DATA:", authData);
+  console.log("AUTH ERROR:", authError);
 
+  if (authError || !authData?.user) {
+    alert(
+      authError?.message ||
+      "Wrong email or password"
+    );
+    return;
+  }
 
-    if(error || !data){
+  // -----------------------------------
+  // LOAD PUBLIC USER
+  // -----------------------------------
 
-      alert("Wrong email or password");
-      return;
+  const authUserId = authData.user.id;
 
-    }
+  const {
+    data: publicUser,
+    error: publicUserError
+  } = await supabase
+    .from("users")
+    .select("*")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
 
+  console.log("PUBLIC USER:", publicUser);
+  console.log(
+    "PUBLIC USER ERROR:",
+    publicUserError
+  );
 
-    localStorage.setItem(
-      "user",
-      JSON.stringify(data)
+  if (publicUserError) {
+    console.error(
+      "PUBLIC USER ERROR:",
+      publicUserError
     );
 
+    alert(
+      "Login succeeded, but your shop profile could not be loaded."
+    );
 
-    alert("Login successful");
-
-
-    navigate("/");
-
+    return;
   }
+
+  if (!publicUser) {
+    alert(
+      "Login succeeded, but this account is not connected to a shop."
+    );
+
+    return;
+  }
+
+  // -----------------------------------
+  // SAVE USER
+  // -----------------------------------
+
+  localStorage.setItem(
+    "user",
+    JSON.stringify(publicUser)
+  );
+
+  console.log(
+    "LOGGED IN SHOP:",
+    publicUser.shop_id
+  );
+
+  alert("Login successful");
+
+  navigate("/");
+}
 
 
   return (

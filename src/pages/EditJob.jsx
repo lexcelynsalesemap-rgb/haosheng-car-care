@@ -81,23 +81,36 @@ function EditJob() {
   // LOAD JOB
   // -----------------------------------
 
-  async function loadJob() {
-    setLoading(true);
+ async function loadJob() {
+  setLoading(true);
 
-    const { data, error } = await supabase
-      .from("jobs")
-      .select("*")
-      .eq("id", id)
-      .single();
+  const loggedInUser = JSON.parse(
+    localStorage.getItem("user")
+  );
 
-    if (error) {
-      console.error("LOAD JOB ERROR:", error);
-      alert(error.message);
-      setLoading(false);
-      return;
-    }
+  if (!loggedInUser?.shop_id) {
+    alert("User shop could not be determined.");
+    setLoading(false);
+    return;
+  }
 
-    console.log("EDIT JOB:", data);
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("id", id)
+    .eq("shop_id", loggedInUser.shop_id)
+    .single();
+
+  if (error) {
+    console.error("LOAD JOB ERROR:", error);
+    alert(error.message);
+    setLoading(false);
+    return;
+  }
+
+  console.log("EDIT JOB:", data);
+
+  // KEEP EVERYTHING BELOW HERE EXACTLY AS YOU ALREADY HAVE IT
 
     setCustomer(data.customer || "");
     setPhone(data.phone || "");
@@ -197,23 +210,43 @@ function EditJob() {
   // LOAD PAYMENTS
   // -----------------------------------
 
-  async function loadPayments() {
-    const { data, error } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("job_id", Number(id))
-      .order("payment_date", {
-        ascending: false
-      });
+ async function loadPayments() {
+  const loggedInUser = JSON.parse(
+    localStorage.getItem("user")
+  );
 
-    if (error) {
-      console.error("LOAD PAYMENTS ERROR:", error);
-      return;
-    }
-
-    setPayments(data || []);
+  if (!loggedInUser?.shop_id) {
+    console.error("User shop could not be determined.");
+    return;
   }
 
+  const { data: job, error: jobError } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("id", Number(id))
+    .eq("shop_id", loggedInUser.shop_id)
+    .single();
+
+  if (jobError || !job) {
+    console.error("JOB ACCESS ERROR:", jobError);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("job_id", Number(id))
+    .order("payment_date", {
+      ascending: false
+    });
+
+  if (error) {
+    console.error("LOAD PAYMENTS ERROR:", error);
+    return;
+  }
+
+  setPayments(data || []);
+}
   // -----------------------------------
   // TOGGLE SERVICE
   // -----------------------------------
@@ -286,63 +319,98 @@ function EditJob() {
   // DELETE PAYMENT
   // -----------------------------------
 
-  async function deletePayment(paymentId) {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this payment?"
+async function deletePayment(paymentId) {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this payment?"
+  );
+
+  if (!confirmDelete) {
+    return;
+  }
+
+  try {
+    const loggedInUser = JSON.parse(
+      localStorage.getItem("user")
     );
 
-    if (!confirmDelete) {
+    if (!loggedInUser?.shop_id) {
+      alert("User shop could not be determined.");
       return;
     }
 
-    try {
-      const { error: deleteError } =
-        await supabase
-          .from("payments")
-          .delete()
-          .eq("id", paymentId);
+    // Make sure this job belongs to the user's shop
+    const { data: job, error: jobError } = await supabase
+      .from("jobs")
+      .select("id")
+      .eq("id", Number(id))
+      .eq("shop_id", loggedInUser.shop_id)
+      .single();
 
-      if (deleteError) {
-        console.error(
-          "DELETE PAYMENT ERROR:",
-          deleteError
-        );
+    if (jobError || !job) {
+      console.error("JOB ACCESS ERROR:", jobError);
+      alert("You are not allowed to delete this payment.");
+      return;
+    }
 
-        alert(deleteError.message);
-        return;
-      }
+    // Delete payment belonging to this job
+    const { error: deleteError } = await supabase
+      .from("payments")
+      .delete()
+      .eq("id", paymentId)
+      .eq("job_id", Number(id));
 
-      await recalculateJobBalance();
-      await loadPayments();
-
-      alert("Payment deleted successfully.");
-
-    } catch (error) {
+    if (deleteError) {
       console.error(
         "DELETE PAYMENT ERROR:",
-        error
+        deleteError
       );
 
-      alert(
-        error.message ||
-        "Something went wrong."
-      );
+      alert(deleteError.message);
+      return;
     }
-  }
 
+    // Recalculate balance after deletion
+    await recalculateJobBalance();
+
+    // Reload payment history
+    await loadPayments();
+
+    alert("Payment deleted successfully.");
+
+  } catch (error) {
+    console.error(
+      "DELETE PAYMENT ERROR:",
+      error
+    );
+
+    alert(
+      error.message ||
+      "Something went wrong."
+    );
+  }
+}
   // -----------------------------------
   // RECALCULATE BALANCE
   // -----------------------------------
 
   async function recalculateJobBalance() {
-    const { data: job, error: jobError } =
-      await supabase
-        .from("jobs")
-        .select(
-          "price, discount, services, serviceDetails, source"
-        )
-        .eq("id", Number(id))
-        .single();
+    const loggedInUser = JSON.parse(
+  localStorage.getItem("user")
+);
+
+if (!loggedInUser?.shop_id) {
+  throw new Error("User shop could not be determined.");
+}
+
+const { data: job, error: jobError } =
+  await supabase
+    .from("jobs")
+    .select(
+      "price, discount, services, serviceDetails, source"
+    )
+    .eq("id", Number(id))
+    .eq("shop_id", loggedInUser.shop_id)
+    .single();
 
     if (jobError) {
       throw new Error(
@@ -450,12 +518,13 @@ function EditJob() {
     } = await supabase
       .from("jobs")
       .update({
-        deposit: totalPaid,
-        balance: balance
-      })
-      .eq("id", Number(id))
-      .select()
-      .single();
+  deposit: totalPaid,
+  balance: balance
+})
+.eq("id", Number(id))
+.eq("shop_id", loggedInUser.shop_id)
+.select()
+.single();
 
     if (updateError) {
       throw new Error(
@@ -480,7 +549,15 @@ function EditJob() {
     if (saving) return;
 
     setSaving(true);
+const loggedInUser = JSON.parse(
+  localStorage.getItem("user")
+);
 
+if (!loggedInUser?.shop_id) {
+  alert("User shop could not be determined.");
+  setSaving(false);
+  return;
+}
     try {
       // -----------------------------------
       // CALCULATE INTERNAL TOTAL
@@ -725,7 +802,8 @@ function EditJob() {
           // CUSTOMER BALANCE
           balance: balance
         })
-        .eq("id", Number(id));
+        .eq("id", Number(id))
+.eq("shop_id", loggedInUser.shop_id);
 
       if (jobError) {
         console.error(

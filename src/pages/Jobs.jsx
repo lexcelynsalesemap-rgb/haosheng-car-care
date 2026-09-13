@@ -13,28 +13,47 @@ function Jobs() {
   // LOAD JOBS FROM DATABASE
   // -----------------------------------
 
-  const loadJobs = useCallback(async () => {
-   const loggedInUser = JSON.parse(
-  localStorage.getItem("user")
-);
+ const loadJobs = useCallback(async () => {
+  setLoading(true);
 
-const { data, error } = await supabase
-  .from("jobs")
-  .select("*")
-  .eq("shop_id", loggedInUser?.shop_id)
-  .order("created_at", { ascending: false });
+  try {
+    const loggedInUser = JSON.parse(
+      localStorage.getItem("user")
+    );
+
+    console.log("LOGGED IN USER:", loggedInUser);
+    console.log("SHOP ID:", loggedInUser?.shop_id);
+
+    if (!loggedInUser?.shop_id) {
+      console.error("NO SHOP ID FOUND FOR LOGGED-IN USER");
+      setJobs([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("shop_id", loggedInUser.shop_id)
+      .order("created_at", {
+        ascending: false
+      });
+
+    console.log("JOBS DATA:", data);
+    console.log("JOBS ERROR:", error);
 
     if (error) {
       console.error("LOAD JOBS ERROR:", error);
       return;
     }
 
-    console.log("JOBS LOADED:", data);
-
     setJobs(data || []);
-    setLoading(false);
-  }, []);
 
+  } catch (error) {
+    console.error("LOAD JOBS EXCEPTION:", error);
+  } finally {
+    setLoading(false);
+  }
+}, []);
   // -----------------------------------
   // LOAD + REALTIME
   // -----------------------------------
