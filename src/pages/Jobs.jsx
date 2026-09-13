@@ -14,10 +14,15 @@ function Jobs() {
   // -----------------------------------
 
   const loadJobs = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("jobs")
-      .select("*")
-      .order("created_at", { ascending: false });
+   const loggedInUser = JSON.parse(
+  localStorage.getItem("user")
+);
+
+const { data, error } = await supabase
+  .from("jobs")
+  .select("*")
+  .eq("shop_id", loggedInUser?.shop_id)
+  .order("created_at", { ascending: false });
 
     if (error) {
       console.error("LOAD JOBS ERROR:", error);
