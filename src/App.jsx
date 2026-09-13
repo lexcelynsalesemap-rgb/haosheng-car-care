@@ -14,7 +14,6 @@ import AssignTechnician from "./pages/AssignTechnician";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
 import Users from "./pages/Users";
-import RoleRoute from "./components/RoleRoute";
 
 function App() {
   return (
@@ -109,25 +108,25 @@ function App() {
           }
         />
 
-    <Route
-  path="/reports"
-  element={
-    <RoleRoute allowedRoles={["admin"]}>
-      <Reports />
-    </RoleRoute>
-  }
-/>
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
-  path="/users"
-  element={
-    <RoleRoute allowedRoles={["admin"]}>
-      <Users />
-    </RoleRoute>
-  }
-/>
+          path="/users"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Users />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* ADMIN + STAFF */}
+        {/* INVENTORY — ADMIN + STAFF */}
         <Route
           path="/inventory"
           element={
