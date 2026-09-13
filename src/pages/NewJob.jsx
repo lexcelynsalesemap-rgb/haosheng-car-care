@@ -359,11 +359,14 @@ function NewJob() {
     // CREATE JOB
     // --------------------------------------------
 
-    const job = {
-  shop_id: 1,
+  const loggedInUser = JSON.parse(
+  localStorage.getItem("user")
+);
+
+const job = {
+  shop_id: loggedInUser?.shop_id,
 
   customer,
-
   phone,
 
   date,
