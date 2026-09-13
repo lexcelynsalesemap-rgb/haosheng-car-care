@@ -78,50 +78,91 @@ function Dashboard() {
     ]);
   }
 
-  async function loadJobs() {
-    const { data, error } = await supabase
-      .from("jobs")
-      .select("*")
-      .order("created_at", {
-        ascending: false
-      });
+ async function loadJobs() {
+  const user = JSON.parse(
+    localStorage.getItem("user")
+  );
 
-    if (error) {
-      console.error("LOAD JOBS ERROR:", error);
-      return;
-    }
+  const shopId = user?.shop_id;
 
-    setJobs(data || []);
+  if (!shopId) {
+    console.error("NO SHOP ID FOUND");
+    return;
   }
 
-  async function loadPayments() {
-    const { data, error } = await supabase
-      .from("payments")
-      .select("*");
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("shop_id", shopId)
+    .order("created_at", {
+      ascending: false
+    });
 
-    if (error) {
-      console.error("LOAD PAYMENTS ERROR:", error);
-      return;
-    }
-
-    setPayments(data || []);
+  if (error) {
+    console.error("LOAD JOBS ERROR:", error);
+    return;
   }
 
-  async function loadJobServices() {
-    const { data, error } = await supabase
-      .from("job_services")
-      .select("*");
+  setJobs(data || []);
+}
+ async function loadPayments() {
+  const user = JSON.parse(
+    localStorage.getItem("user")
+  );
 
-    if (error) {
-      console.error(
-        "LOAD JOB SERVICES ERROR:",
-        error
-      );
-      return;
-    }
+  const shopId = user?.shop_id;
 
-    setJobServices(data || []);
+  if (!shopId) {
+    console.error("NO SHOP ID FOUND");
+    return;
   }
+
+  const { data, error } = await supabase
+    .from("payments")
+    .select(`
+      *,
+      jobs!inner(shop_id)
+    `)
+    .eq("jobs.shop_id", shopId);
+
+  if (error) {
+    console.error("LOAD PAYMENTS ERROR:", error);
+    return;
+  }
+
+  setPayments(data || []);
+}
+
+ async function loadJobServices() {
+  const user = JSON.parse(
+    localStorage.getItem("user")
+  );
+
+  const shopId = user?.shop_id;
+
+  if (!shopId) {
+    console.error("NO SHOP ID FOUND");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("job_services")
+    .select(`
+      *,
+      jobs!inner(shop_id)
+    `)
+    .eq("jobs.shop_id", shopId);
+
+  if (error) {
+    console.error(
+      "LOAD JOB SERVICES ERROR:",
+      error
+    );
+    return;
+  }
+
+  setJobServices(data || []);
+}
 
   // =============================
   // DATE FILTER
