@@ -8,14 +8,15 @@ function Inventory() {
   );
 
   const showCost = canSeeInventoryCost(loggedInUser);
+
   const isAdmin = loggedInUser?.role === "admin";
+  const isStaff = loggedInUser?.role === "staff";
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -137,9 +138,13 @@ function Inventory() {
       .eq("active", true)
       .order("name");
 
-    if (!error) {
-      setCategories(data || []);
+    if (error) {
+      console.error("LOAD CATEGORIES ERROR:", error);
+      setError(error.message);
+      return;
     }
+
+    setCategories(data || []);
   }
 
   async function loadHistory(productId) {
@@ -160,7 +165,7 @@ function Inventory() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error(error);
+      console.error("LOAD HISTORY ERROR:", error);
       setHistory([]);
     } else {
       setHistory(data || []);
@@ -188,15 +193,17 @@ function Inventory() {
     return products.filter((product) => {
       const searchText = search.toLowerCase();
 
+      const productName = String(product.name || "").toLowerCase();
+      const productSku = String(product.sku || "").toLowerCase();
+
       const matchesSearch =
         !search ||
-        product.name?.toLowerCase().includes(searchText) ||
-        product.sku?.toLowerCase().includes(searchText);
+        productName.includes(searchText) ||
+        productSku.includes(searchText);
 
       const matchesCategory =
         !categoryFilter ||
-        String(product.category_id) ===
-          String(categoryFilter);
+        String(product.category_id) === String(categoryFilter);
 
       const matchesStatus =
         !statusFilter ||
@@ -208,20 +215,14 @@ function Inventory() {
         matchesStatus
       );
     });
-  }, [
-    products,
-    search,
-    categoryFilter,
-    statusFilter,
-  ]);
+  }, [products, search, categoryFilter, statusFilter]);
 
   const totalProducts = products.length;
 
   const lowStock = products.filter(
     (p) =>
       Number(p.current_stock) > 0 &&
-      Number(p.current_stock) <=
-        Number(p.minimum_stock)
+      Number(p.current_stock) <= Number(p.minimum_stock)
   ).length;
 
   const outOfStock = products.filter(
@@ -231,10 +232,71 @@ function Inventory() {
   const inventoryValue = products.reduce(
     (total, product) =>
       total +
-      Number(product.current_stock) *
+      Number(product.current_stock || 0) *
         Number(product.cost_price || 0),
     0
   );
+
+  function getAutomaticCategory(name, sku) {
+    const text =
+      `${name || ""} ${sku || ""}`.toLowerCase();
+
+    const windowTintCategory = categories.find(
+      (category) =>
+        String(category.name).toLowerCase() ===
+        "window tinting materials"
+    );
+
+    if (!windowTintCategory) {
+      return "";
+    }
+
+    if (
+      text.includes("tint") ||
+      text.includes("window") ||
+      text.includes("m99") ||
+      text.includes("uv-") ||
+      text.includes("uv")
+    ) {
+      return String(windowTintCategory.id);
+    }
+
+    return "";
+  }
+
+  function updateProductField(field, value) {
+    setProductForm((prev) => {
+      const updated = {
+        ...prev,
+        [field]: value,
+      };
+
+      if (
+        field === "name" ||
+        field === "sku"
+      ) {
+        const automaticCategory =
+          getAutomaticCategory(
+            field === "name"
+              ? value
+              : prev.name,
+            field === "sku"
+              ? value
+              : prev.sku
+          );
+
+        if (
+          automaticCategory &&
+          !prev.category_id
+        ) {
+          updated.category_id =
+            automaticCategory;
+        }
+      }
+
+      return updated;
+    });
+  }
 
   function openAddProduct() {
     setEditingProduct(null);
@@ -297,7 +359,9 @@ function Inventory() {
     event.preventDefault();
 
     if (!isAdmin) {
-      setError("Only administrators can add or edit products.");
+      setError(
+        "Only administrators can add or edit products."
+      );
       return;
     }
 
@@ -322,7 +386,9 @@ function Inventory() {
     }
 
     if (!loggedInUser?.shop_id) {
-      setError("Your account is not connected to a shop.");
+      setError(
+        "Your account is not connected to a shop."
+      );
       return;
     }
 
@@ -338,92 +404,103 @@ function Inventory() {
       unit: productForm.unit || "pcs",
       cost_price:
         Number(productForm.cost_price) || 0,
+      current_stock:
+        Number(productForm.current_stock) || 0,
       minimum_stock:
         Number(productForm.minimum_stock) || 0,
       description:
         productForm.description.trim() || null,
+      shop_id: loggedInUser.shop_id,
     };
 
     let result;
 
     if (editingProduct) {
-      /*
-       * IMPORTANT:
-       * We update the product itself only.
-       * We do NOT touch inventory_stock_movements.
-       *
-       * Stock is intentionally not updated here.
-       * Use + Stock / - Stock to preserve stock history.
-       */
       result = await supabase
         .from("inventory_products")
         .update(productData)
         .eq("id", editingProduct.id)
         .eq("shop_id", loggedInUser.shop_id);
     } else {
-      /*
-       * Opening stock is only used when creating
-       * a completely new product.
-       */
       result = await supabase
         .from("inventory_products")
-        .insert({
-          ...productData,
-          current_stock:
-            Number(productForm.current_stock) || 0,
-          shop_id: loggedInUser.shop_id,
-        });
+        .insert(productData);
     }
 
     setSaving(false);
 
     if (result.error) {
-      console.error(result.error);
+      console.error(
+        "SAVE PRODUCT ERROR:",
+        result.error
+      );
       setError(result.error.message);
       return;
     }
 
     setShowProductForm(false);
-    setEditingProduct(null);
 
-    setMessage(
-      editingProduct
-        ? "Product updated successfully."
-        : "Product added successfully."
-    );
+    if (editingProduct) {
+      setMessage(
+        "Product updated successfully."
+      );
+    } else {
+      setMessage(
+        "Product added successfully."
+      );
+    }
+
+    setEditingProduct(null);
 
     await loadProducts();
   }
 
-  async function addCategory(event) {
+  async function saveCategory(event) {
     event.preventDefault();
 
     if (!isAdmin) {
-      setError("Only administrators can add categories.");
+      setError(
+        "Only administrators can add categories."
+      );
       return;
     }
 
-    const name = categoryName.trim();
+    const cleanName = categoryName.trim();
 
-    if (!name) {
+    if (!cleanName) {
       setError("Category name is required.");
       return;
     }
 
-    if (!loggedInUser?.shop_id) {
-      setError("Your account is not connected to a shop.");
-      return;
-    }
-
     setSaving(true);
     setError("");
     setMessage("");
 
+    const { data: existingCategory, error: checkError } =
+      await supabase
+        .from("inventory_categories")
+        .select("id, name")
+        .ilike("name", cleanName)
+        .maybeSingle();
+
+    if (checkError) {
+      setSaving(false);
+      setError(checkError.message);
+      return;
+    }
+
+    if (existingCategory) {
+      setSaving(false);
+      setError(
+        "A category with this name already exists."
+      );
+      return;
+    }
+
     const { data, error } = await supabase
       .from("inventory_categories")
       .insert({
-        name,
-        shop_id: loggedInUser.shop_id,
+        name: cleanName,
         active: true,
       })
       .select("id, name, active")
@@ -432,17 +509,20 @@ function Inventory() {
     setSaving(false);
 
     if (error) {
-      console.error(error);
+      console.error(
+        "SAVE CATEGORY ERROR:",
+        error
+      );
       setError(error.message);
       return;
     }
+
+    await loadCategories();
 
     setCategoryName("");
     setShowCategoryForm(false);
 
-    await loadCategories();
-
-    if (data?.id) {
+    if (data) {
       setProductForm((prev) => ({
         ...prev,
         category_id: String(data.id),
@@ -450,73 +530,7 @@ function Inventory() {
     }
 
     setMessage(
-      `Category "${name}" added successfully.`
-    );
-  }
-
-  async function ensureWindowTintingCategory() {
-    if (!isAdmin) {
-      setError("Only administrators can add categories.");
-      return;
-    }
-
-    if (!loggedInUser?.shop_id) {
-      setError("Your account is not connected to a shop.");
-      return;
-    }
-
-    const existing = categories.find(
-      (category) =>
-        category.name.trim().toLowerCase() ===
-        "window tinting materials"
-    );
-
-    if (existing) {
-      setProductForm((prev) => ({
-        ...prev,
-        category_id: String(existing.id),
-      }));
-
-      setMessage(
-        "Window Tinting Materials category already exists."
-      );
-
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("inventory_categories")
-      .insert({
-        name: "Window Tinting Materials",
-        shop_id: loggedInUser.shop_id,
-        active: true,
-      })
-      .select("id, name, active")
-      .single();
-
-    setSaving(false);
-
-    if (error) {
-      console.error(error);
-      setError(error.message);
-      return;
-    }
-
-    await loadCategories();
-
-    if (data?.id) {
-      setProductForm((prev) => ({
-        ...prev,
-        category_id: String(data.id),
-      }));
-    }
-
-    setMessage(
-      "Window Tinting Materials category added."
+      `Category "${cleanName}" added successfully.`
     );
   }
 
@@ -544,10 +558,14 @@ function Inventory() {
   async function saveMovement(event) {
     event.preventDefault();
 
-    const quantity = Number(movementForm.quantity);
+    const quantity = Number(
+      movementForm.quantity
+    );
 
     if (!quantity || quantity <= 0) {
-      setError("Enter a quantity greater than zero.");
+      setError(
+        "Enter a quantity greater than zero."
+      );
       return;
     }
 
@@ -576,20 +594,27 @@ function Inventory() {
         p_job_id: null,
         p_user_id: null,
         p_reference:
-          movementForm.reference.trim() || null,
+          movementForm.reference.trim() ||
+          null,
         p_notes:
-          movementForm.notes.trim() || null,
+          movementForm.notes.trim() ||
+          null,
         p_unit_cost:
           movementForm.unit_cost === ""
             ? null
-            : Number(movementForm.unit_cost),
+            : Number(
+                movementForm.unit_cost
+              ),
       }
     );
 
     setSaving(false);
 
     if (error) {
-      console.error(error);
+      console.error(
+        "SAVE MOVEMENT ERROR:",
+        error
+      );
       setError(error.message);
       return;
     }
@@ -603,17 +628,35 @@ function Inventory() {
     );
 
     await loadProducts();
+
+    if (selectedProduct) {
+      await loadHistory(
+        selectedProduct.id
+      );
+    }
   }
 
   function statusLabel(status) {
-    if (status === "OUT") return "OUT OF STOCK";
-    if (status === "LOW") return "LOW STOCK";
+    if (status === "OUT") {
+      return "OUT OF STOCK";
+    }
+
+    if (status === "LOW") {
+      return "LOW STOCK";
+    }
+
     return "IN STOCK";
   }
 
   function statusColor(status) {
-    if (status === "OUT") return "#dc2626";
-    if (status === "LOW") return "#d97706";
+    if (status === "OUT") {
+      return "#dc2626";
+    }
+
+    if (status === "LOW") {
+      return "#d97706";
+    }
+
     return "#16a34a";
   }
 
@@ -621,9 +664,13 @@ function Inventory() {
     <div style={styles.page}>
       <div style={styles.header}>
         <div>
-          <h1 style={styles.title}>Inventory</h1>
+          <h1 style={styles.title}>
+            Inventory
+          </h1>
+
           <p style={styles.subtitle}>
-            Manage products, stock and inventory movements.
+            Manage products, categories, stock and
+            inventory movements.
           </p>
         </div>
 
@@ -632,13 +679,12 @@ function Inventory() {
             <button
               style={styles.secondaryButton}
               onClick={() => {
-                setCategoryName("");
                 setShowCategoryForm(true);
                 setError("");
                 setMessage("");
               }}
             >
-              + Add Category
+              + Category
             </button>
 
             <button
@@ -755,9 +801,18 @@ function Inventory() {
             setStatusFilter(e.target.value)
           }
         >
-          <option value="">All Status</option>
-          <option value="OK">In Stock</option>
-          <option value="LOW">Low Stock</option>
+          <option value="">
+            All Status
+          </option>
+
+          <option value="OK">
+            In Stock
+          </option>
+
+          <option value="LOW">
+            Low Stock
+          </option>
+
           <option value="OUT">
             Out of Stock
           </option>
@@ -780,11 +835,25 @@ function Inventory() {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>SKU</th>
-                <th style={styles.th}>Product</th>
-                <th style={styles.th}>Category</th>
-                <th style={styles.th}>Stock</th>
-                <th style={styles.th}>Min.</th>
+                <th style={styles.th}>
+                  SKU
+                </th>
+
+                <th style={styles.th}>
+                  Product
+                </th>
+
+                <th style={styles.th}>
+                  Category
+                </th>
+
+                <th style={styles.th}>
+                  Stock
+                </th>
+
+                <th style={styles.th}>
+                  Min.
+                </th>
 
                 {isAdmin && (
                   <th style={styles.th}>
@@ -792,134 +861,154 @@ function Inventory() {
                   </th>
                 )}
 
-                <th style={styles.th}>Status</th>
-                <th style={styles.th}>Actions</th>
+                <th style={styles.th}>
+                  Status
+                </th>
+
+                <th style={styles.th}>
+                  Actions
+                </th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredProducts.map((product) => {
-                const status = getStatus(product);
+              {filteredProducts.map(
+                (product) => {
+                  const status =
+                    getStatus(product);
 
-                return (
-                  <tr key={product.id}>
-                    <td style={styles.td}>
-                      <strong>
-                        {product.sku}
-                      </strong>
-                    </td>
-
-                    <td style={styles.td}>
-                      {product.name}
-                    </td>
-
-                    <td style={styles.td}>
-                      {product.inventory_categories?.name ||
-                        "No Category"}
-                    </td>
-
-                    <td style={styles.td}>
-                      <strong>
-                        {product.current_stock}
-                      </strong>{" "}
-                      {product.unit}
-                    </td>
-
-                    <td style={styles.td}>
-                      {product.minimum_stock}
-                    </td>
-
-                    {isAdmin && (
+                  return (
+                    <tr key={product.id}>
                       <td style={styles.td}>
-                        QAR{" "}
-                        {Number(
-                          product.cost_price || 0
-                        ).toFixed(2)}
+                        <strong>
+                          {product.sku}
+                        </strong>
                       </td>
-                    )}
 
-                    <td style={styles.td}>
-                      <span
-                        style={{
-                          ...styles.status,
-                          color:
-                            statusColor(status),
-                          backgroundColor:
-                            `${statusColor(
-                              status
-                            )}15`,
-                        }}
-                      >
-                        {statusLabel(status)}
-                      </span>
-                    </td>
+                      <td style={styles.td}>
+                        {product.name}
+                      </td>
 
-                    <td style={styles.td}>
-                      <div style={styles.actions}>
-                        {isAdmin && (
+                      <td style={styles.td}>
+                        {product
+                          .inventory_categories
+                          ?.name || "-"}
+                      </td>
+
+                      <td style={styles.td}>
+                        <strong>
+                          {
+                            product.current_stock
+                          }
+                        </strong>{" "}
+                        {product.unit}
+                      </td>
+
+                      <td style={styles.td}>
+                        {product.minimum_stock}
+                      </td>
+
+                      {isAdmin && (
+                        <td style={styles.td}>
+                          QAR{" "}
+                          {Number(
+                            product.cost_price ||
+                              0
+                          ).toFixed(2)}
+                        </td>
+                      )}
+
+                      <td style={styles.td}>
+                        <span
+                          style={{
+                            ...styles.status,
+                            color:
+                              statusColor(
+                                status
+                              ),
+                            backgroundColor:
+                              `${statusColor(
+                                status
+                              )}15`,
+                          }}
+                        >
+                          {statusLabel(
+                            status
+                          )}
+                        </span>
+                      </td>
+
+                      <td style={styles.td}>
+                        <div
+                          style={
+                            styles.actions
+                          }
+                        >
+                          {isAdmin && (
+                            <button
+                              style={
+                                styles.editButton
+                              }
+                              onClick={() =>
+                                openEditProduct(
+                                  product
+                                )
+                              }
+                            >
+                              Edit
+                            </button>
+                          )}
+
                           <button
                             style={
-                              styles.editButton
+                              styles.inButton
                             }
                             onClick={() =>
-                              openEditProduct(
-                                product
+                              openMovement(
+                                product,
+                                "IN"
                               )
                             }
                           >
-                            Edit
+                            + Stock
                           </button>
-                        )}
 
-                        <button
-                          style={
-                            styles.inButton
-                          }
-                          onClick={() =>
-                            openMovement(
-                              product,
-                              "IN"
-                            )
-                          }
-                        >
-                          + Stock
-                        </button>
+                          <button
+                            style={
+                              styles.outButton
+                            }
+                            onClick={() =>
+                              openMovement(
+                                product,
+                                "OUT"
+                              )
+                            }
+                          >
+                            - Stock
+                          </button>
 
-                        <button
-                          style={
-                            styles.outButton
-                          }
-                          onClick={() =>
-                            openMovement(
-                              product,
-                              "OUT"
-                            )
-                          }
-                        >
-                          - Stock
-                        </button>
-
-                        <button
-                          style={
-                            styles.historyButton
-                          }
-                          onClick={() => {
-                            setSelectedProduct(
-                              product
-                            );
-                            setHistory([]);
-                            loadHistory(
-                              product.id
-                            );
-                          }}
-                        >
-                          History
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          <button
+                            style={
+                              styles.historyButton
+                            }
+                            onClick={() => {
+                              setSelectedProduct(
+                                product
+                              );
+                              setHistory([]);
+                              loadHistory(
+                                product.id
+                              );
+                            }}
+                          >
+                            History
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+              )}
             </tbody>
           </table>
         )}
@@ -937,13 +1026,19 @@ function Inventory() {
           <div style={styles.modal}>
             <div style={styles.modalHeader}>
               <div>
-                <h2 style={styles.modalTitle}>
+                <h2
+                  style={styles.modalTitle}
+                >
                   {editingProduct
                     ? "Edit Product"
                     : "Add Product"}
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   {editingProduct
                     ? "Update product information and category."
                     : "Add a new inventory item."}
@@ -953,7 +1048,9 @@ function Inventory() {
               <button
                 style={styles.closeButton}
                 onClick={() => {
-                  setShowProductForm(false);
+                  setShowProductForm(
+                    false
+                  );
                   setEditingProduct(null);
                 }}
               >
@@ -968,12 +1065,14 @@ function Inventory() {
 
                   <input
                     style={styles.input}
-                    value={productForm.sku}
+                    value={
+                      productForm.sku
+                    }
                     onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        sku: e.target.value,
-                      })
+                      updateProductField(
+                        "sku",
+                        e.target.value
+                      )
                     }
                     placeholder="e.g. OIL-001"
                   />
@@ -984,61 +1083,99 @@ function Inventory() {
 
                   <input
                     style={styles.input}
-                    value={productForm.name}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        name: e.target.value,
-                      })
+                    value={
+                      productForm.name
                     }
-                    placeholder="e.g. Engine Oil"
+                    onChange={(e) =>
+                      updateProductField(
+                        "name",
+                        e.target.value
+                      )
+                    }
+                    placeholder="e.g. Window Tint 35%"
                   />
                 </label>
 
                 <label style={styles.label}>
                   Category
 
-                  <select
-                    style={styles.input}
-                    value={productForm.category_id}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        category_id:
-                          e.target.value,
-                      })
+                  <div
+                    style={
+                      styles.categoryRow
                     }
                   >
-                    <option value="">
-                      No Category
-                    </option>
+                    <select
+                      style={{
+                        ...styles.input,
+                        flex: 1,
+                      }}
+                      value={
+                        productForm.category_id
+                      }
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          category_id:
+                            e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">
+                        No Category
+                      </option>
 
-                    {categories.map(
-                      (category) => (
-                        <option
-                          key={category.id}
-                          value={category.id}
-                        >
-                          {category.name}
-                        </option>
-                      )
-                    )}
-                  </select>
+                      {categories.map(
+                        (category) => (
+                          <option
+                            key={
+                              category.id
+                            }
+                            value={
+                              category.id
+                            }
+                          >
+                            {
+                              category.name
+                            }
+                          </option>
+                        )
+                      )}
+                    </select>
 
-                  {isAdmin && (
                     <button
                       type="button"
-                      style={styles.categoryQuickButton}
+                      style={
+                        styles.smallButton
+                      }
                       onClick={() => {
-                        setCategoryName("");
-                        setShowCategoryForm(true);
+                        setShowCategoryForm(
+                          true
+                        );
                         setError("");
                         setMessage("");
                       }}
                     >
-                      + Create New Category
+                      + New
                     </button>
-                  )}
+                  </div>
+
+                  {getAutomaticCategory(
+                    productForm.name,
+                    productForm.sku
+                  ) &&
+                    !productForm.category_id && (
+                      <div
+                        style={
+                          styles.autoCategoryHint
+                        }
+                      >
+                        Window Tinting
+                        Materials will be
+                        selected automatically
+                        when you enter the
+                        product.
+                      </div>
+                    )}
                 </label>
 
                 <label style={styles.label}>
@@ -1046,7 +1183,9 @@ function Inventory() {
 
                   <select
                     style={styles.input}
-                    value={productForm.unit}
+                    value={
+                      productForm.unit
+                    }
                     onChange={(e) =>
                       setProductForm({
                         ...productForm,
@@ -1056,6 +1195,10 @@ function Inventory() {
                   >
                     <option value="pcs">
                       Pieces
+                    </option>
+
+                    <option value="piece">
+                      Piece
                     </option>
 
                     <option value="box">
@@ -1082,57 +1225,71 @@ function Inventory() {
                       Sack
                     </option>
 
-                    <option value="piece">
-                      Piece
+                    <option value="sacks">
+                      Sacks
                     </option>
                   </select>
                 </label>
 
-                {showCost && (
-                  <label style={styles.label}>
-                    Cost Price (QAR)
+                <label style={styles.label}>
+                  Cost Price (QAR)
 
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      style={styles.input}
-                      value={
-                        productForm.cost_price
-                      }
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          cost_price:
-                            e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                )}
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    style={styles.input}
+                    value={
+                      productForm.cost_price
+                    }
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        cost_price:
+                          e.target.value,
+                      })
+                    }
+                  />
+                </label>
 
-                {!editingProduct && (
-                  <label style={styles.label}>
-                    Opening Stock
+                <label style={styles.label}>
+                  {editingProduct
+                    ? "Current Stock"
+                    : "Opening Stock"}
 
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      style={styles.input}
-                      value={
-                        productForm.current_stock
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    style={styles.input}
+                    value={
+                      productForm.current_stock
+                    }
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        current_stock:
+                          e.target.value,
+                      })
+                    }
+                  />
+
+                  {editingProduct && (
+                    <span
+                      style={
+                        styles.warningText
                       }
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          current_stock:
-                            e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                )}
+                    >
+                      Editing stock directly
+                      changes the current
+                      quantity. For normal
+                      stock changes, use
+                      + Stock or - Stock so
+                      the movement history is
+                      preserved.
+                    </span>
+                  )}
+                </label>
 
                 <label style={styles.label}>
                   Minimum Stock
@@ -1156,19 +1313,6 @@ function Inventory() {
                 </label>
               </div>
 
-              {editingProduct && (
-                <div style={styles.editStockNotice}>
-                  Current stock is{" "}
-                  <strong>
-                    {editingProduct.current_stock}{" "}
-                    {editingProduct.unit}
-                  </strong>
-                  . Use + Stock or - Stock to change
-                  inventory so the stock movement history
-                  remains intact.
-                </div>
-              )}
-
               <label style={styles.label}>
                 Description
 
@@ -1191,13 +1335,21 @@ function Inventory() {
                 />
               </label>
 
-              <div style={styles.modalActions}>
+              <div
+                style={styles.modalActions}
+              >
                 <button
                   type="button"
-                  style={styles.cancelButton}
+                  style={
+                    styles.cancelButton
+                  }
                   onClick={() => {
-                    setShowProductForm(false);
-                    setEditingProduct(null);
+                    setShowProductForm(
+                      false
+                    );
+                    setEditingProduct(
+                      null
+                    );
                   }}
                 >
                   Cancel
@@ -1205,7 +1357,9 @@ function Inventory() {
 
                 <button
                   type="submit"
-                  style={styles.primaryButton}
+                  style={
+                    styles.primaryButton
+                  }
                   disabled={saving}
                 >
                   {saving
@@ -1230,27 +1384,35 @@ function Inventory() {
           >
             <div style={styles.modalHeader}>
               <div>
-                <h2 style={styles.modalTitle}>
+                <h2
+                  style={styles.modalTitle}
+                >
                   Add Category
                 </h2>
 
-                <p style={styles.modalSubtitle}>
-                  Create a category for your inventory
-                  products.
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
+                  Create a category for your
+                  inventory products.
                 </p>
               </div>
 
               <button
                 style={styles.closeButton}
                 onClick={() =>
-                  setShowCategoryForm(false)
+                  setShowCategoryForm(
+                    false
+                  )
                 }
               >
                 ×
               </button>
             </div>
 
-            <form onSubmit={addCategory}>
+            <form onSubmit={saveCategory}>
               <label style={styles.label}>
                 Category Name *
 
@@ -1267,21 +1429,18 @@ function Inventory() {
                 />
               </label>
 
-              <button
-                type="button"
-                style={styles.windowTintButton}
-                onClick={ensureWindowTintingCategory}
-                disabled={saving}
+              <div
+                style={styles.modalActions}
               >
-                Add "Window Tinting Materials"
-              </button>
-
-              <div style={styles.modalActions}>
                 <button
                   type="button"
-                  style={styles.cancelButton}
+                  style={
+                    styles.cancelButton
+                  }
                   onClick={() =>
-                    setShowCategoryForm(false)
+                    setShowCategoryForm(
+                      false
+                    )
                   }
                 >
                   Cancel
@@ -1289,7 +1448,9 @@ function Inventory() {
 
                 <button
                   type="submit"
-                  style={styles.primaryButton}
+                  style={
+                    styles.primaryButton
+                  }
                   disabled={saving}
                 >
                   {saving
@@ -1302,183 +1463,256 @@ function Inventory() {
         </div>
       )}
 
-      {showMovementForm && selectedProduct && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <div style={styles.modalHeader}>
-              <div>
-                <h2 style={styles.modalTitle}>
-                  {movementType === "IN"
-                    ? "Stock In"
-                    : "Stock Out"}
-                </h2>
-
-                <p style={styles.modalSubtitle}>
-                  {selectedProduct.name}
-                </p>
-              </div>
-
-              <button
-                style={styles.closeButton}
-                onClick={() =>
-                  setShowMovementForm(false)
+      {showMovementForm &&
+        selectedProduct && (
+          <div style={styles.overlay}>
+            <div style={styles.modal}>
+              <div
+                style={
+                  styles.modalHeader
                 }
               >
-                ×
-              </button>
-            </div>
+                <div>
+                  <h2
+                    style={
+                      styles.modalTitle
+                    }
+                  >
+                    {movementType === "IN"
+                      ? "Stock In"
+                      : "Stock Out"}
+                  </h2>
 
-            <div style={styles.stockInfo}>
-              Current Stock:{" "}
-              <strong>
-                {selectedProduct.current_stock}{" "}
-                {selectedProduct.unit}
-              </strong>
-            </div>
+                  <p
+                    style={
+                      styles.modalSubtitle
+                    }
+                  >
+                    {selectedProduct.name}
+                  </p>
+                </div>
 
-            <form onSubmit={saveMovement}>
-              <label style={styles.label}>
-                Quantity *
-
-                <input
-                  autoFocus
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  style={styles.input}
-                  value={movementForm.quantity}
-                  onChange={(e) =>
-                    setMovementForm({
-                      ...movementForm,
-                      quantity:
-                        e.target.value,
-                    })
+                <button
+                  style={
+                    styles.closeButton
                   }
-                  placeholder="Enter quantity"
-                />
-              </label>
+                  onClick={() =>
+                    setShowMovementForm(
+                      false
+                    )
+                  }
+                >
+                  ×
+                </button>
+              </div>
 
-              {showCost && (
-                <label style={styles.label}>
-                  Unit Cost (QAR)
+              <div
+                style={styles.stockInfo}
+              >
+                Current Stock:{" "}
+                <strong>
+                  {
+                    selectedProduct.current_stock
+                  }{" "}
+                  {selectedProduct.unit}
+                </strong>
+              </div>
+
+              <form
+                onSubmit={saveMovement}
+              >
+                <label
+                  style={styles.label}
+                >
+                  Quantity *
 
                   <input
+                    autoFocus
                     type="number"
-                    min="0"
-                    step="0.01"
+                    min="0.001"
+                    step="0.001"
                     style={styles.input}
                     value={
-                      movementForm.unit_cost
+                      movementForm.quantity
                     }
                     onChange={(e) =>
                       setMovementForm({
                         ...movementForm,
-                        unit_cost:
+                        quantity:
                           e.target.value,
                       })
                     }
+                    placeholder="Enter quantity"
                   />
                 </label>
-              )}
 
-              <label style={styles.label}>
-                Reference
+                {showCost && (
+                  <label
+                    style={styles.label}
+                  >
+                    Unit Cost (QAR)
 
-                <input
-                  style={styles.input}
-                  value={movementForm.reference}
-                  onChange={(e) =>
-                    setMovementForm({
-                      ...movementForm,
-                      reference:
-                        e.target.value,
-                    })
-                  }
-                  placeholder="Invoice / PO / reference"
-                />
-              </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      style={
+                        styles.input
+                      }
+                      value={
+                        movementForm.unit_cost
+                      }
+                      onChange={(e) =>
+                        setMovementForm({
+                          ...movementForm,
+                          unit_cost:
+                            e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                )}
 
-              <label style={styles.label}>
-                Notes
-
-                <textarea
-                  style={{
-                    ...styles.input,
-                    minHeight: "80px",
-                  }}
-                  value={movementForm.notes}
-                  onChange={(e) =>
-                    setMovementForm({
-                      ...movementForm,
-                      notes: e.target.value,
-                    })
-                  }
-                  placeholder="Optional notes"
-                />
-              </label>
-
-              <div style={styles.modalActions}>
-                <button
-                  type="button"
-                  style={styles.cancelButton}
-                  onClick={() =>
-                    setShowMovementForm(false)
-                  }
+                <label
+                  style={styles.label}
                 >
-                  Cancel
-                </button>
+                  Reference
 
-                <button
-                  type="submit"
+                  <input
+                    style={styles.input}
+                    value={
+                      movementForm.reference
+                    }
+                    onChange={(e) =>
+                      setMovementForm({
+                        ...movementForm,
+                        reference:
+                          e.target.value,
+                      })
+                    }
+                    placeholder="Invoice / PO / reference"
+                  />
+                </label>
+
+                <label
+                  style={styles.label}
+                >
+                  Notes
+
+                  <textarea
+                    style={{
+                      ...styles.input,
+                      minHeight: "80px",
+                      resize: "vertical",
+                    }}
+                    value={
+                      movementForm.notes
+                    }
+                    onChange={(e) =>
+                      setMovementForm({
+                        ...movementForm,
+                        notes:
+                          e.target.value,
+                      })
+                    }
+                    placeholder="Optional notes"
+                  />
+                </label>
+
+                <div
                   style={
-                    movementType === "IN"
-                      ? styles.inPrimaryButton
-                      : styles.outPrimaryButton
+                    styles.modalActions
                   }
-                  disabled={saving}
                 >
-                  {saving
-                    ? "Saving..."
-                    : movementType === "IN"
-                    ? "Add Stock"
-                    : "Remove Stock"}
-                </button>
-              </div>
-            </form>
+                  <button
+                    type="button"
+                    style={
+                      styles.cancelButton
+                    }
+                    onClick={() =>
+                      setShowMovementForm(
+                        false
+                      )
+                    }
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    style={
+                      movementType ===
+                      "IN"
+                        ? styles.inPrimaryButton
+                        : styles.outPrimaryButton
+                    }
+                    disabled={saving}
+                  >
+                    {saving
+                      ? "Saving..."
+                      : movementType ===
+                        "IN"
+                      ? "Add Stock"
+                      : "Remove Stock"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {selectedProduct &&
         !showMovementForm &&
         !showProductForm &&
         !showCategoryForm && (
-          <div style={styles.historyPanel}>
-            <div style={styles.historyHeader}>
+          <div
+            style={styles.historyPanel}
+          >
+            <div
+              style={
+                styles.historyHeader
+              }
+            >
               <div>
-                <h2 style={styles.historyTitle}>
+                <h2
+                  style={
+                    styles.historyTitle
+                  }
+                >
                   {selectedProduct.name}
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   Stock movement history
                 </p>
               </div>
 
               <button
-                style={styles.closeButton}
+                style={
+                  styles.closeButton
+                }
                 onClick={() =>
-                  setSelectedProduct(null)
+                  setSelectedProduct(
+                    null
+                  )
                 }
               >
                 ×
               </button>
             </div>
 
-            <div style={styles.stockInfo}>
+            <div
+              style={styles.stockInfo}
+            >
               Current Stock:{" "}
               <strong>
-                {selectedProduct.current_stock}{" "}
+                {
+                  selectedProduct.current_stock
+                }{" "}
                 {selectedProduct.unit}
               </strong>
             </div>
@@ -1489,81 +1723,148 @@ function Inventory() {
               </div>
             ) : history.length === 0 ? (
               <div style={styles.empty}>
-                No stock movements recorded yet.
+                No stock movements recorded
+                yet.
               </div>
             ) : (
-              <div style={styles.tableContainer}>
-                <table style={styles.table}>
+              <div
+                style={
+                  styles.tableContainer
+                }
+              >
+                <table
+                  style={styles.table}
+                >
                   <thead>
                     <tr>
-                      <th style={styles.th}>
+                      <th
+                        style={styles.th}
+                      >
                         Date
                       </th>
 
-                      <th style={styles.th}>
+                      <th
+                        style={styles.th}
+                      >
                         Type
                       </th>
 
-                      <th style={styles.th}>
+                      <th
+                        style={styles.th}
+                      >
                         Quantity
                       </th>
 
-                      <th style={styles.th}>
+                      {isAdmin && (
+                        <th
+                          style={
+                            styles.th
+                          }
+                        >
+                          Unit Cost
+                        </th>
+                      )}
+
+                      <th
+                        style={styles.th}
+                      >
                         Reference
                       </th>
 
-                      <th style={styles.th}>
+                      <th
+                        style={styles.th}
+                      >
                         Notes
                       </th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {history.map((movement) => (
-                      <tr key={movement.id}>
-                        <td style={styles.td}>
-                          {new Date(
-                            movement.created_at
-                          ).toLocaleString()}
-                        </td>
-
-                        <td style={styles.td}>
-                          <strong>
-                            {movement.movement_type}
-                          </strong>
-                        </td>
-
-                        <td
-                          style={{
-                            ...styles.td,
-                            color:
-                              movement.movement_type ===
-                              "IN"
-                                ? "#16a34a"
-                                : "#dc2626",
-                            fontWeight: "700",
-                          }}
+                    {history.map(
+                      (movement) => (
+                        <tr
+                          key={
+                            movement.id
+                          }
                         >
-                          {movement.movement_type ===
-                          "IN"
-                            ? "+"
-                            : "-"}
-                          {Number(
-                            movement.quantity
-                          ).toLocaleString()}
-                        </td>
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            {new Date(
+                              movement.created_at
+                            ).toLocaleString()}
+                          </td>
 
-                        <td style={styles.td}>
-                          {movement.reference ||
-                            "-"}
-                        </td>
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            <strong>
+                              {
+                                movement.movement_type
+                              }
+                            </strong>
+                          </td>
 
-                        <td style={styles.td}>
-                          {movement.notes ||
-                            "-"}
-                        </td>
-                      </tr>
-                    ))}
+                          <td
+                            style={{
+                              ...styles.td,
+                              color:
+                                movement.movement_type ===
+                                "IN"
+                                  ? "#16a34a"
+                                  : "#dc2626",
+                              fontWeight:
+                                "700",
+                            }}
+                          >
+                            {movement.movement_type ===
+                            "IN"
+                              ? "+"
+                              : "-"}
+                            {Number(
+                              movement.quantity
+                            ).toLocaleString()}
+                          </td>
+
+                          {isAdmin && (
+                            <td
+                              style={
+                                styles.td
+                              }
+                            >
+                              {movement.unit_cost !==
+                              null
+                                ? `QAR ${Number(
+                                    movement.unit_cost
+                                  ).toFixed(2)}`
+                                : "-"}
+                            </td>
+                          )}
+
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            {movement.reference ||
+                              "-"}
+                          </td>
+
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            {movement.notes ||
+                              "-"}
+                          </td>
+                        </tr>
+                      )
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1587,13 +1888,12 @@ const styles = {
     alignItems: "center",
     marginBottom: "25px",
     gap: "20px",
-    flexWrap: "wrap",
   },
 
   headerButtons: {
     display: "flex",
     gap: "10px",
-    flexWrap: "wrap",
+    alignItems: "center",
   },
 
   title: {
@@ -1621,8 +1921,29 @@ const styles = {
     border: "1px solid #d1d5db",
     background: "white",
     color: "#111827",
-    padding: "11px 18px",
+    padding: "10px 16px",
     borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  smallButton: {
+    border: "none",
+    background: "#111827",
+    color: "white",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+    whiteSpace: "nowrap",
+  },
+
+  editButton: {
+    border: "none",
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    padding: "6px 9px",
+    borderRadius: "6px",
     cursor: "pointer",
     fontWeight: "600",
   },
@@ -1740,14 +2061,16 @@ const styles = {
     textAlign: "left",
     padding: "13px",
     background: "#f9fafb",
-    borderBottom: "1px solid #e5e7eb",
+    borderBottom:
+      "1px solid #e5e7eb",
     fontSize: "13px",
     whiteSpace: "nowrap",
   },
 
   td: {
     padding: "13px",
-    borderBottom: "1px solid #f3f4f6",
+    borderBottom:
+      "1px solid #f3f4f6",
     fontSize: "14px",
     whiteSpace: "nowrap",
   },
@@ -1764,16 +2087,6 @@ const styles = {
     display: "flex",
     gap: "6px",
     flexWrap: "wrap",
-  },
-
-  editButton: {
-    border: "none",
-    background: "#dbeafe",
-    color: "#1d4ed8",
-    padding: "6px 9px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "600",
   },
 
   inButton: {
@@ -1869,6 +2182,26 @@ const styles = {
     gap: "15px",
   },
 
+  categoryRow: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+  },
+
+  autoCategoryHint: {
+    marginTop: "6px",
+    color: "#2563eb",
+    fontSize: "12px",
+    fontWeight: "500",
+  },
+
+  warningText: {
+    color: "#92400e",
+    fontSize: "11px",
+    fontWeight: "400",
+    lineHeight: "1.4",
+  },
+
   label: {
     display: "flex",
     flexDirection: "column",
@@ -1886,40 +2219,6 @@ const styles = {
     borderRadius: "8px",
     fontSize: "14px",
     fontWeight: "400",
-  },
-
-  categoryQuickButton: {
-    border: "none",
-    background: "transparent",
-    color: "#2563eb",
-    textAlign: "left",
-    padding: "0",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "600",
-  },
-
-  windowTintButton: {
-    width: "100%",
-    border: "1px solid #bfdbfe",
-    background: "#eff6ff",
-    color: "#1d4ed8",
-    padding: "10px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    marginBottom: "10px",
-  },
-
-  editStockNotice: {
-    background: "#eff6ff",
-    color: "#1e40af",
-    border: "1px solid #bfdbfe",
-    padding: "12px 14px",
-    borderRadius: "8px",
-    marginBottom: "18px",
-    fontSize: "13px",
-    lineHeight: "1.5",
   },
 
   modalActions: {
@@ -1958,7 +2257,8 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     padding: "20px",
-    borderBottom: "1px solid #e5e7eb",
+    borderBottom:
+      "1px solid #e5e7eb",
   },
 
   historyTitle: {
