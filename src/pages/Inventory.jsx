@@ -24,8 +24,9 @@ function Inventory() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [showMovementForm, setShowMovementForm] = useState(false);
+const [showProductForm, setShowProductForm] = useState(false);
+const [showMovementForm, setShowMovementForm] = useState(false);
+const [editingProduct, setEditingProduct] = useState(null);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [movementType, setMovementType] = useState("IN");
@@ -226,27 +227,67 @@ function Inventory() {
   );
 
   function openAddProduct() {
-    setProductForm({
-      sku: "",
-      name: "",
-      category_id: "",
-      unit: "pcs",
-      cost_price: "",
-      current_stock: "0",
-      minimum_stock: "0",
-      description: "",
-    });
+  setEditingProduct(null);
 
-    setShowProductForm(true);
-    setMessage("");
-    setError("");
+  setProductForm({
+    sku: "",
+    name: "",
+    category_id: "",
+    unit: "pcs",
+    cost_price: "",
+    current_stock: "0",
+    minimum_stock: "0",
+    description: "",
+  });
+
+  setShowProductForm(true);
+  setMessage("");
+  setError("");
+}
+
+function openEditProduct(product) {
+  if (!isAdmin) {
+    setError("Only administrators can edit products.");
+    return;
   }
+
+  setEditingProduct(product);
+
+  setProductForm({
+    sku: product.sku || "",
+    name: product.name || "",
+    category_id: product.category_id
+      ? String(product.category_id)
+      : "",
+    unit: product.unit || "pcs",
+    cost_price:
+      product.cost_price !== null &&
+      product.cost_price !== undefined
+        ? String(product.cost_price)
+        : "",
+    current_stock:
+      product.current_stock !== null &&
+      product.current_stock !== undefined
+        ? String(product.current_stock)
+        : "0",
+    minimum_stock:
+      product.minimum_stock !== null &&
+      product.minimum_stock !== undefined
+        ? String(product.minimum_stock)
+        : "0",
+    description: product.description || "",
+  });
+
+  setShowProductForm(true);
+  setMessage("");
+  setError("");
+}
 
  async function saveProduct(event) {
   event.preventDefault();
 
   if (loggedInUser?.role !== "admin") {
-    setError("Only administrators can add products.");
+    setError("Only administrators can manage products.");
     return;
   }
 
@@ -260,8 +301,8 @@ function Inventory() {
     return;
   }
 
-  if (Number(productForm.current_stock) < 0) {
-    setError("Stock cannot be negative.");
+  if (Number(productForm.minimum_stock) < 0) {
+    setError("Minimum stock cannot be negative.");
     return;
   }
 
@@ -274,19 +315,55 @@ function Inventory() {
   setError("");
   setMessage("");
 
-  const { error } = await supabase
-    .from("inventory_products")
-    .insert({
-      sku: productForm.sku.trim(),
-      name: productForm.name.trim(),
-      category_id: productForm.category_id || null,
-      unit: productForm.unit || "pcs",
-      cost_price: Number(productForm.cost_price) || 0,
-      current_stock: Number(productForm.current_stock) || 0,
-      minimum_stock: Number(productForm.minimum_stock) || 0,
-      description: productForm.description.trim() || null,
-      shop_id: loggedInUser.shop_id,
-    });
+  let error;
+
+  if (editingProduct) {
+    // EDIT EXISTING PRODUCT
+    // IMPORTANT: current_stock is intentionally NOT updated.
+    const result = await supabase
+      .from("inventory_products")
+      .update({
+        sku: productForm.sku.trim(),
+        name: productForm.name.trim(),
+        category_id: productForm.category_id || null,
+        unit: productForm.unit || "pcs",
+        cost_price: Number(productForm.cost_price) || 0,
+        minimum_stock:
+          Number(productForm.minimum_stock) || 0,
+        description:
+          productForm.description.trim() || null,
+      })
+      .eq("id", editingProduct.id)
+      .eq("shop_id", loggedInUser.shop_id);
+
+    error = result.error;
+  } else {
+    // ADD NEW PRODUCT
+    if (Number(productForm.current_stock) < 0) {
+      setError("Stock cannot be negative.");
+      setSaving(false);
+      return;
+    }
+
+    const result = await supabase
+      .from("inventory_products")
+      .insert({
+        sku: productForm.sku.trim(),
+        name: productForm.name.trim(),
+        category_id: productForm.category_id || null,
+        unit: productForm.unit || "pcs",
+        cost_price: Number(productForm.cost_price) || 0,
+        current_stock:
+          Number(productForm.current_stock) || 0,
+        minimum_stock:
+          Number(productForm.minimum_stock) || 0,
+        description:
+          productForm.description.trim() || null,
+        shop_id: loggedInUser.shop_id,
+      });
+
+    error = result.error;
+  }
 
   setSaving(false);
 
@@ -297,7 +374,14 @@ function Inventory() {
   }
 
   setShowProductForm(false);
-  setMessage("Product added successfully.");
+
+  setMessage(
+    editingProduct
+      ? "Product updated successfully."
+      : "Product added successfully."
+  );
+
+  setEditingProduct(null);
 
   await loadProducts();
 }
@@ -608,6 +692,14 @@ function Inventory() {
 
                     <td style={styles.td}>
                       <div style={styles.actions}>
+                        {isAdmin && (
+  <button
+    style={styles.editButton}
+    onClick={() => openEditProduct(product)}
+  >
+    Edit
+  </button>
+)}
                         <button
                           style={styles.inButton}
                           onClick={() =>
@@ -670,11 +762,14 @@ function Inventory() {
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>
-                  Add Product
-                </h2>
-                <p style={styles.modalSubtitle}>
-                  Add a new inventory item.
-                </p>
+  {editingProduct ? "Edit Product" : "Add Product"}
+</h2>
+
+<p style={styles.modalSubtitle}>
+  {editingProduct
+    ? "Update product information."
+    : "Add a new inventory item."}
+</p>
               </div>
 
               <button
@@ -803,25 +898,25 @@ function Inventory() {
                   />
                 </label>
 
-                <label style={styles.label}>
-                  Opening Stock
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    style={styles.input}
-                    value={
-                      productForm.current_stock
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        current_stock:
-                          e.target.value,
-                      })
-                    }
-                  />
-                </label>
+               {!editingProduct && (
+  <label style={styles.label}>
+    Opening Stock
+
+    <input
+      type="number"
+      min="0"
+      step="0.001"
+      style={styles.input}
+      value={productForm.current_stock}
+      onChange={(e) =>
+        setProductForm({
+          ...productForm,
+          current_stock: e.target.value,
+        })
+      }
+    />
+  </label>
+)}
 
                 <label style={styles.label}>
                   Minimum Stock
@@ -1216,6 +1311,15 @@ const styles = {
     borderRadius: "8px",
     marginBottom: "18px",
   },
+  editButton: {
+  border: "none",
+  background: "#dbeafe",
+  color: "#1d4ed8",
+  padding: "6px 9px",
+  borderRadius: "6px",
+  cursor: "pointer",
+  fontWeight: "600",
+},
 
   error: {
     background: "#fef2f2",
