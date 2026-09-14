@@ -916,9 +916,11 @@ function Inventory() {
                       </strong>
                     </td>
 
-                    <td style={styles.td}>
-                      {product.name}
-                    </td>
+                  <td style={styles.td}>
+  <strong style={{ color: "#fff", fontWeight: "700" }}>
+    {product.name}
+  </strong>
+</td>
 
                     <td style={styles.td}>
                       {getCategoryName(
@@ -1664,9 +1666,13 @@ function Inventory() {
 
 const styles = {
   page: {
+    minHeight: "100vh",
     padding: "30px",
     maxWidth: "1500px",
     margin: "0 auto",
+    background: "#0b0b0b",
+    color: "#f5f5f5",
+    boxSizing: "border-box",
   },
 
   header: {
@@ -1687,52 +1693,53 @@ const styles = {
     margin: 0,
     fontSize: "30px",
     fontWeight: "700",
+    color: "#d4af37",
   },
 
   subtitle: {
     marginTop: "6px",
-    color: "#6b7280",
+    color: "#a3a3a3",
   },
 
   primaryButton: {
     border: "none",
-    background: "#111827",
-    color: "white",
+    background: "#d4af37",
+    color: "#080808",
     padding: "11px 18px",
-    borderRadius: "8px",
+    borderRadius: "10px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
 
   secondaryButton: {
-    border: "1px solid #d1d5db",
-    background: "white",
-    color: "#111827",
+    border: "1px solid #d4af37",
+    background: "#151515",
+    color: "#d4af37",
     padding: "10px 17px",
-    borderRadius: "8px",
+    borderRadius: "10px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
 
   addSmallButton: {
     border: "none",
-    background: "#111827",
-    color: "white",
+    background: "#d4af37",
+    color: "#080808",
     padding: "10px 13px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "bold",
     whiteSpace: "nowrap",
   },
 
   editButton: {
     border: "none",
-    background: "#dbeafe",
-    color: "#1d4ed8",
-    padding: "6px 9px",
-    borderRadius: "6px",
+    background: "#d4af37",
+    color: "#080808",
+    padding: "6px 10px",
+    borderRadius: "7px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
 
   inPrimaryButton: {
@@ -1742,7 +1749,7 @@ const styles = {
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
 
   outPrimaryButton: {
@@ -1752,32 +1759,32 @@ const styles = {
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
 
   refreshButton: {
-    border: "none",
-    background: "#e5e7eb",
-    color: "#111827",
+    border: "1px solid #d4af37",
+    background: "#151515",
+    color: "#d4af37",
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
 
   success: {
-    background: "#f0fdf4",
-    color: "#166534",
-    border: "1px solid #bbf7d0",
+    background: "#102318",
+    color: "#86efac",
+    border: "1px solid #166534",
     padding: "12px 16px",
     borderRadius: "8px",
     marginBottom: "18px",
   },
 
   error: {
-    background: "#fef2f2",
-    color: "#991b1b",
-    border: "1px solid #fecaca",
+    background: "#2a1111",
+    color: "#fca5a5",
+    border: "1px solid #991b1b",
     padding: "12px 16px",
     borderRadius: "8px",
     marginBottom: "18px",
@@ -1785,21 +1792,21 @@ const styles = {
 
   stats: {
     display: "grid",
-    gridTemplateColumns:
-      "repeat(4, minmax(180px, 1fr))",
+    gridTemplateColumns: "repeat(4, minmax(180px, 1fr))",
     gap: "18px",
     marginBottom: "22px",
   },
 
   card: {
-    background: "white",
-    border: "1px solid #e5e7eb",
+    background: "#151515",
+    border: "1px solid #3b321c",
     borderRadius: "12px",
     padding: "20px",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
   },
 
   cardLabel: {
-    color: "#6b7280",
+    color: "#a3a3a3",
     fontSize: "14px",
   },
 
@@ -1807,6 +1814,7 @@ const styles = {
     fontSize: "27px",
     fontWeight: "700",
     marginTop: "8px",
+    color: "#d4af37",
   },
 
   filters: {
@@ -1819,24 +1827,31 @@ const styles = {
   search: {
     flex: "1 1 300px",
     padding: "11px 14px",
-    border: "1px solid #d1d5db",
+    border: "1px solid #555",
     borderRadius: "8px",
     fontSize: "14px",
+    background: "#222",
+    color: "#fff",
+    outline: "none",
   },
 
   select: {
     padding: "11px 14px",
-    border: "1px solid #d1d5db",
+    border: "1px solid #555",
     borderRadius: "8px",
-    background: "white",
+    background: "#222",
+    color: "#fff",
     fontSize: "14px",
+    cursor: "pointer",
+    outline: "none",
   },
 
   tableContainer: {
-    background: "white",
-    border: "1px solid #e5e7eb",
+    background: "#151515",
+    border: "1px solid #3b321c",
     borderRadius: "12px",
     overflowX: "auto",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
   },
 
   historyTable: {
@@ -1850,17 +1865,20 @@ const styles = {
 
   th: {
     textAlign: "left",
-    padding: "13px",
-    background: "#f9fafb",
-    borderBottom: "1px solid #e5e7eb",
+    padding: "14px",
+    background: "#1d1a12",
+    color: "#d4af37",
+    borderBottom: "1px solid #3b321c",
     fontSize: "13px",
+    fontWeight: "bold",
     whiteSpace: "nowrap",
   },
 
   td: {
-    padding: "13px",
-    borderBottom: "1px solid #f3f4f6",
+    padding: "14px",
+    borderBottom: "1px solid #292929",
     fontSize: "14px",
+    color: "#e5e5e5",
     whiteSpace: "nowrap",
   },
 
@@ -1879,9 +1897,9 @@ const styles = {
   },
 
   inButton: {
-    border: "none",
-    background: "#dcfce7",
-    color: "#166534",
+    border: "1px solid #166534",
+    background: "#102318",
+    color: "#86efac",
     padding: "6px 9px",
     borderRadius: "6px",
     cursor: "pointer",
@@ -1889,9 +1907,9 @@ const styles = {
   },
 
   outButton: {
-    border: "none",
-    background: "#fee2e2",
-    color: "#991b1b",
+    border: "1px solid #991b1b",
+    background: "#2a1111",
+    color: "#fca5a5",
     padding: "6px 9px",
     borderRadius: "6px",
     cursor: "pointer",
@@ -1899,9 +1917,9 @@ const styles = {
   },
 
   historyButton: {
-    border: "none",
-    background: "#e5e7eb",
-    color: "#374151",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#d4af37",
     padding: "6px 9px",
     borderRadius: "6px",
     cursor: "pointer",
@@ -1911,13 +1929,13 @@ const styles = {
   empty: {
     padding: "40px",
     textAlign: "center",
-    color: "#6b7280",
+    color: "#888",
   },
 
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.45)",
+    background: "rgba(0,0,0,0.75)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1926,25 +1944,27 @@ const styles = {
   },
 
   modal: {
-    background: "white",
+    background: "#151515",
+    color: "#f5f5f5",
+    border: "1px solid #3b321c",
     borderRadius: "14px",
     width: "100%",
     maxWidth: "700px",
     maxHeight: "90vh",
     overflowY: "auto",
     padding: "25px",
-    boxShadow:
-      "0 20px 50px rgba(0,0,0,0.25)",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.65)",
   },
 
   smallModal: {
-    background: "white",
+    background: "#151515",
+    color: "#f5f5f5",
+    border: "1px solid #3b321c",
     borderRadius: "14px",
     width: "100%",
     maxWidth: "450px",
     padding: "25px",
-    boxShadow:
-      "0 20px 50px rgba(0,0,0,0.25)",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.65)",
   },
 
   modalHeader: {
@@ -1957,16 +1977,19 @@ const styles = {
   modalTitle: {
     margin: 0,
     fontSize: "23px",
+    color: "#d4af37",
+    fontWeight: "bold",
   },
 
   modalSubtitle: {
-    color: "#6b7280",
+    color: "#999",
     marginTop: "5px",
   },
 
   closeButton: {
-    border: "none",
-    background: "#f3f4f6",
+    border: "1px solid #444",
+    background: "#222",
+    color: "#d4af37",
     width: "34px",
     height: "34px",
     borderRadius: "50%",
@@ -1976,8 +1999,7 @@ const styles = {
 
   formGrid: {
     display: "grid",
-    gridTemplateColumns:
-      "repeat(2, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: "15px",
   },
 
@@ -1993,6 +2015,7 @@ const styles = {
     gap: "7px",
     fontSize: "13px",
     fontWeight: "600",
+    color: "#d4d4d4",
     marginBottom: "15px",
   },
 
@@ -2000,10 +2023,13 @@ const styles = {
     width: "100%",
     boxSizing: "border-box",
     padding: "11px 12px",
-    border: "1px solid #d1d5db",
+    border: "1px solid #555",
     borderRadius: "8px",
+    background: "#222",
+    color: "#fff",
     fontSize: "14px",
     fontWeight: "400",
+    outline: "none",
   },
 
   modalActions: {
@@ -2014,16 +2040,18 @@ const styles = {
   },
 
   cancelButton: {
-    border: "1px solid #d1d5db",
-    background: "white",
-    color: "#374151",
+    border: "1px solid #555",
+    background: "#222",
+    color: "#ddd",
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
   },
 
   stockInfo: {
-    background: "#f3f4f6",
+    background: "#1d1a12",
+    color: "#ddd",
+    border: "1px solid #3b321c",
     padding: "13px",
     borderRadius: "8px",
     marginBottom: "18px",
@@ -2031,10 +2059,12 @@ const styles = {
 
   historyPanel: {
     marginTop: "25px",
-    background: "white",
-    border: "1px solid #e5e7eb",
+    background: "#151515",
+    color: "#f5f5f5",
+    border: "1px solid #3b321c",
     borderRadius: "12px",
     overflow: "hidden",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
   },
 
   historyHeader: {
@@ -2042,12 +2072,14 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     padding: "20px",
-    borderBottom: "1px solid #e5e7eb",
+    borderBottom: "1px solid #3b321c",
   },
 
   historyTitle: {
     margin: 0,
     fontSize: "20px",
+    color: "#d4af37",
+    fontWeight: "bold",
   },
 };
 
