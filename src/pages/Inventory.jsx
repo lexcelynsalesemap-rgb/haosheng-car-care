@@ -55,6 +55,154 @@ function Inventory() {
     notes: "",
   });
 
+  /*
+   * CHINESE TRANSLATIONS
+   * These are stored ONLY in this React file.
+   * No Supabase columns are required.
+   */
+
+  const categoryChinese = {
+    "Compounds & Chemicals": "研磨剂和化学品",
+    "Gloves & PPE": "手套和个人防护用品",
+    "Polishing Materials": "抛光材料",
+    "PPF & Wrapping Materials": "PPF和汽车贴膜材料",
+    "Squeegees & Scrapers": "刮板和刮刀",
+    "Tapes & Adhesives": "胶带和粘合剂",
+    "Tools & Blades": "工具和刀片",
+    "Window Tinting Materials": "汽车隔热膜材料",
+  };
+
+  const productChinese = {
+    "10%": "10%",
+    "15%": "15%",
+    "25%": "25%",
+    "35%": "35%",
+    "50%": "50%",
+    "60%": "60%",
+    "70%": "70%",
+
+    "3M Medium Size": "3M中号",
+    "3M Small Double Sided Tape": "3M小号双面胶带",
+
+    "AC CLEANER FOAM": "空调清洁泡沫",
+    "AC VISUAL CLEANING SET": "空调可视清洁套装",
+    "AIR GUN": "气枪",
+    "ASPHALT CLEANER": "沥青清洁剂",
+    "BLACK COLOR": "黑色",
+    "Black Foam": "黑色泡沫",
+    "Black Gloves": "黑色手套",
+    "BLADE CONTAINER": "刀片容器",
+    "Blade Glue Remover for Windshield": "挡风玻璃刀片胶水清除剂",
+    "BLUE BIG TOWEL": "蓝色大毛巾",
+    "BLUE COLOR": "蓝色",
+    "Blue Handle with Small Blades": "蓝色手柄小刀片",
+    "BROWN SMALL TOWEL": "棕色小毛巾",
+    "Brush Big": "大刷子",
+    "CAR CARE FABRIC POLISH": "汽车内饰织物抛光剂",
+    "Car Wrap Tool": "汽车贴膜工具",
+    "CERAMIC COATING PLASTIC PART": "陶瓷涂层塑料部件",
+    "CHROME PARTS REPAIR": "镀铬部件修复剂",
+    "Clothe Polish": "织物抛光剂",
+    "COLD MIST DISINFECTANT": "冷雾消毒剂",
+    "CREAM COLOR": "奶油色",
+    "Cutter Blade": "切割刀片",
+    "Dark Blue Squeegee": "深蓝色刮板",
+    "DESSERT YELLOW COLOR": "甜黄色",
+    "Dual Color Squeegee": "双色刮板",
+    "Endura Blades": "Endura刀片",
+    "ENGINE CLEANER": "发动机清洁剂",
+    "ENGINE HARNESS POLISH": "发动机线束抛光剂",
+    "FABRIC TOOLS FOR WASH": "织物清洗工具",
+    "FOAM BRUSH FOR MAGS": "轮毂泡沫刷",
+    "GA Grey Mattings": "GA灰色垫料",
+    "GLOSS BLACK": "亮黑色",
+    "GLOSSY": "光泽",
+    "Gloves Large": "大号手套",
+    "Glue Remover Blades": "胶水清除刀片",
+    "Green Foam for Polish": "绿色抛光泡沫",
+    "Green Long Scraper": "绿色长刮板",
+    "Green Rubber Squeegee": "绿色橡胶刮板",
+    "Heat Gun": "热风枪",
+    "Heavy Cut Compound": "强力研磨剂",
+    "INTERIOR CLEANER": "内饰清洁剂",
+    "INTERIOR CLEANING AGENT": "内饰清洁剂",
+    "JKJ - 019": "JKJ - 019",
+    "LEATHER CAR CREAM": "皮革汽车护理霜",
+    "MATTE": "哑光",
+    "METALIC GREY COLOR": "金属灰色",
+    "Mint Green Squeegee": "薄荷绿色刮板",
+    "MOSQUITO SELF CLEANING DETERGENT": "蚊虫自清洁洗涤剂",
+    "NANO COATING": "纳米涂层",
+    "Neon Green Squeegee": "荧光绿色刮板",
+    "OIL FILM CLEANER": "油膜清洁剂",
+    "OIL SEAL SCREW DRIVER": "油封螺丝刀",
+    "OIL TIRE WAX": "油性轮胎蜡",
+    "PAINT DEGREASER": "油漆脱脂剂",
+    "Paint Protection Film": "漆面保护膜",
+    "PALM WAX": "棕榈蜡",
+    "Pink Long Scraper": "粉红色长刮板",
+    "Pink Squeegee": "粉红色刮板",
+    "Plastic WTT Roll": "塑料WTT卷",
+    "Polish Agent": "抛光剂",
+    "POLISH CUP": "抛光杯",
+    "POLISH FOAM": "抛光泡沫",
+    "PPF Bag": "PPF袋",
+    "PPF Clay": "PPF粘土",
+    "PPF Cutter": "PPF切割器",
+    "PPF CUTTER GUIDE": "PPF切割导向器",
+    "PPF SURFACE": "PPF表面",
+    "PPF Tissue Cloth": "PPF纸巾布",
+    "PURPLE COLOR": "紫色",
+    "PURPLE SMALL TOWEL": "紫色小毛巾",
+    "R-G PLASTIC BLADE": "R-G塑料刀片",
+    "RACING GREEN COLOR": "赛车绿色",
+    "RED COLOR": "红色",
+    "Red Flat Squeegee": "红色平刮板",
+    "RED SMALL TOWEL": "红色小毛巾",
+    "Reducing Agent": "还原剂",
+    "REMOVE IRON POWDER": "除铁粉剂",
+    "S5-JKJCO34": "S5-JKJCO34",
+    "Scraper Green": "绿色刮板",
+    "Scraper Red Long": "红色长刮板",
+    "Sensor Cutter": "传感器切割器",
+    "SIDEMENT LOOSING AGENT": "水泥松解剂",
+    "Small Rubber Scraper": "小型橡胶刮板",
+    "Spray Bottle": "喷雾瓶",
+    "Squeegee Green Rubber": "绿色橡胶刮板",
+    "Squeegee WTT Pink Rubber": "WTT粉红色橡胶刮板",
+    "SURFACE RENOVATION": "表面翻新剂",
+  };
+
+  function bilingualProductName(name) {
+    if (!name) return "-";
+
+    const chinese = productChinese[name];
+
+    if (!chinese) {
+      return name;
+    }
+
+    if (chinese === name) {
+      return name;
+    }
+
+    return `${name} / ${chinese}`;
+  }
+
+  function bilingualCategoryName(name) {
+    if (!name) {
+      return "No Category / 无类别";
+    }
+
+    const chinese = categoryChinese[name];
+
+    if (!chinese) {
+      return name;
+    }
+
+    return `${name} / ${chinese}`;
+  }
+
   useEffect(() => {
     loadData();
   }, []);
@@ -154,15 +302,18 @@ function Inventory() {
       categoryId === undefined ||
       categoryId === ""
     ) {
-      return "No Category";
+      return "No Category / 无类别";
     }
 
     const category = categories.find(
-      (item) =>
-        String(item.id) === String(categoryId)
+      (item) => String(item.id) === String(categoryId)
     );
 
-    return category?.name || "No Category";
+    if (!category) {
+      return "No Category / 无类别";
+    }
+
+    return bilingualCategoryName(category.name);
   }
 
   function getStatus(product) {
@@ -182,9 +333,7 @@ function Inventory() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const searchText = search
-        .trim()
-        .toLowerCase();
+      const searchText = search.trim().toLowerCase();
 
       const matchesSearch =
         !searchText ||
@@ -462,6 +611,7 @@ function Inventory() {
       );
     } catch (err) {
       console.error("SAVE PRODUCT EXCEPTION:", err);
+
       setError(
         err?.message ||
           "An unexpected error occurred while saving the product."
@@ -515,13 +665,15 @@ function Inventory() {
     setError("");
     setMessage("");
 
-    const { data: existingCategory, error: findError } =
-      await supabase
-        .from("inventory_categories")
-        .select("id, name, shop_id")
-        .eq("name", categoryName.trim())
-        .eq("shop_id", user.shop_id)
-        .maybeSingle();
+    const {
+      data: existingCategory,
+      error: findError,
+    } = await supabase
+      .from("inventory_categories")
+      .select("id, name, shop_id")
+      .eq("name", categoryName.trim())
+      .eq("shop_id", user.shop_id)
+      .maybeSingle();
 
     if (findError) {
       console.error(
@@ -701,14 +853,20 @@ function Inventory() {
   }
 
   function statusLabel(status) {
-    if (status === "OUT") return "OUT OF STOCK";
-    if (status === "LOW") return "LOW STOCK";
-    return "IN STOCK";
+    if (status === "OUT") {
+      return "OUT OF STOCK / 缺货";
+    }
+
+    if (status === "LOW") {
+      return "LOW STOCK / 库存不足";
+    }
+
+    return "IN STOCK / 有库存";
   }
 
   function statusColor(status) {
     if (status === "OUT") return "#dc2626";
-    if (status === "LOW") return "#d97706";
+    if (status === "LOW") return "#d4a72c";
     return "#16a34a";
   }
 
@@ -717,12 +875,13 @@ function Inventory() {
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>
-            Inventory
+            Inventory / 库存
           </h1>
 
           <p style={styles.subtitle}>
-            Manage products, categories, stock
-            and inventory movements.
+            Manage products, categories, stock and inventory movements.
+            <br />
+            管理产品、类别、库存和库存变动。
           </p>
         </div>
 
@@ -732,14 +891,14 @@ function Inventory() {
               style={styles.secondaryButton}
               onClick={openAddCategory}
             >
-              + Add Category
+              + Add Category / 添加类别
             </button>
 
             <button
               style={styles.primaryButton}
               onClick={openAddProduct}
             >
-              + Add Product
+              + Add Product / 添加产品
             </button>
           </div>
         )}
@@ -753,14 +912,14 @@ function Inventory() {
 
       {error && (
         <div style={styles.error}>
-          <strong>Error:</strong> {error}
+          <strong>Error / 错误:</strong> {error}
         </div>
       )}
 
       <div style={styles.stats}>
         <div style={styles.card}>
           <div style={styles.cardLabel}>
-            Products
+            Products / 产品
           </div>
 
           <div style={styles.cardValue}>
@@ -770,13 +929,13 @@ function Inventory() {
 
         <div style={styles.card}>
           <div style={styles.cardLabel}>
-            Low Stock
+            Low Stock / 库存不足
           </div>
 
           <div
             style={{
               ...styles.cardValue,
-              color: "#d97706",
+              color: "#d4a72c",
             }}
           >
             {lowStock}
@@ -785,7 +944,7 @@ function Inventory() {
 
         <div style={styles.card}>
           <div style={styles.cardLabel}>
-            Out of Stock
+            Out of Stock / 缺货
           </div>
 
           <div
@@ -801,7 +960,7 @@ function Inventory() {
         {isAdmin && (
           <div style={styles.card}>
             <div style={styles.cardLabel}>
-              Inventory Value
+              Inventory Value / 库存价值
             </div>
 
             <div style={styles.cardValue}>
@@ -814,7 +973,7 @@ function Inventory() {
       <div style={styles.filters}>
         <input
           style={styles.search}
-          placeholder="Search by product or SKU..."
+          placeholder="Search by product or SKU / 搜索产品或SKU..."
           value={search}
           onChange={(e) =>
             setSearch(e.target.value)
@@ -829,7 +988,7 @@ function Inventory() {
           }
         >
           <option value="">
-            All Categories
+            All Categories / 所有类别
           </option>
 
           {categories.map((category) => (
@@ -837,7 +996,7 @@ function Inventory() {
               key={category.id}
               value={category.id}
             >
-              {category.name}
+              {bilingualCategoryName(category.name)}
             </option>
           ))}
         </select>
@@ -850,19 +1009,19 @@ function Inventory() {
           }
         >
           <option value="">
-            All Status
+            All Status / 所有状态
           </option>
 
           <option value="OK">
-            In Stock
+            In Stock / 有库存
           </option>
 
           <option value="LOW">
-            Low Stock
+            Low Stock / 库存不足
           </option>
 
           <option value="OUT">
-            Out of Stock
+            Out of Stock / 缺货
           </option>
         </select>
 
@@ -870,37 +1029,58 @@ function Inventory() {
           style={styles.refreshButton}
           onClick={loadData}
         >
-          Refresh
+          Refresh / 刷新
         </button>
       </div>
 
       <div style={styles.tableContainer}>
         {loading ? (
           <div style={styles.empty}>
-            Loading inventory...
+            Loading inventory / 正在加载库存...
           </div>
         ) : filteredProducts.length === 0 ? (
           <div style={styles.empty}>
             No products match your search.
+            <br />
+            没有符合搜索条件的产品。
           </div>
         ) : (
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>SKU</th>
-                <th style={styles.th}>Product</th>
-                <th style={styles.th}>Category</th>
-                <th style={styles.th}>Stock</th>
-                <th style={styles.th}>Min.</th>
+                <th style={styles.th}>
+                  SKU
+                </th>
+
+                <th style={styles.th}>
+                  Product / 产品
+                </th>
+
+                <th style={styles.th}>
+                  Category / 类别
+                </th>
+
+                <th style={styles.th}>
+                  Stock / 库存
+                </th>
+
+                <th style={styles.th}>
+                  Min. / 最低
+                </th>
 
                 {isAdmin && (
                   <th style={styles.th}>
-                    Cost
+                    Cost / 成本
                   </th>
                 )}
 
-                <th style={styles.th}>Status</th>
-                <th style={styles.th}>Actions</th>
+                <th style={styles.th}>
+                  Status / 状态
+                </th>
+
+                <th style={styles.th}>
+                  Actions / 操作
+                </th>
               </tr>
             </thead>
 
@@ -916,11 +1096,13 @@ function Inventory() {
                       </strong>
                     </td>
 
-                  <td style={styles.td}>
-  <strong style={{ color: "#fff", fontWeight: "700" }}>
-    {product.name}
-  </strong>
-</td>
+                    <td style={styles.td}>
+                      <strong style={styles.productName}>
+                        {bilingualProductName(
+                          product.name
+                        )}
+                      </strong>
+                    </td>
 
                     <td style={styles.td}>
                       {getCategoryName(
@@ -968,16 +1150,14 @@ function Inventory() {
                       <div style={styles.actions}>
                         {isAdmin && (
                           <button
-                            style={
-                              styles.editButton
-                            }
+                            style={styles.editButton}
                             onClick={() =>
                               openEditProduct(
                                 product
                               )
                             }
                           >
-                            Edit
+                            Edit / تعديل
                           </button>
                         )}
 
@@ -990,7 +1170,7 @@ function Inventory() {
                             )
                           }
                         >
-                          + Stock
+                          + Stock / إضافة
                         </button>
 
                         <button
@@ -1002,7 +1182,7 @@ function Inventory() {
                             )
                           }
                         >
-                          - Stock
+                          - Stock / إزالة
                         </button>
 
                         <button
@@ -1019,7 +1199,7 @@ function Inventory() {
                             );
                           }}
                         >
-                          History
+                          History / 历史
                         </button>
                       </div>
                     </td>
@@ -1037,15 +1217,13 @@ function Inventory() {
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>
-                  Add Category
+                  Add Category / 添加类别
                 </h2>
 
-                <p
-                  style={
-                    styles.modalSubtitle
-                  }
-                >
+                <p style={styles.modalSubtitle}>
                   Add a category for this shop.
+                  <br />
+                  为此店铺添加一个类别。
                 </p>
               </div>
 
@@ -1061,7 +1239,7 @@ function Inventory() {
 
             <form onSubmit={saveCategory}>
               <label style={styles.label}>
-                Category Name *
+                Category Name / 类别名称 *
 
                 <input
                   autoFocus
@@ -1076,33 +1254,25 @@ function Inventory() {
                 />
               </label>
 
-              <div
-                style={
-                  styles.modalActions
-                }
-              >
+              <div style={styles.modalActions}>
                 <button
                   type="button"
-                  style={
-                    styles.cancelButton
-                  }
+                  style={styles.cancelButton}
                   onClick={() =>
                     setShowCategoryForm(false)
                   }
                 >
-                  Cancel
+                  Cancel / 取消
                 </button>
 
                 <button
                   type="submit"
-                  style={
-                    styles.primaryButton
-                  }
+                  style={styles.primaryButton}
                   disabled={saving}
                 >
                   {saving
-                    ? "Saving..."
-                    : "Save Category"}
+                    ? "Saving... / 保存中..."
+                    : "Save Category / 保存类别"}
                 </button>
               </div>
             </form>
@@ -1117,18 +1287,14 @@ function Inventory() {
               <div>
                 <h2 style={styles.modalTitle}>
                   {editingProduct
-                    ? "Edit Product"
-                    : "Add Product"}
+                    ? "Edit Product / 编辑产品"
+                    : "Add Product / 添加产品"}
                 </h2>
 
-                <p
-                  style={
-                    styles.modalSubtitle
-                  }
-                >
+                <p style={styles.modalSubtitle}>
                   {editingProduct
-                    ? "Update product information."
-                    : "Add a new inventory item."}
+                    ? "Update product information. / 更新产品信息。"
+                    : "Add a new inventory item. / 添加新的库存产品。"}
                 </p>
               </div>
 
@@ -1161,7 +1327,7 @@ function Inventory() {
                 </label>
 
                 <label style={styles.label}>
-                  Product Name *
+                  Product Name / 产品名称 *
 
                   <input
                     style={styles.input}
@@ -1173,10 +1339,19 @@ function Inventory() {
                       })
                     }
                   />
+
+                  {productForm.name && (
+                    <span style={styles.translationPreview}>
+                      Chinese / 中文:{" "}
+                      {productChinese[
+                        productForm.name
+                      ] || "Translation can be added in productChinese."}
+                    </span>
+                  )}
                 </label>
 
                 <label style={styles.label}>
-                  Category
+                  Category / 类别
 
                   <div style={styles.categoryRow}>
                     <select
@@ -1196,7 +1371,7 @@ function Inventory() {
                       }
                     >
                       <option value="">
-                        No Category
+                        No Category / 无类别
                       </option>
 
                       {categories.map(
@@ -1205,7 +1380,9 @@ function Inventory() {
                             key={category.id}
                             value={category.id}
                           >
-                            {category.name}
+                            {bilingualCategoryName(
+                              category.name
+                            )}
                           </option>
                         )
                       )}
@@ -1221,14 +1398,14 @@ function Inventory() {
                           openAddCategory
                         }
                       >
-                        + Add
+                        + Add / 添加
                       </button>
                     )}
                   </div>
                 </label>
 
                 <label style={styles.label}>
-                  Unit
+                  Unit / 单位
 
                   <select
                     style={styles.input}
@@ -1241,35 +1418,42 @@ function Inventory() {
                     }
                   >
                     <option value="pcs">
-                      Pieces
+                      Pieces / 件
                     </option>
+
                     <option value="box">
-                      Box
+                      Box / 箱
                     </option>
+
                     <option value="bottle">
-                      Bottle
+                      Bottle / 瓶
                     </option>
+
                     <option value="liter">
-                      Liter
+                      Liter / 升
                     </option>
+
                     <option value="kg">
-                      Kilogram
+                      Kilogram / 公斤
                     </option>
+
                     <option value="roll">
-                      Roll
+                      Roll / 卷
                     </option>
+
                     <option value="sack">
-                      Sack
+                      Sack / 袋
                     </option>
+
                     <option value="piece">
-                      Piece
+                      Piece / 件
                     </option>
                   </select>
                 </label>
 
                 {isAdmin && (
                   <label style={styles.label}>
-                    Cost Price (QAR)
+                    Cost Price / 成本价 (QAR)
 
                     <input
                       type="number"
@@ -1292,8 +1476,8 @@ function Inventory() {
 
                 <label style={styles.label}>
                   {editingProduct
-                    ? "Current Stock"
-                    : "Opening Stock"}
+                    ? "Current Stock / 当前库存"
+                    : "Opening Stock / 初始库存"}
 
                   <input
                     type="number"
@@ -1314,7 +1498,7 @@ function Inventory() {
                 </label>
 
                 <label style={styles.label}>
-                  Minimum Stock
+                  Minimum Stock / 最低库存
 
                   <input
                     type="number"
@@ -1336,7 +1520,7 @@ function Inventory() {
               </div>
 
               <label style={styles.label}>
-                Description
+                Description / 描述
 
                 <textarea
                   style={{
@@ -1366,7 +1550,7 @@ function Inventory() {
                     setEditingProduct(null);
                   }}
                 >
-                  Cancel
+                  Cancel / 取消
                 </button>
 
                 <button
@@ -1375,10 +1559,10 @@ function Inventory() {
                   disabled={saving}
                 >
                   {saving
-                    ? "Saving..."
+                    ? "Saving... / 保存中..."
                     : editingProduct
-                    ? "Update Product"
-                    : "Save Product"}
+                    ? "Update Product / 更新产品"
+                    : "Save Product / 保存产品"}
                 </button>
               </div>
             </form>
@@ -1392,20 +1576,22 @@ function Inventory() {
             <div style={styles.modal}>
               <div style={styles.modalHeader}>
                 <div>
-                  <h2
-                    style={styles.modalTitle}
-                  >
+                  <h2 style={styles.modalTitle}>
                     {movementType === "IN"
-                      ? "Stock In"
-                      : "Stock Out"}
+                      ? "Stock In / 入库"
+                      : "Stock Out / 出库"}
                   </h2>
 
                   <p
-                    style={
-                      styles.modalSubtitle
-                    }
+                    style={{
+                      ...styles.modalSubtitle,
+                      fontWeight: "700",
+                      color: "#111827",
+                    }}
                   >
-                    {selectedProduct.name}
+                    {bilingualProductName(
+                      selectedProduct.name
+                    )}
                   </p>
                 </div>
 
@@ -1420,7 +1606,7 @@ function Inventory() {
               </div>
 
               <div style={styles.stockInfo}>
-                Current Stock:{" "}
+                Current Stock / 当前库存:{" "}
                 <strong>
                   {selectedProduct.current_stock}{" "}
                   {selectedProduct.unit}
@@ -1429,7 +1615,7 @@ function Inventory() {
 
               <form onSubmit={saveMovement}>
                 <label style={styles.label}>
-                  Quantity *
+                  Quantity / 数量 *
 
                   <input
                     autoFocus
@@ -1452,7 +1638,7 @@ function Inventory() {
 
                 {showCost && (
                   <label style={styles.label}>
-                    Unit Cost (QAR)
+                    Unit Cost / 单位成本 (QAR)
 
                     <input
                       type="number"
@@ -1474,7 +1660,7 @@ function Inventory() {
                 )}
 
                 <label style={styles.label}>
-                  Reference
+                  Reference / 参考
 
                   <input
                     style={styles.input}
@@ -1492,7 +1678,7 @@ function Inventory() {
                 </label>
 
                 <label style={styles.label}>
-                  Notes
+                  Notes / 备注
 
                   <textarea
                     style={styles.input}
@@ -1514,7 +1700,7 @@ function Inventory() {
                       setShowMovementForm(false)
                     }
                   >
-                    Cancel
+                    Cancel / 取消
                   </button>
 
                   <button
@@ -1527,10 +1713,10 @@ function Inventory() {
                     disabled={saving}
                   >
                     {saving
-                      ? "Saving..."
+                      ? "Saving... / 保存中..."
                       : movementType === "IN"
-                      ? "Add Stock"
-                      : "Remove Stock"}
+                      ? "Add Stock / 添加库存"
+                      : "Remove Stock / 移除库存"}
                   </button>
                 </div>
               </form>
@@ -1546,15 +1732,13 @@ function Inventory() {
             <div style={styles.historyHeader}>
               <div>
                 <h2 style={styles.historyTitle}>
-                  {selectedProduct.name}
+                  {bilingualProductName(
+                    selectedProduct.name
+                  )}
                 </h2>
 
-                <p
-                  style={
-                    styles.modalSubtitle
-                  }
-                >
-                  Stock movement history
+                <p style={styles.modalSubtitle}>
+                  Stock movement history / 库存变动历史
                 </p>
               </div>
 
@@ -1569,7 +1753,7 @@ function Inventory() {
             </div>
 
             <div style={styles.stockInfo}>
-              Current Stock:{" "}
+              Current Stock / 当前库存:{" "}
               <strong>
                 {selectedProduct.current_stock}{" "}
                 {selectedProduct.unit}
@@ -1578,11 +1762,13 @@ function Inventory() {
 
             {historyLoading ? (
               <div style={styles.empty}>
-                Loading history...
+                Loading history / 正在加载历史记录...
               </div>
             ) : history.length === 0 ? (
               <div style={styles.empty}>
                 No stock movements recorded yet.
+                <br />
+                尚未记录库存变动。
               </div>
             ) : (
               <div style={styles.historyTable}>
@@ -1590,19 +1776,23 @@ function Inventory() {
                   <thead>
                     <tr>
                       <th style={styles.th}>
-                        Date
+                        Date / 日期
                       </th>
+
                       <th style={styles.th}>
-                        Type
+                        Type / 类型
                       </th>
+
                       <th style={styles.th}>
-                        Quantity
+                        Quantity / 数量
                       </th>
+
                       <th style={styles.th}>
-                        Reference
+                        Reference / 参考
                       </th>
+
                       <th style={styles.th}>
-                        Notes
+                        Notes / 备注
                       </th>
                     </tr>
                   </thead>
@@ -1618,9 +1808,10 @@ function Inventory() {
 
                         <td style={styles.td}>
                           <strong>
-                            {
-                              movement.movement_type
-                            }
+                            {movement.movement_type ===
+                            "IN"
+                              ? "IN / 入库"
+                              : "OUT / 出库"}
                           </strong>
                         </td>
 
@@ -1666,13 +1857,12 @@ function Inventory() {
 
 const styles = {
   page: {
-    minHeight: "100vh",
     padding: "30px",
     maxWidth: "1500px",
     margin: "0 auto",
-    background: "#0b0b0b",
-    color: "#f5f5f5",
-    boxSizing: "border-box",
+    background: "#f8f7f2",
+    minHeight: "100vh",
+    color: "#111827",
   },
 
   header: {
@@ -1692,54 +1882,55 @@ const styles = {
   title: {
     margin: 0,
     fontSize: "30px",
-    fontWeight: "700",
-    color: "#d4af37",
+    fontWeight: "800",
+    color: "#111111",
   },
 
   subtitle: {
-    marginTop: "6px",
-    color: "#a3a3a3",
+    marginTop: "7px",
+    color: "#6b7280",
+    lineHeight: "1.6",
   },
 
   primaryButton: {
-    border: "none",
-    background: "#d4af37",
-    color: "#080808",
+    border: "1px solid #c8a951",
+    background: "#111111",
+    color: "#d4af37",
     padding: "11px 18px",
-    borderRadius: "10px",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 
   secondaryButton: {
-    border: "1px solid #d4af37",
-    background: "#151515",
-    color: "#d4af37",
+    border: "1px solid #c8a951",
+    background: "white",
+    color: "#111111",
     padding: "10px 17px",
-    borderRadius: "10px",
+    borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 
   addSmallButton: {
     border: "none",
-    background: "#d4af37",
-    color: "#080808",
+    background: "#111111",
+    color: "#d4af37",
     padding: "10px 13px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "700",
     whiteSpace: "nowrap",
   },
 
   editButton: {
-    border: "none",
-    background: "#d4af37",
-    color: "#080808",
-    padding: "6px 10px",
-    borderRadius: "7px",
+    border: "1px solid #c8a951",
+    background: "#fffaf0",
+    color: "#8a6d1d",
+    padding: "6px 9px",
+    borderRadius: "6px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 
   inPrimaryButton: {
@@ -1749,7 +1940,7 @@ const styles = {
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 
   outPrimaryButton: {
@@ -1759,32 +1950,32 @@ const styles = {
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 
   refreshButton: {
-    border: "1px solid #d4af37",
-    background: "#151515",
+    border: "1px solid #c8a951",
+    background: "#111111",
     color: "#d4af37",
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 
   success: {
-    background: "#102318",
-    color: "#86efac",
-    border: "1px solid #166534",
+    background: "#f0fdf4",
+    color: "#166534",
+    border: "1px solid #bbf7d0",
     padding: "12px 16px",
     borderRadius: "8px",
     marginBottom: "18px",
   },
 
   error: {
-    background: "#2a1111",
-    color: "#fca5a5",
-    border: "1px solid #991b1b",
+    background: "#fef2f2",
+    color: "#991b1b",
+    border: "1px solid #fecaca",
     padding: "12px 16px",
     borderRadius: "8px",
     marginBottom: "18px",
@@ -1792,29 +1983,32 @@ const styles = {
 
   stats: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, minmax(180px, 1fr))",
+    gridTemplateColumns:
+      "repeat(4, minmax(180px, 1fr))",
     gap: "18px",
     marginBottom: "22px",
   },
 
   card: {
-    background: "#151515",
-    border: "1px solid #3b321c",
+    background: "white",
+    border: "1px solid #e5d7a5",
     borderRadius: "12px",
     padding: "20px",
-    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+    boxShadow:
+      "0 2px 8px rgba(0,0,0,0.04)",
   },
 
   cardLabel: {
-    color: "#a3a3a3",
+    color: "#6b7280",
     fontSize: "14px",
+    fontWeight: "600",
   },
 
   cardValue: {
     fontSize: "27px",
-    fontWeight: "700",
+    fontWeight: "800",
     marginTop: "8px",
-    color: "#d4af37",
+    color: "#111111",
   },
 
   filters: {
@@ -1827,31 +2021,27 @@ const styles = {
   search: {
     flex: "1 1 300px",
     padding: "11px 14px",
-    border: "1px solid #555",
+    border: "1px solid #d1d5db",
     borderRadius: "8px",
     fontSize: "14px",
-    background: "#222",
-    color: "#fff",
-    outline: "none",
+    background: "white",
   },
 
   select: {
     padding: "11px 14px",
-    border: "1px solid #555",
+    border: "1px solid #d1d5db",
     borderRadius: "8px",
-    background: "#222",
-    color: "#fff",
+    background: "white",
     fontSize: "14px",
-    cursor: "pointer",
-    outline: "none",
   },
 
   tableContainer: {
-    background: "#151515",
-    border: "1px solid #3b321c",
+    background: "white",
+    border: "1px solid #e5d7a5",
     borderRadius: "12px",
     overflowX: "auto",
-    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+    boxShadow:
+      "0 2px 8px rgba(0,0,0,0.04)",
   },
 
   historyTable: {
@@ -1865,21 +2055,31 @@ const styles = {
 
   th: {
     textAlign: "left",
-    padding: "14px",
-    background: "#1d1a12",
+    padding: "13px",
+    background: "#111111",
     color: "#d4af37",
-    borderBottom: "1px solid #3b321c",
+    borderBottom: "2px solid #c8a951",
     fontSize: "13px",
-    fontWeight: "bold",
     whiteSpace: "nowrap",
+    fontWeight: "700",
   },
 
   td: {
-    padding: "14px",
-    borderBottom: "1px solid #292929",
+    padding: "13px",
+    borderBottom: "1px solid #f0ead5",
     fontSize: "14px",
-    color: "#e5e5e5",
     whiteSpace: "nowrap",
+  },
+
+  productName: {
+    fontWeight: "800",
+    color: "#111111",
+  },
+
+  translationPreview: {
+    fontSize: "12px",
+    color: "#8a6d1d",
+    fontWeight: "500",
   },
 
   status: {
@@ -1897,9 +2097,9 @@ const styles = {
   },
 
   inButton: {
-    border: "1px solid #166534",
-    background: "#102318",
-    color: "#86efac",
+    border: "none",
+    background: "#dcfce7",
+    color: "#166534",
     padding: "6px 9px",
     borderRadius: "6px",
     cursor: "pointer",
@@ -1907,9 +2107,9 @@ const styles = {
   },
 
   outButton: {
-    border: "1px solid #991b1b",
-    background: "#2a1111",
-    color: "#fca5a5",
+    border: "none",
+    background: "#fee2e2",
+    color: "#991b1b",
     padding: "6px 9px",
     borderRadius: "6px",
     cursor: "pointer",
@@ -1917,9 +2117,9 @@ const styles = {
   },
 
   historyButton: {
-    border: "1px solid #555",
-    background: "#222",
-    color: "#d4af37",
+    border: "1px solid #d1d5db",
+    background: "#f3f4f6",
+    color: "#374151",
     padding: "6px 9px",
     borderRadius: "6px",
     cursor: "pointer",
@@ -1929,13 +2129,14 @@ const styles = {
   empty: {
     padding: "40px",
     textAlign: "center",
-    color: "#888",
+    color: "#6b7280",
+    lineHeight: "1.7",
   },
 
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.75)",
+    background: "rgba(0,0,0,0.55)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1944,27 +2145,27 @@ const styles = {
   },
 
   modal: {
-    background: "#151515",
-    color: "#f5f5f5",
-    border: "1px solid #3b321c",
+    background: "white",
     borderRadius: "14px",
     width: "100%",
     maxWidth: "700px",
     maxHeight: "90vh",
     overflowY: "auto",
     padding: "25px",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.65)",
+    boxShadow:
+      "0 20px 50px rgba(0,0,0,0.35)",
+    border: "1px solid #d4af37",
   },
 
   smallModal: {
-    background: "#151515",
-    color: "#f5f5f5",
-    border: "1px solid #3b321c",
+    background: "white",
     borderRadius: "14px",
     width: "100%",
     maxWidth: "450px",
     padding: "25px",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.65)",
+    boxShadow:
+      "0 20px 50px rgba(0,0,0,0.35)",
+    border: "1px solid #d4af37",
   },
 
   modalHeader: {
@@ -1977,18 +2178,19 @@ const styles = {
   modalTitle: {
     margin: 0,
     fontSize: "23px",
-    color: "#d4af37",
-    fontWeight: "bold",
+    fontWeight: "800",
+    color: "#111111",
   },
 
   modalSubtitle: {
-    color: "#999",
+    color: "#6b7280",
     marginTop: "5px",
+    lineHeight: "1.5",
   },
 
   closeButton: {
-    border: "1px solid #444",
-    background: "#222",
+    border: "1px solid #d4af37",
+    background: "#111111",
     color: "#d4af37",
     width: "34px",
     height: "34px",
@@ -1999,7 +2201,8 @@ const styles = {
 
   formGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gridTemplateColumns:
+      "repeat(2, minmax(0, 1fr))",
     gap: "15px",
   },
 
@@ -2014,22 +2217,20 @@ const styles = {
     flexDirection: "column",
     gap: "7px",
     fontSize: "13px",
-    fontWeight: "600",
-    color: "#d4d4d4",
+    fontWeight: "700",
     marginBottom: "15px",
+    color: "#111827",
   },
 
   input: {
     width: "100%",
     boxSizing: "border-box",
     padding: "11px 12px",
-    border: "1px solid #555",
+    border: "1px solid #d1d5db",
     borderRadius: "8px",
-    background: "#222",
-    color: "#fff",
     fontSize: "14px",
     fontWeight: "400",
-    outline: "none",
+    background: "white",
   },
 
   modalActions: {
@@ -2040,18 +2241,18 @@ const styles = {
   },
 
   cancelButton: {
-    border: "1px solid #555",
-    background: "#222",
-    color: "#ddd",
+    border: "1px solid #d1d5db",
+    background: "white",
+    color: "#374151",
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
+    fontWeight: "600",
   },
 
   stockInfo: {
-    background: "#1d1a12",
-    color: "#ddd",
-    border: "1px solid #3b321c",
+    background: "#fffaf0",
+    border: "1px solid #e5d7a5",
     padding: "13px",
     borderRadius: "8px",
     marginBottom: "18px",
@@ -2059,12 +2260,12 @@ const styles = {
 
   historyPanel: {
     marginTop: "25px",
-    background: "#151515",
-    color: "#f5f5f5",
-    border: "1px solid #3b321c",
+    background: "white",
+    border: "1px solid #e5d7a5",
     borderRadius: "12px",
     overflow: "hidden",
-    boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+    boxShadow:
+      "0 2px 8px rgba(0,0,0,0.04)",
   },
 
   historyHeader: {
@@ -2072,14 +2273,13 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     padding: "20px",
-    borderBottom: "1px solid #3b321c",
+    borderBottom: "1px solid #e5d7a5",
   },
 
   historyTitle: {
     margin: 0,
     fontSize: "20px",
-    color: "#d4af37",
-    fontWeight: "bold",
+    fontWeight: "800",
   },
 };
 
