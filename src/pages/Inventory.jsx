@@ -2,6 +2,190 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
 import { canSeeInventoryCost } from "../utils/permissions";
 
+/*
+============================================================
+CHINESE TRANSLATIONS
+============================================================
+Chinese translations are stored in this React file.
+NO name_chinese column is required in Supabase.
+*/
+
+const categoryChinese = {
+  "Compounds & Chemicals": "研磨剂和化学品",
+  "Gloves & PPE": "手套和个人防护用品",
+  "Polishing Materials": "抛光材料",
+  "PPF & Wrapping Materials": "PPF 和汽车贴膜材料",
+  "Squeegees & Scrapers": "刮板和刮刀",
+  "Tapes & Adhesives": "胶带和粘合剂",
+  "Tools & Blades": "工具和刀片",
+  "Window Tinting Materials": "汽车隔热膜材料",
+};
+
+/*
+============================================================
+PRODUCT CHINESE TRANSLATIONS
+============================================================
+Supabase only stores the English product name.
+Chinese is displayed automatically from this list.
+*/
+
+const productChinese = {
+  "10%": "10%",
+  "15%": "15%",
+  "25%": "25%",
+  "35%": "35%",
+  "50%": "50%",
+  "60%": "60%",
+  "70%": "70%",
+
+  "3M Medium Size": "3M 中号",
+  "3M Small Double Sided Tape": "3M 小号双面胶带",
+  "AC CLEANER FOAM": "空调清洁泡沫",
+  "AC VISUAL CLEANING SET": "空调可视清洁套装",
+  "AIR GUN": "气枪",
+  "ASPHALT CLEANER": "沥青清洁剂",
+  "BLACK COLOR": "黑色",
+  "Black Foam": "黑色泡沫",
+  "Black Gloves": "黑色手套",
+  "BLADE CONTAINER": "刀片收纳盒",
+  "Blade Glue Remover for Windshield": "挡风玻璃刀片胶水清除剂",
+  "BLUE BIG TOWEL": "蓝色大毛巾",
+  "BLUE COLOR": "蓝色",
+  "Blue Handle with Small Blades": "蓝色手柄小刀片",
+  "BROWN SMALL TOWEL": "棕色小毛巾",
+  "Brush Big": "大刷子",
+  "CAR CARE FABRIC POLISH": "汽车护理织物抛光剂",
+  "Car Wrap Tool": "汽车贴膜工具",
+  "CERAMIC COATING PLASTIC PART": "陶瓷涂层塑料部件",
+  "CHROME PARTS REPAIR": "镀铬部件修复剂",
+  "Clothe Polish": "布料抛光剂",
+  "COLD MIST DISINFECTANT": "冷雾消毒剂",
+  "CREAM COLOR": "奶油色",
+  "Cutter Blade": "切割刀片",
+  "Dark Blue Squeegee": "深蓝色刮板",
+  "DESSERT YELLOW COLOR": "甜点黄色",
+  "Dual Color Squeegee": "双色刮板",
+  "Endura Blades": "Endura 刀片",
+  "ENGINE CLEANER": "发动机清洁剂",
+  "ENGINE HARNESS POLISH": "发动机线束抛光剂",
+  "FABRIC TOOLS FOR WASH": "织物清洗工具",
+  "FOAM BRUSH FOR MAGS": "轮毂泡沫刷",
+  "GA Grey Mattings": "GA 灰色脚垫",
+  "GLOSS BLACK": "亮黑色",
+  "GLOSSY": "亮光",
+  "Gloves Large": "大号手套",
+  "Glue Remover Blades": "胶水清除刀片",
+  "Green Foam for Polish": "抛光绿色泡沫",
+  "Green Long Scraper": "绿色长刮板",
+  "Green Rubber Squeegee": "绿色橡胶刮板",
+  "Heat Gun": "热风枪",
+  "Heavy Cut Compound": "重切削研磨剂",
+  "INTERIOR CLEANER": "内饰清洁剂",
+  "INTERIOR CLEANING AGENT": "内饰清洁剂",
+  "JKJ - 019": "JKJ - 019",
+  "LEATHER CAR CREAM": "汽车皮革护理霜",
+  "MATTE": "哑光",
+  "METALIC GREY COLOR": "金属灰色",
+  "Mint Green Squeegee": "薄荷绿色刮板",
+  "MOSQUITO SELF CLEANING DETERGENT": "蚊虫自清洁清洁剂",
+  "NANO COATING": "纳米涂层",
+  "Neon Green Squeegee": "荧光绿色刮板",
+  "OIL FILM CLEANER": "油膜清洁剂",
+  "OIL SEAL SCREW DRIVER": "油封螺丝刀",
+  "OIL TIRE WAX": "轮胎油蜡",
+  "PAINT DEGREASER": "油漆脱脂剂",
+  "Paint Protection Film": "漆面保护膜",
+  "PALM WAX": "棕榈蜡",
+  "Pink Long Scraper": "粉色长刮板",
+  "Pink Squeegee": "粉色刮板",
+  "Plastic WTT Roll": "塑料 WTT 卷",
+  "Polish Agent": "抛光剂",
+  "POLISH CUP": "抛光杯",
+  "POLISH FOAM": "抛光泡沫",
+  "PPF Bag": "PPF 袋",
+  "PPF Clay": "PPF 清洁泥",
+  "PPF Cutter": "PPF 切割器",
+  "PPF CUTTER GUIDE": "PPF 切割导轨",
+  "PPF SURFACE": "PPF 表面处理剂",
+  "PPF Tissue Cloth": "PPF 纸巾布",
+  "PURPLE COLOR": "紫色",
+  "PURPLE SMALL TOWEL": "紫色小毛巾",
+  "R-G PLASTIC BLADE": "R-G 塑料刀片",
+  "RACING GREEN COLOR": "赛车绿色",
+  "RED COLOR": "红色",
+  "Red Flat Squeegee": "红色平刮板",
+  "RED SMALL TOWEL": "红色小毛巾",
+  "Reducing Agent": "还原剂",
+  "REMOVE IRON POWDER": "除铁粉剂",
+  "S5-JKJCO34": "S5-JKJCO34",
+  "Scraper Green": "绿色刮板",
+  "Scraper Red Long": "红色长刮板",
+  "Sensor Cutter": "传感器切割器",
+  "SIDEMENT LOOSING AGENT": "水泥松动剂",
+  "Small Rubber Scraper": "小型橡胶刮板",
+  "Spray Bottle": "喷雾瓶",
+  "Squeegee Green Rubber": "绿色橡胶刮板",
+  "Squeegee WTT Pink Rubber": "WTT 粉色橡胶刮板",
+  "SURFACE RENOVATION": "表面翻新剂",
+};
+
+/*
+============================================================
+HELPER FUNCTIONS
+============================================================
+*/
+
+function getProductDisplay(name) {
+  const english = String(name || "");
+  const chinese = productChinese[english];
+
+  if (chinese && chinese !== english) {
+    return (
+      <span>
+        {english}
+        <span style={styles.chineseText}>
+          {" / "}
+          {chinese}
+        </span>
+      </span>
+    );
+  }
+
+  return english;
+}
+
+function getCategoryDisplay(name) {
+  const english = String(name || "No Category");
+  const chinese = categoryChinese[english];
+
+  if (chinese) {
+    return `${english} / ${chinese}`;
+  }
+
+  return english;
+}
+
+function getStatus(product) {
+  const stock = Number(product.current_stock || 0);
+  const minimum = Number(product.minimum_stock || 0);
+
+  if (stock <= 0) {
+    return "OUT";
+  }
+
+  if (stock <= minimum) {
+    return "LOW";
+  }
+
+  return "OK";
+}
+
+/*
+============================================================
+INVENTORY
+============================================================
+*/
+
 function Inventory() {
   const loggedInUser = JSON.parse(
     localStorage.getItem("user") || "null"
@@ -55,154 +239,6 @@ function Inventory() {
     notes: "",
   });
 
-  /*
-   * CHINESE TRANSLATIONS
-   * These are stored ONLY in this React file.
-   * No Supabase columns are required.
-   */
-
-  const categoryChinese = {
-    "Compounds & Chemicals": "研磨剂和化学品",
-    "Gloves & PPE": "手套和个人防护用品",
-    "Polishing Materials": "抛光材料",
-    "PPF & Wrapping Materials": "PPF和汽车贴膜材料",
-    "Squeegees & Scrapers": "刮板和刮刀",
-    "Tapes & Adhesives": "胶带和粘合剂",
-    "Tools & Blades": "工具和刀片",
-    "Window Tinting Materials": "汽车隔热膜材料",
-  };
-
-  const productChinese = {
-    "10%": "10%",
-    "15%": "15%",
-    "25%": "25%",
-    "35%": "35%",
-    "50%": "50%",
-    "60%": "60%",
-    "70%": "70%",
-
-    "3M Medium Size": "3M中号",
-    "3M Small Double Sided Tape": "3M小号双面胶带",
-
-    "AC CLEANER FOAM": "空调清洁泡沫",
-    "AC VISUAL CLEANING SET": "空调可视清洁套装",
-    "AIR GUN": "气枪",
-    "ASPHALT CLEANER": "沥青清洁剂",
-    "BLACK COLOR": "黑色",
-    "Black Foam": "黑色泡沫",
-    "Black Gloves": "黑色手套",
-    "BLADE CONTAINER": "刀片容器",
-    "Blade Glue Remover for Windshield": "挡风玻璃刀片胶水清除剂",
-    "BLUE BIG TOWEL": "蓝色大毛巾",
-    "BLUE COLOR": "蓝色",
-    "Blue Handle with Small Blades": "蓝色手柄小刀片",
-    "BROWN SMALL TOWEL": "棕色小毛巾",
-    "Brush Big": "大刷子",
-    "CAR CARE FABRIC POLISH": "汽车内饰织物抛光剂",
-    "Car Wrap Tool": "汽车贴膜工具",
-    "CERAMIC COATING PLASTIC PART": "陶瓷涂层塑料部件",
-    "CHROME PARTS REPAIR": "镀铬部件修复剂",
-    "Clothe Polish": "织物抛光剂",
-    "COLD MIST DISINFECTANT": "冷雾消毒剂",
-    "CREAM COLOR": "奶油色",
-    "Cutter Blade": "切割刀片",
-    "Dark Blue Squeegee": "深蓝色刮板",
-    "DESSERT YELLOW COLOR": "甜黄色",
-    "Dual Color Squeegee": "双色刮板",
-    "Endura Blades": "Endura刀片",
-    "ENGINE CLEANER": "发动机清洁剂",
-    "ENGINE HARNESS POLISH": "发动机线束抛光剂",
-    "FABRIC TOOLS FOR WASH": "织物清洗工具",
-    "FOAM BRUSH FOR MAGS": "轮毂泡沫刷",
-    "GA Grey Mattings": "GA灰色垫料",
-    "GLOSS BLACK": "亮黑色",
-    "GLOSSY": "光泽",
-    "Gloves Large": "大号手套",
-    "Glue Remover Blades": "胶水清除刀片",
-    "Green Foam for Polish": "绿色抛光泡沫",
-    "Green Long Scraper": "绿色长刮板",
-    "Green Rubber Squeegee": "绿色橡胶刮板",
-    "Heat Gun": "热风枪",
-    "Heavy Cut Compound": "强力研磨剂",
-    "INTERIOR CLEANER": "内饰清洁剂",
-    "INTERIOR CLEANING AGENT": "内饰清洁剂",
-    "JKJ - 019": "JKJ - 019",
-    "LEATHER CAR CREAM": "皮革汽车护理霜",
-    "MATTE": "哑光",
-    "METALIC GREY COLOR": "金属灰色",
-    "Mint Green Squeegee": "薄荷绿色刮板",
-    "MOSQUITO SELF CLEANING DETERGENT": "蚊虫自清洁洗涤剂",
-    "NANO COATING": "纳米涂层",
-    "Neon Green Squeegee": "荧光绿色刮板",
-    "OIL FILM CLEANER": "油膜清洁剂",
-    "OIL SEAL SCREW DRIVER": "油封螺丝刀",
-    "OIL TIRE WAX": "油性轮胎蜡",
-    "PAINT DEGREASER": "油漆脱脂剂",
-    "Paint Protection Film": "漆面保护膜",
-    "PALM WAX": "棕榈蜡",
-    "Pink Long Scraper": "粉红色长刮板",
-    "Pink Squeegee": "粉红色刮板",
-    "Plastic WTT Roll": "塑料WTT卷",
-    "Polish Agent": "抛光剂",
-    "POLISH CUP": "抛光杯",
-    "POLISH FOAM": "抛光泡沫",
-    "PPF Bag": "PPF袋",
-    "PPF Clay": "PPF粘土",
-    "PPF Cutter": "PPF切割器",
-    "PPF CUTTER GUIDE": "PPF切割导向器",
-    "PPF SURFACE": "PPF表面",
-    "PPF Tissue Cloth": "PPF纸巾布",
-    "PURPLE COLOR": "紫色",
-    "PURPLE SMALL TOWEL": "紫色小毛巾",
-    "R-G PLASTIC BLADE": "R-G塑料刀片",
-    "RACING GREEN COLOR": "赛车绿色",
-    "RED COLOR": "红色",
-    "Red Flat Squeegee": "红色平刮板",
-    "RED SMALL TOWEL": "红色小毛巾",
-    "Reducing Agent": "还原剂",
-    "REMOVE IRON POWDER": "除铁粉剂",
-    "S5-JKJCO34": "S5-JKJCO34",
-    "Scraper Green": "绿色刮板",
-    "Scraper Red Long": "红色长刮板",
-    "Sensor Cutter": "传感器切割器",
-    "SIDEMENT LOOSING AGENT": "水泥松解剂",
-    "Small Rubber Scraper": "小型橡胶刮板",
-    "Spray Bottle": "喷雾瓶",
-    "Squeegee Green Rubber": "绿色橡胶刮板",
-    "Squeegee WTT Pink Rubber": "WTT粉红色橡胶刮板",
-    "SURFACE RENOVATION": "表面翻新剂",
-  };
-
-  function bilingualProductName(name) {
-    if (!name) return "-";
-
-    const chinese = productChinese[name];
-
-    if (!chinese) {
-      return name;
-    }
-
-    if (chinese === name) {
-      return name;
-    }
-
-    return `${name} / ${chinese}`;
-  }
-
-  function bilingualCategoryName(name) {
-    if (!name) {
-      return "No Category / 无类别";
-    }
-
-    const chinese = categoryChinese[name];
-
-    if (!chinese) {
-      return name;
-    }
-
-    return `${name} / ${chinese}`;
-  }
-
   useEffect(() => {
     loadData();
   }, []);
@@ -226,9 +262,16 @@ function Inventory() {
 
     if (!user?.shop_id) {
       setProducts([]);
-      setError("Your account is not connected to a shop.");
+      setError(
+        "Your account is not connected to a shop. / 您的账户未连接到店铺。"
+      );
       return;
     }
+
+    /*
+    IMPORTANT:
+    There is NO name_chinese here.
+    */
 
     const { data, error } = await supabase
       .from("inventory_products")
@@ -254,7 +297,11 @@ function Inventory() {
       .order("name");
 
     if (error) {
-      console.error("LOAD PRODUCTS ERROR:", error);
+      console.error(
+        "LOAD PRODUCTS ERROR:",
+        error
+      );
+
       setProducts([]);
       setError(error.message);
       return;
@@ -287,7 +334,11 @@ function Inventory() {
       .order("name");
 
     if (error) {
-      console.error("LOAD CATEGORIES ERROR:", error);
+      console.error(
+        "LOAD CATEGORIES ERROR:",
+        error
+      );
+
       setCategories([]);
       setError(error.message);
       return;
@@ -302,47 +353,39 @@ function Inventory() {
       categoryId === undefined ||
       categoryId === ""
     ) {
-      return "No Category / 无类别";
+      return "No Category";
     }
 
     const category = categories.find(
-      (item) => String(item.id) === String(categoryId)
+      (item) =>
+        String(item.id) === String(categoryId)
     );
 
-    if (!category) {
-      return "No Category / 无类别";
-    }
-
-    return bilingualCategoryName(category.name);
-  }
-
-  function getStatus(product) {
-    const stock = Number(product.current_stock || 0);
-    const minimum = Number(product.minimum_stock || 0);
-
-    if (stock <= 0) {
-      return "OUT";
-    }
-
-    if (stock <= minimum) {
-      return "LOW";
-    }
-
-    return "OK";
+    return category?.name || "No Category";
   }
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const searchText = search.trim().toLowerCase();
+      const searchText =
+        search.trim().toLowerCase();
+
+      const englishName = String(
+        product.name || ""
+      ).toLowerCase();
+
+      const chineseName = String(
+        productChinese[product.name] || ""
+      ).toLowerCase();
+
+      const sku = String(
+        product.sku || ""
+      ).toLowerCase();
 
       const matchesSearch =
         !searchText ||
-        String(product.name || "")
-          .toLowerCase()
-          .includes(searchText) ||
-        String(product.sku || "")
-          .toLowerCase()
-          .includes(searchText);
+        englishName.includes(searchText) ||
+        chineseName.includes(searchText) ||
+        sku.includes(searchText);
 
       const matchesCategory =
         !categoryFilter ||
@@ -361,7 +404,6 @@ function Inventory() {
     });
   }, [
     products,
-    categories,
     search,
     categoryFilter,
     statusFilter,
@@ -391,7 +433,9 @@ function Inventory() {
 
   function openAddProduct() {
     if (!isAdmin) {
-      setError("Only administrators can add products.");
+      setError(
+        "Only administrators can add products. / 只有管理员可以添加产品。"
+      );
       return;
     }
 
@@ -415,7 +459,9 @@ function Inventory() {
 
   function openEditProduct(product) {
     if (!isAdmin) {
-      setError("Only administrators can edit products.");
+      setError(
+        "Only administrators can edit products. / 只有管理员可以编辑产品。"
+      );
       return;
     }
 
@@ -458,7 +504,7 @@ function Inventory() {
 
     if (!isAdmin) {
       setError(
-        "Only administrators can add or edit products."
+        "Only administrators can add or edit products. / 只有管理员可以添加或编辑产品。"
       );
       return;
     }
@@ -469,18 +515,22 @@ function Inventory() {
 
     if (!user?.shop_id) {
       setError(
-        "Your account is not connected to a shop."
+        "Your account is not connected to a shop. / 您的账户未连接到店铺。"
       );
       return;
     }
 
     if (!productForm.sku.trim()) {
-      setError("SKU is required.");
+      setError(
+        "SKU is required. / SKU 是必填项。"
+      );
       return;
     }
 
     if (!productForm.name.trim()) {
-      setError("Product name is required.");
+      setError(
+        "Product name is required. / 产品名称是必填项。"
+      );
       return;
     }
 
@@ -497,38 +547,49 @@ function Inventory() {
     );
 
     if (currentStock < 0) {
-      setError("Stock cannot be negative.");
+      setError(
+        "Stock cannot be negative. / 库存不能为负数。"
+      );
       return;
     }
 
     if (minimumStock < 0) {
-      setError("Minimum stock cannot be negative.");
+      setError(
+        "Minimum stock cannot be negative. / 最低库存不能为负数。"
+      );
       return;
     }
 
     if (costPrice < 0) {
-      setError("Cost price cannot be negative.");
+      setError(
+        "Cost price cannot be negative. / 成本价格不能为负数。"
+      );
       return;
     }
 
     let categoryId = null;
 
     if (productForm.category_id !== "") {
-      categoryId = Number(productForm.category_id);
+      categoryId = Number(
+        productForm.category_id
+      );
 
       if (!Number.isInteger(categoryId)) {
-        setError("Invalid category selected.");
+        setError(
+          "Invalid category selected. / 所选类别无效。"
+        );
         return;
       }
 
-      const selectedCategory = categories.find(
-        (category) =>
-          Number(category.id) === categoryId
-      );
+      const selectedCategory =
+        categories.find(
+          (category) =>
+            Number(category.id) === categoryId
+        );
 
       if (!selectedCategory) {
         setError(
-          "The selected category could not be found."
+          "The selected category could not be found. / 找不到所选类别。"
         );
         return;
       }
@@ -538,11 +599,16 @@ function Inventory() {
         String(user.shop_id)
       ) {
         setError(
-          "The selected category belongs to another shop."
+          "The selected category belongs to another shop. / 所选类别属于其他店铺。"
         );
         return;
       }
     }
+
+    /*
+    IMPORTANT:
+    No name_chinese is saved.
+    */
 
     const productData = {
       sku: productForm.sku.trim(),
@@ -553,7 +619,8 @@ function Inventory() {
       current_stock: currentStock,
       minimum_stock: minimumStock,
       description:
-        productForm.description.trim() || null,
+        productForm.description.trim() ||
+        null,
       shop_id: user.shop_id,
       active: true,
       updated_at: new Date().toISOString(),
@@ -565,11 +632,12 @@ function Inventory() {
 
     try {
       if (editingProduct) {
-        const { error: updateError } = await supabase
-          .from("inventory_products")
-          .update(productData)
-          .eq("id", editingProduct.id)
-          .eq("shop_id", user.shop_id);
+        const { error: updateError } =
+          await supabase
+            .from("inventory_products")
+            .update(productData)
+            .eq("id", editingProduct.id)
+            .eq("shop_id", user.shop_id);
 
         if (updateError) {
           console.error(
@@ -582,9 +650,10 @@ function Inventory() {
           return;
         }
       } else {
-        const { error: insertError } = await supabase
-          .from("inventory_products")
-          .insert(productData);
+        const { error: insertError } =
+          await supabase
+            .from("inventory_products")
+            .insert(productData);
 
         if (insertError) {
           console.error(
@@ -598,23 +667,26 @@ function Inventory() {
         }
       }
 
-      await loadCategories();
       await loadProducts();
+      await loadCategories();
 
       setShowProductForm(false);
       setEditingProduct(null);
 
       setMessage(
         editingProduct
-          ? "Product updated successfully."
-          : "Product added successfully."
+          ? "Product updated successfully. / 产品更新成功。"
+          : "Product added successfully. / 产品添加成功。"
       );
     } catch (err) {
-      console.error("SAVE PRODUCT EXCEPTION:", err);
+      console.error(
+        "SAVE PRODUCT EXCEPTION:",
+        err
+      );
 
       setError(
         err?.message ||
-          "An unexpected error occurred while saving the product."
+          "An unexpected error occurred. / 发生意外错误。"
       );
     }
 
@@ -624,7 +696,7 @@ function Inventory() {
   function openAddCategory() {
     if (!isAdmin) {
       setError(
-        "Only administrators can add categories."
+        "Only administrators can add categories. / 只有管理员可以添加类别。"
       );
       return;
     }
@@ -640,7 +712,7 @@ function Inventory() {
 
     if (!isAdmin) {
       setError(
-        "Only administrators can add categories."
+        "Only administrators can add categories. / 只有管理员可以添加类别。"
       );
       return;
     }
@@ -651,13 +723,15 @@ function Inventory() {
 
     if (!user?.shop_id) {
       setError(
-        "Your account is not connected to a shop."
+        "Your account is not connected to a shop. / 您的账户未连接到店铺。"
       );
       return;
     }
 
     if (!categoryName.trim()) {
-      setError("Category name is required.");
+      setError(
+        "Category name is required. / 类别名称是必填项。"
+      );
       return;
     }
 
@@ -688,19 +762,20 @@ function Inventory() {
 
     if (existingCategory) {
       setError(
-        "A category with this name already exists."
+        "A category with this name already exists. / 此类别已经存在。"
       );
       setSaving(false);
       return;
     }
 
-    const { error: insertError } = await supabase
-      .from("inventory_categories")
-      .insert({
-        name: categoryName.trim(),
-        shop_id: user.shop_id,
-        active: true,
-      });
+    const { error: insertError } =
+      await supabase
+        .from("inventory_categories")
+        .insert({
+          name: categoryName.trim(),
+          shop_id: user.shop_id,
+          active: true,
+        });
 
     if (insertError) {
       console.error(
@@ -719,7 +794,9 @@ function Inventory() {
     setShowCategoryForm(false);
     setSaving(false);
 
-    setMessage("Category added successfully.");
+    setMessage(
+      "Category added successfully. / 类别添加成功。"
+    );
   }
 
   function openMovement(product, type) {
@@ -747,7 +824,9 @@ function Inventory() {
     event.preventDefault();
 
     if (!selectedProduct) {
-      setError("No product selected.");
+      setError(
+        "No product selected. / 未选择产品。"
+      );
       return;
     }
 
@@ -757,7 +836,7 @@ function Inventory() {
 
     if (!quantity || quantity <= 0) {
       setError(
-        "Enter a quantity greater than zero."
+        "Enter a quantity greater than zero. / 请输入大于零的数量。"
       );
       return;
     }
@@ -765,10 +844,12 @@ function Inventory() {
     if (
       movementType === "OUT" &&
       quantity >
-        Number(selectedProduct.current_stock || 0)
+        Number(
+          selectedProduct.current_stock || 0
+        )
     ) {
       setError(
-        `Only ${selectedProduct.current_stock} ${selectedProduct.unit} available.`
+        `Only ${selectedProduct.current_stock} ${selectedProduct.unit} available. / 目前只有 ${selectedProduct.current_stock} ${selectedProduct.unit} 可用。`
       );
       return;
     }
@@ -787,7 +868,8 @@ function Inventory() {
         p_job_id: null,
         p_user_id: null,
         p_reference:
-          movementForm.reference.trim() || null,
+          movementForm.reference.trim() ||
+          null,
         p_notes:
           movementForm.notes.trim() || null,
         p_unit_cost:
@@ -815,8 +897,8 @@ function Inventory() {
 
     setMessage(
       movementType === "IN"
-        ? "Stock added successfully."
-        : "Stock removed successfully."
+        ? "Stock added successfully. / 库存增加成功。"
+        : "Stock removed successfully. / 库存减少成功。"
     );
   }
 
@@ -844,6 +926,7 @@ function Inventory() {
         "LOAD HISTORY ERROR:",
         error
       );
+
       setHistory([]);
     } else {
       setHistory(data || []);
@@ -852,21 +935,9 @@ function Inventory() {
     setHistoryLoading(false);
   }
 
-  function statusLabel(status) {
-    if (status === "OUT") {
-      return "OUT OF STOCK / 缺货";
-    }
-
-    if (status === "LOW") {
-      return "LOW STOCK / 库存不足";
-    }
-
-    return "IN STOCK / 有库存";
-  }
-
   function statusColor(status) {
     if (status === "OUT") return "#dc2626";
-    if (status === "LOW") return "#d4a72c";
+    if (status === "LOW") return "#d4a017";
     return "#16a34a";
   }
 
@@ -912,7 +983,8 @@ function Inventory() {
 
       {error && (
         <div style={styles.error}>
-          <strong>Error / 错误:</strong> {error}
+          <strong>Error / 错误:</strong>{" "}
+          {error}
         </div>
       )}
 
@@ -929,13 +1001,13 @@ function Inventory() {
 
         <div style={styles.card}>
           <div style={styles.cardLabel}>
-            Low Stock / 库存不足
+            Low Stock / 低库存
           </div>
 
           <div
             style={{
               ...styles.cardValue,
-              color: "#d4a72c",
+              color: "#d4a017",
             }}
           >
             {lowStock}
@@ -973,7 +1045,7 @@ function Inventory() {
       <div style={styles.filters}>
         <input
           style={styles.search}
-          placeholder="Search by product or SKU / 搜索产品或SKU..."
+          placeholder="Search product or SKU / 搜索产品或 SKU..."
           value={search}
           onChange={(e) =>
             setSearch(e.target.value)
@@ -996,7 +1068,9 @@ function Inventory() {
               key={category.id}
               value={category.id}
             >
-              {bilingualCategoryName(category.name)}
+              {getCategoryDisplay(
+                category.name
+              )}
             </option>
           ))}
         </select>
@@ -1017,7 +1091,7 @@ function Inventory() {
           </option>
 
           <option value="LOW">
-            Low Stock / 库存不足
+            Low Stock / 低库存
           </option>
 
           <option value="OUT">
@@ -1085,127 +1159,155 @@ function Inventory() {
             </thead>
 
             <tbody>
-              {filteredProducts.map((product) => {
-                const status = getStatus(product);
+              {filteredProducts.map(
+                (product) => {
+                  const status =
+                    getStatus(product);
 
-                return (
-                  <tr key={product.id}>
-                    <td style={styles.td}>
-                      <strong>
-                        {product.sku}
-                      </strong>
-                    </td>
-
-                    <td style={styles.td}>
-                      <strong style={styles.productName}>
-                        {bilingualProductName(
-                          product.name
-                        )}
-                      </strong>
-                    </td>
-
-                    <td style={styles.td}>
-                      {getCategoryName(
-                        product.category_id
-                      )}
-                    </td>
-
-                    <td style={styles.td}>
-                      <strong>
-                        {product.current_stock}
-                      </strong>{" "}
-                      {product.unit}
-                    </td>
-
-                    <td style={styles.td}>
-                      {product.minimum_stock}
-                    </td>
-
-                    {isAdmin && (
+                  return (
+                    <tr key={product.id}>
                       <td style={styles.td}>
-                        QAR{" "}
-                        {Number(
-                          product.cost_price || 0
-                        ).toFixed(2)}
+                        <strong>
+                          {product.sku}
+                        </strong>
                       </td>
-                    )}
 
-                    <td style={styles.td}>
-                      <span
-                        style={{
-                          ...styles.status,
-                          color:
-                            statusColor(status),
-                          backgroundColor:
-                            `${statusColor(
-                              status
-                            )}15`,
-                        }}
-                      >
-                        {statusLabel(status)}
-                      </span>
-                    </td>
+                      <td style={styles.td}>
+                        <strong
+                          style={
+                            styles.productName
+                          }
+                        >
+                          {getProductDisplay(
+                            product.name
+                          )}
+                        </strong>
+                      </td>
 
-                    <td style={styles.td}>
-                      <div style={styles.actions}>
-                        {isAdmin && (
+                      <td style={styles.td}>
+                        {getCategoryDisplay(
+                          getCategoryName(
+                            product.category_id
+                          )
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        <strong>
+                          {
+                            product.current_stock
+                          }
+                        </strong>{" "}
+                        {product.unit}
+                      </td>
+
+                      <td style={styles.td}>
+                        {product.minimum_stock}
+                      </td>
+
+                      {isAdmin && (
+                        <td style={styles.td}>
+                          QAR{" "}
+                          {Number(
+                            product.cost_price ||
+                              0
+                          ).toFixed(2)}
+                        </td>
+                      )}
+
+                      <td style={styles.td}>
+                        <span
+                          style={{
+                            ...styles.status,
+                            color:
+                              statusColor(
+                                status
+                              ),
+                            backgroundColor:
+                              `${statusColor(
+                                status
+                              )}15`,
+                          }}
+                        >
+                          {status === "OUT"
+                            ? "OUT OF STOCK / 缺货"
+                            : status === "LOW"
+                            ? "LOW STOCK / 低库存"
+                            : "IN STOCK / 有库存"}
+                        </span>
+                      </td>
+
+                      <td style={styles.td}>
+                        <div
+                          style={
+                            styles.actions
+                          }
+                        >
+                          {isAdmin && (
+                            <button
+                              style={
+                                styles.editButton
+                              }
+                              onClick={() =>
+                                openEditProduct(
+                                  product
+                                )
+                              }
+                            >
+                              Edit / 编辑
+                            </button>
+                          )}
+
                           <button
-                            style={styles.editButton}
+                            style={
+                              styles.inButton
+                            }
                             onClick={() =>
-                              openEditProduct(
-                                product
+                              openMovement(
+                                product,
+                                "IN"
                               )
                             }
                           >
-                            Edit / تعديل
+                            + Stock / 入库
                           </button>
-                        )}
 
-                        <button
-                          style={styles.inButton}
-                          onClick={() =>
-                            openMovement(
-                              product,
-                              "IN"
-                            )
-                          }
-                        >
-                          + Stock / إضافة
-                        </button>
+                          <button
+                            style={
+                              styles.outButton
+                            }
+                            onClick={() =>
+                              openMovement(
+                                product,
+                                "OUT"
+                              )
+                            }
+                          >
+                            - Stock / 出库
+                          </button>
 
-                        <button
-                          style={styles.outButton}
-                          onClick={() =>
-                            openMovement(
-                              product,
-                              "OUT"
-                            )
-                          }
-                        >
-                          - Stock / إزالة
-                        </button>
-
-                        <button
-                          style={
-                            styles.historyButton
-                          }
-                          onClick={() => {
-                            setSelectedProduct(
-                              product
-                            );
-                            setHistory([]);
-                            loadHistory(
-                              product.id
-                            );
-                          }}
-                        >
-                          History / 历史
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                          <button
+                            style={
+                              styles.historyButton
+                            }
+                            onClick={() => {
+                              setSelectedProduct(
+                                product
+                              );
+                              setHistory([]);
+                              loadHistory(
+                                product.id
+                              );
+                            }}
+                          >
+                            History / 历史
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+              )}
             </tbody>
           </table>
         )}
@@ -1220,10 +1322,14 @@ function Inventory() {
                   Add Category / 添加类别
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   Add a category for this shop.
                   <br />
-                  为此店铺添加一个类别。
+                  为此店铺添加类别。
                 </p>
               </div>
 
@@ -1250,11 +1356,21 @@ function Inventory() {
                       e.target.value
                     )
                   }
-                  placeholder="e.g. Window Tinting Materials"
+                  placeholder="Window Tinting Materials"
                 />
+
+                <small
+                  style={styles.helpText}
+                >
+                  Use the English category name.
+                  <br />
+                  请使用英文类别名称。
+                </small>
               </label>
 
-              <div style={styles.modalActions}>
+              <div
+                style={styles.modalActions}
+              >
                 <button
                   type="button"
                   style={styles.cancelButton}
@@ -1271,7 +1387,7 @@ function Inventory() {
                   disabled={saving}
                 >
                   {saving
-                    ? "Saving... / 保存中..."
+                    ? "Saving..."
                     : "Save Category / 保存类别"}
                 </button>
               </div>
@@ -1291,7 +1407,11 @@ function Inventory() {
                     : "Add Product / 添加产品"}
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   {editingProduct
                     ? "Update product information. / 更新产品信息。"
                     : "Add a new inventory item. / 添加新的库存产品。"}
@@ -1340,20 +1460,41 @@ function Inventory() {
                     }
                   />
 
-                  {productForm.name && (
-                    <span style={styles.translationPreview}>
-                      Chinese / 中文:{" "}
-                      {productChinese[
-                        productForm.name
-                      ] || "Translation can be added in productChinese."}
-                    </span>
-                  )}
+                  {productForm.name &&
+                    productChinese[
+                      productForm.name
+                    ] && (
+                      <small
+                        style={
+                          styles.translationPreview
+                        }
+                      >
+                        Chinese / 中文:{" "}
+                        {
+                          productChinese[
+                            productForm.name
+                          ]
+                        }
+                      </small>
+                    )}
+
+                  <small
+                    style={styles.helpText}
+                  >
+                    Chinese translation is shown automatically when available.
+                    <br />
+                    如果有对应翻译，中文名称会自动显示。
+                  </small>
                 </label>
 
                 <label style={styles.label}>
                   Category / 类别
 
-                  <div style={styles.categoryRow}>
+                  <div
+                    style={
+                      styles.categoryRow
+                    }
+                  >
                     <select
                       style={{
                         ...styles.input,
@@ -1380,7 +1521,7 @@ function Inventory() {
                             key={category.id}
                             value={category.id}
                           >
-                            {bilingualCategoryName(
+                            {getCategoryDisplay(
                               category.name
                             )}
                           </option>
@@ -1453,7 +1594,7 @@ function Inventory() {
 
                 {isAdmin && (
                   <label style={styles.label}>
-                    Cost Price / 成本价 (QAR)
+                    Cost Price (QAR) / 成本价格
 
                     <input
                       type="number"
@@ -1541,7 +1682,9 @@ function Inventory() {
                 />
               </label>
 
-              <div style={styles.modalActions}>
+              <div
+                style={styles.modalActions}
+              >
                 <button
                   type="button"
                   style={styles.cancelButton}
@@ -1559,7 +1702,7 @@ function Inventory() {
                   disabled={saving}
                 >
                   {saving
-                    ? "Saving... / 保存中..."
+                    ? "Saving..."
                     : editingProduct
                     ? "Update Product / 更新产品"
                     : "Save Product / 保存产品"}
@@ -1583,15 +1726,15 @@ function Inventory() {
                   </h2>
 
                   <p
-                    style={{
-                      ...styles.modalSubtitle,
-                      fontWeight: "700",
-                      color: "#111827",
-                    }}
+                    style={
+                      styles.modalSubtitle
+                    }
                   >
-                    {bilingualProductName(
-                      selectedProduct.name
-                    )}
+                    <strong>
+                      {getProductDisplay(
+                        selectedProduct.name
+                      )}
+                    </strong>
                   </p>
                 </div>
 
@@ -1638,7 +1781,7 @@ function Inventory() {
 
                 {showCost && (
                   <label style={styles.label}>
-                    Unit Cost / 单位成本 (QAR)
+                    Unit Cost (QAR) / 单位成本
 
                     <input
                       type="number"
@@ -1681,7 +1824,11 @@ function Inventory() {
                   Notes / 备注
 
                   <textarea
-                    style={styles.input}
+                    style={{
+                      ...styles.input,
+                      minHeight: "80px",
+                      resize: "vertical",
+                    }}
                     value={movementForm.notes}
                     onChange={(e) =>
                       setMovementForm({
@@ -1692,7 +1839,9 @@ function Inventory() {
                   />
                 </label>
 
-                <div style={styles.modalActions}>
+                <div
+                  style={styles.modalActions}
+                >
                   <button
                     type="button"
                     style={styles.cancelButton}
@@ -1713,7 +1862,7 @@ function Inventory() {
                     disabled={saving}
                   >
                     {saving
-                      ? "Saving... / 保存中..."
+                      ? "Saving..."
                       : movementType === "IN"
                       ? "Add Stock / 添加库存"
                       : "Remove Stock / 移除库存"}
@@ -1729,15 +1878,21 @@ function Inventory() {
         !showProductForm &&
         !showCategoryForm && (
           <div style={styles.historyPanel}>
-            <div style={styles.historyHeader}>
+            <div
+              style={styles.historyHeader}
+            >
               <div>
                 <h2 style={styles.historyTitle}>
-                  {bilingualProductName(
+                  {getProductDisplay(
                     selectedProduct.name
                   )}
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   Stock movement history / 库存变动历史
                 </p>
               </div>
@@ -1771,7 +1926,9 @@ function Inventory() {
                 尚未记录库存变动。
               </div>
             ) : (
-              <div style={styles.historyTable}>
+              <div
+                style={styles.historyTable}
+              >
                 <table style={styles.table}>
                   <thead>
                     <tr>
@@ -1798,53 +1955,66 @@ function Inventory() {
                   </thead>
 
                   <tbody>
-                    {history.map((movement) => (
-                      <tr key={movement.id}>
-                        <td style={styles.td}>
-                          {new Date(
-                            movement.created_at
-                          ).toLocaleString()}
-                        </td>
+                    {history.map(
+                      (movement) => (
+                        <tr
+                          key={movement.id}
+                        >
+                          <td
+                            style={styles.td}
+                          >
+                            {new Date(
+                              movement.created_at
+                            ).toLocaleString()}
+                          </td>
 
-                        <td style={styles.td}>
-                          <strong>
+                          <td
+                            style={styles.td}
+                          >
+                            <strong>
+                              {movement.movement_type ===
+                              "IN"
+                                ? "IN / 入库"
+                                : "OUT / 出库"}
+                            </strong>
+                          </td>
+
+                          <td
+                            style={{
+                              ...styles.td,
+                              color:
+                                movement.movement_type ===
+                                "IN"
+                                  ? "#16a34a"
+                                  : "#dc2626",
+                              fontWeight: "700",
+                            }}
+                          >
                             {movement.movement_type ===
                             "IN"
-                              ? "IN / 入库"
-                              : "OUT / 出库"}
-                          </strong>
-                        </td>
+                              ? "+"
+                              : "-"}
+                            {Number(
+                              movement.quantity
+                            ).toLocaleString()}
+                          </td>
 
-                        <td
-                          style={{
-                            ...styles.td,
-                            color:
-                              movement.movement_type ===
-                              "IN"
-                                ? "#16a34a"
-                                : "#dc2626",
-                            fontWeight: "700",
-                          }}
-                        >
-                          {movement.movement_type ===
-                          "IN"
-                            ? "+"
-                            : "-"}
-                          {Number(
-                            movement.quantity
-                          ).toLocaleString()}
-                        </td>
+                          <td
+                            style={styles.td}
+                          >
+                            {movement.reference ||
+                              "-"}
+                          </td>
 
-                        <td style={styles.td}>
-                          {movement.reference ||
-                            "-"}
-                        </td>
-
-                        <td style={styles.td}>
-                          {movement.notes || "-"}
-                        </td>
-                      </tr>
-                    ))}
+                          <td
+                            style={styles.td}
+                          >
+                            {movement.notes ||
+                              "-"}
+                          </td>
+                        </tr>
+                      )
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1855,58 +2025,71 @@ function Inventory() {
   );
 }
 
+/*
+============================================================
+BLACK + GOLD THEME
+============================================================
+*/
+
 const styles = {
-  page: {
-    padding: "30px",
-    maxWidth: "1500px",
-    margin: "0 auto",
-    background: "#f8f7f2",
-    minHeight: "100vh",
-    color: "#111827",
-  },
+ page: {
+  width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+  padding: "20px",
+  margin: "0 auto",
+  background: "#f8f8f6",
+  minHeight: "100vh",
+  overflowX: "hidden",
+},
 
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-    gap: "20px",
-  },
+ header: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  marginBottom: "20px",
+  gap: "15px",
+  flexWrap: "wrap",
+},
 
-  headerButtons: {
-    display: "flex",
-    gap: "10px",
-    alignItems: "center",
-  },
+headerButtons: {
+  display: "flex",
+  gap: "8px",
+  alignItems: "center",
+  flexWrap: "wrap",
+},
 
   title: {
     margin: 0,
-    fontSize: "30px",
+    fontSize: "28px",
     fontWeight: "800",
     color: "#111111",
   },
 
   subtitle: {
-    marginTop: "7px",
+    marginTop: "6px",
+    marginBottom: 0,
     color: "#6b7280",
-    lineHeight: "1.6",
+    lineHeight: "1.5",
+    fontSize: "14px",
   },
 
   primaryButton: {
-    border: "1px solid #c8a951",
+    border: "none",
     background: "#111111",
-    color: "#d4af37",
-    padding: "11px 18px",
+    color: "#d4a017",
+    padding: "10px 15px",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "700",
+    borderBottom: "2px solid #d4a017",
   },
 
   secondaryButton: {
-    border: "1px solid #c8a951",
-    background: "white",
+    border: "1px solid #d4a017",
+    background: "#ffffff",
     color: "#111111",
-    padding: "10px 17px",
+    padding: "9px 14px",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "700",
@@ -1915,8 +2098,8 @@ const styles = {
   addSmallButton: {
     border: "none",
     background: "#111111",
-    color: "#d4af37",
-    padding: "10px 13px",
+    color: "#d4a017",
+    padding: "10px 12px",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "700",
@@ -1924,10 +2107,10 @@ const styles = {
   },
 
   editButton: {
-    border: "1px solid #c8a951",
+    border: "1px solid #d4a017",
     background: "#fffaf0",
-    color: "#8a6d1d",
-    padding: "6px 9px",
+    color: "#8a6500",
+    padding: "6px 8px",
     borderRadius: "6px",
     cursor: "pointer",
     fontWeight: "700",
@@ -1935,199 +2118,228 @@ const styles = {
 
   inPrimaryButton: {
     border: "none",
-    background: "#16a34a",
-    color: "white",
-    padding: "11px 18px",
+    background: "#111111",
+    color: "#d4a017",
+    padding: "10px 15px",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "700",
+    borderBottom: "2px solid #16a34a",
   },
 
   outPrimaryButton: {
     border: "none",
-    background: "#dc2626",
-    color: "white",
-    padding: "11px 18px",
+    background: "#111111",
+    color: "#d4a017",
+    padding: "10px 15px",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "700",
+    borderBottom: "2px solid #dc2626",
   },
 
   refreshButton: {
-    border: "1px solid #c8a951",
+    border: "1px solid #d4a017",
     background: "#111111",
-    color: "#d4af37",
-    padding: "11px 18px",
+    color: "#d4a017",
+    padding: "10px 15px",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "700",
   },
 
   success: {
-    background: "#f0fdf4",
-    color: "#166534",
-    border: "1px solid #bbf7d0",
-    padding: "12px 16px",
+    background: "#f7f3e8",
+    color: "#6b4f00",
+    border: "1px solid #d4a017",
+    padding: "11px 14px",
     borderRadius: "8px",
-    marginBottom: "18px",
+    marginBottom: "16px",
   },
 
   error: {
     background: "#fef2f2",
     color: "#991b1b",
     border: "1px solid #fecaca",
-    padding: "12px 16px",
+    padding: "11px 14px",
     borderRadius: "8px",
-    marginBottom: "18px",
+    marginBottom: "16px",
   },
 
-  stats: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(4, minmax(180px, 1fr))",
-    gap: "18px",
-    marginBottom: "22px",
-  },
+ stats: {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: "12px",
+  marginBottom: "20px",
+},
 
   card: {
-    background: "white",
-    border: "1px solid #e5d7a5",
-    borderRadius: "12px",
-    padding: "20px",
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderTop: "3px solid #d4a017",
+    borderRadius: "10px",
+    padding: "16px",
     boxShadow:
-      "0 2px 8px rgba(0,0,0,0.04)",
+      "0 3px 10px rgba(0,0,0,0.04)",
   },
 
   cardLabel: {
     color: "#6b7280",
-    fontSize: "14px",
+    fontSize: "13px",
     fontWeight: "600",
   },
 
   cardValue: {
-    fontSize: "27px",
+    fontSize: "25px",
     fontWeight: "800",
-    marginTop: "8px",
+    marginTop: "7px",
     color: "#111111",
   },
 
-  filters: {
-    display: "flex",
-    gap: "10px",
-    marginBottom: "18px",
-    flexWrap: "wrap",
-  },
+ filters: {
+  display: "flex",
+  gap: "8px",
+  marginBottom: "15px",
+  flexWrap: "wrap",
+  width: "100%",
+  boxSizing: "border-box",
+},
 
-  search: {
-    flex: "1 1 300px",
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    fontSize: "14px",
-    background: "white",
-  },
+ search: {
+  flex: "1 1 220px",
+  minWidth: "0",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  border: "1px solid #d1d5db",
+  borderRadius: "8px",
+  fontSize: "13px",
+  background: "#ffffff",
+},
 
-  select: {
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    background: "white",
-    fontSize: "14px",
-  },
-
-  tableContainer: {
-    background: "white",
-    border: "1px solid #e5d7a5",
-    borderRadius: "12px",
-    overflowX: "auto",
-    boxShadow:
-      "0 2px 8px rgba(0,0,0,0.04)",
-  },
+select: {
+  flex: "1 1 150px",
+  minWidth: "0",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+  padding: "10px 12px",
+  border: "1px solid #d1d5db",
+  borderRadius: "8px",
+  background: "#ffffff",
+  fontSize: "13px",
+},
+ tableContainer: {
+  width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+  background: "#ffffff",
+  border: "1px solid #d4a017",
+  borderRadius: "12px",
+  overflow: "hidden",
+  boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
+},
 
   historyTable: {
     overflowX: "auto",
   },
 
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
+ table: {
+  width: "100%",
+  maxWidth: "100%",
+  tableLayout: "fixed",
+  borderCollapse: "collapse",
+},
 
-  th: {
-    textAlign: "left",
-    padding: "13px",
-    background: "#111111",
-    color: "#d4af37",
-    borderBottom: "2px solid #c8a951",
-    fontSize: "13px",
-    whiteSpace: "nowrap",
+ th: {
+  textAlign: "left",
+  padding: "9px 7px",
+  background: "#111111",
+  color: "#d4a017",
+  borderBottom: "2px solid #d4a017",
+  fontSize: "11px",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  fontWeight: "700",
+},
+
+  td: {
+  padding: "9px 7px",
+  borderBottom: "1px solid #f3f4f6",
+  fontSize: "12px",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
+  color: "#222222",
+  verticalAlign: "middle",
+},
+
+ productName: {
+  fontWeight: "800",
+  color: "#111111",
+  whiteSpace: "normal",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
+},
+
+  chineseText: {
+    color: "#6b4f00",
     fontWeight: "700",
   },
 
-  td: {
-    padding: "13px",
-    borderBottom: "1px solid #f0ead5",
-    fontSize: "14px",
-    whiteSpace: "nowrap",
-  },
-
-  productName: {
-    fontWeight: "800",
-    color: "#111111",
-  },
-
   translationPreview: {
+    color: "#6b4f00",
     fontSize: "12px",
-    color: "#8a6d1d",
-    fontWeight: "500",
+    fontWeight: "700",
   },
 
   status: {
     display: "inline-block",
-    padding: "5px 9px",
+    padding: "5px 8px",
     borderRadius: "999px",
-    fontSize: "11px",
-    fontWeight: "700",
+    fontSize: "10px",
+    fontWeight: "800",
+    whiteSpace: "nowrap",
   },
 
   actions: {
-    display: "flex",
-    gap: "6px",
-    flexWrap: "wrap",
-  },
+  display: "flex",
+  gap: "4px",
+  flexWrap: "wrap",
+  width: "100%",
+},
 
   inButton: {
-    border: "none",
-    background: "#dcfce7",
+    border: "1px solid #bbf7d0",
+    background: "#f0fdf4",
     color: "#166534",
-    padding: "6px 9px",
+    padding: "6px 8px",
     borderRadius: "6px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   outButton: {
-    border: "none",
-    background: "#fee2e2",
+    border: "1px solid #fecaca",
+    background: "#fef2f2",
     color: "#991b1b",
-    padding: "6px 9px",
+    padding: "6px 8px",
     borderRadius: "6px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   historyButton: {
-    border: "1px solid #d1d5db",
-    background: "#f3f4f6",
-    color: "#374151",
-    padding: "6px 9px",
+    border: "1px solid #d4a017",
+    background: "#fffaf0",
+    color: "#6b4f00",
+    padding: "6px 8px",
     borderRadius: "6px",
     cursor: "pointer",
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   empty: {
-    padding: "40px",
+    padding: "40px 20px",
     textAlign: "center",
     color: "#6b7280",
     lineHeight: "1.7",
@@ -2136,150 +2348,169 @@ const styles = {
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.55)",
+    background: "rgba(0,0,0,0.65)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "20px",
+    padding: "15px",
     zIndex: 1000,
   },
 
   modal: {
-    background: "white",
-    borderRadius: "14px",
+    background: "#ffffff",
+    borderTop: "4px solid #d4a017",
+    borderRadius: "12px",
     width: "100%",
-    maxWidth: "700px",
+    maxWidth: "680px",
     maxHeight: "90vh",
     overflowY: "auto",
-    padding: "25px",
+    padding: "22px",
     boxShadow:
       "0 20px 50px rgba(0,0,0,0.35)",
-    border: "1px solid #d4af37",
+    boxSizing: "border-box",
   },
 
   smallModal: {
-    background: "white",
-    borderRadius: "14px",
+    background: "#ffffff",
+    borderTop: "4px solid #d4a017",
+    borderRadius: "12px",
     width: "100%",
-    maxWidth: "450px",
-    padding: "25px",
+    maxWidth: "440px",
+    padding: "22px",
     boxShadow:
       "0 20px 50px rgba(0,0,0,0.35)",
-    border: "1px solid #d4af37",
+    boxSizing: "border-box",
   },
 
   modalHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: "20px",
+    marginBottom: "18px",
+    gap: "15px",
   },
 
   modalTitle: {
     margin: 0,
-    fontSize: "23px",
-    fontWeight: "800",
+    fontSize: "21px",
     color: "#111111",
+    fontWeight: "800",
   },
 
   modalSubtitle: {
     color: "#6b7280",
     marginTop: "5px",
+    marginBottom: 0,
     lineHeight: "1.5",
+    fontSize: "13px",
   },
 
   closeButton: {
-    border: "1px solid #d4af37",
+    border: "none",
     background: "#111111",
-    color: "#d4af37",
-    width: "34px",
-    height: "34px",
+    color: "#d4a017",
+    width: "32px",
+    height: "32px",
     borderRadius: "50%",
-    fontSize: "22px",
+    fontSize: "21px",
     cursor: "pointer",
+    fontWeight: "700",
+    flexShrink: 0,
   },
 
   formGrid: {
     display: "grid",
     gridTemplateColumns:
       "repeat(2, minmax(0, 1fr))",
-    gap: "15px",
+    gap: "12px",
   },
 
   categoryRow: {
     display: "flex",
-    gap: "8px",
+    gap: "7px",
     alignItems: "center",
   },
 
   label: {
     display: "flex",
     flexDirection: "column",
-    gap: "7px",
-    fontSize: "13px",
+    gap: "6px",
+    fontSize: "12px",
     fontWeight: "700",
-    marginBottom: "15px",
-    color: "#111827",
+    marginBottom: "13px",
+    color: "#222222",
   },
 
   input: {
     width: "100%",
     boxSizing: "border-box",
-    padding: "11px 12px",
+    padding: "10px 11px",
     border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    fontSize: "14px",
+    borderRadius: "7px",
+    fontSize: "13px",
     fontWeight: "400",
-    background: "white",
+    background: "#ffffff",
+    color: "#111111",
+  },
+
+  helpText: {
+    color: "#8a6500",
+    fontSize: "10px",
+    fontWeight: "500",
+    lineHeight: "1.5",
   },
 
   modalActions: {
     display: "flex",
     justifyContent: "flex-end",
-    gap: "10px",
-    marginTop: "20px",
+    gap: "8px",
+    marginTop: "18px",
+    flexWrap: "wrap",
   },
 
   cancelButton: {
     border: "1px solid #d1d5db",
-    background: "white",
+    background: "#ffffff",
     color: "#374151",
-    padding: "11px 18px",
+    padding: "10px 15px",
     borderRadius: "8px",
     cursor: "pointer",
     fontWeight: "600",
   },
 
   stockInfo: {
-    background: "#fffaf0",
-    border: "1px solid #e5d7a5",
-    padding: "13px",
+    background: "#111111",
+    color: "#ffffff",
+    padding: "12px",
     borderRadius: "8px",
-    marginBottom: "18px",
+    marginBottom: "16px",
+    borderLeft: "4px solid #d4a017",
+    fontSize: "13px",
   },
 
   historyPanel: {
-    marginTop: "25px",
-    background: "white",
-    border: "1px solid #e5d7a5",
-    borderRadius: "12px",
+    marginTop: "20px",
+    background: "#ffffff",
+    border: "1px solid #d4a017",
+    borderRadius: "10px",
     overflow: "hidden",
     boxShadow:
-      "0 2px 8px rgba(0,0,0,0.04)",
+      "0 4px 15px rgba(0,0,0,0.05)",
   },
 
   historyHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    padding: "20px",
-    borderBottom: "1px solid #e5d7a5",
+    padding: "18px",
+    borderBottom: "1px solid #e5e7eb",
+    gap: "15px",
   },
 
   historyTitle: {
     margin: 0,
-    fontSize: "20px",
-    fontWeight: "800",
+    fontSize: "18px",
+    color: "#111111",
   },
 };
 
