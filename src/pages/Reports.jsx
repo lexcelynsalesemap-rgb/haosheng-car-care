@@ -68,19 +68,19 @@ function Reports() {
     if (!data) return;
 
     const june = data.find(
-      item => item.setting_name === "June Pending"
+      (item) => item.setting_name === "June Pending"
     );
 
     const july = data.find(
-      item => item.setting_name === "July Pending"
+      (item) => item.setting_name === "July Pending"
     );
 
     const august = data.find(
-      item => item.setting_name === "August Pending"
+      (item) => item.setting_name === "August Pending"
     );
 
     const teyseer = data.find(
-      item => item.setting_name === "Previous Teyseer"
+      (item) => item.setting_name === "Previous Teyseer"
     );
 
     setManualPending({
@@ -121,7 +121,6 @@ function Reports() {
 
         if (error) {
           console.error("UPDATE SETTING ERROR:", error);
-          return;
         }
       } else {
         const { error } = await supabase
@@ -143,7 +142,7 @@ function Reports() {
   function changeJune(value) {
     const amount = Number(value) || 0;
 
-    setManualPending(prev => ({
+    setManualPending((prev) => ({
       ...prev,
       June: amount,
     }));
@@ -154,7 +153,7 @@ function Reports() {
   function changeJuly(value) {
     const amount = Number(value) || 0;
 
-    setManualPending(prev => ({
+    setManualPending((prev) => ({
       ...prev,
       July: amount,
     }));
@@ -165,7 +164,7 @@ function Reports() {
   function changeAugust(value) {
     const amount = Number(value) || 0;
 
-    setManualPending(prev => ({
+    setManualPending((prev) => ({
       ...prev,
       August: amount,
     }));
@@ -180,21 +179,21 @@ function Reports() {
     saveSetting("Previous Teyseer", amount);
   }
 
-  const netSales = jobs.reduce(
-    (sum, job) =>
-      sum +
-      Number(job.price || 0) -
-      Number(job.discount || 0),
-    0
-  );
+  function normalizeSource(source) {
+    return String(source || "")
+      .trim()
+      .toLowerCase();
+  }
 
-  const paid = payments.reduce(
-    (sum, payment) =>
-      sum + Number(payment.amount || 0),
-    0
-  );
+  function isTeyseerSource(job) {
+    const source = normalizeSource(job.source);
 
-  const balance = netSales - paid;
+    return (
+      source === "teyseer motors" ||
+      source === "teyseer motors - bahaa" ||
+      source === "teyseer motors - salah"
+    );
+  }
 
   function getPaymentMethod(payment) {
     return String(
@@ -233,120 +232,6 @@ function Reports() {
     );
   }
 
-  const cashPaid = payments
-    .filter(isCash)
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-  const cardPaid = payments
-    .filter(isCard)
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-  const bankTransferPaid = payments
-    .filter(isBankTransfer)
-    .reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-  const dailyPayments = {};
-
-  payments.forEach(payment => {
-    if (!payment.payment_date) return;
-
-    const date = String(payment.payment_date).slice(0, 10);
-
-    if (!dailyPayments[date]) {
-      dailyPayments[date] = {
-        cash: 0,
-        visa: 0,
-        mastercard: 0,
-        bankTransfer: 0,
-        other: 0,
-        total: 0,
-      };
-    }
-
-    const amount = Number(payment.amount || 0);
-    const method = getPaymentMethod(payment);
-
-    dailyPayments[date].total += amount;
-
-    if (isCash(payment)) {
-      dailyPayments[date].cash += amount;
-    } else if (method.includes("visa")) {
-      dailyPayments[date].visa += amount;
-    } else if (
-      method.includes("mastercard") ||
-      method.includes("master card")
-    ) {
-      dailyPayments[date].mastercard += amount;
-    } else if (isBankTransfer(payment)) {
-      dailyPayments[date].bankTransfer += amount;
-    } else {
-      dailyPayments[date].other += amount;
-    }
-  });
-
-  const dailyPaymentRows = Object.entries(dailyPayments).sort(
-    ([dateA], [dateB]) =>
-      dateB.localeCompare(dateA)
-  );
-
-  const selectedDatePayments = payments.filter(payment => {
-    if (!payment.payment_date) return false;
-
-    return (
-      String(payment.payment_date).slice(0, 10) ===
-      reportDate
-    );
-  });
-
-  const selectedDatePaymentTotal =
-    selectedDatePayments.reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-
-  const teyseerSources = [
-    "Teyseer Motors",
-    "Teyseer Motors - Bahaa",
-    "Teyseer Motors - Salah",
-  ];
-
- const teyseerJobs = jobs.filter(job => {
-  if (!teyseerSources.includes(job.source)) {
-    return false;
-  }
-
-  const services = getTeyseerServices(job);
-
-  return services.some(service => {
-    const serviceName = String(
-      service?.service_name ||
-      service?.name ||
-      service?.title ||
-      ""
-    ).toLowerCase();
-
-    return serviceName.includes("full wtt");
-  });
-});
-
-  const customerJobs = jobs.filter(
-    job =>
-      !teyseerSources.includes(job.source)
-  );
-
   function getDateString(date) {
     const year = date.getFullYear();
 
@@ -379,150 +264,329 @@ function Reports() {
     });
   }
 
-  function getTeyseerReportSource(job, service) {
-    const serviceName = String(
-      service?.service_name ||
-        service?.name ||
-        service?.title ||
-        ""
-    ).toLowerCase();
-
-    if (job.source === "Teyseer Motors") {
-      return "Teyseer Motors";
-    }
-
-    if (job.source === "Teyseer Motors - Salah") {
-      if (serviceName.includes("full wtt")) {
-        return "Teyseer Motors";
-      }
-
-      return "Salah";
-    }
-
-    if (job.source === "Teyseer Motors - Bahaa") {
-      if (serviceName.includes("full wtt")) {
-        return "Teyseer Motors";
-      }
-
-      return "Bahaa";
-    }
-
-    return "Teyseer Motors";
-  }
-
   function getTeyseerServices(job) {
     return jobServices.filter(
-      service =>
+      (service) =>
         String(service.job_id) ===
         String(job.id)
     );
   }
 
-  function getTeyseerJobAmount(job) {
-  const services = getTeyseerServices(job);
+  function getServiceName(service) {
+    return String(
+      service?.service_name ||
+        service?.name ||
+        service?.title ||
+        ""
+    );
+  }
 
-  if (services.length === 0) {
+  function isWttService(service) {
+    return getServiceName(service)
+      .toLowerCase()
+      .includes("wtt");
+  }
+
+  /*
+   * TEYSEER PAYMENT RULES
+   *
+   * Teyseer Motors:
+   *   ALL services are paid by Teyseer.
+   *
+   * Teyseer Motors - Salah:
+   *   ONLY WTT services are paid by Teyseer.
+   *
+   * Teyseer Motors - Bahaa:
+   *   ONLY WTT services are paid by Teyseer.
+   *
+   * Any non-WTT service on Salah/Bahaa remains
+   * customer / sales-team business.
+   */
+
+  function getTeyseerJobAmount(job) {
+    const services = getTeyseerServices(job);
+
+    if (services.length === 0) {
+      return 0;
+    }
+
+    const source = normalizeSource(job.source);
+
+    if (source === "teyseer motors") {
+      return services.reduce(
+        (sum, service) =>
+          sum + Number(service.price || 0),
+        0
+      );
+    }
+
+    if (
+      source === "teyseer motors - salah" ||
+      source === "teyseer motors - bahaa"
+    ) {
+      return services.reduce(
+        (sum, service) => {
+          if (isWttService(service)) {
+            return sum + Number(service.price || 0);
+          }
+
+          return sum;
+        },
+        0
+      );
+    }
+
     return 0;
   }
 
-  return services.reduce((sum, service) => {
-    const serviceName = String(
-      service.service_name ||
-      service.name ||
-      service.title ||
-      ""
-    ).toLowerCase();
+  function getTeyseerServiceNames(job) {
+    const services = getTeyseerServices(job);
+    const source = normalizeSource(job.source);
 
-    // Teyseer Motors = ALL services
-    if (job.source === "Teyseer Motors") {
-      return sum + Number(service.price || 0);
-    }
+    return services
+      .filter((service) => {
+        if (source === "teyseer motors") {
+          return true;
+        }
 
-    // Salah and Bahaa = ONLY WTT
-    if (
-      job.source === "Teyseer Motors - Salah" ||
-      job.source === "Teyseer Motors - Bahaa"
-    ) {
-      if (serviceName.includes("wtt")) {
-        return sum + Number(service.price || 0);
-      }
+        if (
+          source === "teyseer motors - salah" ||
+          source === "teyseer motors - bahaa"
+        ) {
+          return isWttService(service);
+        }
 
-      return sum;
-    }
+        return false;
+      })
+      .map((service) => getServiceName(service))
+      .filter(Boolean)
+      .join(", ");
+  }
 
-    return sum;
-  }, 0);
-}
+  /*
+   * TEYSEER JOBS
+   */
 
-
-function getTeyseerServiceNames(job) {
-  const services = getTeyseerServices(job);
-
-  return services
-    .filter(service => {
-      const serviceName = String(
-        service.service_name ||
-        service.name ||
-        service.title ||
-        ""
-      ).toLowerCase();
-
-      // Teyseer Motors = ALL services
-      if (job.source === "Teyseer Motors") {
-        return true;
-      }
-
-      // Salah and Bahaa = ONLY WTT
-      if (
-        job.source === "Teyseer Motors - Salah" ||
-        job.source === "Teyseer Motors - Bahaa"
-      ) {
-        return serviceName.includes("wtt");
-      }
-
+  const teyseerJobs = jobs.filter((job) => {
+    if (!isTeyseerSource(job)) {
       return false;
-    })
-    .map(service =>
-      service.service_name ||
-      service.name ||
-      service.title ||
-      ""
-    )
-    .filter(Boolean)
-    .join(", ");
-}
+    }
+
+    return getTeyseerJobAmount(job) > 0;
+  });
+
+  const teyseerJobIds = new Set(
+    teyseerJobs.map((job) => String(job.id))
+  );
+
+  /*
+   * CUSTOMER / SALES TEAM JOBS
+   *
+   * A normal job is customer/sales-team business.
+   *
+   * Salah/Bahaa:
+   *   WTT portion -> Teyseer
+   *   Non-WTT portion -> customer/sales team
+   *
+   * Jobs with no Teyseer amount remain customer/sales-team jobs.
+   */
+
+  const customerJobs = jobs.filter((job) => {
+    if (!isTeyseerSource(job)) {
+      return true;
+    }
+
+    return getTeyseerJobAmount(job) <= 0;
+  });
+
+  /*
+   * IMPORTANT:
+   *
+   * Keep IDs for payment calculations.
+   */
+
+  const customerJobIds = new Set(
+    customerJobs.map((job) => String(job.id))
+  );
+
+  /*
+   * TEYSEER TOTAL SALES
+   */
+
   const teyseerSales = teyseerJobs.reduce(
     (sum, job) =>
       sum + getTeyseerJobAmount(job),
     0
   );
 
+  /*
+   * SALES TEAM TOTAL SALES
+   *
+   * Customer / Sales Team jobs:
+   *
+   *     PRICE - DISCOUNT
+   */
+
   const customerSales = customerJobs.reduce(
     (sum, job) =>
       sum +
-      Number(job.price || 0) -
-      Number(job.discount || 0),
+      Math.max(
+        Number(job.price || 0) -
+          Number(job.discount || 0),
+        0
+      ),
     0
   );
 
-  const customerIds = customerJobs.map(job => job.id);
+  /*
+   * INTERNAL SALES
+   */
 
-  const customerPaid = payments
-    .filter(payment =>
-      customerIds.some(
-        id =>
-          String(id) ===
-          String(payment.job_id)
+  const internalSales =
+    customerSales + teyseerSales;
+
+  /*
+   * CUSTOMER / SALES TEAM PAYMENTS ONLY
+   */
+
+  const customerPayments = payments.filter(
+    (payment) =>
+      customerJobIds.has(
+        String(payment.job_id)
       )
-    )
+  );
+
+  /*
+   * TOTAL PAID
+   */
+
+  const customerPaid = customerPayments.reduce(
+    (sum, payment) =>
+      sum + Number(payment.amount || 0),
+    0
+  );
+
+  /*
+   * TOTAL BALANCE
+   */
+
+  const customerBalance =
+    customerSales - customerPaid;
+
+  /*
+   * COMPATIBILITY VALUES
+   */
+
+  const netSales = internalSales;
+  const paid = customerPaid;
+  const balance = customerBalance;
+
+  /*
+   * PAYMENT METHOD TOTALS
+   */
+
+  const cashPaid = customerPayments
+    .filter(isCash)
     .reduce(
       (sum, payment) =>
         sum + Number(payment.amount || 0),
       0
     );
 
-  const customerBalance =
-    customerSales - customerPaid;
+  const cardPaid = customerPayments
+    .filter(isCard)
+    .reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+  const bankTransferPaid = customerPayments
+    .filter(isBankTransfer)
+    .reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+  /*
+   * DAILY CUSTOMER PAYMENTS
+   */
+
+  const dailyPayments = {};
+
+  customerPayments.forEach((payment) => {
+    if (!payment.payment_date) return;
+
+    const date = String(
+      payment.payment_date
+    ).slice(0, 10);
+
+    if (!dailyPayments[date]) {
+      dailyPayments[date] = {
+        cash: 0,
+        visa: 0,
+        mastercard: 0,
+        bankTransfer: 0,
+        other: 0,
+        total: 0,
+      };
+    }
+
+    const amount =
+      Number(payment.amount || 0);
+
+    const method =
+      getPaymentMethod(payment);
+
+    dailyPayments[date].total += amount;
+
+    if (isCash(payment)) {
+      dailyPayments[date].cash += amount;
+    } else if (method.includes("visa")) {
+      dailyPayments[date].visa += amount;
+    } else if (
+      method.includes("mastercard") ||
+      method.includes("master card")
+    ) {
+      dailyPayments[date].mastercard += amount;
+    } else if (isBankTransfer(payment)) {
+      dailyPayments[date].bankTransfer += amount;
+    } else {
+      dailyPayments[date].other += amount;
+    }
+  });
+
+  const dailyPaymentRows =
+    Object.entries(dailyPayments).sort(
+      ([dateA], [dateB]) =>
+        dateB.localeCompare(dateA)
+    );
+
+  /*
+   * SELECTED DATE CUSTOMER PAYMENTS
+   */
+
+  const selectedDatePayments =
+    customerPayments.filter((payment) => {
+      if (!payment.payment_date) return false;
+
+      return (
+        String(payment.payment_date).slice(0, 10) ===
+        reportDate
+      );
+    });
+
+  const selectedDatePaymentTotal =
+    selectedDatePayments.reduce(
+      (sum, payment) =>
+        sum + Number(payment.amount || 0),
+      0
+    );
+
+  /*
+   * CARS
+   */
 
   const today = new Date().toLocaleDateString(
     "en-CA",
@@ -532,15 +596,18 @@ function getTeyseerServiceNames(job) {
   );
 
   const carsToday = jobs.filter(
-    job =>
+    (job) =>
       getJobDate(job) === today
   ).length;
 
   const currentDate = new Date();
 
-  const startOfWeek = new Date(currentDate);
+  const startOfWeek = new Date(
+    currentDate
+  );
 
-  const day = startOfWeek.getDay();
+  const day =
+    startOfWeek.getDay();
 
   const difference =
     day === 0
@@ -561,39 +628,45 @@ function getTeyseerServiceNames(job) {
   const weekStart =
     getDateString(startOfWeek);
 
-  const carsThisWeek = jobs.filter(job => {
-    const jobDate = getJobDate(job);
+  const carsThisWeek =
+    jobs.filter((job) => {
+      const jobDate =
+        getJobDate(job);
 
-    return (
-      jobDate &&
-      jobDate >= weekStart &&
-      jobDate <= today
+      return (
+        jobDate &&
+        jobDate >= weekStart &&
+        jobDate <= today
+      );
+    }).length;
+
+  const startOfMonth =
+    new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
     );
-  }).length;
-
-  const startOfMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    1
-  );
 
   const monthStart =
     getDateString(startOfMonth);
 
-  const carsThisMonth = jobs.filter(job => {
-    const jobDate = getJobDate(job);
+  const carsThisMonth =
+    jobs.filter((job) => {
+      const jobDate =
+        getJobDate(job);
 
-    return (
-      jobDate &&
-      jobDate >= monthStart &&
-      jobDate <= today
-    );
-  }).length;
+      return (
+        jobDate &&
+        jobDate >= monthStart &&
+        jobDate <= today
+      );
+    }).length;
 
   const dailyCars = {};
 
-  jobs.forEach(job => {
-    const date = getJobDate(job);
+  jobs.forEach((job) => {
+    const date =
+      getJobDate(job);
 
     if (!date) return;
 
@@ -610,85 +683,104 @@ function getTeyseerServiceNames(job) {
         dateB.localeCompare(dateA)
     );
 
-  const alnusoorJobs = jobs.filter(job => {
-    const customer = String(
-      job.customer || ""
-    )
-      .toLowerCase()
-      .trim();
+  /*
+   * AL NUSOOR
+   */
 
-    const isAlnusoor =
-      customer.includes("al nusoor") ||
-      customer.includes("alnusoor");
+  const alnusoorJobs =
+    jobs.filter((job) => {
+      const customer =
+        String(
+          job.customer || ""
+        )
+          .toLowerCase()
+          .trim();
 
-    if (!isAlnusoor) return false;
+      const isAlnusoor =
+        customer.includes("al nusoor") ||
+        customer.includes("alnusoor");
 
-    const jobDate = getJobDate(job);
+      if (!isAlnusoor) {
+        return false;
+      }
 
-    if (
-      alnusoorStartDate &&
-      jobDate &&
-      jobDate < alnusoorStartDate
-    ) {
-      return false;
-    }
+      const jobDate =
+        getJobDate(job);
 
-    if (
-      alnusoorEndDate &&
-      jobDate &&
-      jobDate > alnusoorEndDate
-    ) {
-      return false;
-    }
+      if (
+        alnusoorStartDate &&
+        jobDate &&
+        jobDate < alnusoorStartDate
+      ) {
+        return false;
+      }
 
-    return true;
-  });
+      if (
+        alnusoorEndDate &&
+        jobDate &&
+        jobDate > alnusoorEndDate
+      ) {
+        return false;
+      }
 
-  const alnusoorAmount = alnusoorJobs.reduce(
-    (sum, job) =>
-      sum + Number(job.price || 0),
-    0
-  );
+      return true;
+    });
 
-  const alnusoorDiscount = alnusoorJobs.reduce(
-    (sum, job) =>
-      sum + Number(job.discount || 0),
-    0
-  );
+  const alnusoorAmount =
+    alnusoorJobs.reduce(
+      (sum, job) =>
+        sum + Number(job.price || 0),
+      0
+    );
 
-  const alnusoorNet = Math.max(
-    alnusoorAmount -
-    alnusoorDiscount,
-    0
-  );
+  const alnusoorDiscount =
+    alnusoorJobs.reduce(
+      (sum, job) =>
+        sum + Number(job.discount || 0),
+      0
+    );
 
- const filteredTeyseerJobs = teyseerJobs.filter(job => {
-  const amount = getTeyseerJobAmount(job);
+  const alnusoorNet =
+    Math.max(
+      alnusoorAmount -
+        alnusoorDiscount,
+      0
+    );
 
-  if (amount <= 0) {
-    return false;
-  }
+  /*
+   * FILTERED TEYSEER REPORT
+   */
 
-  const jobDate = getJobDate(job);
+  const filteredTeyseerJobs =
+    teyseerJobs.filter((job) => {
+      const amount =
+        getTeyseerJobAmount(job);
 
-  if (
-    teyseerStartDate &&
-    jobDate &&
-    jobDate < teyseerStartDate
-  ) {
-    return false;
-  }
+      if (amount <= 0) {
+        return false;
+      }
 
-  if (
-    teyseerEndDate &&
-    jobDate &&
-    jobDate > teyseerEndDate
-  ) {
-    return false;
-  }
+      const jobDate =
+        getJobDate(job);
 
-  return true;
-});
+      if (
+        teyseerStartDate &&
+        jobDate &&
+        jobDate < teyseerStartDate
+      ) {
+        return false;
+      }
+
+      if (
+        teyseerEndDate &&
+        jobDate &&
+        jobDate > teyseerEndDate
+      ) {
+        return false;
+      }
+
+      return true;
+    });
 
   const filteredTeyseerSales =
     filteredTeyseerJobs.reduce(
@@ -697,6 +789,10 @@ function getTeyseerServiceNames(job) {
       0
     );
 
+  /*
+   * AL NUSOOR PRINT
+   */
+
   function printAlnusoorReport() {
     if (alnusoorJobs.length === 0) {
       alert("No Al Nusoor jobs found.");
@@ -704,14 +800,18 @@ function getTeyseerServiceNames(job) {
     }
 
     const rows = alnusoorJobs
-      .map(job => {
-        const price = Number(job.price || 0);
-        const discount = Number(job.discount || 0);
+      .map((job) => {
+        const price =
+          Number(job.price || 0);
 
-        const total = Math.max(
-          price - discount,
-          0
-        );
+        const discount =
+          Number(job.discount || 0);
+
+        const total =
+          Math.max(
+            price - discount,
+            0
+          );
 
         return `
           <tr>
@@ -742,14 +842,17 @@ function getTeyseerServiceNames(job) {
       })
       .join("");
 
-    const printWindow = window.open(
-      "",
-      "_blank",
-      "width=1000,height=1000"
-    );
+    const printWindow =
+      window.open(
+        "",
+        "_blank",
+        "width=1000,height=1000"
+      );
 
     if (!printWindow) {
-      alert("Please allow pop-ups for this website.");
+      alert(
+        "Please allow pop-ups for this website."
+      );
       return;
     }
 
@@ -1015,71 +1118,83 @@ function getTeyseerServiceNames(job) {
     };
   }
 
+  /*
+   * TEYSEER PRINT
+   */
+
   function printTeyseerReport() {
-    if (filteredTeyseerJobs.length === 0) {
+    if (
+      filteredTeyseerJobs.length === 0
+    ) {
       alert("No Teyseer jobs found.");
       return;
     }
 
-    const reportRows = filteredTeyseerJobs
-      .map((job, index) => {
-        const amount = getTeyseerJobAmount(job);
-        const serviceNames =
-          getTeyseerServiceNames(job);
+    const reportRows =
+      filteredTeyseerJobs
+        .map((job, index) => {
+          const amount =
+            getTeyseerJobAmount(job);
 
-        return `
-          <tr>
+          const serviceNames =
+            getTeyseerServiceNames(job);
 
-            <td class="center">
-              ${index + 1}
-            </td>
+          return `
+            <tr>
 
-            <td>
-              ${getJobDate(job) || "-"}
-            </td>
+              <td class="center">
+                ${index + 1}
+              </td>
 
-            <td>
-              ${job.carMake ||
-                job.carType ||
-                job.carModel ||
-                "-"}
-            </td>
+              <td>
+                ${getJobDate(job) || "-"}
+              </td>
 
-            <td>
-              ${job.plate || "-"}
-            </td>
+              <td>
+                ${job.carMake ||
+                  job.carType ||
+                  job.carModel ||
+                  "-"}
+              </td>
 
-            <td>
-              ${serviceNames || "-"}
-            </td>
+              <td>
+                ${job.plate || "-"}
+              </td>
 
-            <td>
-              ${job.voucherNumber || "-"}
-            </td>
+              <td>
+                ${serviceNames || "-"}
+              </td>
 
-            <td>
-              ${job.receipt_number || "-"}
-            </td>
+              <td>
+                ${job.voucherNumber || "-"}
+              </td>
 
-            <td class="money">
-              QAR ${amount.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-              })}
-            </td>
+              <td>
+                ${job.receipt_number || "-"}
+              </td>
 
-          </tr>
-        `;
-      })
-      .join("");
+              <td class="money">
+                QAR ${amount.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                })}
+              </td>
 
-    const printWindow = window.open(
-      "",
-      "_blank",
-      "width=1500,height=1000"
-    );
+            </tr>
+          `;
+        })
+        .join("");
+
+    const printWindow =
+      window.open(
+        "",
+        "_blank",
+        "width=1500,height=1000"
+      );
 
     if (!printWindow) {
-      alert("Please allow pop-ups for this website.");
+      alert(
+        "Please allow pop-ups for this website."
+      );
       return;
     }
 
@@ -1089,6 +1204,10 @@ function getTeyseerServiceNames(job) {
       <html>
 
       <head>
+
+        <title>
+          Teyseer Motors Report
+        </title>
 
         <style>
 
@@ -1108,22 +1227,6 @@ function getTeyseerServiceNames(job) {
             padding: 15px;
             font-size: 10px;
           }
-
-          /*
-            TEYSEER HEADER
-            Matches the header you provided:
-            
-            HAOSHENG CAR SERVICE AND ACCESSORIES
-            هاوشنغ لخدمات وزينة السيارات
-            Building 358, Salwa Road, Doha - Qatar
-
-            INVOICE
-            DATE
-            INVOICE NO.
-            NAME/COMPANY
-            ADDRESS
-            CONTACT NUMBER
-          */
 
           .invoiceHeader {
             width: 100%;
@@ -1217,6 +1320,12 @@ function getTeyseerServiceNames(job) {
             flex: 1;
           }
 
+          .reportTitle {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+
           .period {
             font-size: 10px;
             margin-bottom: 15px;
@@ -1300,48 +1409,50 @@ function getTeyseerServiceNames(job) {
             font-size: 13px;
             font-weight: bold;
           }
-.paymentSection {
-  margin-top: 25px;
-  padding-top: 12px;
-  border-top: 1px solid #000;
-}
 
-.paymentTitle {
-  font-weight: bold;
-  font-size: 11px;
-  margin-bottom: 8px;
-}
+          .paymentSection {
+            margin-top: 25px;
+            padding-top: 12px;
+            border-top: 1px solid #000;
+          }
 
-.paymentMethods {
-  font-size: 10px;
-  font-weight: bold;
-}
+          .paymentTitle {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 8px;
+          }
 
-.signatureSection {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  margin-top: 70px;
-  margin-bottom: 35px;
-}
+          .paymentMethods {
+            font-size: 10px;
+            font-weight: bold;
+          }
 
-.signatureBox {
-  text-align: center;
-  min-height: 60px;
-}
+          .signatureSection {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            margin-top: 70px;
+            margin-bottom: 35px;
+          }
 
-.arabicSignature {
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 8px;
-}
+          .signatureBox {
+            text-align: center;
+            min-height: 60px;
+          }
 
-.englishSignature {
-  font-size: 10px;
-  font-weight: bold;
-  padding-top: 8px;
-  border-top: 1px solid #000;
-}
+          .arabicSignature {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+
+          .englishSignature {
+            font-size: 10px;
+            font-weight: bold;
+            padding-top: 8px;
+            border-top: 1px solid #000;
+          }
+
           .footer {
             margin-top: 25px;
             padding-top: 9px;
@@ -1372,10 +1483,6 @@ function getTeyseerServiceNames(job) {
       </head>
 
       <body>
-
-        <!-- ========================= -->
-        <!-- TEYSEER INVOICE HEADER -->
-        <!-- ========================= -->
 
         <div class="invoiceHeader">
 
@@ -1486,10 +1593,6 @@ function getTeyseerServiceNames(job) {
           </div>
 
         </div>
-
-        <!-- ========================= -->
-        <!-- REPORT -->
-        <!-- ========================= -->
 
         <div class="reportTitle">
           TEYSEER MOTORS REPORT
@@ -1608,61 +1711,61 @@ function getTeyseerServiceNames(job) {
 
         </div>
 
-     <div class="paymentSection">
+        <div class="paymentSection">
 
-  <div class="paymentTitle">
-    PAYMENT METHOD:
-  </div>
+          <div class="paymentTitle">
+            PAYMENT METHOD:
+          </div>
 
-  <div class="paymentMethods">
-    CASH / VISA / MASTERCARD / AMEX / NAPS / BANK TRANSFER
-  </div>
+          <div class="paymentMethods">
+            CASH / VISA / MASTERCARD / AMEX / NAPS / BANK TRANSFER
+          </div>
 
-</div>
+        </div>
 
-<div class="signatureSection">
+        <div class="signatureSection">
 
-  <div class="signatureBox">
+          <div class="signatureBox">
 
-    <div class="arabicSignature">
-      توقيع العميل
-    </div>
+            <div class="arabicSignature">
+              توقيع العميل
+            </div>
 
-    <div class="englishSignature">
-      CUSTOMER'S SIGNATURE
-    </div>
+            <div class="englishSignature">
+              CUSTOMER'S SIGNATURE
+            </div>
 
-  </div>
+          </div>
 
-  <div class="signatureBox">
+          <div class="signatureBox">
 
-    <div class="arabicSignature">
-      توقيع المعتمد
-    </div>
+            <div class="arabicSignature">
+              توقيع المعتمد
+            </div>
 
-    <div class="englishSignature">
-      AUTHORIZED SIGNATURE
-    </div>
+            <div class="englishSignature">
+              AUTHORIZED SIGNATURE
+            </div>
 
-  </div>
+          </div>
 
-</div>
+        </div>
 
-<div class="footer">
+        <div class="footer">
 
-  Tel: +974 4441 5866
-  &nbsp; | &nbsp;
-  C.R.NO: 199725
-  &nbsp; | &nbsp;
-  E-mail: info@haoshengcar.com
+          Tel: +974 4441 5866
+          &nbsp; | &nbsp;
+          C.R.NO: 199725
+          &nbsp; | &nbsp;
+          E-mail: info@haoshengcar.com
 
-  <br />
+          <br />
 
-  Fereej Al Manaseer, Zone 55,
-  St. 340, Bldg 358,
-  Salwa Road, Doha, Qatar
+          Fereej Al Manaseer, Zone 55,
+          St. 340, Bldg 358,
+          Salwa Road, Doha, Qatar
 
-</div>
+        </div>
 
       </body>
 
@@ -1679,19 +1782,29 @@ function getTeyseerServiceNames(job) {
     };
   }
 
-  function printDailyReport() {
-    const selectedDate = reportDate;
+  /*
+   * DAILY REPORT
+   */
 
-    const todayJobs = jobs.filter(
-      job =>
-        getJobDate(job) === selectedDate
-    );
+  function printDailyReport() {
+    const selectedDate =
+      reportDate;
+
+    const todayJobs =
+      jobs.filter(
+        (job) =>
+          getJobDate(job) ===
+          selectedDate
+      );
 
     const selectedPayments =
-      payments.filter(payment =>
-        payment.payment_date &&
-        String(payment.payment_date).slice(0, 10) ===
-          selectedDate
+      customerPayments.filter(
+        (payment) =>
+          payment.payment_date &&
+          String(
+            payment.payment_date
+          ).slice(0, 10) ===
+            selectedDate
       );
 
     if (
@@ -1699,121 +1812,211 @@ function getTeyseerServiceNames(job) {
       selectedPayments.length === 0
     ) {
       alert(
-        `No cars or payments found for ${selectedDate}.`
+        `No cars or customer payments found for ${selectedDate}.`
       );
 
       return;
     }
 
-    const totalSales = todayJobs.reduce(
-      (sum, job) =>
-        sum +
-        Number(job.price || 0) -
-        Number(job.discount || 0),
-      0
-    );
+    /*
+     * SALES TEAM JOBS
+     */
 
-    const totalPaid = selectedPayments.reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
+    const todayCustomerJobs =
+      todayJobs.filter((job) => {
+        if (!isTeyseerSource(job)) {
+          return true;
+        }
+
+        return getTeyseerJobAmount(job) <= 0;
+      });
+
+    /*
+     * TEYSEER JOBS
+     */
+
+    const todayTeyseerJobs =
+      todayJobs.filter((job) => {
+        return (
+          isTeyseerSource(job) &&
+          getTeyseerJobAmount(job) > 0
+        );
+      });
+
+    const totalSales =
+      todayCustomerJobs.reduce(
+        (sum, job) =>
+          sum +
+          Math.max(
+            Number(job.price || 0) -
+              Number(job.discount || 0),
+            0
+          ),
+        0
+      );
+
+    const totalTeyseerSales =
+      todayTeyseerJobs.reduce(
+        (sum, job) =>
+          sum +
+          getTeyseerJobAmount(job),
+        0
+      );
+
+    const totalPaid =
+      selectedPayments.reduce(
+        (sum, payment) =>
+          sum +
+          Number(payment.amount || 0),
+        0
+      );
 
     const totalBalance =
       totalSales - totalPaid;
 
-    const reportRows = todayJobs
-      .map((job, index) => {
-        const jobPayments =
-          payments.filter(
-            payment =>
-              String(payment.job_id) ===
-              String(job.id)
-          );
+    const reportRows =
+      todayJobs
+        .map((job, index) => {
+          const jobPayments =
+            customerPayments.filter(
+              (payment) =>
+                String(
+                  payment.job_id
+                ) ===
+                String(job.id)
+            );
 
-        const jobPaid =
-          jobPayments.reduce(
-            (sum, payment) =>
-              sum +
-              Number(payment.amount || 0),
-            0
-          );
+          const jobPaid =
+            jobPayments.reduce(
+              (sum, payment) =>
+                sum +
+                Number(
+                  payment.amount || 0
+                ),
+              0
+            );
 
-        const price =
-          Number(job.price || 0);
+          const isTeyseer =
+            isTeyseerSource(job) &&
+            getTeyseerJobAmount(job) > 0;
 
-        const discount =
-          Number(job.discount || 0);
+          const price =
+            isTeyseer
+              ? getTeyseerJobAmount(job)
+              : Number(job.price || 0);
 
-        const netAmount =
-          price - discount;
+          const discount =
+            isTeyseer
+              ? 0
+              : Number(job.discount || 0);
 
-        const jobBalance =
-          netAmount - jobPaid;
+          const netAmount =
+            isTeyseer
+              ? price
+              : Math.max(
+                  price - discount,
+                  0
+                );
 
-        let services = "No services";
+          const jobBalance =
+            isTeyseer
+              ? 0
+              : netAmount - jobPaid;
 
-        if (Array.isArray(job.services)) {
-          services = job.services
-            .map(service => {
-              if (
-                typeof service ===
-                "string"
-              ) {
-                return service;
-              }
+          let services =
+            getTeyseerServiceNames(job);
 
-              return (
-                service?.name ||
-                service?.service_name ||
-                service?.title ||
-                ""
-              );
-            })
-            .filter(Boolean)
-            .join(", ");
-        } else if (
-          typeof job.services ===
-          "string"
-        ) {
-          services =
-            job.services.trim() ||
-            "No services";
-        }
+          if (!services) {
+            if (
+              Array.isArray(
+                job.services
+              )
+            ) {
+              services =
+                job.services
+                  .map((service) => {
+                    if (
+                      typeof service ===
+                      "string"
+                    ) {
+                      return service;
+                    }
 
-        return `
-          <tr>
-  <td>${index + 1}</td>
-  <td>${job.customer || ""}</td>
-  <td>${job.phone || ""}</td>
-  <td>${job.carModel || ""}</td>
-  <td>${job.plate || ""}</td>
-  <td>${job.source || "Not specified"}</td>
-  <td>${services}</td>
+                    return (
+                      service?.name ||
+                      service?.service_name ||
+                      service?.title ||
+                      ""
+                    );
+                  })
+                  .filter(Boolean)
+                  .join(", ");
+            } else if (
+              typeof job.services ===
+              "string"
+            ) {
+              services =
+                job.services.trim() ||
+                "No services";
+            } else {
+              services =
+                "No services";
+            }
+          }
 
-  <td class="money">
-    QAR ${price.toLocaleString()}
-  </td>
+          return `
+            <tr>
 
-  <td class="money">
-    QAR ${discount.toLocaleString()}
-  </td>
+              <td>${index + 1}</td>
 
-  <td class="money">
-    QAR ${jobPaid.toLocaleString()}
-  </td>
+              <td>
+                ${job.customer || ""}
+              </td>
 
-  <td class="money">
-    QAR ${jobBalance.toLocaleString()}
-  </td>
-</tr>
-        `;
-      })
-      .join("");
+              <td>
+                ${job.phone || ""}
+              </td>
+
+              <td>
+                ${job.carModel || ""}
+              </td>
+
+              <td>
+                ${job.plate || ""}
+              </td>
+
+              <td>
+                ${job.source || "Not specified"}
+              </td>
+
+              <td>
+                ${services}
+              </td>
+
+              <td class="money">
+                QAR ${price.toLocaleString()}
+              </td>
+
+              <td class="money">
+                QAR ${discount.toLocaleString()}
+              </td>
+
+              <td class="money">
+                QAR ${jobPaid.toLocaleString()}
+              </td>
+
+              <td class="money">
+                QAR ${jobBalance.toLocaleString()}
+              </td>
+
+            </tr>
+          `;
+        })
+        .join("");
 
     const paymentRows =
       selectedPayments
-        .map(payment => {
+        .map((payment) => {
           const method =
             payment.payment_method ||
             payment.method ||
@@ -1842,14 +2045,17 @@ function getTeyseerServiceNames(job) {
         })
         .join("");
 
-    const printWindow = window.open(
-      "",
-      "_blank",
-      "width=1500,height=900"
-    );
+    const printWindow =
+      window.open(
+        "",
+        "_blank",
+        "width=1500,height=900"
+      );
 
     if (!printWindow) {
-      alert("Please allow pop-ups for this website.");
+      alert(
+        "Please allow pop-ups for this website."
+      );
       return;
     }
 
@@ -1981,7 +2187,7 @@ function getTeyseerServiceNames(job) {
           <div class="summaryBox">
 
             <div class="summaryLabel">
-              NET SALES
+              SALES TEAM TOTAL SALES
             </div>
 
             <div class="summaryValue">
@@ -1993,11 +2199,11 @@ function getTeyseerServiceNames(job) {
           <div class="summaryBox">
 
             <div class="summaryLabel">
-              PAYMENTS TODAY
+              TEYSEER TOTAL SALES
             </div>
 
             <div class="summaryValue">
-              QAR ${totalPaid.toLocaleString()}
+              QAR ${totalTeyseerSales.toLocaleString()}
             </div>
 
           </div>
@@ -2005,7 +2211,7 @@ function getTeyseerServiceNames(job) {
           <div class="summaryBox">
 
             <div class="summaryLabel">
-              BALANCE DUE
+              SALES TEAM BALANCE
             </div>
 
             <div class="summaryValue">
@@ -2025,18 +2231,18 @@ function getTeyseerServiceNames(job) {
           <thead>
 
             <tr>
-  <th>#</th>
-  <th>Customer</th>
-  <th>Phone</th>
-  <th>Car</th>
-  <th>Plate</th>
-  <th>Source</th>
-  <th>Services</th>
-  <th>Amount</th>
-  <th>Discount</th>
-  <th>Paid</th>
-  <th>Balance</th>
-</tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Car</th>
+              <th>Plate</th>
+              <th>Source</th>
+              <th>Services</th>
+              <th>Amount</th>
+              <th>Discount</th>
+              <th>Paid</th>
+              <th>Balance</th>
+            </tr>
 
           </thead>
 
@@ -2047,7 +2253,7 @@ function getTeyseerServiceNames(job) {
         </table>
 
         <h2>
-          Payments Received
+          Customer Payments Received
         </h2>
 
         <table>
@@ -2077,12 +2283,13 @@ function getTeyseerServiceNames(job) {
 
     printWindow.document.close();
 
-    printWindow.onload = function () {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 500);
-    };
+    printWindow.onload =
+      function () {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+        }, 500);
+      };
   }
 
   return (
@@ -2119,8 +2326,10 @@ function getTeyseerServiceNames(job) {
         <input
           type="date"
           value={reportDate}
-          onChange={e =>
-            setReportDate(e.target.value)
+          onChange={(e) =>
+            setReportDate(
+              e.target.value
+            )
           }
           style={inputStyle}
         />
@@ -2134,6 +2343,10 @@ function getTeyseerServiceNames(job) {
         Print Daily Report
       </button>
 
+      {/* =====================================================
+          FINANCIAL SUMMARY
+          ===================================================== */}
+
       <h2>
         Financial Summary
       </h2>
@@ -2141,34 +2354,36 @@ function getTeyseerServiceNames(job) {
       <div style={gridStyle}>
 
         <FinancialCard
-          title="Total Sales"
-          value={netSales}
-          color="#2563eb"
-          icon="💰"
+          title="Teyseer Total Sales"
+          value={teyseerSales}
+          color="#9333ea"
+          icon="🏢"
+        />
+
+        <FinancialCard
+          title="Sales Team Total Sales"
+          value={customerSales}
+          color="#0891b2"
+          icon="👥"
         />
 
         <FinancialCard
           title="Total Paid"
-          value={paid}
+          value={customerPaid}
           color="#16a34a"
           icon="💳"
         />
 
         <FinancialCard
           title="Total Balance"
-          value={balance}
+          value={customerBalance}
           color="#dc2626"
           icon="⚠️"
         />
 
-        <FinancialCard
-          title="Teyseer Sales"
-          value={teyseerSales}
-          color="#9333ea"
-          icon="🏢"
-        />
-
       </div>
+
+      {/* PAYMENT METHODS */}
 
       <h2>
         Payment Methods
@@ -2199,6 +2414,8 @@ function getTeyseerServiceNames(job) {
 
       </div>
 
+      {/* DAILY PAYMENTS */}
+
       <h2>
         Daily Payments
       </h2>
@@ -2206,7 +2423,7 @@ function getTeyseerServiceNames(job) {
       <div style={whiteCardStyle}>
 
         <h3>
-          Payments on {reportDate}
+          Customer Payments on {reportDate}
         </h3>
 
         <h1
@@ -2214,7 +2431,8 @@ function getTeyseerServiceNames(job) {
             color: "#16a34a",
           }}
         >
-          QAR {selectedDatePaymentTotal.toLocaleString()}
+          QAR{" "}
+          {selectedDatePaymentTotal.toLocaleString()}
         </h1>
 
         <p>
@@ -2230,10 +2448,14 @@ function getTeyseerServiceNames(job) {
 
         {dailyPaymentRows.length === 0 ? (
           <p>
-            No payment records found.
+            No customer payment records found.
           </p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div
+            style={{
+              overflowX: "auto",
+            }}
+          >
 
             <table style={tableStyle}>
 
@@ -2284,23 +2506,28 @@ function getTeyseerServiceNames(job) {
                       </td>
 
                       <td style={tableCell}>
-                        QAR {values.cash.toLocaleString()}
+                        QAR{" "}
+                        {values.cash.toLocaleString()}
                       </td>
 
                       <td style={tableCell}>
-                        QAR {values.visa.toLocaleString()}
+                        QAR{" "}
+                        {values.visa.toLocaleString()}
                       </td>
 
                       <td style={tableCell}>
-                        QAR {values.mastercard.toLocaleString()}
+                        QAR{" "}
+                        {values.mastercard.toLocaleString()}
                       </td>
 
                       <td style={tableCell}>
-                        QAR {values.bankTransfer.toLocaleString()}
+                        QAR{" "}
+                        {values.bankTransfer.toLocaleString()}
                       </td>
 
                       <td style={tableCell}>
-                        QAR {values.other.toLocaleString()}
+                        QAR{" "}
+                        {values.other.toLocaleString()}
                       </td>
 
                       <td
@@ -2310,7 +2537,8 @@ function getTeyseerServiceNames(job) {
                           color: "#16a34a",
                         }}
                       >
-                        QAR {values.total.toLocaleString()}
+                        QAR{" "}
+                        {values.total.toLocaleString()}
                       </td>
 
                     </tr>
@@ -2326,6 +2554,8 @@ function getTeyseerServiceNames(job) {
 
       </div>
 
+      {/* PREVIOUS MONTH PENDING */}
+
       <h2>
         Previous Month Pending
       </h2>
@@ -2335,25 +2565,36 @@ function getTeyseerServiceNames(job) {
         <ManualCard
           title="June Pending"
           value={manualPending.June}
-          saving={savingSetting === "June Pending"}
+          saving={
+            savingSetting ===
+            "June Pending"
+          }
           onChange={changeJune}
         />
 
         <ManualCard
           title="July Pending"
           value={manualPending.July}
-          saving={savingSetting === "July Pending"}
+          saving={
+            savingSetting ===
+            "July Pending"
+          }
           onChange={changeJuly}
         />
 
         <ManualCard
           title="August Pending"
           value={manualPending.August}
-          saving={savingSetting === "August Pending"}
+          saving={
+            savingSetting ===
+            "August Pending"
+          }
           onChange={changeAugust}
         />
 
       </div>
+
+      {/* PREVIOUS TEYSEER */}
 
       <h2>
         Previous Teyseer
@@ -2368,8 +2609,10 @@ function getTeyseerServiceNames(job) {
         <input
           type="number"
           value={manualTeyseer}
-          onChange={e =>
-            changeTeyseer(e.target.value)
+          onChange={(e) =>
+            changeTeyseer(
+              e.target.value
+            )
           }
           style={{
             ...inputStyle,
@@ -2378,17 +2621,29 @@ function getTeyseerServiceNames(job) {
           }}
         />
 
-        {savingSetting === "Previous Teyseer" && (
-          <p style={{ color: "#16a34a" }}>
+        {savingSetting ===
+          "Previous Teyseer" && (
+          <p
+            style={{
+              color: "#16a34a",
+            }}
+          >
             Saving...
           </p>
         )}
 
-        <h2 style={{ color: "#9333ea" }}>
-          QAR {manualTeyseer.toLocaleString()}
+        <h2
+          style={{
+            color: "#9333ea",
+          }}
+        >
+          QAR{" "}
+          {manualTeyseer.toLocaleString()}
         </h2>
 
       </div>
+
+      {/* CAR REPORTS */}
 
       <h2>
         Car Reports
@@ -2429,6 +2684,8 @@ function getTeyseerServiceNames(job) {
         />
 
       </div>
+
+      {/* CARS PER DAY */}
 
       <h2>
         Cars Received Per Day
@@ -2484,6 +2741,8 @@ function getTeyseerServiceNames(job) {
 
       </div>
 
+      {/* SOURCE REPORTS */}
+
       <h2>
         Source Reports
       </h2>
@@ -2497,11 +2756,22 @@ function getTeyseerServiceNames(job) {
           </h2>
 
           <p>
-            Cars: {teyseerJobs.length}
+            Cars:{" "}
+            {teyseerJobs.length}
           </p>
 
           <p>
-            Net Amount: QAR {teyseerSales.toLocaleString()}
+            Net Amount: QAR{" "}
+            {teyseerSales.toLocaleString()}
+          </p>
+
+          <p
+            style={{
+              color: "#9333ea",
+              fontWeight: "bold",
+            }}
+          >
+            Paid By: TEYSEER
           </p>
 
         </div>
@@ -2509,28 +2779,34 @@ function getTeyseerServiceNames(job) {
         <div style={sourceCardStyle}>
 
           <h2>
-            Customers / Other
+            Customers / Sales Team
           </h2>
 
           <p>
-            Cars: {customerJobs.length}
+            Cars:{" "}
+            {customerJobs.length}
           </p>
 
           <p>
-            Sales: QAR {customerSales.toLocaleString()}
+            Sales: QAR{" "}
+            {customerSales.toLocaleString()}
           </p>
 
           <p>
-            Paid: QAR {customerPaid.toLocaleString()}
+            Paid: QAR{" "}
+            {customerPaid.toLocaleString()}
           </p>
 
           <p>
-            Balance: QAR {customerBalance.toLocaleString()}
+            Balance: QAR{" "}
+            {customerBalance.toLocaleString()}
           </p>
 
         </div>
 
       </div>
+
+      {/* AL NUSOOR + TEYSEER REPORTS */}
 
       <div
         style={{
@@ -2547,7 +2823,8 @@ function getTeyseerServiceNames(job) {
         <div
           style={{
             ...whiteCardStyle,
-            borderTop: "5px solid #d4af37",
+            borderTop:
+              "5px solid #d4af37",
           }}
         >
 
@@ -2555,9 +2832,13 @@ function getTeyseerServiceNames(job) {
             Al Nusoor Report
           </h2>
 
-          <p style={{ color: "#64748b" }}>
-            Al Nusoor is detected automatically from
-            the Customer field.
+          <p
+            style={{
+              color: "#64748b",
+            }}
+          >
+            Al Nusoor is detected automatically
+            from the Customer field.
           </p>
 
           <div style={filterStyle}>
@@ -2571,7 +2852,7 @@ function getTeyseerServiceNames(job) {
               <input
                 type="date"
                 value={alnusoorStartDate}
-                onChange={e =>
+                onChange={(e) =>
                   setAlnusoorStartDate(
                     e.target.value
                   )
@@ -2590,7 +2871,7 @@ function getTeyseerServiceNames(job) {
               <input
                 type="date"
                 value={alnusoorEndDate}
-                onChange={e =>
+                onChange={(e) =>
                   setAlnusoorEndDate(
                     e.target.value
                   )
@@ -2612,7 +2893,9 @@ function getTeyseerServiceNames(job) {
           >
 
             <button
-              onClick={printAlnusoorReport}
+              onClick={
+                printAlnusoorReport
+              }
               style={darkButton}
             >
               Print Al Nusoor
@@ -2634,7 +2917,9 @@ function getTeyseerServiceNames(job) {
 
             <MiniBox
               title="Cars"
-              value={alnusoorJobs.length}
+              value={
+                alnusoorJobs.length
+              }
             />
 
             <MiniBox
@@ -2654,14 +2939,21 @@ function getTeyseerServiceNames(job) {
 
           </div>
 
-          {alnusoorJobs.length === 0 ? (
+          {alnusoorJobs.length ===
+          0 ? (
             <p>
               No Al Nusoor jobs found.
             </p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div
+              style={{
+                overflowX: "auto",
+              }}
+            >
 
-              <table style={tableStyle}>
+              <table
+                style={tableStyle}
+              >
 
                 <thead>
 
@@ -2693,49 +2985,82 @@ function getTeyseerServiceNames(job) {
 
                 <tbody>
 
-                  {alnusoorJobs.map(job => {
+                  {alnusoorJobs.map(
+                    (job) => {
+                      const price =
+                        Number(
+                          job.price || 0
+                        );
 
-                    const price =
-                      Number(job.price || 0);
+                      const discount =
+                        Number(
+                          job.discount || 0
+                        );
 
-                    const discount =
-                      Number(job.discount || 0);
+                      const total =
+                        Math.max(
+                          price -
+                            discount,
+                          0
+                        );
 
-                    const total =
-                      Math.max(
-                        price - discount,
-                        0
+                      return (
+                        <tr
+                          key={job.id}
+                        >
+
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {getJobDate(
+                              job
+                            ) || "-"}
+                          </td>
+
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {job.customer ||
+                              "-"}
+                          </td>
+
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {job.carMake ||
+                              job.carType ||
+                              job.carModel ||
+                              "-"}
+                          </td>
+
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {job.plate ||
+                              "-"}
+                          </td>
+
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            QAR{" "}
+                            {total.toLocaleString()}
+                          </td>
+
+                        </tr>
                       );
-
-                    return (
-                      <tr key={job.id}>
-
-                        <td style={tableCell}>
-                          {getJobDate(job) || "-"}
-                        </td>
-
-                        <td style={tableCell}>
-                          {job.customer || "-"}
-                        </td>
-
-                        <td style={tableCell}>
-                          {job.carMake ||
-                            job.carType ||
-                            job.carModel ||
-                            "-"}
-                        </td>
-
-                        <td style={tableCell}>
-                          {job.plate || "-"}
-                        </td>
-
-                        <td style={tableCell}>
-                          QAR {total.toLocaleString()}
-                        </td>
-
-                      </tr>
-                    );
-                  })}
+                    }
+                  )}
 
                 </tbody>
 
@@ -2751,7 +3076,8 @@ function getTeyseerServiceNames(job) {
         <div
           style={{
             ...whiteCardStyle,
-            borderTop: "5px solid #9333ea",
+            borderTop:
+              "5px solid #9333ea",
           }}
         >
 
@@ -2759,9 +3085,14 @@ function getTeyseerServiceNames(job) {
             Teyseer Report
           </h2>
 
-          <p style={{ color: "#64748b" }}>
-            Teyseer Motors, Bahaa and Salah jobs
-            are included automatically.
+          <p
+            style={{
+              color: "#64748b",
+            }}
+          >
+            Teyseer Motors = all services.
+            Teyseer-Salah and Teyseer-Bahaa =
+            WTT services only.
           </p>
 
           <div style={filterStyle}>
@@ -2775,7 +3106,7 @@ function getTeyseerServiceNames(job) {
               <input
                 type="date"
                 value={teyseerStartDate}
-                onChange={e =>
+                onChange={(e) =>
                   setTeyseerStartDate(
                     e.target.value
                   )
@@ -2794,7 +3125,7 @@ function getTeyseerServiceNames(job) {
               <input
                 type="date"
                 value={teyseerEndDate}
-                onChange={e =>
+                onChange={(e) =>
                   setTeyseerEndDate(
                     e.target.value
                   )
@@ -2816,10 +3147,13 @@ function getTeyseerServiceNames(job) {
           >
 
             <button
-              onClick={printTeyseerReport}
+              onClick={
+                printTeyseerReport
+              }
               style={{
                 ...darkButton,
-                background: "#9333ea",
+                background:
+                  "#9333ea",
               }}
             >
               Print Teyseer
@@ -2841,7 +3175,9 @@ function getTeyseerServiceNames(job) {
 
             <MiniBox
               title="Cars"
-              value={filteredTeyseerJobs.length}
+              value={
+                filteredTeyseerJobs.length
+              }
             />
 
             <MiniBox
@@ -2851,14 +3187,21 @@ function getTeyseerServiceNames(job) {
 
           </div>
 
-          {filteredTeyseerJobs.length === 0 ? (
+          {filteredTeyseerJobs.length ===
+          0 ? (
             <p>
               No Teyseer jobs found.
             </p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div
+              style={{
+                overflowX: "auto",
+              }}
+            >
 
-              <table style={tableStyle}>
+              <table
+                style={tableStyle}
+              >
 
                 <thead>
 
@@ -2898,48 +3241,90 @@ function getTeyseerServiceNames(job) {
 
                 <tbody>
 
-                  {filteredTeyseerJobs.map(job => {
+                  {filteredTeyseerJobs.map(
+                    (job) => {
 
-                    const amount =
-                      getTeyseerJobAmount(job);
+                      const amount =
+                        getTeyseerJobAmount(
+                          job
+                        );
 
-                    return (
-                      <tr key={job.id}>
+                      return (
+                        <tr
+                          key={job.id}
+                        >
 
-                        <td style={tableCell}>
-                          {getJobDate(job) || "-"}
-                        </td>
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {getJobDate(
+                              job
+                            ) || "-"}
+                          </td>
 
-                        <td style={tableCell}>
-                          {job.carMake ||
-                            job.carType ||
-                            job.carModel ||
-                            "-"}
-                        </td>
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {job.carMake ||
+                              job.carType ||
+                              job.carModel ||
+                              "-"}
+                          </td>
 
-                        <td style={tableCell}>
-                          {job.plate || "-"}
-                        </td>
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {job.plate ||
+                              "-"}
+                          </td>
 
-                        <td style={tableCell}>
-                          {getTeyseerServiceNames(job) || "-"}
-                        </td>
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {getTeyseerServiceNames(
+                              job
+                            ) || "-"}
+                          </td>
 
-                        <td style={tableCell}>
-                          {job.voucherNumber || "-"}
-                        </td>
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {job.voucherNumber ||
+                              "-"}
+                          </td>
 
-                        <td style={tableCell}>
-                          {job.receipt_number || "-"}
-                        </td>
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            {job.receipt_number ||
+                              "-"}
+                          </td>
 
-                        <td style={tableCell}>
-                          QAR {amount.toLocaleString()}
-                        </td>
+                          <td
+                            style={
+                              tableCell
+                            }
+                          >
+                            QAR{" "}
+                            {amount.toLocaleString()}
+                          </td>
 
-                      </tr>
-                    );
-                  })}
+                        </tr>
+                      );
+                    }
+                  )}
 
                 </tbody>
 
@@ -2956,44 +3341,75 @@ function getTeyseerServiceNames(job) {
   );
 }
 
+/* =========================================================
+   COMPONENTS
+   ========================================================= */
+
 function FinancialCard({
   title,
   value,
   color,
   icon,
-  noCurrency,
+  noCurrency = false,
 }) {
   return (
     <div
       style={{
-        background: "white",
-        padding: "25px",
-        borderRadius: "18px",
+        background: "#ffffff",
+        borderRadius: "14px",
+        padding: "20px",
+        border: "1px solid #e2e8f0",
         boxShadow:
-          "0 8px 20px rgba(0,0,0,0.08)",
-        textAlign: "center",
-        borderTop:
-          `5px solid ${color}`,
+          "0 2px 8px rgba(15,23,42,0.06)",
+        borderTop: `4px solid ${color}`,
       }}
     >
 
       <div
         style={{
-          fontSize: "35px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          marginBottom: "10px",
         }}
       >
-        {icon}
+
+        <span
+          style={{
+            fontSize: "25px",
+          }}
+        >
+          {icon}
+        </span>
+
+        <h3
+          style={{
+            margin: 0,
+            color: "#475569",
+            fontSize: "14px",
+          }}
+        >
+          {title}
+        </h3>
+
       </div>
 
-      <h3>
-        {title}
-      </h3>
-
-      <h2>
+      <div
+        style={{
+          color,
+          fontSize: "24px",
+          fontWeight: "bold",
+        }}
+      >
         {noCurrency
-          ? Number(value).toLocaleString()
-          : `QAR ${Number(value).toLocaleString()}`}
-      </h2>
+          ? Number(value || 0).toLocaleString()
+          : `QAR ${Number(
+              value || 0
+            ).toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+      </div>
 
     </div>
   );
@@ -3002,19 +3418,18 @@ function FinancialCard({
 function ManualCard({
   title,
   value,
-  onChange,
   saving,
+  onChange,
 }) {
   return (
     <div
       style={{
-        background: "white",
-        padding: "25px",
-        borderRadius: "18px",
+        background: "#ffffff",
+        borderRadius: "14px",
+        padding: "20px",
+        border: "1px solid #e2e8f0",
         boxShadow:
-          "0 8px 20px rgba(0,0,0,0.08)",
-        borderTop:
-          "5px solid #dc2626",
+          "0 2px 8px rgba(15,23,42,0.06)",
       }}
     >
 
@@ -3025,46 +3440,42 @@ function ManualCard({
       <input
         type="number"
         value={value}
-        onChange={e =>
+        onChange={(e) =>
           onChange(e.target.value)
         }
         style={{
+          ...inputStyle,
           width: "100%",
-          padding: "12px",
-          fontSize: "18px",
-          border:
-            "1px solid #cbd5e1",
-          borderRadius: "8px",
         }}
       />
 
       {saving && (
-        <div
+        <p
           style={{
             color: "#16a34a",
-            marginTop: "8px",
+            marginBottom: 0,
           }}
         >
           Saving...
-        </div>
+        </p>
       )}
-
-      <h2 style={{ color: "#dc2626" }}>
-        QAR {Number(value).toLocaleString()}
-      </h2>
 
     </div>
   );
 }
 
-function MiniBox({ title, value }) {
+function MiniBox({
+  title,
+  value,
+}) {
   return (
     <div
       style={{
         background: "#f8fafc",
-        padding: "15px",
+        border:
+          "1px solid #e2e8f0",
         borderRadius: "10px",
-        border: "1px solid #e2e8f0",
+        padding: "15px",
       }}
     >
 
@@ -3072,50 +3483,56 @@ function MiniBox({ title, value }) {
         style={{
           color: "#64748b",
           fontSize: "12px",
+          marginBottom: "5px",
         }}
       >
         {title}
       </div>
 
-      <h3>
+      <div
+        style={{
+          fontSize: "18px",
+          fontWeight: "bold",
+          color: "#0f172a",
+        }}
+      >
         {value}
-      </h3>
+      </div>
 
     </div>
   );
 }
 
+/* =========================================================
+   STYLES
+   ========================================================= */
+
 const gridStyle = {
   display: "grid",
   gridTemplateColumns:
-    "repeat(auto-fit,minmax(220px,1fr))",
-  gap: "20px",
+    "repeat(auto-fit, minmax(230px, 1fr))",
+  gap: "18px",
   marginBottom: "30px",
-};
-
-const miniGrid = {
-  display: "grid",
-  gridTemplateColumns:
-    "repeat(auto-fit,minmax(130px,1fr))",
-  gap: "10px",
-  marginBottom: "20px",
 };
 
 const whiteCardStyle = {
-  background: "white",
-  padding: "25px",
-  borderRadius: "18px",
+  background: "#ffffff",
+  borderRadius: "14px",
+  padding: "20px",
+  border: "1px solid #e2e8f0",
   boxShadow:
-    "0 8px 20px rgba(0,0,0,0.08)",
-  marginBottom: "30px",
+    "0 2px 8px rgba(15,23,42,0.06)",
+  marginBottom: "25px",
 };
 
 const sourceCardStyle = {
-  background: "white",
-  padding: "25px",
-  borderRadius: "18px",
+  background: "#ffffff",
+  borderRadius: "14px",
+  padding: "20px",
+  border: "1px solid #e2e8f0",
   boxShadow:
-    "0 8px 20px rgba(0,0,0,0.08)",
+    "0 2px 8px rgba(15,23,42,0.06)",
+  marginBottom: "25px",
 };
 
 const inputStyle = {
@@ -3123,38 +3540,26 @@ const inputStyle = {
   borderRadius: "8px",
   border: "1px solid #cbd5e1",
   fontSize: "14px",
-};
-
-const labelStyle = {
-  display: "block",
-  fontWeight: "bold",
-  marginBottom: "7px",
-};
-
-const filterStyle = {
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-  alignItems: "end",
-  marginBottom: "15px",
+  background: "#ffffff",
 };
 
 const darkButton = {
-  background: "#111827",
-  color: "white",
-  border: "none",
-  padding: "11px 20px",
+  padding: "10px 16px",
   borderRadius: "8px",
+  border: "none",
+  background: "#111827",
+  color: "#ffffff",
   cursor: "pointer",
   fontWeight: "bold",
+  marginBottom: "25px",
 };
 
 const clearButton = {
-  background: "#e5e7eb",
-  color: "#111827",
-  border: "none",
-  padding: "11px 20px",
+  padding: "10px 16px",
   borderRadius: "8px",
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#334155",
   cursor: "pointer",
   fontWeight: "bold",
 };
@@ -3162,18 +3567,44 @@ const clearButton = {
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
+  fontSize: "13px",
 };
 
 const tableHeader = {
+  background: "#111827",
+  color: "#ffffff",
+  padding: "10px",
   textAlign: "left",
-  padding: "12px",
-  background: "#f8fafc",
-  borderBottom: "2px solid #e2e8f0",
+  border: "1px solid #111827",
 };
 
 const tableCell = {
-  padding: "12px",
-  borderBottom: "1px solid #e2e8f0",
+  padding: "10px",
+  border: "1px solid #e2e8f0",
+  color: "#334155",
+};
+
+const filterStyle = {
+  display: "flex",
+  gap: "15px",
+  flexWrap: "wrap",
+  marginBottom: "20px",
+};
+
+const labelStyle = {
+  display: "block",
+  fontWeight: "bold",
+  fontSize: "13px",
+  marginBottom: "6px",
+  color: "#334155",
+};
+
+const miniGrid = {
+  display: "grid",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(130px, 1fr))",
+  gap: "10px",
+  marginBottom: "20px",
 };
 
 export default Reports;

@@ -154,14 +154,50 @@ function Dashboard() {
   }
 
   // =====================================
-  // TEYSEER CHECK
+  // SOURCE CHECKS
   // =====================================
 
   function isTeyseerSource(sourceName) {
+    const source = String(sourceName || "")
+      .trim()
+      .toLowerCase();
+
     return (
-      sourceName === "Teyseer Motors" ||
-      sourceName === "Teyseer Motors - Bahaa" ||
-      sourceName === "Teyseer Motors - Salah"
+      source === "teyseer motors" ||
+      source === "teyseer-salah" ||
+      source === "teyseer-bahaa" ||
+      source === "teyseer motors - salah" ||
+      source === "teyseer motors - bahaa"
+    );
+  }
+
+  function isPureTeyseerSource(sourceName) {
+    const source = String(sourceName || "")
+      .trim()
+      .toLowerCase();
+
+    return source === "teyseer motors";
+  }
+
+  function isTeyseerSalahSource(sourceName) {
+    const source = String(sourceName || "")
+      .trim()
+      .toLowerCase();
+
+    return (
+      source === "teyseer-salah" ||
+      source === "teyseer motors - salah"
+    );
+  }
+
+  function isTeyseerBahaaSource(sourceName) {
+    const source = String(sourceName || "")
+      .trim()
+      .toLowerCase();
+
+    return (
+      source === "teyseer-bahaa" ||
+      source === "teyseer motors - bahaa"
     );
   }
 
@@ -234,12 +270,27 @@ function Dashboard() {
   ).length;
 
   // =====================================
-  // CALCULATE SALES EXACTLY LIKE EDITJOB
+  // SALES CALCULATION
   //
-  // Internal job price includes WTT.
-  // Customer amount excludes WTT for Teyseer.
-  // Discounts are already removed from
-  // each service.
+  // RULES:
+  //
+  // 1. Internal Sales:
+  //    All services including WTT.
+  //
+  // 2. Teyseer Motors:
+  //    ENTIRE job is paid by Teyseer.
+  //    Therefore the whole job is Teyseer Sales.
+  //
+  // 3. Teyseer-Salah / Teyseer-Bahaa:
+  //    ONLY WTT is paid by Teyseer.
+  //    Non-WTT services belong to Salah/Bahaa.
+  //
+  // 4. Other sources:
+  //    All services belong to Sales Team.
+  //
+  // 5. Customer Net Sales:
+  //    Customer-payable amount.
+  //    Teyseer-paid amounts are excluded.
   // =====================================
 
   let internalSales = 0;
@@ -257,6 +308,10 @@ function Dashboard() {
       typeof job.serviceDetails === "object"
         ? job.serviceDetails
         : {};
+
+    const source = String(job.source || "")
+      .trim()
+      .toLowerCase();
 
     let jobInternalTotal = 0;
     let jobCustomerTotal = 0;
@@ -276,48 +331,67 @@ function Dashboard() {
         0
       );
 
-      // Internal total includes EVERYTHING,
-      // including WTT.
+      const isWtt = isWttService(serviceName);
+
+      // -------------------------------------
+      // INTERNAL SALES
+      // -------------------------------------
+
       jobInternalTotal += finalServiceAmount;
 
-      const isWtt = isWttService(serviceName);
-      const isTeyseer = isTeyseerSource(job.source);
+      // -------------------------------------
+      // PURE TEYSEER MOTORS
+      //
+      // Entire job is paid by Teyseer.
+      // -------------------------------------
 
-      // ===================================
-      // CUSTOMER TOTAL
-      // WTT is excluded for Teyseer jobs.
-      // ===================================
-
-      if (isTeyseer && isWtt) {
+      if (isPureTeyseerSource(source)) {
         jobTeyseerTotal += finalServiceAmount;
         return;
       }
 
+      // -------------------------------------
+      // TEYSEER-SALAH
+      //
+      // Only WTT is paid by Teyseer.
+      // -------------------------------------
+
+      if (isTeyseerSalahSource(source)) {
+        if (isWtt) {
+          jobTeyseerTotal += finalServiceAmount;
+        } else {
+          jobCustomerTotal += finalServiceAmount;
+          jobSalesTeamTotal += finalServiceAmount;
+        }
+
+        return;
+      }
+
+      // -------------------------------------
+      // TEYSEER-BAHAA
+      //
+      // Only WTT is paid by Teyseer.
+      // -------------------------------------
+
+      if (isTeyseerBahaaSource(source)) {
+        if (isWtt) {
+          jobTeyseerTotal += finalServiceAmount;
+        } else {
+          jobCustomerTotal += finalServiceAmount;
+          jobSalesTeamTotal += finalServiceAmount;
+        }
+
+        return;
+      }
+
+      // -------------------------------------
+      // ALL OTHER SOURCES
+      //
+      // Customer/Sales Team pays everything.
+      // -------------------------------------
+
       jobCustomerTotal += finalServiceAmount;
-
-      // ===================================
-      // SOURCE SPLIT
-      // ===================================
-
-      if (job.source === "Teyseer Motors") {
-        jobTeyseerTotal += finalServiceAmount;
-      }
-
-      else if (
-        job.source === "Teyseer Motors - Bahaa"
-      ) {
-        jobSalesTeamTotal += finalServiceAmount;
-      }
-
-      else if (
-        job.source === "Teyseer Motors - Salah"
-      ) {
-        jobSalesTeamTotal += finalServiceAmount;
-      }
-
-      else {
-        jobSalesTeamTotal += finalServiceAmount;
-      }
+      jobSalesTeamTotal += finalServiceAmount;
     });
 
     internalSales += jobInternalTotal;
@@ -328,9 +402,6 @@ function Dashboard() {
 
   // =====================================
   // PAYMENTS
-  //
-  // Payments are customer payments.
-  // WTT is paid separately by Teyseer.
   // =====================================
 
   const filteredJobIds = new Set(
@@ -342,9 +413,45 @@ function Dashboard() {
       filteredJobIds.has(payment.job_id)
   );
 
+  /*
+   * IMPORTANT:
+   *
+   * Payments in this table are customer-side
+   * payments.
+   *
+   * For pure Teyseer Motors jobs, Teyseer pays
+   * the entire job, so those payments should NOT
+   * reduce the customer balance.
+   *
+   * For Teyseer-Salah / Teyseer-Bahaa jobs,
+   * only WTT is paid by Teyseer.
+   * Customer payments therefore apply to the
+   * non-WTT customer amount.
+   *
+   * We calculate customer-paid amount against
+   * customer-payable sales only.
+   */
+
   const totalPaid = filteredPayments.reduce(
-    (sum, payment) =>
-      sum + Number(payment.amount || 0),
+    (sum, payment) => {
+      const job = filteredJobs.find(
+        (item) => item.id === payment.job_id
+      );
+
+      if (!job) {
+        return sum;
+      }
+
+      // Entire job is paid by Teyseer.
+      if (isPureTeyseerSource(job.source)) {
+        return sum;
+      }
+
+      return (
+        sum +
+        Number(payment.amount || 0)
+      );
+    },
     0
   );
 
@@ -390,6 +497,10 @@ function Dashboard() {
         ? job.serviceDetails
         : {};
 
+    const source = String(job.source || "")
+      .trim()
+      .toLowerCase();
+
     services.forEach((serviceName) => {
       const details =
         serviceDetails[serviceName] || {};
@@ -407,13 +518,24 @@ function Dashboard() {
 
       let reportSource = "Sales Team";
 
-      if (job.source === "Teyseer Motors") {
+      // -------------------------------------
+      // PURE TEYSEER MOTORS
+      //
+      // Every service goes to Teyseer.
+      // -------------------------------------
+
+      if (isPureTeyseerSource(source)) {
         reportSource = "Teyseer Motors";
       }
 
-      else if (
-        job.source === "Teyseer Motors - Salah"
-      ) {
+      // -------------------------------------
+      // TEYSEER-SALAH
+      //
+      // WTT -> Teyseer
+      // Non-WTT -> Salah
+      // -------------------------------------
+
+      else if (isTeyseerSalahSource(source)) {
         if (isWtt) {
           reportSource = "Teyseer Motors";
         } else {
@@ -421,9 +543,14 @@ function Dashboard() {
         }
       }
 
-      else if (
-        job.source === "Teyseer Motors - Bahaa"
-      ) {
+      // -------------------------------------
+      // TEYSEER-BAHAA
+      //
+      // WTT -> Teyseer
+      // Non-WTT -> Bahaa
+      // -------------------------------------
+
+      else if (isTeyseerBahaaSource(source)) {
         if (isWtt) {
           reportSource = "Teyseer Motors";
         } else {
@@ -431,12 +558,28 @@ function Dashboard() {
         }
       }
 
-      else if (job.source === "Bahaa") {
+      // -------------------------------------
+      // NORMAL BAHAA
+      // -------------------------------------
+
+      else if (source === "bahaa") {
         reportSource = "Bahaa";
       }
 
-      else if (job.source === "Salah") {
+      // -------------------------------------
+      // NORMAL SALAH
+      // -------------------------------------
+
+      else if (source === "salah") {
         reportSource = "Salah";
+      }
+
+      // -------------------------------------
+      // OTHER SOURCES
+      // -------------------------------------
+
+      else {
+        reportSource = "Sales Team";
       }
 
       if (!sourceReport[reportSource]) {
@@ -454,12 +597,17 @@ function Dashboard() {
   // =====================================
   // SALES TEAM PAYMENTS
   //
-  // Since customer payments are not
-  // Teyseer payments, they belong to
-  // customer/sales-side collections.
+  // Sales Team Sales are:
   //
-  // We calculate the sales team balance
-  // from non-Teyseer customer sales.
+  // - Non-WTT services from Teyseer-Salah
+  // - Non-WTT services from Teyseer-Bahaa
+  // - All services from normal Salah/Bahaa
+  // - All services from other sources
+  //
+  // Teyseer Motors jobs are excluded completely.
+  //
+  // WTT from Teyseer-Salah/Bahaa is excluded
+  // because Teyseer pays it.
   // =====================================
 
   const salesTeamPaid = filteredPayments.reduce(
@@ -472,7 +620,8 @@ function Dashboard() {
         return sum;
       }
 
-      if (isTeyseerSource(job.source)) {
+      // Entire Teyseer Motors job is paid by Teyseer.
+      if (isPureTeyseerSource(job.source)) {
         return sum;
       }
 
@@ -945,7 +1094,6 @@ function Dashboard() {
                 </h3>
 
               </div>
-
             )
           )}
 
