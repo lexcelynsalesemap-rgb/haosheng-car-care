@@ -8,15 +8,14 @@ function Inventory() {
   );
 
   const showCost = canSeeInventoryCost(loggedInUser);
-
   const isAdmin = loggedInUser?.role === "admin";
-  const isStaff = loggedInUser?.role === "staff";
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -24,15 +23,19 @@ function Inventory() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-const [showProductForm, setShowProductForm] = useState(false);
-const [showMovementForm, setShowMovementForm] = useState(false);
-const [editingProduct, setEditingProduct] = useState(null);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [showMovementForm, setShowMovementForm] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
 
+  const [editingProduct, setEditingProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+
   const [movementType, setMovementType] = useState("IN");
 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  const [categoryName, setCategoryName] = useState("");
 
   const [productForm, setProductForm] = useState({
     sku: "",
@@ -57,80 +60,80 @@ const [editingProduct, setEditingProduct] = useState(null);
     loadCategories();
   }, []);
 
- async function loadProducts() {
-  setLoading(true);
-  setError("");
+  async function loadProducts() {
+    setLoading(true);
+    setError("");
 
-  const loggedInUser = JSON.parse(
-    localStorage.getItem("user") || "null"
-  );
+    const user = JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
 
-  if (!loggedInUser?.shop_id) {
-    setError("Your account is not connected to a shop.");
-    setProducts([]);
+    if (!user?.shop_id) {
+      setError("Your account is not connected to a shop.");
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+
+    let query;
+
+    if (user.role === "staff") {
+      query = supabase
+        .from("inventory_products_staff")
+        .select(`
+          id,
+          sku,
+          name,
+          unit,
+          current_stock,
+          minimum_stock,
+          active,
+          description,
+          category_id,
+          shop_id,
+          inventory_categories (
+            name
+          )
+        `);
+    } else {
+      query = supabase
+        .from("inventory_products")
+        .select(`
+          id,
+          sku,
+          name,
+          unit,
+          cost_price,
+          current_stock,
+          minimum_stock,
+          active,
+          description,
+          category_id,
+          shop_id,
+          inventory_categories (
+            name
+          )
+        `);
+    }
+
+    const { data, error } = await query
+      .eq("shop_id", user.shop_id)
+      .order("name");
+
+    if (error) {
+      console.error("LOAD INVENTORY ERROR:", error);
+      setError(error.message);
+    } else {
+      setProducts(data || []);
+    }
+
     setLoading(false);
-    return;
   }
-
-  let query;
-
-  if (loggedInUser.role === "staff") {
-    query = supabase
-      .from("inventory_products_staff")
-      .select(`
-        id,
-        sku,
-        name,
-        unit,
-        current_stock,
-        minimum_stock,
-        active,
-        description,
-        category_id,
-        shop_id,
-        inventory_categories (
-          name
-        )
-      `);
-  } else {
-    query = supabase
-      .from("inventory_products")
-      .select(`
-        id,
-        sku,
-        name,
-        unit,
-        cost_price,
-        current_stock,
-        minimum_stock,
-        active,
-        description,
-        category_id,
-        shop_id,
-        inventory_categories (
-          name
-        )
-      `);
-  }
-
-  const { data, error } = await query
-    .eq("shop_id", loggedInUser.shop_id)
-    .order("name");
-
-  if (error) {
-    console.error("LOAD INVENTORY ERROR:", error);
-    setError(error.message);
-  } else {
-    setProducts(data || []);
-  }
-
-  setLoading(false);
-}
 
   async function loadCategories() {
     const { data, error } = await supabase
       .from("inventory_categories")
-      .select("id, name")
+      .select("id, name, active")
       .eq("active", true)
       .order("name");
 
@@ -187,12 +190,13 @@ const [editingProduct, setEditingProduct] = useState(null);
 
       const matchesSearch =
         !search ||
-        product.name.toLowerCase().includes(searchText) ||
-        product.sku.toLowerCase().includes(searchText);
+        product.name?.toLowerCase().includes(searchText) ||
+        product.sku?.toLowerCase().includes(searchText);
 
       const matchesCategory =
         !categoryFilter ||
-        String(product.category_id) === String(categoryFilter);
+        String(product.category_id) ===
+          String(categoryFilter);
 
       const matchesStatus =
         !statusFilter ||
@@ -204,14 +208,20 @@ const [editingProduct, setEditingProduct] = useState(null);
         matchesStatus
       );
     });
-  }, [products, search, categoryFilter, statusFilter]);
+  }, [
+    products,
+    search,
+    categoryFilter,
+    statusFilter,
+  ]);
 
   const totalProducts = products.length;
 
   const lowStock = products.filter(
     (p) =>
       Number(p.current_stock) > 0 &&
-      Number(p.current_stock) <= Number(p.minimum_stock)
+      Number(p.current_stock) <=
+        Number(p.minimum_stock)
   ).length;
 
   const outOfStock = products.filter(
@@ -227,164 +237,288 @@ const [editingProduct, setEditingProduct] = useState(null);
   );
 
   function openAddProduct() {
-  setEditingProduct(null);
+    setEditingProduct(null);
 
-  setProductForm({
-    sku: "",
-    name: "",
-    category_id: "",
-    unit: "pcs",
-    cost_price: "",
-    current_stock: "0",
-    minimum_stock: "0",
-    description: "",
-  });
+    setProductForm({
+      sku: "",
+      name: "",
+      category_id: "",
+      unit: "pcs",
+      cost_price: "",
+      current_stock: "0",
+      minimum_stock: "0",
+      description: "",
+    });
 
-  setShowProductForm(true);
-  setMessage("");
-  setError("");
-}
-
-function openEditProduct(product) {
-  if (!isAdmin) {
-    setError("Only administrators can edit products.");
-    return;
+    setShowProductForm(true);
+    setMessage("");
+    setError("");
   }
 
-  setEditingProduct(product);
-
-  setProductForm({
-    sku: product.sku || "",
-    name: product.name || "",
-    category_id: product.category_id
-      ? String(product.category_id)
-      : "",
-    unit: product.unit || "pcs",
-    cost_price:
-      product.cost_price !== null &&
-      product.cost_price !== undefined
-        ? String(product.cost_price)
-        : "",
-    current_stock:
-      product.current_stock !== null &&
-      product.current_stock !== undefined
-        ? String(product.current_stock)
-        : "0",
-    minimum_stock:
-      product.minimum_stock !== null &&
-      product.minimum_stock !== undefined
-        ? String(product.minimum_stock)
-        : "0",
-    description: product.description || "",
-  });
-
-  setShowProductForm(true);
-  setMessage("");
-  setError("");
-}
-
- async function saveProduct(event) {
-  event.preventDefault();
-
-  if (loggedInUser?.role !== "admin") {
-    setError("Only administrators can manage products.");
-    return;
-  }
-
-  if (!productForm.sku.trim()) {
-    setError("SKU is required.");
-    return;
-  }
-
-  if (!productForm.name.trim()) {
-    setError("Product name is required.");
-    return;
-  }
-
-  if (Number(productForm.minimum_stock) < 0) {
-    setError("Minimum stock cannot be negative.");
-    return;
-  }
-
-  if (!loggedInUser?.shop_id) {
-    setError("Your account is not connected to a shop.");
-    return;
-  }
-
-  setSaving(true);
-  setError("");
-  setMessage("");
-
-  let error;
-
-  if (editingProduct) {
-    // EDIT EXISTING PRODUCT
-    // IMPORTANT: current_stock is intentionally NOT updated.
-    const result = await supabase
-      .from("inventory_products")
-      .update({
-        sku: productForm.sku.trim(),
-        name: productForm.name.trim(),
-        category_id: productForm.category_id || null,
-        unit: productForm.unit || "pcs",
-        cost_price: Number(productForm.cost_price) || 0,
-        minimum_stock:
-          Number(productForm.minimum_stock) || 0,
-        description:
-          productForm.description.trim() || null,
-      })
-      .eq("id", editingProduct.id)
-      .eq("shop_id", loggedInUser.shop_id);
-
-    error = result.error;
-  } else {
-    // ADD NEW PRODUCT
-    if (Number(productForm.current_stock) < 0) {
-      setError("Stock cannot be negative.");
-      setSaving(false);
+  function openEditProduct(product) {
+    if (!isAdmin) {
+      setError("Only administrators can edit products.");
       return;
     }
 
-    const result = await supabase
-      .from("inventory_products")
+    setEditingProduct(product);
+
+    setProductForm({
+      sku: product.sku || "",
+      name: product.name || "",
+      category_id: product.category_id
+        ? String(product.category_id)
+        : "",
+      unit: product.unit || "pcs",
+      cost_price:
+        product.cost_price !== null &&
+        product.cost_price !== undefined
+          ? String(product.cost_price)
+          : "",
+      current_stock:
+        product.current_stock !== null &&
+        product.current_stock !== undefined
+          ? String(product.current_stock)
+          : "0",
+      minimum_stock:
+        product.minimum_stock !== null &&
+        product.minimum_stock !== undefined
+          ? String(product.minimum_stock)
+          : "0",
+      description: product.description || "",
+    });
+
+    setShowProductForm(true);
+    setMessage("");
+    setError("");
+  }
+
+  async function saveProduct(event) {
+    event.preventDefault();
+
+    if (!isAdmin) {
+      setError("Only administrators can add or edit products.");
+      return;
+    }
+
+    if (!productForm.sku.trim()) {
+      setError("SKU is required.");
+      return;
+    }
+
+    if (!productForm.name.trim()) {
+      setError("Product name is required.");
+      return;
+    }
+
+    if (Number(productForm.current_stock) < 0) {
+      setError("Stock cannot be negative.");
+      return;
+    }
+
+    if (Number(productForm.minimum_stock) < 0) {
+      setError("Minimum stock cannot be negative.");
+      return;
+    }
+
+    if (!loggedInUser?.shop_id) {
+      setError("Your account is not connected to a shop.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    const productData = {
+      sku: productForm.sku.trim(),
+      name: productForm.name.trim(),
+      category_id:
+        productForm.category_id || null,
+      unit: productForm.unit || "pcs",
+      cost_price:
+        Number(productForm.cost_price) || 0,
+      minimum_stock:
+        Number(productForm.minimum_stock) || 0,
+      description:
+        productForm.description.trim() || null,
+    };
+
+    let result;
+
+    if (editingProduct) {
+      /*
+       * IMPORTANT:
+       * We update the product itself only.
+       * We do NOT touch inventory_stock_movements.
+       *
+       * Stock is intentionally not updated here.
+       * Use + Stock / - Stock to preserve stock history.
+       */
+      result = await supabase
+        .from("inventory_products")
+        .update(productData)
+        .eq("id", editingProduct.id)
+        .eq("shop_id", loggedInUser.shop_id);
+    } else {
+      /*
+       * Opening stock is only used when creating
+       * a completely new product.
+       */
+      result = await supabase
+        .from("inventory_products")
+        .insert({
+          ...productData,
+          current_stock:
+            Number(productForm.current_stock) || 0,
+          shop_id: loggedInUser.shop_id,
+        });
+    }
+
+    setSaving(false);
+
+    if (result.error) {
+      console.error(result.error);
+      setError(result.error.message);
+      return;
+    }
+
+    setShowProductForm(false);
+    setEditingProduct(null);
+
+    setMessage(
+      editingProduct
+        ? "Product updated successfully."
+        : "Product added successfully."
+    );
+
+    await loadProducts();
+  }
+
+  async function addCategory(event) {
+    event.preventDefault();
+
+    if (!isAdmin) {
+      setError("Only administrators can add categories.");
+      return;
+    }
+
+    const name = categoryName.trim();
+
+    if (!name) {
+      setError("Category name is required.");
+      return;
+    }
+
+    if (!loggedInUser?.shop_id) {
+      setError("Your account is not connected to a shop.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("inventory_categories")
       .insert({
-        sku: productForm.sku.trim(),
-        name: productForm.name.trim(),
-        category_id: productForm.category_id || null,
-        unit: productForm.unit || "pcs",
-        cost_price: Number(productForm.cost_price) || 0,
-        current_stock:
-          Number(productForm.current_stock) || 0,
-        minimum_stock:
-          Number(productForm.minimum_stock) || 0,
-        description:
-          productForm.description.trim() || null,
+        name,
         shop_id: loggedInUser.shop_id,
-      });
+        active: true,
+      })
+      .select("id, name, active")
+      .single();
 
-    error = result.error;
+    setSaving(false);
+
+    if (error) {
+      console.error(error);
+      setError(error.message);
+      return;
+    }
+
+    setCategoryName("");
+    setShowCategoryForm(false);
+
+    await loadCategories();
+
+    if (data?.id) {
+      setProductForm((prev) => ({
+        ...prev,
+        category_id: String(data.id),
+      }));
+    }
+
+    setMessage(
+      `Category "${name}" added successfully.`
+    );
   }
 
-  setSaving(false);
+  async function ensureWindowTintingCategory() {
+    if (!isAdmin) {
+      setError("Only administrators can add categories.");
+      return;
+    }
 
-  if (error) {
-    console.error(error);
-    setError(error.message);
-    return;
+    if (!loggedInUser?.shop_id) {
+      setError("Your account is not connected to a shop.");
+      return;
+    }
+
+    const existing = categories.find(
+      (category) =>
+        category.name.trim().toLowerCase() ===
+        "window tinting materials"
+    );
+
+    if (existing) {
+      setProductForm((prev) => ({
+        ...prev,
+        category_id: String(existing.id),
+      }));
+
+      setMessage(
+        "Window Tinting Materials category already exists."
+      );
+
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("inventory_categories")
+      .insert({
+        name: "Window Tinting Materials",
+        shop_id: loggedInUser.shop_id,
+        active: true,
+      })
+      .select("id, name, active")
+      .single();
+
+    setSaving(false);
+
+    if (error) {
+      console.error(error);
+      setError(error.message);
+      return;
+    }
+
+    await loadCategories();
+
+    if (data?.id) {
+      setProductForm((prev) => ({
+        ...prev,
+        category_id: String(data.id),
+      }));
+    }
+
+    setMessage(
+      "Window Tinting Materials category added."
+    );
   }
-
-  setShowProductForm(false);
-
-  setMessage(
-    editingProduct
-      ? "Product updated successfully."
-      : "Product added successfully."
-  );
-
-  setEditingProduct(null);
-
-  await loadProducts();
-}
 
   function openMovement(product, type) {
     setSelectedProduct(product);
@@ -419,7 +553,8 @@ function openEditProduct(product) {
 
     if (
       movementType === "OUT" &&
-      quantity > Number(selectedProduct.current_stock)
+      quantity >
+        Number(selectedProduct.current_stock)
     ) {
       setError(
         `Only ${selectedProduct.current_stock} ${selectedProduct.unit} available.`
@@ -460,6 +595,7 @@ function openEditProduct(product) {
     }
 
     setShowMovementForm(false);
+
     setMessage(
       movementType === "IN"
         ? "Stock added successfully."
@@ -483,7 +619,6 @@ function openEditProduct(product) {
 
   return (
     <div style={styles.page}>
-      {/* HEADER */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Inventory</h1>
@@ -492,17 +627,30 @@ function openEditProduct(product) {
           </p>
         </div>
 
-     {isAdmin && (
-  <button
-    style={styles.primaryButton}
-    onClick={openAddProduct}
-  >
-    + Add Product
-  </button>
-)}
+        {isAdmin && (
+          <div style={styles.headerButtons}>
+            <button
+              style={styles.secondaryButton}
+              onClick={() => {
+                setCategoryName("");
+                setShowCategoryForm(true);
+                setError("");
+                setMessage("");
+              }}
+            >
+              + Add Category
+            </button>
+
+            <button
+              style={styles.primaryButton}
+              onClick={openAddProduct}
+            >
+              + Add Product
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* MESSAGE */}
       {message && (
         <div style={styles.success}>
           {message}
@@ -515,17 +663,22 @@ function openEditProduct(product) {
         </div>
       )}
 
-      {/* STATS */}
       <div style={styles.stats}>
         <div style={styles.card}>
-          <div style={styles.cardLabel}>Products</div>
+          <div style={styles.cardLabel}>
+            Products
+          </div>
+
           <div style={styles.cardValue}>
             {totalProducts}
           </div>
         </div>
 
         <div style={styles.card}>
-          <div style={styles.cardLabel}>Low Stock</div>
+          <div style={styles.cardLabel}>
+            Low Stock
+          </div>
+
           <div
             style={{
               ...styles.cardValue,
@@ -540,6 +693,7 @@ function openEditProduct(product) {
           <div style={styles.cardLabel}>
             Out of Stock
           </div>
+
           <div
             style={{
               ...styles.cardValue,
@@ -550,23 +704,23 @@ function openEditProduct(product) {
           </div>
         </div>
 
-    {isAdmin && (
-  <div style={styles.card}>
-    <div style={styles.cardLabel}>
-      Inventory Value
-    </div>
-    <div style={styles.cardValue}>
-      QAR {inventoryValue.toFixed(2)}
-    </div>
-  </div>
-)}
+        {isAdmin && (
+          <div style={styles.card}>
+            <div style={styles.cardLabel}>
+              Inventory Value
+            </div>
+
+            <div style={styles.cardValue}>
+              QAR {inventoryValue.toFixed(2)}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* FILTERS */}
       <div style={styles.filters}>
         <input
           style={styles.search}
-          placeholder="🔍 Search by product or SKU..."
+          placeholder="Search by product or SKU..."
           value={search}
           onChange={(e) =>
             setSearch(e.target.value)
@@ -580,7 +734,9 @@ function openEditProduct(product) {
             setCategoryFilter(e.target.value)
           }
         >
-          <option value="">All Categories</option>
+          <option value="">
+            All Categories
+          </option>
 
           {categories.map((category) => (
             <option
@@ -615,7 +771,6 @@ function openEditProduct(product) {
         </button>
       </div>
 
-      {/* TABLE */}
       <div style={styles.tableContainer}>
         {loading ? (
           <div style={styles.empty}>
@@ -630,9 +785,13 @@ function openEditProduct(product) {
                 <th style={styles.th}>Category</th>
                 <th style={styles.th}>Stock</th>
                 <th style={styles.th}>Min.</th>
-               {isAdmin && (
-  <th style={styles.th}>Cost</th>
-)}
+
+                {isAdmin && (
+                  <th style={styles.th}>
+                    Cost
+                  </th>
+                )}
+
                 <th style={styles.th}>Status</th>
                 <th style={styles.th}>Actions</th>
               </tr>
@@ -645,7 +804,9 @@ function openEditProduct(product) {
                 return (
                   <tr key={product.id}>
                     <td style={styles.td}>
-                      <strong>{product.sku}</strong>
+                      <strong>
+                        {product.sku}
+                      </strong>
                     </td>
 
                     <td style={styles.td}>
@@ -654,7 +815,7 @@ function openEditProduct(product) {
 
                     <td style={styles.td}>
                       {product.inventory_categories?.name ||
-                        "-"}
+                        "No Category"}
                     </td>
 
                     <td style={styles.td}>
@@ -668,22 +829,25 @@ function openEditProduct(product) {
                       {product.minimum_stock}
                     </td>
 
-                  {isAdmin && (
-  <td style={styles.td}>
-    QAR{" "}
-    {Number(
-      product.cost_price || 0
-    ).toFixed(2)}
-  </td>
-)}
+                    {isAdmin && (
+                      <td style={styles.td}>
+                        QAR{" "}
+                        {Number(
+                          product.cost_price || 0
+                        ).toFixed(2)}
+                      </td>
+                    )}
 
                     <td style={styles.td}>
                       <span
                         style={{
                           ...styles.status,
-                          color: statusColor(status),
+                          color:
+                            statusColor(status),
                           backgroundColor:
-                            `${statusColor(status)}15`,
+                            `${statusColor(
+                              status
+                            )}15`,
                         }}
                       >
                         {statusLabel(status)}
@@ -693,15 +857,24 @@ function openEditProduct(product) {
                     <td style={styles.td}>
                       <div style={styles.actions}>
                         {isAdmin && (
-  <button
-    style={styles.editButton}
-    onClick={() => openEditProduct(product)}
-  >
-    Edit
-  </button>
-)}
+                          <button
+                            style={
+                              styles.editButton
+                            }
+                            onClick={() =>
+                              openEditProduct(
+                                product
+                              )
+                            }
+                          >
+                            Edit
+                          </button>
+                        )}
+
                         <button
-                          style={styles.inButton}
+                          style={
+                            styles.inButton
+                          }
                           onClick={() =>
                             openMovement(
                               product,
@@ -713,7 +886,9 @@ function openEditProduct(product) {
                         </button>
 
                         <button
-                          style={styles.outButton}
+                          style={
+                            styles.outButton
+                          }
                           onClick={() =>
                             openMovement(
                               product,
@@ -725,7 +900,9 @@ function openEditProduct(product) {
                         </button>
 
                         <button
-                          style={styles.historyButton}
+                          style={
+                            styles.historyButton
+                          }
                           onClick={() => {
                             setSelectedProduct(
                               product
@@ -755,28 +932,30 @@ function openEditProduct(product) {
           )}
       </div>
 
-      {/* ADD PRODUCT MODAL */}
       {showProductForm && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
             <div style={styles.modalHeader}>
               <div>
                 <h2 style={styles.modalTitle}>
-  {editingProduct ? "Edit Product" : "Add Product"}
-</h2>
+                  {editingProduct
+                    ? "Edit Product"
+                    : "Add Product"}
+                </h2>
 
-<p style={styles.modalSubtitle}>
-  {editingProduct
-    ? "Update product information."
-    : "Add a new inventory item."}
-</p>
+                <p style={styles.modalSubtitle}>
+                  {editingProduct
+                    ? "Update product information and category."
+                    : "Add a new inventory item."}
+                </p>
               </div>
 
               <button
                 style={styles.closeButton}
-                onClick={() =>
-                  setShowProductForm(false)
-                }
+                onClick={() => {
+                  setShowProductForm(false);
+                  setEditingProduct(null);
+                }}
               >
                 ×
               </button>
@@ -786,6 +965,7 @@ function openEditProduct(product) {
               <div style={styles.formGrid}>
                 <label style={styles.label}>
                   SKU *
+
                   <input
                     style={styles.input}
                     value={productForm.sku}
@@ -801,6 +981,7 @@ function openEditProduct(product) {
 
                 <label style={styles.label}>
                   Product Name *
+
                   <input
                     style={styles.input}
                     value={productForm.name}
@@ -816,6 +997,7 @@ function openEditProduct(product) {
 
                 <label style={styles.label}>
                   Category
+
                   <select
                     style={styles.input}
                     value={productForm.category_id}
@@ -828,7 +1010,7 @@ function openEditProduct(product) {
                     }
                   >
                     <option value="">
-                      Select category
+                      No Category
                     </option>
 
                     {categories.map(
@@ -842,10 +1024,26 @@ function openEditProduct(product) {
                       )
                     )}
                   </select>
+
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      style={styles.categoryQuickButton}
+                      onClick={() => {
+                        setCategoryName("");
+                        setShowCategoryForm(true);
+                        setError("");
+                        setMessage("");
+                      }}
+                    >
+                      + Create New Category
+                    </button>
+                  )}
                 </label>
 
                 <label style={styles.label}>
                   Unit
+
                   <select
                     style={styles.input}
                     value={productForm.unit}
@@ -859,67 +1057,86 @@ function openEditProduct(product) {
                     <option value="pcs">
                       Pieces
                     </option>
+
                     <option value="box">
                       Box
                     </option>
+
                     <option value="bottle">
                       Bottle
                     </option>
+
                     <option value="liter">
                       Liter
                     </option>
+
                     <option value="kg">
                       Kilogram
                     </option>
+
                     <option value="roll">
                       Roll
                     </option>
+
                     <option value="sack">
                       Sack
+                    </option>
+
+                    <option value="piece">
+                      Piece
                     </option>
                   </select>
                 </label>
 
-                <label style={styles.label}>
-                  Cost Price (QAR)
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    style={styles.input}
-                    value={productForm.cost_price}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        cost_price:
-                          e.target.value,
-                      })
-                    }
-                  />
-                </label>
+                {showCost && (
+                  <label style={styles.label}>
+                    Cost Price (QAR)
 
-               {!editingProduct && (
-  <label style={styles.label}>
-    Opening Stock
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      style={styles.input}
+                      value={
+                        productForm.cost_price
+                      }
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          cost_price:
+                            e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                )}
 
-    <input
-      type="number"
-      min="0"
-      step="0.001"
-      style={styles.input}
-      value={productForm.current_stock}
-      onChange={(e) =>
-        setProductForm({
-          ...productForm,
-          current_stock: e.target.value,
-        })
-      }
-    />
-  </label>
-)}
+                {!editingProduct && (
+                  <label style={styles.label}>
+                    Opening Stock
+
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      style={styles.input}
+                      value={
+                        productForm.current_stock
+                      }
+                      onChange={(e) =>
+                        setProductForm({
+                          ...productForm,
+                          current_stock:
+                            e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                )}
 
                 <label style={styles.label}>
                   Minimum Stock
+
                   <input
                     type="number"
                     min="0"
@@ -939,15 +1156,31 @@ function openEditProduct(product) {
                 </label>
               </div>
 
+              {editingProduct && (
+                <div style={styles.editStockNotice}>
+                  Current stock is{" "}
+                  <strong>
+                    {editingProduct.current_stock}{" "}
+                    {editingProduct.unit}
+                  </strong>
+                  . Use + Stock or - Stock to change
+                  inventory so the stock movement history
+                  remains intact.
+                </div>
+              )}
+
               <label style={styles.label}>
                 Description
+
                 <textarea
                   style={{
                     ...styles.input,
                     minHeight: "80px",
                     resize: "vertical",
                   }}
-                  value={productForm.description}
+                  value={
+                    productForm.description
+                  }
                   onChange={(e) =>
                     setProductForm({
                       ...productForm,
@@ -962,8 +1195,93 @@ function openEditProduct(product) {
                 <button
                   type="button"
                   style={styles.cancelButton}
+                  onClick={() => {
+                    setShowProductForm(false);
+                    setEditingProduct(null);
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  style={styles.primaryButton}
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : editingProduct
+                    ? "Save Changes"
+                    : "Save Product"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCategoryForm && (
+        <div style={styles.overlay}>
+          <div
+            style={{
+              ...styles.modal,
+              maxWidth: "500px",
+            }}
+          >
+            <div style={styles.modalHeader}>
+              <div>
+                <h2 style={styles.modalTitle}>
+                  Add Category
+                </h2>
+
+                <p style={styles.modalSubtitle}>
+                  Create a category for your inventory
+                  products.
+                </p>
+              </div>
+
+              <button
+                style={styles.closeButton}
+                onClick={() =>
+                  setShowCategoryForm(false)
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={addCategory}>
+              <label style={styles.label}>
+                Category Name *
+
+                <input
+                  autoFocus
+                  style={styles.input}
+                  value={categoryName}
+                  onChange={(e) =>
+                    setCategoryName(
+                      e.target.value
+                    )
+                  }
+                  placeholder="e.g. Window Tinting Materials"
+                />
+              </label>
+
+              <button
+                type="button"
+                style={styles.windowTintButton}
+                onClick={ensureWindowTintingCategory}
+                disabled={saving}
+              >
+                Add "Window Tinting Materials"
+              </button>
+
+              <div style={styles.modalActions}>
+                <button
+                  type="button"
+                  style={styles.cancelButton}
                   onClick={() =>
-                    setShowProductForm(false)
+                    setShowCategoryForm(false)
                   }
                 >
                   Cancel
@@ -976,7 +1294,7 @@ function openEditProduct(product) {
                 >
                   {saving
                     ? "Saving..."
-                    : "Save Product"}
+                    : "Save Category"}
                 </button>
               </div>
             </form>
@@ -984,7 +1302,6 @@ function openEditProduct(product) {
         </div>
       )}
 
-      {/* STOCK MOVEMENT MODAL */}
       {showMovementForm && selectedProduct && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
@@ -1022,6 +1339,7 @@ function openEditProduct(product) {
             <form onSubmit={saveMovement}>
               <label style={styles.label}>
                 Quantity *
+
                 <input
                   autoFocus
                   type="number"
@@ -1041,27 +1359,31 @@ function openEditProduct(product) {
               </label>
 
               {showCost && (
-  <label style={styles.label}>
-    Unit Cost (QAR)
+                <label style={styles.label}>
+                  Unit Cost (QAR)
 
-    <input
-      type="number"
-      min="0"
-      step="0.01"
-      style={styles.input}
-      value={movementForm.unit_cost}
-      onChange={(e) =>
-        setMovementForm({
-          ...movementForm,
-          unit_cost: e.target.value,
-        })
-      }
-    />
-  </label>
-)}
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    style={styles.input}
+                    value={
+                      movementForm.unit_cost
+                    }
+                    onChange={(e) =>
+                      setMovementForm({
+                        ...movementForm,
+                        unit_cost:
+                          e.target.value,
+                      })
+                    }
+                  />
+                </label>
+              )}
 
               <label style={styles.label}>
                 Reference
+
                 <input
                   style={styles.input}
                   value={movementForm.reference}
@@ -1078,6 +1400,7 @@ function openEditProduct(product) {
 
               <label style={styles.label}>
                 Notes
+
                 <textarea
                   style={{
                     ...styles.input,
@@ -1126,17 +1449,17 @@ function openEditProduct(product) {
         </div>
       )}
 
-      {/* HISTORY PANEL */}
       {selectedProduct &&
         !showMovementForm &&
         !showProductForm &&
-        history.length >= 0 && (
+        !showCategoryForm && (
           <div style={styles.historyPanel}>
             <div style={styles.historyHeader}>
               <div>
                 <h2 style={styles.historyTitle}>
                   {selectedProduct.name}
                 </h2>
+
                 <p style={styles.modalSubtitle}>
                   Stock movement history
                 </p>
@@ -1169,67 +1492,81 @@ function openEditProduct(product) {
                 No stock movements recorded yet.
               </div>
             ) : (
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>
-                      Date
-                    </th>
-                    <th style={styles.th}>
-                      Type
-                    </th>
-                    <th style={styles.th}>
-                      Quantity
-                    </th>
-                    <th style={styles.th}>
-                      Reference
-                    </th>
-                    <th style={styles.th}>
-                      Notes
-                    </th>
-                  </tr>
-                </thead>
+              <div style={styles.tableContainer}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>
+                        Date
+                      </th>
 
-                <tbody>
-                  {history.map((movement) => (
-                    <tr key={movement.id}>
-                      <td style={styles.td}>
-                        {new Date(
-                          movement.created_at
-                        ).toLocaleString()}
-                      </td>
+                      <th style={styles.th}>
+                        Type
+                      </th>
 
-                      <td style={styles.td}>
-                        <strong>
-                          {movement.movement_type}
-                        </strong>
-                      </td>
+                      <th style={styles.th}>
+                        Quantity
+                      </th>
 
-                     <td
-  style={{
-    ...styles.td,
-    color:
-      movement.movement_type === "IN"
-        ? "#16a34a"
-        : "#dc2626",
-    fontWeight: "700",
-  }}
->
-  {movement.movement_type === "IN" ? "+" : "-"}
-  {Number(movement.quantity).toLocaleString()}
-</td>
-                      <td style={styles.td}>
-                        {movement.reference ||
-                          "-"}
-                      </td>
+                      <th style={styles.th}>
+                        Reference
+                      </th>
 
-                      <td style={styles.td}>
-                        {movement.notes || "-"}
-                      </td>
+                      <th style={styles.th}>
+                        Notes
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody>
+                    {history.map((movement) => (
+                      <tr key={movement.id}>
+                        <td style={styles.td}>
+                          {new Date(
+                            movement.created_at
+                          ).toLocaleString()}
+                        </td>
+
+                        <td style={styles.td}>
+                          <strong>
+                            {movement.movement_type}
+                          </strong>
+                        </td>
+
+                        <td
+                          style={{
+                            ...styles.td,
+                            color:
+                              movement.movement_type ===
+                              "IN"
+                                ? "#16a34a"
+                                : "#dc2626",
+                            fontWeight: "700",
+                          }}
+                        >
+                          {movement.movement_type ===
+                          "IN"
+                            ? "+"
+                            : "-"}
+                          {Number(
+                            movement.quantity
+                          ).toLocaleString()}
+                        </td>
+
+                        <td style={styles.td}>
+                          {movement.reference ||
+                            "-"}
+                        </td>
+
+                        <td style={styles.td}>
+                          {movement.notes ||
+                            "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -1250,6 +1587,13 @@ const styles = {
     alignItems: "center",
     marginBottom: "25px",
     gap: "20px",
+    flexWrap: "wrap",
+  },
+
+  headerButtons: {
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
   },
 
   title: {
@@ -1267,6 +1611,16 @@ const styles = {
     border: "none",
     background: "#111827",
     color: "white",
+    padding: "11px 18px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  secondaryButton: {
+    border: "1px solid #d1d5db",
+    background: "white",
+    color: "#111827",
     padding: "11px 18px",
     borderRadius: "8px",
     cursor: "pointer",
@@ -1311,15 +1665,6 @@ const styles = {
     borderRadius: "8px",
     marginBottom: "18px",
   },
-  editButton: {
-  border: "none",
-  background: "#dbeafe",
-  color: "#1d4ed8",
-  padding: "6px 9px",
-  borderRadius: "6px",
-  cursor: "pointer",
-  fontWeight: "600",
-},
 
   error: {
     background: "#fef2f2",
@@ -1418,6 +1763,17 @@ const styles = {
   actions: {
     display: "flex",
     gap: "6px",
+    flexWrap: "wrap",
+  },
+
+  editButton: {
+    border: "none",
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    padding: "6px 9px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontWeight: "600",
   },
 
   inButton: {
@@ -1530,6 +1886,40 @@ const styles = {
     borderRadius: "8px",
     fontSize: "14px",
     fontWeight: "400",
+  },
+
+  categoryQuickButton: {
+    border: "none",
+    background: "transparent",
+    color: "#2563eb",
+    textAlign: "left",
+    padding: "0",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "600",
+  },
+
+  windowTintButton: {
+    width: "100%",
+    border: "1px solid #bfdbfe",
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    padding: "10px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+    marginBottom: "10px",
+  },
+
+  editStockNotice: {
+    background: "#eff6ff",
+    color: "#1e40af",
+    border: "1px solid #bfdbfe",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    marginBottom: "18px",
+    fontSize: "13px",
+    lineHeight: "1.5",
   },
 
   modalActions: {
