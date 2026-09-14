@@ -8,9 +8,7 @@ function Inventory() {
   );
 
   const showCost = canSeeInventoryCost(loggedInUser);
-
   const isAdmin = loggedInUser?.role === "admin";
-  const isStaff = loggedInUser?.role === "staff";
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -30,8 +28,8 @@ function Inventory() {
   const [showCategoryForm, setShowCategoryForm] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState(null);
-
   const [selectedProduct, setSelectedProduct] = useState(null);
+
   const [movementType, setMovementType] = useState("IN");
 
   const [history, setHistory] = useState([]);
@@ -58,81 +56,63 @@ function Inventory() {
   });
 
   useEffect(() => {
-    loadProducts();
-    loadCategories();
+    loadData();
   }, []);
 
-  async function loadProducts() {
+  async function loadData() {
     setLoading(true);
     setError("");
 
+    await Promise.all([
+      loadCategories(),
+      loadProducts(),
+    ]);
+
+    setLoading(false);
+  }
+
+  async function loadProducts() {
     const user = JSON.parse(
       localStorage.getItem("user") || "null"
     );
 
     if (!user?.shop_id) {
-      setError("Your account is not connected to a shop.");
       setProducts([]);
-      setLoading(false);
+      setError("Your account is not connected to a shop.");
       return;
     }
 
-    let query;
-
-    if (user.role === "staff") {
-      query = supabase
-        .from("inventory_products_staff")
-        .select(`
-          id,
-          sku,
-          name,
-          unit,
-          current_stock,
-          minimum_stock,
-          active,
-          description,
-          category_id,
-          shop_id,
-          inventory_categories (
-            id,
-            name
-          )
-        `);
-    } else {
-      query = supabase
-        .from("inventory_products")
-        .select(`
-          id,
-          sku,
-          name,
-          unit,
-          cost_price,
-          current_stock,
-          minimum_stock,
-          active,
-          description,
-          category_id,
-          shop_id,
-          inventory_categories (
-            id,
-            name
-          )
-        `);
-    }
-
-    const { data, error } = await query
+    const { data, error } = await supabase
+      .from("inventory_products")
+      .select(`
+        id,
+        sku,
+        name,
+        category_id,
+        supplier_id,
+        description,
+        unit,
+        cost_price,
+        selling_price,
+        current_stock,
+        minimum_stock,
+        active,
+        created_at,
+        updated_at,
+        shop_id
+      `)
       .eq("shop_id", user.shop_id)
+      .eq("active", true)
       .order("name");
 
     if (error) {
-      console.error("LOAD INVENTORY ERROR:", error);
-      setError(error.message);
+      console.error("LOAD PRODUCTS ERROR:", error);
       setProducts([]);
-    } else {
-      setProducts(data || []);
+      setError(error.message);
+      return;
     }
 
-    setLoading(false);
+    setProducts(data || []);
   }
 
   async function loadCategories() {
@@ -147,59 +127,53 @@ function Inventory() {
 
     const { data, error } = await supabase
       .from("inventory_categories")
-      .select("id, name, shop_id")
+      .select(`
+        id,
+        name,
+        description,
+        active,
+        shop_id
+      `)
       .eq("shop_id", user.shop_id)
       .eq("active", true)
       .order("name");
 
     if (error) {
       console.error("LOAD CATEGORIES ERROR:", error);
-      setError(error.message);
       setCategories([]);
+      setError(error.message);
       return;
     }
 
     setCategories(data || []);
   }
 
-  async function loadHistory(productId) {
-    setHistoryLoading(true);
-
-    const { data, error } = await supabase
-      .from("inventory_stock_movements")
-      .select(`
-        id,
-        movement_type,
-        quantity,
-        unit_cost,
-        reference,
-        notes,
-        created_at
-      `)
-      .eq("product_id", productId)
-      .order("created_at", {
-        ascending: false,
-      });
-
-    if (error) {
-      console.error("LOAD HISTORY ERROR:", error);
-      setHistory([]);
-    } else {
-      setHistory(data || []);
+  function getCategoryName(categoryId) {
+    if (
+      categoryId === null ||
+      categoryId === undefined ||
+      categoryId === ""
+    ) {
+      return "No Category";
     }
 
-    setHistoryLoading(false);
+    const category = categories.find(
+      (item) =>
+        String(item.id) === String(categoryId)
+    );
+
+    return category?.name || "No Category";
   }
 
   function getStatus(product) {
-    if (Number(product.current_stock) <= 0) {
+    const stock = Number(product.current_stock || 0);
+    const minimum = Number(product.minimum_stock || 0);
+
+    if (stock <= 0) {
       return "OUT";
     }
 
-    if (
-      Number(product.current_stock) <=
-      Number(product.minimum_stock)
-    ) {
+    if (stock <= minimum) {
       return "LOW";
     }
 
@@ -208,12 +182,18 @@ function Inventory() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const searchText = search.toLowerCase();
+      const searchText = search
+        .trim()
+        .toLowerCase();
 
       const matchesSearch =
-        !search ||
-        product.name?.toLowerCase().includes(searchText) ||
-        product.sku?.toLowerCase().includes(searchText);
+        !searchText ||
+        String(product.name || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        String(product.sku || "")
+          .toLowerCase()
+          .includes(searchText);
 
       const matchesCategory =
         !categoryFilter ||
@@ -232,6 +212,7 @@ function Inventory() {
     });
   }, [
     products,
+    categories,
     search,
     categoryFilter,
     statusFilter,
@@ -241,25 +222,30 @@ function Inventory() {
 
   const lowStock = products.filter(
     (product) =>
-      Number(product.current_stock) > 0 &&
-      Number(product.current_stock) <=
-        Number(product.minimum_stock)
+      Number(product.current_stock || 0) > 0 &&
+      Number(product.current_stock || 0) <=
+        Number(product.minimum_stock || 0)
   ).length;
 
   const outOfStock = products.filter(
     (product) =>
-      Number(product.current_stock) <= 0
+      Number(product.current_stock || 0) <= 0
   ).length;
 
   const inventoryValue = products.reduce(
     (total, product) =>
       total +
-      Number(product.current_stock) *
+      Number(product.current_stock || 0) *
         Number(product.cost_price || 0),
     0
   );
 
   function openAddProduct() {
+    if (!isAdmin) {
+      setError("Only administrators can add products.");
+      return;
+    }
+
     setEditingProduct(null);
 
     setProductForm({
@@ -273,9 +259,9 @@ function Inventory() {
       description: "",
     });
 
-    setShowProductForm(true);
-    setMessage("");
     setError("");
+    setMessage("");
+    setShowProductForm(true);
   }
 
   function openEditProduct(product) {
@@ -289,9 +275,11 @@ function Inventory() {
     setProductForm({
       sku: product.sku || "",
       name: product.name || "",
-      category_id: product.category_id
-        ? String(product.category_id)
-        : "",
+      category_id:
+        product.category_id !== null &&
+        product.category_id !== undefined
+          ? String(product.category_id)
+          : "",
       unit: product.unit || "pcs",
       cost_price:
         product.cost_price !== null &&
@@ -311,9 +299,9 @@ function Inventory() {
       description: product.description || "",
     });
 
-    setShowProductForm(true);
-    setMessage("");
     setError("");
+    setMessage("");
+    setShowProductForm(true);
   }
 
   async function saveProduct(event) {
@@ -322,6 +310,17 @@ function Inventory() {
     if (!isAdmin) {
       setError(
         "Only administrators can add or edit products."
+      );
+      return;
+    }
+
+    const user = JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
+
+    if (!user?.shop_id) {
+      setError(
+        "Your account is not connected to a shop."
       );
       return;
     }
@@ -336,98 +335,140 @@ function Inventory() {
       return;
     }
 
-    if (Number(productForm.current_stock) < 0) {
+    const currentStock = Number(
+      productForm.current_stock || 0
+    );
+
+    const minimumStock = Number(
+      productForm.minimum_stock || 0
+    );
+
+    const costPrice = Number(
+      productForm.cost_price || 0
+    );
+
+    if (currentStock < 0) {
       setError("Stock cannot be negative.");
       return;
     }
 
-    if (Number(productForm.minimum_stock) < 0) {
-      setError(
-        "Minimum stock cannot be negative."
-      );
+    if (minimumStock < 0) {
+      setError("Minimum stock cannot be negative.");
       return;
     }
 
-    if (!loggedInUser?.shop_id) {
-      setError(
-        "Your account is not connected to a shop."
-      );
+    if (costPrice < 0) {
+      setError("Cost price cannot be negative.");
       return;
     }
+
+    let categoryId = null;
+
+    if (productForm.category_id !== "") {
+      categoryId = Number(productForm.category_id);
+
+      if (!Number.isInteger(categoryId)) {
+        setError("Invalid category selected.");
+        return;
+      }
+
+      const selectedCategory = categories.find(
+        (category) =>
+          Number(category.id) === categoryId
+      );
+
+      if (!selectedCategory) {
+        setError(
+          "The selected category could not be found."
+        );
+        return;
+      }
+
+      if (
+        String(selectedCategory.shop_id) !==
+        String(user.shop_id)
+      ) {
+        setError(
+          "The selected category belongs to another shop."
+        );
+        return;
+      }
+    }
+
+    const productData = {
+      sku: productForm.sku.trim(),
+      name: productForm.name.trim(),
+      category_id: categoryId,
+      unit: productForm.unit || "pcs",
+      cost_price: costPrice,
+      current_stock: currentStock,
+      minimum_stock: minimumStock,
+      description:
+        productForm.description.trim() || null,
+      shop_id: user.shop_id,
+      active: true,
+      updated_at: new Date().toISOString(),
+    };
 
     setSaving(true);
     setError("");
     setMessage("");
 
-    const selectedCategoryId =
-      productForm.category_id === ""
-        ? null
-        : Number(productForm.category_id);
+    try {
+      if (editingProduct) {
+        const { error: updateError } = await supabase
+          .from("inventory_products")
+          .update(productData)
+          .eq("id", editingProduct.id)
+          .eq("shop_id", user.shop_id);
 
-    const productData = {
-      sku: productForm.sku.trim(),
-      name: productForm.name.trim(),
+        if (updateError) {
+          console.error(
+            "UPDATE PRODUCT ERROR:",
+            updateError
+          );
 
-      category_id: selectedCategoryId,
+          setError(updateError.message);
+          setSaving(false);
+          return;
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from("inventory_products")
+          .insert(productData);
 
-      unit: productForm.unit || "pcs",
+        if (insertError) {
+          console.error(
+            "INSERT PRODUCT ERROR:",
+            insertError
+          );
 
-      cost_price:
-        Number(productForm.cost_price) || 0,
+          setError(insertError.message);
+          setSaving(false);
+          return;
+        }
+      }
 
-      current_stock:
-        Number(productForm.current_stock) || 0,
+      await loadCategories();
+      await loadProducts();
 
-      minimum_stock:
-        Number(productForm.minimum_stock) || 0,
+      setShowProductForm(false);
+      setEditingProduct(null);
 
-      description:
-        productForm.description.trim() || null,
-
-      shop_id: loggedInUser.shop_id,
-    };
-
-    console.log(
-      "SAVING PRODUCT:",
-      productData
-    );
-
-    let result;
-
-    if (editingProduct) {
-      result = await supabase
-        .from("inventory_products")
-        .update(productData)
-        .eq("id", editingProduct.id)
-        .eq("shop_id", loggedInUser.shop_id);
-    } else {
-      result = await supabase
-        .from("inventory_products")
-        .insert(productData);
+      setMessage(
+        editingProduct
+          ? "Product updated successfully."
+          : "Product added successfully."
+      );
+    } catch (err) {
+      console.error("SAVE PRODUCT EXCEPTION:", err);
+      setError(
+        err?.message ||
+          "An unexpected error occurred while saving the product."
+      );
     }
 
     setSaving(false);
-
-    if (result.error) {
-      console.error(
-        "SAVE PRODUCT ERROR:",
-        result.error
-      );
-
-      setError(result.error.message);
-      return;
-    }
-
-    setShowProductForm(false);
-    setEditingProduct(null);
-
-    setMessage(
-      editingProduct
-        ? "Product updated successfully."
-        : "Product added successfully."
-    );
-
-    await loadProducts();
   }
 
   function openAddCategory() {
@@ -439,9 +480,9 @@ function Inventory() {
     }
 
     setCategoryName("");
-    setShowCategoryForm(true);
-    setMessage("");
     setError("");
+    setMessage("");
+    setShowCategoryForm(true);
   }
 
   async function saveCategory(event) {
@@ -454,7 +495,11 @@ function Inventory() {
       return;
     }
 
-    if (!loggedInUser?.shop_id) {
+    const user = JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
+
+    if (!user?.shop_id) {
       setError(
         "Your account is not connected to a shop."
       );
@@ -470,65 +515,59 @@ function Inventory() {
     setError("");
     setMessage("");
 
-    const categoryData = {
-      name: categoryName.trim(),
-      shop_id: loggedInUser.shop_id,
-      active: true,
-    };
+    const { data: existingCategory, error: findError } =
+      await supabase
+        .from("inventory_categories")
+        .select("id, name, shop_id")
+        .eq("name", categoryName.trim())
+        .eq("shop_id", user.shop_id)
+        .maybeSingle();
 
-    console.log(
-      "SAVING CATEGORY:",
-      categoryData
-    );
-
-    const { data, error } = await supabase
-      .from("inventory_categories")
-      .insert(categoryData)
-      .select("id, name, shop_id, active")
-      .single();
-
-    setSaving(false);
-
-    if (error) {
+    if (findError) {
       console.error(
-        "SAVE CATEGORY ERROR:",
-        error
+        "CHECK CATEGORY ERROR:",
+        findError
       );
 
-      setError(error.message);
+      setError(findError.message);
+      setSaving(false);
       return;
     }
 
-    setShowCategoryForm(false);
-    setCategoryName("");
+    if (existingCategory) {
+      setError(
+        "A category with this name already exists."
+      );
+      setSaving(false);
+      return;
+    }
 
-    setMessage("Category added successfully.");
-
-    if (data) {
-      setCategories((current) => {
-        const exists = current.some(
-          (category) =>
-            String(category.id) ===
-            String(data.id)
-        );
-
-        if (exists) {
-          return current;
-        }
-
-        return [...current, data].sort(
-          (a, b) =>
-            a.name.localeCompare(b.name)
-        );
+    const { error: insertError } = await supabase
+      .from("inventory_categories")
+      .insert({
+        name: categoryName.trim(),
+        shop_id: user.shop_id,
+        active: true,
       });
 
-      setProductForm((current) => ({
-        ...current,
-        category_id: String(data.id),
-      }));
+    if (insertError) {
+      console.error(
+        "SAVE CATEGORY ERROR:",
+        insertError
+      );
+
+      setError(insertError.message);
+      setSaving(false);
+      return;
     }
 
     await loadCategories();
+
+    setCategoryName("");
+    setShowCategoryForm(false);
+    setSaving(false);
+
+    setMessage("Category added successfully.");
   }
 
   function openMovement(product, type) {
@@ -538,16 +577,16 @@ function Inventory() {
     setMovementForm({
       quantity: "",
       unit_cost:
-        Number(product.cost_price) > 0
-          ? product.cost_price
+        Number(product.cost_price || 0) > 0
+          ? String(product.cost_price)
           : "",
       reference: "",
       notes: "",
     });
 
     setShowMovementForm(true);
-    setMessage("");
     setError("");
+    setMessage("");
 
     loadHistory(product.id);
   }
@@ -574,7 +613,7 @@ function Inventory() {
     if (
       movementType === "OUT" &&
       quantity >
-        Number(selectedProduct.current_stock)
+        Number(selectedProduct.current_stock || 0)
     ) {
       setError(
         `Only ${selectedProduct.current_stock} ${selectedProduct.unit} available.`
@@ -606,8 +645,6 @@ function Inventory() {
       }
     );
 
-    setSaving(false);
-
     if (error) {
       console.error(
         "SAVE MOVEMENT ERROR:",
@@ -615,72 +652,63 @@ function Inventory() {
       );
 
       setError(error.message);
+      setSaving(false);
       return;
     }
 
+    await loadProducts();
+
     setShowMovementForm(false);
+    setSaving(false);
 
     setMessage(
       movementType === "IN"
         ? "Stock added successfully."
         : "Stock removed successfully."
     );
+  }
 
-    await loadProducts();
+  async function loadHistory(productId) {
+    setHistoryLoading(true);
 
-    const { data: updatedProduct } =
-      await supabase
-        .from("inventory_products")
-        .select(`
-          id,
-          sku,
-          name,
-          unit,
-          cost_price,
-          current_stock,
-          minimum_stock,
-          active,
-          description,
-          category_id,
-          shop_id,
-          inventory_categories (
-            id,
-            name
-          )
-        `)
-        .eq("id", selectedProduct.id)
-        .eq(
-          "shop_id",
-          loggedInUser.shop_id
-        )
-        .single();
+    const { data, error } = await supabase
+      .from("inventory_stock_movements")
+      .select(`
+        id,
+        movement_type,
+        quantity,
+        unit_cost,
+        reference,
+        notes,
+        created_at
+      `)
+      .eq("product_id", productId)
+      .order("created_at", {
+        ascending: false,
+      });
 
-    if (updatedProduct) {
-      setSelectedProduct(updatedProduct);
+    if (error) {
+      console.error(
+        "LOAD HISTORY ERROR:",
+        error
+      );
+      setHistory([]);
+    } else {
+      setHistory(data || []);
     }
+
+    setHistoryLoading(false);
   }
 
   function statusLabel(status) {
-    if (status === "OUT") {
-      return "OUT OF STOCK";
-    }
-
-    if (status === "LOW") {
-      return "LOW STOCK";
-    }
-
+    if (status === "OUT") return "OUT OF STOCK";
+    if (status === "LOW") return "LOW STOCK";
     return "IN STOCK";
   }
 
   function statusColor(status) {
-    if (status === "OUT") {
-      return "#dc2626";
-    }
-
-    if (status === "LOW") {
-      return "#d97706";
-    }
-
+    if (status === "OUT") return "#dc2626";
+    if (status === "LOW") return "#d97706";
     return "#16a34a";
   }
 
@@ -693,8 +721,8 @@ function Inventory() {
           </h1>
 
           <p style={styles.subtitle}>
-            Manage products, categories, stock and
-            inventory movements.
+            Manage products, categories, stock
+            and inventory movements.
           </p>
         </div>
 
@@ -840,10 +868,7 @@ function Inventory() {
 
         <button
           style={styles.refreshButton}
-          onClick={() => {
-            loadProducts();
-            loadCategories();
-          }}
+          onClick={loadData}
         >
           Refresh
         </button>
@@ -854,29 +879,19 @@ function Inventory() {
           <div style={styles.empty}>
             Loading inventory...
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <div style={styles.empty}>
+            No products match your search.
+          </div>
         ) : (
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>
-                  SKU
-                </th>
-
-                <th style={styles.th}>
-                  Product
-                </th>
-
-                <th style={styles.th}>
-                  Category
-                </th>
-
-                <th style={styles.th}>
-                  Stock
-                </th>
-
-                <th style={styles.th}>
-                  Min.
-                </th>
+                <th style={styles.th}>SKU</th>
+                <th style={styles.th}>Product</th>
+                <th style={styles.th}>Category</th>
+                <th style={styles.th}>Stock</th>
+                <th style={styles.th}>Min.</th>
 
                 {isAdmin && (
                   <th style={styles.th}>
@@ -884,153 +899,134 @@ function Inventory() {
                   </th>
                 )}
 
-                <th style={styles.th}>
-                  Status
-                </th>
-
-                <th style={styles.th}>
-                  Actions
-                </th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Actions</th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredProducts.map(
-                (product) => {
-                  const status =
-                    getStatus(product);
+              {filteredProducts.map((product) => {
+                const status = getStatus(product);
 
-                  return (
-                    <tr key={product.id}>
-                      <td style={styles.td}>
-                        <strong>
-                          {product.sku}
-                        </strong>
-                      </td>
+                return (
+                  <tr key={product.id}>
+                    <td style={styles.td}>
+                      <strong>
+                        {product.sku}
+                      </strong>
+                    </td>
 
-                      <td style={styles.td}>
-                        {product.name}
-                      </td>
+                    <td style={styles.td}>
+                      {product.name}
+                    </td>
 
-                      <td style={styles.td}>
-                        {product
-                          .inventory_categories
-                          ?.name ||
-                          "No Category"}
-                      </td>
-
-                      <td style={styles.td}>
-                        <strong>
-                          {product.current_stock}
-                        </strong>{" "}
-                        {product.unit}
-                      </td>
-
-                      <td style={styles.td}>
-                        {product.minimum_stock}
-                      </td>
-
-                      {isAdmin && (
-                        <td style={styles.td}>
-                          QAR{" "}
-                          {Number(
-                            product.cost_price ||
-                              0
-                          ).toFixed(2)}
-                        </td>
+                    <td style={styles.td}>
+                      {getCategoryName(
+                        product.category_id
                       )}
+                    </td>
 
+                    <td style={styles.td}>
+                      <strong>
+                        {product.current_stock}
+                      </strong>{" "}
+                      {product.unit}
+                    </td>
+
+                    <td style={styles.td}>
+                      {product.minimum_stock}
+                    </td>
+
+                    {isAdmin && (
                       <td style={styles.td}>
-                        <span
-                          style={{
-                            ...styles.status,
-                            color:
-                              statusColor(status),
-                            backgroundColor:
-                              `${statusColor(
-                                status
-                              )}15`,
-                          }}
-                        >
-                          {statusLabel(status)}
-                        </span>
+                        QAR{" "}
+                        {Number(
+                          product.cost_price || 0
+                        ).toFixed(2)}
                       </td>
+                    )}
 
-                      <td style={styles.td}>
-                        <div style={styles.actions}>
-                          {isAdmin && (
-                            <button
-                              style={
-                                styles.editButton
-                              }
-                              onClick={() =>
-                                openEditProduct(
-                                  product
-                                )
-                              }
-                            >
-                              Edit
-                            </button>
-                          )}
+                    <td style={styles.td}>
+                      <span
+                        style={{
+                          ...styles.status,
+                          color:
+                            statusColor(status),
+                          backgroundColor:
+                            `${statusColor(
+                              status
+                            )}15`,
+                        }}
+                      >
+                        {statusLabel(status)}
+                      </span>
+                    </td>
 
-                          <button
-                            style={styles.inButton}
-                            onClick={() =>
-                              openMovement(
-                                product,
-                                "IN"
-                              )
-                            }
-                          >
-                            + Stock
-                          </button>
-
-                          <button
-                            style={styles.outButton}
-                            onClick={() =>
-                              openMovement(
-                                product,
-                                "OUT"
-                              )
-                            }
-                          >
-                            - Stock
-                          </button>
-
+                    <td style={styles.td}>
+                      <div style={styles.actions}>
+                        {isAdmin && (
                           <button
                             style={
-                              styles.historyButton
+                              styles.editButton
                             }
-                            onClick={() => {
-                              setSelectedProduct(
+                            onClick={() =>
+                              openEditProduct(
                                 product
-                              );
-
-                              setHistory([]);
-
-                              loadHistory(
-                                product.id
-                              );
-                            }}
+                              )
+                            }
                           >
-                            History
+                            Edit
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }
-              )}
+                        )}
+
+                        <button
+                          style={styles.inButton}
+                          onClick={() =>
+                            openMovement(
+                              product,
+                              "IN"
+                            )
+                          }
+                        >
+                          + Stock
+                        </button>
+
+                        <button
+                          style={styles.outButton}
+                          onClick={() =>
+                            openMovement(
+                              product,
+                              "OUT"
+                            )
+                          }
+                        >
+                          - Stock
+                        </button>
+
+                        <button
+                          style={
+                            styles.historyButton
+                          }
+                          onClick={() => {
+                            setSelectedProduct(
+                              product
+                            );
+                            setHistory([]);
+                            loadHistory(
+                              product.id
+                            );
+                          }}
+                        >
+                          History
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
-
-        {!loading &&
-          filteredProducts.length === 0 && (
-            <div style={styles.empty}>
-              No products match your search.
-            </div>
-          )}
       </div>
 
       {showCategoryForm && (
@@ -1042,7 +1038,11 @@ function Inventory() {
                   Add Category
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   Add a category for this shop.
                 </p>
               </div>
@@ -1074,10 +1074,16 @@ function Inventory() {
                 />
               </label>
 
-              <div style={styles.modalActions}>
+              <div
+                style={
+                  styles.modalActions
+                }
+              >
                 <button
                   type="button"
-                  style={styles.cancelButton}
+                  style={
+                    styles.cancelButton
+                  }
                   onClick={() =>
                     setShowCategoryForm(false)
                   }
@@ -1087,7 +1093,9 @@ function Inventory() {
 
                 <button
                   type="submit"
-                  style={styles.primaryButton}
+                  style={
+                    styles.primaryButton
+                  }
                   disabled={saving}
                 >
                   {saving
@@ -1111,7 +1119,11 @@ function Inventory() {
                     : "Add Product"}
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   {editingProduct
                     ? "Update product information."
                     : "Add a new inventory item."}
@@ -1143,7 +1155,6 @@ function Inventory() {
                         sku: e.target.value,
                       })
                     }
-                    placeholder="e.g. OIL-001"
                   />
                 </label>
 
@@ -1159,7 +1170,6 @@ function Inventory() {
                         name: e.target.value,
                       })
                     }
-                    placeholder="e.g. Engine Oil"
                   />
                 </label>
 
@@ -1231,31 +1241,24 @@ function Inventory() {
                     <option value="pcs">
                       Pieces
                     </option>
-
                     <option value="box">
                       Box
                     </option>
-
                     <option value="bottle">
                       Bottle
                     </option>
-
                     <option value="liter">
                       Liter
                     </option>
-
                     <option value="kg">
                       Kilogram
                     </option>
-
                     <option value="roll">
                       Roll
                     </option>
-
                     <option value="sack">
                       Sack
                     </option>
-
                     <option value="piece">
                       Piece
                     </option>
@@ -1387,13 +1390,19 @@ function Inventory() {
             <div style={styles.modal}>
               <div style={styles.modalHeader}>
                 <div>
-                  <h2 style={styles.modalTitle}>
+                  <h2
+                    style={styles.modalTitle}
+                  >
                     {movementType === "IN"
                       ? "Stock In"
                       : "Stock Out"}
                   </h2>
 
-                  <p style={styles.modalSubtitle}>
+                  <p
+                    style={
+                      styles.modalSubtitle
+                    }
+                  >
                     {selectedProduct.name}
                   </p>
                 </div>
@@ -1436,7 +1445,6 @@ function Inventory() {
                           e.target.value,
                       })
                     }
-                    placeholder="Enter quantity"
                   />
                 </label>
 
@@ -1478,7 +1486,6 @@ function Inventory() {
                           e.target.value,
                       })
                     }
-                    placeholder="Invoice / PO / reference"
                   />
                 </label>
 
@@ -1486,10 +1493,7 @@ function Inventory() {
                   Notes
 
                   <textarea
-                    style={{
-                      ...styles.input,
-                      minHeight: "80px",
-                    }}
+                    style={styles.input}
                     value={movementForm.notes}
                     onChange={(e) =>
                       setMovementForm({
@@ -1497,7 +1501,6 @@ function Inventory() {
                         notes: e.target.value,
                       })
                     }
-                    placeholder="Optional notes"
                   />
                 </label>
 
@@ -1544,7 +1547,11 @@ function Inventory() {
                   {selectedProduct.name}
                 </h2>
 
-                <p style={styles.modalSubtitle}>
+                <p
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
                   Stock movement history
                 </p>
               </div>
@@ -1583,19 +1590,15 @@ function Inventory() {
                       <th style={styles.th}>
                         Date
                       </th>
-
                       <th style={styles.th}>
                         Type
                       </th>
-
                       <th style={styles.th}>
                         Quantity
                       </th>
-
                       <th style={styles.th}>
                         Reference
                       </th>
-
                       <th style={styles.th}>
                         Notes
                       </th>
@@ -1603,57 +1606,52 @@ function Inventory() {
                   </thead>
 
                   <tbody>
-                    {history.map(
-                      (movement) => (
-                        <tr
-                          key={movement.id}
+                    {history.map((movement) => (
+                      <tr key={movement.id}>
+                        <td style={styles.td}>
+                          {new Date(
+                            movement.created_at
+                          ).toLocaleString()}
+                        </td>
+
+                        <td style={styles.td}>
+                          <strong>
+                            {
+                              movement.movement_type
+                            }
+                          </strong>
+                        </td>
+
+                        <td
+                          style={{
+                            ...styles.td,
+                            color:
+                              movement.movement_type ===
+                              "IN"
+                                ? "#16a34a"
+                                : "#dc2626",
+                            fontWeight: "700",
+                          }}
                         >
-                          <td style={styles.td}>
-                            {new Date(
-                              movement.created_at
-                            ).toLocaleString()}
-                          </td>
+                          {movement.movement_type ===
+                          "IN"
+                            ? "+"
+                            : "-"}
+                          {Number(
+                            movement.quantity
+                          ).toLocaleString()}
+                        </td>
 
-                          <td style={styles.td}>
-                            <strong>
-                              {
-                                movement.movement_type
-                              }
-                            </strong>
-                          </td>
+                        <td style={styles.td}>
+                          {movement.reference ||
+                            "-"}
+                        </td>
 
-                          <td
-                            style={{
-                              ...styles.td,
-                              color:
-                                movement.movement_type ===
-                                "IN"
-                                  ? "#16a34a"
-                                  : "#dc2626",
-                              fontWeight: "700",
-                            }}
-                          >
-                            {movement.movement_type ===
-                            "IN"
-                              ? "+"
-                              : "-"}
-                            {Number(
-                              movement.quantity
-                            ).toLocaleString()}
-                          </td>
-
-                          <td style={styles.td}>
-                            {movement.reference ||
-                              "-"}
-                          </td>
-
-                          <td style={styles.td}>
-                            {movement.notes ||
-                              "-"}
-                          </td>
-                        </tr>
-                      )
-                    )}
+                        <td style={styles.td}>
+                          {movement.notes || "-"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
