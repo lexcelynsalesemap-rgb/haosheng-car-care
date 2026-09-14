@@ -78,95 +78,102 @@ function Dashboard() {
     ]);
   }
 
- async function loadJobs() {
-  const user = JSON.parse(
-    localStorage.getItem("user")
-  );
+  async function loadJobs() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const shopId = user?.shop_id;
 
-  const shopId = user?.shop_id;
+    if (!shopId) {
+      console.error("NO SHOP ID FOUND");
+      return;
+    }
 
-  if (!shopId) {
-    console.error("NO SHOP ID FOUND");
-    return;
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("*")
+      .eq("shop_id", shopId)
+      .order("created_at", {
+        ascending: false
+      });
+
+    if (error) {
+      console.error("LOAD JOBS ERROR:", error);
+      return;
+    }
+
+    setJobs(data || []);
   }
 
-  const { data, error } = await supabase
-    .from("jobs")
-    .select("*")
-    .eq("shop_id", shopId)
-    .order("created_at", {
-      ascending: false
-    });
+  async function loadPayments() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const shopId = user?.shop_id;
 
-  if (error) {
-    console.error("LOAD JOBS ERROR:", error);
-    return;
+    if (!shopId) {
+      console.error("NO SHOP ID FOUND");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("payments")
+      .select(`
+        *,
+        jobs!inner(shop_id)
+      `)
+      .eq("jobs.shop_id", shopId);
+
+    if (error) {
+      console.error("LOAD PAYMENTS ERROR:", error);
+      return;
+    }
+
+    setPayments(data || []);
   }
 
-  setJobs(data || []);
-}
- async function loadPayments() {
-  const user = JSON.parse(
-    localStorage.getItem("user")
-  );
+  async function loadJobServices() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const shopId = user?.shop_id;
 
-  const shopId = user?.shop_id;
+    if (!shopId) {
+      console.error("NO SHOP ID FOUND");
+      return;
+    }
 
-  if (!shopId) {
-    console.error("NO SHOP ID FOUND");
-    return;
+    const { data, error } = await supabase
+      .from("job_services")
+      .select(`
+        *,
+        jobs!inner(shop_id)
+      `)
+      .eq("jobs.shop_id", shopId);
+
+    if (error) {
+      console.error("LOAD JOB SERVICES ERROR:", error);
+      return;
+    }
+
+    setJobServices(data || []);
   }
 
-  const { data, error } = await supabase
-    .from("payments")
-    .select(`
-      *,
-      jobs!inner(shop_id)
-    `)
-    .eq("jobs.shop_id", shopId);
+  // =====================================
+  // TEYSEER CHECK
+  // =====================================
 
-  if (error) {
-    console.error("LOAD PAYMENTS ERROR:", error);
-    return;
-  }
-
-  setPayments(data || []);
-}
-
- async function loadJobServices() {
-  const user = JSON.parse(
-    localStorage.getItem("user")
-  );
-
-  const shopId = user?.shop_id;
-
-  if (!shopId) {
-    console.error("NO SHOP ID FOUND");
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("job_services")
-    .select(`
-      *,
-      jobs!inner(shop_id)
-    `)
-    .eq("jobs.shop_id", shopId);
-
-  if (error) {
-    console.error(
-      "LOAD JOB SERVICES ERROR:",
-      error
+  function isTeyseerSource(sourceName) {
+    return (
+      sourceName === "Teyseer Motors" ||
+      sourceName === "Teyseer Motors - Bahaa" ||
+      sourceName === "Teyseer Motors - Salah"
     );
-    return;
   }
 
-  setJobServices(data || []);
-}
+  function isWttService(serviceName) {
+    return String(serviceName || "")
+      .toLowerCase()
+      .includes("wtt");
+  }
 
-  // =============================
+  // =====================================
   // DATE FILTER
-  // =============================
+  // =====================================
 
   const filteredJobs = jobs.filter((job) => {
     if (dateFilter === "All") {
@@ -190,8 +197,7 @@ function Dashboard() {
     if (dateFilter === "Month") {
       return (
         jobDate.getMonth() === now.getMonth() &&
-        jobDate.getFullYear() ===
-          now.getFullYear()
+        jobDate.getFullYear() === now.getFullYear()
       );
     }
 
@@ -205,9 +211,9 @@ function Dashboard() {
     return true;
   });
 
-  // =============================
-  // GENERAL DASHBOARD DATA
-  // =============================
+  // =====================================
+  // JOB COUNTS
+  // =====================================
 
   const totalJobs = filteredJobs.length;
 
@@ -227,29 +233,106 @@ function Dashboard() {
     (job) => job.status === "Delivered"
   ).length;
 
-  // =============================
-  // FINANCIAL DATA
-  // =============================
+  // =====================================
+  // CALCULATE SALES EXACTLY LIKE EDITJOB
+  //
+  // Internal job price includes WTT.
+  // Customer amount excludes WTT for Teyseer.
+  // Discounts are already removed from
+  // each service.
+  // =====================================
 
-  const totalSales = filteredJobs.reduce(
-    (sum, job) =>
-      sum + Number(job.price || 0),
-    0
-  );
+  let internalSales = 0;
+  let customerNetSales = 0;
+  let teyseerSales = 0;
+  let salesTeamSales = 0;
 
-  const totalDiscount = filteredJobs.reduce(
-    (sum, job) =>
-      sum + Number(job.discount || 0),
-    0
-  );
+  filteredJobs.forEach((job) => {
+    const services = Array.isArray(job.services)
+      ? job.services
+      : [];
 
-  const netSales = Math.max(
-    totalSales - totalDiscount,
-    0
-  );
+    const serviceDetails =
+      job.serviceDetails &&
+      typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
 
-  // Only count payments belonging
-  // to jobs inside the selected filter.
+    let jobInternalTotal = 0;
+    let jobCustomerTotal = 0;
+    let jobTeyseerTotal = 0;
+    let jobSalesTeamTotal = 0;
+
+    services.forEach((serviceName) => {
+      const details =
+        serviceDetails[serviceName] || {};
+
+      const price = Number(details.price || 0);
+      const quantity = Number(details.quantity || 1);
+      const discount = Number(details.discount || 0);
+
+      const finalServiceAmount = Math.max(
+        price * quantity - discount,
+        0
+      );
+
+      // Internal total includes EVERYTHING,
+      // including WTT.
+      jobInternalTotal += finalServiceAmount;
+
+      const isWtt = isWttService(serviceName);
+      const isTeyseer = isTeyseerSource(job.source);
+
+      // ===================================
+      // CUSTOMER TOTAL
+      // WTT is excluded for Teyseer jobs.
+      // ===================================
+
+      if (isTeyseer && isWtt) {
+        jobTeyseerTotal += finalServiceAmount;
+        return;
+      }
+
+      jobCustomerTotal += finalServiceAmount;
+
+      // ===================================
+      // SOURCE SPLIT
+      // ===================================
+
+      if (job.source === "Teyseer Motors") {
+        jobTeyseerTotal += finalServiceAmount;
+      }
+
+      else if (
+        job.source === "Teyseer Motors - Bahaa"
+      ) {
+        jobSalesTeamTotal += finalServiceAmount;
+      }
+
+      else if (
+        job.source === "Teyseer Motors - Salah"
+      ) {
+        jobSalesTeamTotal += finalServiceAmount;
+      }
+
+      else {
+        jobSalesTeamTotal += finalServiceAmount;
+      }
+    });
+
+    internalSales += jobInternalTotal;
+    customerNetSales += jobCustomerTotal;
+    teyseerSales += jobTeyseerTotal;
+    salesTeamSales += jobSalesTeamTotal;
+  });
+
+  // =====================================
+  // PAYMENTS
+  //
+  // Payments are customer payments.
+  // WTT is paid separately by Teyseer.
+  // =====================================
+
   const filteredJobIds = new Set(
     filteredJobs.map((job) => job.id)
   );
@@ -259,33 +342,20 @@ function Dashboard() {
       filteredJobIds.has(payment.job_id)
   );
 
-  // =============================
-  // CUSTOMER / SALES PAYMENTS
-  //
-  // Payments are NOT Teyseer payments.
-  //
-  // Teyseer WTT is paid monthly by Teyseer,
-  // so customer deposits/payments belong
-  // to the Sales side.
-  // =============================
-
-  const paid = filteredPayments.reduce(
+  const totalPaid = filteredPayments.reduce(
     (sum, payment) =>
       sum + Number(payment.amount || 0),
     0
   );
 
-  const balance = Math.max(
-    netSales - paid,
+  const customerBalance = Math.max(
+    customerNetSales - totalPaid,
     0
   );
 
-  // =============================
+  // =====================================
   // SOURCE REPORT
-  // =============================
-
-  let teyseerNetSales = 0;
-  let salesTeamNetSales = 0;
+  // =====================================
 
   const sourceReport = {
     "Teyseer Motors": {
@@ -309,89 +379,63 @@ function Dashboard() {
     }
   };
 
-  // Keep track of jobs that contain
-  // Teyseer-owned WTT.
-  const teyseerJobIds = new Set();
-
   filteredJobs.forEach((job) => {
-    const services = jobServices.filter(
-      (service) =>
-        service.job_id === job.id
-    );
+    const services = Array.isArray(job.services)
+      ? job.services
+      : [];
 
-    services.forEach((service) => {
-      const amount =
-        Number(service.price || 0);
+    const serviceDetails =
+      job.serviceDetails &&
+      typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
 
-      const serviceName = (
-        service.service_name ||
-        service.name ||
-        ""
-      ).toLowerCase();
+    services.forEach((serviceName) => {
+      const details =
+        serviceDetails[serviceName] || {};
+
+      const price = Number(details.price || 0);
+      const quantity = Number(details.quantity || 1);
+      const discount = Number(details.discount || 0);
+
+      const amount = Math.max(
+        price * quantity - discount,
+        0
+      );
+
+      const isWtt = isWttService(serviceName);
 
       let reportSource = "Sales Team";
 
-      // =============================
-      // DIRECT TEYSEER
-      // =============================
-
-      if (
-        job.source === "Teyseer Motors"
-      ) {
+      if (job.source === "Teyseer Motors") {
         reportSource = "Teyseer Motors";
       }
 
-      // =============================
-      // TEYSEER - SALAH
-      // =============================
-
       else if (
-        job.source ===
-        "Teyseer Motors - Salah"
+        job.source === "Teyseer Motors - Salah"
       ) {
-        if (
-          serviceName.includes("wtt")
-        ) {
+        if (isWtt) {
           reportSource = "Teyseer Motors";
         } else {
           reportSource = "Salah";
         }
       }
 
-      // =============================
-      // TEYSEER - BAHA
-      // =============================
-
       else if (
-        job.source ===
-        "Teyseer Motors - Bahaa"
+        job.source === "Teyseer Motors - Bahaa"
       ) {
-        if (
-          serviceName.includes("wtt")
-        ) {
+        if (isWtt) {
           reportSource = "Teyseer Motors";
         } else {
           reportSource = "Bahaa";
         }
       }
 
-      // =============================
-      // DIRECT BAHA
-      // =============================
-
-      else if (
-        job.source === "Bahaa"
-      ) {
+      else if (job.source === "Bahaa") {
         reportSource = "Bahaa";
       }
 
-      // =============================
-      // DIRECT SALAH
-      // =============================
-
-      else if (
-        job.source === "Salah"
-      ) {
+      else if (job.source === "Salah") {
         reportSource = "Salah";
       }
 
@@ -403,83 +447,65 @@ function Dashboard() {
       }
 
       sourceReport[reportSource].jobs += 1;
-
-      sourceReport[reportSource].sales +=
-        amount;
-
-      // =============================
-      // TEYSEER SALES
-      // =============================
-
-      if (
-        reportSource ===
-        "Teyseer Motors"
-      ) {
-        teyseerNetSales += amount;
-
-        teyseerJobIds.add(job.id);
-      }
-
-      // =============================
-      // SALES TEAM
-      // =============================
-
-      else {
-        salesTeamNetSales += amount;
-      }
+      sourceReport[reportSource].sales += amount;
     });
   });
 
-  // =============================
-  // PAYMENT SPLIT
+  // =====================================
+  // SALES TEAM PAYMENTS
   //
-  // IMPORTANT:
+  // Since customer payments are not
+  // Teyseer payments, they belong to
+  // customer/sales-side collections.
   //
-  // Payments are CUSTOMER / SALES
-  // payments.
-  //
-  // They are NOT Teyseer payments.
-  //
-  // Teyseer WTT is paid monthly by Teyseer.
-  // =============================
+  // We calculate the sales team balance
+  // from non-Teyseer customer sales.
+  // =====================================
 
-  const salesTeamPaid =
-    filteredPayments.reduce(
-      (sum, payment) =>
+  const salesTeamPaid = filteredPayments.reduce(
+    (sum, payment) => {
+      const job = filteredJobs.find(
+        (item) => item.id === payment.job_id
+      );
+
+      if (!job) {
+        return sum;
+      }
+
+      if (isTeyseerSource(job.source)) {
+        return sum;
+      }
+
+      return (
         sum +
-        Number(payment.amount || 0),
-      0
-    );
-
-  // =============================
-  // SALES TEAM BALANCE
-  // =============================
-
-  const salesTeamBalance = Math.max(
-    salesTeamNetSales - salesTeamPaid,
+        Number(payment.amount || 0)
+      );
+    },
     0
   );
 
-  // =============================
+  const salesTeamBalance = Math.max(
+    salesTeamSales - salesTeamPaid,
+    0
+  );
+
+  // =====================================
   // CHART DATA
-  // =============================
+  // =====================================
 
   const statusData = [
     {
       name: "New",
       value: newJobs
     },
-
     {
       name: "Progress",
       value: progressJobs
     },
-
     {
       name: "Finished",
       value: finishedJobs
     },
-
     {
       name: "Delivered",
       value: deliveredJobs
@@ -488,18 +514,16 @@ function Dashboard() {
 
   const salesData = [
     {
-      name: "Sales",
-      amount: netSales
+      name: "Customer Sales",
+      amount: customerNetSales
     },
-
     {
       name: "Paid",
-      amount: paid
+      amount: totalPaid
     },
-
     {
       name: "Due",
-      amount: balance
+      amount: customerBalance
     }
   ];
 
@@ -528,6 +552,7 @@ function Dashboard() {
           </div>
 
           <div style={styles.headerActions}>
+
             <UserMenu />
 
             <Link
@@ -536,42 +561,40 @@ function Dashboard() {
                 textDecoration: "none"
               }}
             >
-              <button
-                style={styles.newButton}
-              >
+              <button style={styles.newButton}>
                 + New Job
               </button>
             </Link>
-<Link
-  to="/inventory"
-  style={{
-    textDecoration: "none"
-  }}
->
-  <button
-    style={styles.secondaryButton}
-  >
-    📦 Inventory
-  </button>
-</Link>
+
+            <Link
+              to="/inventory"
+              style={{
+                textDecoration: "none"
+              }}
+            >
+              <button style={styles.secondaryButton}>
+                📦 Inventory
+              </button>
+            </Link>
+
             <Link
               to="/technician-earnings"
               style={{
                 textDecoration: "none"
               }}
             >
-              <button
-                style={styles.secondaryButton}
-              >
+              <button style={styles.secondaryButton}>
                 👷 Technician Earnings
               </button>
             </Link>
+
           </div>
         </div>
 
         {/* DATE FILTER */}
 
         <div style={styles.filterBox}>
+
           <label style={styles.filterLabel}>
             Dashboard Period
           </label>
@@ -579,9 +602,7 @@ function Dashboard() {
           <select
             value={dateFilter}
             onChange={(e) =>
-              setDateFilter(
-                e.target.value
-              )
+              setDateFilter(e.target.value)
             }
             style={styles.select}
           >
@@ -601,6 +622,7 @@ function Dashboard() {
               This Year
             </option>
           </select>
+
         </div>
 
         {/* SUMMARY CARDS */}
@@ -642,20 +664,26 @@ function Dashboard() {
           />
 
           <Card
-            title="Net Sales"
-            value={`QAR ${netSales.toFixed(2)}`}
+            title="Internal Sales"
+            value={`QAR ${internalSales.toFixed(2)}`}
             icon="💰"
           />
 
           <Card
+            title="Customer Net Sales"
+            value={`QAR ${customerNetSales.toFixed(2)}`}
+            icon="💵"
+          />
+
+          <Card
             title="Teyseer Sales"
-            value={`QAR ${teyseerNetSales.toFixed(2)}`}
+            value={`QAR ${teyseerSales.toFixed(2)}`}
             icon="🏢"
           />
 
           <Card
             title="Sales Team Sales"
-            value={`QAR ${salesTeamNetSales.toFixed(2)}`}
+            value={`QAR ${salesTeamSales.toFixed(2)}`}
             icon="👥"
           />
 
@@ -673,13 +701,13 @@ function Dashboard() {
 
           <Card
             title="Paid"
-            value={`QAR ${paid.toFixed(2)}`}
+            value={`QAR ${totalPaid.toFixed(2)}`}
             icon="💳"
           />
 
           <Card
             title="Balance Due"
-            value={`QAR ${balance.toFixed(2)}`}
+            value={`QAR ${customerBalance.toFixed(2)}`}
             icon="⚠️"
           />
 
@@ -692,7 +720,9 @@ function Dashboard() {
         </h2>
 
         <div style={styles.tableBox}>
+
           <table style={styles.table}>
+
             <thead>
               <tr>
                 <th style={styles.th}>
@@ -704,23 +734,33 @@ function Dashboard() {
                 </th>
 
                 <th style={styles.th}>
+                  Source
+                </th>
+
+                <th style={styles.th}>
                   Status
                 </th>
 
                 <th style={styles.th}>
-                  Price
+                  Internal Price
+                </th>
+
+                <th style={styles.th}>
+                  Balance
                 </th>
               </tr>
             </thead>
 
             <tbody>
+
               {filteredJobs
                 .slice(0, 5)
                 .map((job) => (
+
                   <tr key={job.id}>
+
                     <td style={styles.td}>
-                      {job.customer ||
-                        "Unknown"}
+                      {job.customer || "Unknown"}
                     </td>
 
                     <td style={styles.td}>
@@ -728,13 +768,12 @@ function Dashboard() {
                     </td>
 
                     <td style={styles.td}>
-                      <span
-                        style={
-                          styles.status
-                        }
-                      >
-                        {job.status ||
-                          "New"}
+                      {job.source || "-"}
+                    </td>
+
+                    <td style={styles.td}>
+                      <span style={styles.status}>
+                        {job.status || "New"}
                       </span>
                     </td>
 
@@ -744,9 +783,20 @@ function Dashboard() {
                         job.price || 0
                       ).toFixed(2)}
                     </td>
+
+                    <td style={styles.td}>
+                      QAR{" "}
+                      {Number(
+                        job.balance || 0
+                      ).toFixed(2)}
+                    </td>
+
                   </tr>
+
                 ))}
+
             </tbody>
+
           </table>
 
           {filteredJobs.length === 0 && (
@@ -754,6 +804,7 @@ function Dashboard() {
               No jobs found for this period.
             </p>
           )}
+
         </div>
 
         {/* STATISTICS */}
@@ -767,6 +818,7 @@ function Dashboard() {
           {/* JOB STATUS */}
 
           <div style={styles.chartBox}>
+
             <h3 style={styles.chartTitle}>
               Job Status
             </h3>
@@ -776,6 +828,7 @@ function Dashboard() {
               height={250}
             >
               <PieChart>
+
                 <Pie
                   data={statusData}
                   dataKey="value"
@@ -783,16 +836,16 @@ function Dashboard() {
                   outerRadius={90}
                   label
                 >
+
                   {statusData.map(
                     (entry, index) => (
                       <Cell
                         key={index}
-                        fill={
-                          COLORS[index]
-                        }
+                        fill={COLORS[index]}
                       />
                     )
                   )}
+
                 </Pie>
 
                 <Tooltip
@@ -800,24 +853,27 @@ function Dashboard() {
                     styles.tooltip
                   }
                 />
+
               </PieChart>
             </ResponsiveContainer>
+
           </div>
 
           {/* FINANCIAL */}
 
           <div style={styles.chartBox}>
+
             <h3 style={styles.chartTitle}>
-              Financial Overview
+              Customer Financial Overview
             </h3>
 
             <ResponsiveContainer
               width="100%"
               height={250}
             >
-              <BarChart
-                data={salesData}
-              >
+
+              <BarChart data={salesData}>
+
                 <XAxis
                   dataKey="name"
                   stroke="#aaa"
@@ -843,8 +899,11 @@ function Dashboard() {
                     0
                   ]}
                 />
+
               </BarChart>
+
             </ResponsiveContainer>
+
           </div>
 
         </div>
@@ -856,56 +915,40 @@ function Dashboard() {
         </h2>
 
         <div style={styles.recent}>
-          {Object.entries(
-            sourceReport
-          ).map(
+
+          {Object.entries(sourceReport).map(
             ([name, data]) => (
+
               <div
                 key={name}
-                style={
-                  styles.recentCard
-                }
+                style={styles.recentCard}
               >
-                <h3
-                  style={
-                    styles.goldText
-                  }
-                >
+
+                <h3 style={styles.goldText}>
                   {name}
                 </h3>
 
-                <h2
-                  style={
-                    styles.bigNumber
-                  }
-                >
+                <h2 style={styles.bigNumber}>
                   {data.jobs}
                 </h2>
 
-                <p
-                  style={
-                    styles.muted
-                  }
-                >
-                  Jobs
+                <p style={styles.muted}>
+                  Service Items
                 </p>
 
                 <h3>
                   Net Sales:{" "}
-                  <span
-                    style={
-                      styles.goldText
-                    }
-                  >
+                  <span style={styles.goldText}>
                     QAR{" "}
-                    {data.sales.toFixed(
-                      2
-                    )}
+                    {data.sales.toFixed(2)}
                   </span>
                 </h3>
+
               </div>
+
             )
           )}
+
         </div>
 
         {/* QUICK ACTIONS */}
@@ -920,9 +963,7 @@ function Dashboard() {
             to="/new-job"
             style={styles.actionCard}
           >
-            <div
-              style={styles.actionIcon}
-            >
+            <div style={styles.actionIcon}>
               ➕
             </div>
 
@@ -937,9 +978,7 @@ function Dashboard() {
             to="/jobs"
             style={styles.actionCard}
           >
-            <div
-              style={styles.actionIcon}
-            >
+            <div style={styles.actionIcon}>
               📋
             </div>
 
@@ -954,17 +993,14 @@ function Dashboard() {
             to="/jobs"
             style={styles.actionCard}
           >
-            <div
-              style={styles.actionIcon}
-            >
+            <div style={styles.actionIcon}>
               🧾
             </div>
 
             <h3>Invoice</h3>
 
             <p>
-              Select a car to create
-              invoice
+              Select a car to create invoice
             </p>
           </Link>
 
@@ -972,9 +1008,7 @@ function Dashboard() {
             to="/settings"
             style={styles.actionCard}
           >
-            <div
-              style={styles.actionIcon}
-            >
+            <div style={styles.actionIcon}>
               ⚙️
             </div>
 
@@ -989,9 +1023,7 @@ function Dashboard() {
             to="/reports"
             style={styles.actionCard}
           >
-            <div
-              style={styles.actionIcon}
-            >
+            <div style={styles.actionIcon}>
               📊
             </div>
 
@@ -1002,23 +1034,22 @@ function Dashboard() {
             </p>
           </Link>
 
-    {/* INVENTORY */}
-  <Link
-    to="/inventory"
-    style={styles.actionCard}
-  >
-    <div style={styles.actionIcon}>
-      📦
-    </div>
+          <Link
+            to="/inventory"
+            style={styles.actionCard}
+          >
+            <div style={styles.actionIcon}>
+              📦
+            </div>
 
-    <h3>Inventory</h3>
+            <h3>Inventory</h3>
 
-    <p>
-      Manage products and stock
-    </p>
-  </Link>
+            <p>
+              Manage products and stock
+            </p>
+          </Link>
 
-</div>
+        </div>
 
       </div>
     </div>
@@ -1041,7 +1072,8 @@ function Card({
     "In Progress": "#f59e0b",
     Finished: "#22c55e",
     Delivered: "#0891b2",
-    "Net Sales": "#d4af37",
+    "Internal Sales": "#d4af37",
+    "Customer Net Sales": "#d4af37",
     "Teyseer Sales": "#d4af37",
     "Sales Team Sales": "#0891b2",
     "Sales Team Paid": "#22c55e",
@@ -1056,11 +1088,11 @@ function Card({
         ...styles.card,
         borderTop:
           `4px solid ${
-            colors[title] ||
-            "#d4af37"
+            colors[title] || "#d4af37"
           }`
       }}
     >
+
       <div style={styles.icon}>
         {icon}
       </div>
@@ -1072,6 +1104,7 @@ function Card({
       <h2 style={styles.cardValue}>
         {value}
       </h2>
+
     </div>
   );
 
