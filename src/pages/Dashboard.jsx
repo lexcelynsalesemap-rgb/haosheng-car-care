@@ -172,15 +172,12 @@ function Dashboard() {
   }
 
   function isPureTeyseerSource(sourceName) {
-  const source = String(sourceName || "")
-    .trim()
-    .toLowerCase();
+    const source = String(sourceName || "")
+      .trim()
+      .toLowerCase();
 
-  return (
-    source === "teyseer" ||
-    source === "teyseer motors"
-  );
-}
+    return source === "teyseer motors";
+  }
 
   function isTeyseerSalahSource(sourceName) {
     const source = String(sourceName || "")
@@ -275,24 +272,24 @@ function Dashboard() {
   // =====================================
   // SALES CALCULATION
   //
-  // RULES:
+  // GROSS AMOUNT IS USED.
   //
   // 1. Internal Sales:
-  //    All services including WTT.
+  //    All service gross amounts.
   //
   // 2. Teyseer Motors:
-  //    ENTIRE job is paid by Teyseer.
-  //    Therefore the whole job is Teyseer Sales.
+  //    ENTIRE GROSS JOB IS PAID BY TEYSEER.
+  //    Full WTT + Full PPF + any other service.
   //
   // 3. Teyseer-Salah / Teyseer-Bahaa:
   //    ONLY WTT is paid by Teyseer.
-  //    Non-WTT services belong to Salah/Bahaa.
+  //    Other services are customer/sales-team.
   //
   // 4. Other sources:
-  //    All services belong to Sales Team.
+  //    All services are customer/sales-team.
   //
   // 5. Customer Net Sales:
-  //    Customer-payable amount.
+  //    Customer-payable GROSS amount.
   //    Teyseer-paid amounts are excluded.
   // =====================================
 
@@ -327,10 +324,11 @@ function Dashboard() {
 
       const price = Number(details.price || 0);
       const quantity = Number(details.quantity || 1);
-      const discount = Number(details.discount || 0);
 
-      const finalServiceAmount = Math.max(
-        price * quantity - discount,
+      // GROSS AMOUNT ONLY.
+      // Discount is intentionally NOT subtracted.
+      const grossServiceAmount = Math.max(
+        price * quantity,
         0
       );
 
@@ -340,31 +338,34 @@ function Dashboard() {
       // INTERNAL SALES
       // -------------------------------------
 
-      jobInternalTotal += finalServiceAmount;
+      jobInternalTotal += grossServiceAmount;
 
       // -------------------------------------
       // PURE TEYSEER MOTORS
       //
-      // Entire job is paid by Teyseer.
+      // ENTIRE SERVICE IS PAID BY TEYSEER.
+      // This includes Full WTT, Full PPF,
+      // and any other service.
       // -------------------------------------
 
-    if (isPureTeyseerSource(source)) {
-  jobTeyseerTotal += finalServiceAmount;
-  return;
-}
+      if (isPureTeyseerSource(source)) {
+        jobTeyseerTotal += grossServiceAmount;
+        return;
+      }
 
       // -------------------------------------
       // TEYSEER-SALAH
       //
-      // Only WTT is paid by Teyseer.
+      // WTT -> Teyseer
+      // Non-WTT -> Customer/Salah
       // -------------------------------------
 
       if (isTeyseerSalahSource(source)) {
         if (isWtt) {
-          jobTeyseerTotal += finalServiceAmount;
+          jobTeyseerTotal += grossServiceAmount;
         } else {
-          jobCustomerTotal += finalServiceAmount;
-          jobSalesTeamTotal += finalServiceAmount;
+          jobCustomerTotal += grossServiceAmount;
+          jobSalesTeamTotal += grossServiceAmount;
         }
 
         return;
@@ -373,15 +374,16 @@ function Dashboard() {
       // -------------------------------------
       // TEYSEER-BAHAA
       //
-      // Only WTT is paid by Teyseer.
+      // WTT -> Teyseer
+      // Non-WTT -> Customer/Bahaa
       // -------------------------------------
 
       if (isTeyseerBahaaSource(source)) {
         if (isWtt) {
-          jobTeyseerTotal += finalServiceAmount;
+          jobTeyseerTotal += grossServiceAmount;
         } else {
-          jobCustomerTotal += finalServiceAmount;
-          jobSalesTeamTotal += finalServiceAmount;
+          jobCustomerTotal += grossServiceAmount;
+          jobSalesTeamTotal += grossServiceAmount;
         }
 
         return;
@@ -389,12 +391,10 @@ function Dashboard() {
 
       // -------------------------------------
       // ALL OTHER SOURCES
-      //
-      // Customer/Sales Team pays everything.
       // -------------------------------------
 
-      jobCustomerTotal += finalServiceAmount;
-      jobSalesTeamTotal += finalServiceAmount;
+      jobCustomerTotal += grossServiceAmount;
+      jobSalesTeamTotal += grossServiceAmount;
     });
 
     internalSales += jobInternalTotal;
@@ -417,22 +417,18 @@ function Dashboard() {
   );
 
   /*
-   * IMPORTANT:
+   * Customer payments:
    *
-   * Payments in this table are customer-side
-   * payments.
+   * Pure Teyseer Motors jobs:
+   *    Ignore payment completely because
+   *    the entire gross amount is paid by Teyseer.
    *
-   * For pure Teyseer Motors jobs, Teyseer pays
-   * the entire job, so those payments should NOT
-   * reduce the customer balance.
+   * Teyseer-Salah / Teyseer-Bahaa:
+   *    Customer payments apply to non-WTT
+   *    customer services.
    *
-   * For Teyseer-Salah / Teyseer-Bahaa jobs,
-   * only WTT is paid by Teyseer.
-   * Customer payments therefore apply to the
-   * non-WTT customer amount.
-   *
-   * We calculate customer-paid amount against
-   * customer-payable sales only.
+   * Normal jobs:
+   *    Customer payments apply normally.
    */
 
   const totalPaid = filteredPayments.reduce(
@@ -445,10 +441,9 @@ function Dashboard() {
         return sum;
       }
 
-      // Entire job is paid by Teyseer.
       if (isPureTeyseerSource(job.source)) {
-  return sum;
-}
+        return sum;
+      }
 
       return (
         sum +
@@ -510,10 +505,11 @@ function Dashboard() {
 
       const price = Number(details.price || 0);
       const quantity = Number(details.quantity || 1);
-      const discount = Number(details.discount || 0);
 
+      // GROSS ONLY.
+      // Do NOT subtract discount.
       const amount = Math.max(
-        price * quantity - discount,
+        price * quantity,
         0
       );
 
@@ -524,7 +520,11 @@ function Dashboard() {
       // -------------------------------------
       // PURE TEYSEER MOTORS
       //
-      // Every service goes to Teyseer.
+      // ALL SERVICES -> TEYSEER
+      //
+      // Full WTT -> Teyseer
+      // Full PPF -> Teyseer
+      // Any other service -> Teyseer
       // -------------------------------------
 
       if (isPureTeyseerSource(source)) {
@@ -599,18 +599,6 @@ function Dashboard() {
 
   // =====================================
   // SALES TEAM PAYMENTS
-  //
-  // Sales Team Sales are:
-  //
-  // - Non-WTT services from Teyseer-Salah
-  // - Non-WTT services from Teyseer-Bahaa
-  // - All services from normal Salah/Bahaa
-  // - All services from other sources
-  //
-  // Teyseer Motors jobs are excluded completely.
-  //
-  // WTT from Teyseer-Salah/Bahaa is excluded
-  // because Teyseer pays it.
   // =====================================
 
   const salesTeamPaid = filteredPayments.reduce(
@@ -623,7 +611,7 @@ function Dashboard() {
         return sum;
       }
 
-      // Entire Teyseer Motors job is paid by Teyseer.
+      // Entire pure Teyseer job is paid by Teyseer.
       if (isPureTeyseerSource(job.source)) {
         return sum;
       }
@@ -894,7 +882,7 @@ function Dashboard() {
                 </th>
 
                 <th style={styles.th}>
-                  Internal Price
+                  Amount
                 </th>
 
                 <th style={styles.th}>
@@ -938,9 +926,11 @@ function Dashboard() {
 
                     <td style={styles.td}>
                       QAR{" "}
-                      {Number(
-                        job.balance || 0
-                      ).toFixed(2)}
+                      {isPureTeyseerSource(job.source)
+                        ? "0.00"
+                        : Number(
+                            job.balance || 0
+                          ).toFixed(2)}
                     </td>
 
                   </tr>
@@ -966,8 +956,6 @@ function Dashboard() {
         </h2>
 
         <div style={styles.charts}>
-
-          {/* JOB STATUS */}
 
           <div style={styles.chartBox}>
 
@@ -1010,8 +998,6 @@ function Dashboard() {
             </ResponsiveContainer>
 
           </div>
-
-          {/* FINANCIAL */}
 
           <div style={styles.chartBox}>
 
@@ -1089,7 +1075,7 @@ function Dashboard() {
                 </p>
 
                 <h3>
-                  Net Sales:{" "}
+                  Gross Sales:{" "}
                   <span style={styles.goldText}>
                     QAR{" "}
                     {data.sales.toFixed(2)}
