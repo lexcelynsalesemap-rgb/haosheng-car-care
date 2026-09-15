@@ -249,18 +249,18 @@ function calculateJob(
   const serviceTotal =
     getServiceAmount(services);
 
-  const teyseer = isTeyseerJob(job);
-
   const normalizedSource =
     String(job.source || "").trim();
 
   let teyseerSales = 0;
   let customerSales = 0;
 
-  /*
-    TEYSEER MOTORS
-    All services are Teyseer sales.
-  */
+  /* ==========================================================
+     TEYSEER MOTORS
+     
+     Everything is Teyseer sales.
+  ========================================================== */
+
   if (
     normalizedSource === "Teyseer Motors"
   ) {
@@ -270,19 +270,25 @@ function calculateJob(
         : jobNet;
   }
 
-  /*
-    TEYSEER - SALAH / BAHAA
-    WTT = Teyseer sales
-    All other services = Customer sales
-  */
+  /* ==========================================================
+     TEYSEER MOTORS - SALAH
+     TEYSEER MOTORS - BAHAA
+
+     WTT = Teyseer Sales
+     Everything else = Customer Sales
+  ========================================================== */
+
   else if (
     normalizedSource ===
       "Teyseer Motors - Salah" ||
     normalizedSource ===
       "Teyseer Motors - Bahaa"
   ) {
+
     if (services.length > 0) {
+
       services.forEach((service) => {
+
         const serviceName = String(
           service.service_name ||
             service.name ||
@@ -304,25 +310,42 @@ function calculateJob(
         } else {
           customerSales += amount;
         }
+
       });
+
     } else {
-      teyseerSales = jobNet;
+
+      /*
+        If there are no service records,
+        treat the job as CUSTOMER sales.
+
+        We cannot identify WTT without
+        service information.
+      */
+      customerSales = jobNet;
     }
   }
 
-  /*
-    NORMAL CUSTOMER JOB
-  */
+  /* ==========================================================
+     NORMAL CUSTOMER JOB
+  ========================================================== */
+
   else {
     customerSales = jobNet;
   }
 
-  const canonicalNet =
-    teyseerSales + customerSales;
+  /* ==========================================================
+     TOTAL SALES
+  ========================================================== */
 
-  /*
-    ONLY PAYMENTS LINKED TO THIS JOB
-  */
+  const canonicalNet =
+    teyseerSales +
+    customerSales;
+
+  /* ==========================================================
+     PAYMENTS LINKED TO THIS JOB
+  ========================================================== */
+
   const linkedPayments =
     paymentsByJob[String(job.id)] || [];
 
@@ -332,29 +355,129 @@ function calculateJob(
     0
   );
 
-  /*
-    Customer payment is used for
-    customer balance.
+  /* ==========================================================
+     PAYMENT ALLOCATION
+     
+     Customer balance is based ONLY on customer sales.
 
-    Teyseer payment is kept separately.
-  */
-  const teyseerPaid =
-    teyseerSales > 0
-      ? paid
-      : 0;
+     Teyseer is paid monthly, so Teyseer sales do NOT
+     increase the customer balance.
 
-  const customerPaid =
+     For mixed jobs:
+       - Customer payments are applied to customer sales.
+       - Any amount above customer sales is considered
+         Teyseer payment.
+  ========================================================== */
+
+  let customerPaid = 0;
+  let teyseerPaid = 0;
+
+  /* ----------------------------------------------------------
+     CUSTOMER JOB
+  ---------------------------------------------------------- */
+
+  if (
+    customerSales > 0 &&
+    teyseerSales === 0
+  ) {
+
+    customerPaid = Math.min(
+      paid,
+      customerSales
+    );
+
+    teyseerPaid = 0;
+  }
+
+  /* ----------------------------------------------------------
+     PURE TEYSEER JOB
+  ---------------------------------------------------------- */
+
+  else if (
+    teyseerSales > 0 &&
+    customerSales === 0
+  ) {
+
+    customerPaid = 0;
+
+    teyseerPaid = paid;
+  }
+
+  /* ----------------------------------------------------------
+     MIXED TEYSEER / CUSTOMER JOB
+     
+     Example:
+       WTT       = 500
+       Customer  = 300
+       Paid      = 300
+
+     Result:
+       Customer Paid = 300
+       Teyseer Paid  = 0
+       Customer Balance = 0
+  ---------------------------------------------------------- */
+
+  else if (
+    teyseerSales > 0 &&
     customerSales > 0
-      ? paid
-      : 0;
+  ) {
+
+    customerPaid = Math.min(
+      paid,
+      customerSales
+    );
+
+    teyseerPaid = Math.max(
+      paid - customerPaid,
+      0
+    );
+  }
+
+  /* ----------------------------------------------------------
+     NO SALES
+  ---------------------------------------------------------- */
+
+  else {
+    customerPaid = 0;
+    teyseerPaid = 0;
+  }
+
+  /* ==========================================================
+     CUSTOMER BALANCE
+     
+     IMPORTANT:
+     Teyseer sales are NOT included here.
+  ========================================================== */
 
   const customerBalance =
-    customerSales -
-    customerPaid;
+    Math.max(
+      customerSales -
+        customerPaid,
+      0
+    );
+
+  /* ==========================================================
+     TEYSEER BALANCE
+     
+     This is informational only.
+     It does NOT affect customer balance.
+  ========================================================== */
 
   const teyseerBalance =
-    teyseerSales -
-    teyseerPaid;
+    Math.max(
+      teyseerSales -
+        teyseerPaid,
+      0
+    );
+
+  /* ==========================================================
+     MAIN BALANCE
+     
+     Main balance = CUSTOMER BALANCE ONLY
+  ========================================================== */
+
+  const balance =
+    customerBalance;
 
   return {
     ...job,
@@ -368,25 +491,33 @@ function calculateJob(
 
     canonicalNet,
 
+    /* SALES */
     teyseerSales,
     customerSales,
 
+    /* ALL ACTUAL PAYMENTS */
     paid,
 
+    /* ALLOCATED PAYMENTS */
     teyseerPaid,
     customerPaid,
 
+    /* BALANCES */
     teyseerBalance,
     customerBalance,
 
-    /*
-      Main balance is customer balance.
-    */
-    balance: customerBalance,
+    /* MAIN BALANCE = CUSTOMER ONLY */
+    balance,
 
     discrepancy: 0,
 
-    isTeyseer: teyseer,
+    isTeyseer:
+      normalizedSource ===
+        "Teyseer Motors" ||
+      normalizedSource ===
+        "Teyseer Motors - Salah" ||
+      normalizedSource ===
+        "Teyseer Motors - Bahaa",
 
     serviceNames:
       getServiceNames(services),
