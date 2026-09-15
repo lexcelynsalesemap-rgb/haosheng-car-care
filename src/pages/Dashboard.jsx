@@ -154,35 +154,24 @@ function Dashboard() {
   }
 
   // =====================================
-  // SOURCE CHECKS
+  // SOURCE HELPERS
   // =====================================
 
-  function isTeyseerSource(sourceName) {
-    const source = String(sourceName || "")
+  function normalizeSource(sourceName) {
+    return String(sourceName || "")
       .trim()
       .toLowerCase();
-
-    return (
-      source === "teyseer motors" ||
-      source === "teyseer-salah" ||
-      source === "teyseer-bahaa" ||
-      source === "teyseer motors - salah" ||
-      source === "teyseer motors - bahaa"
-    );
   }
 
   function isPureTeyseerSource(sourceName) {
-    const source = String(sourceName || "")
-      .trim()
-      .toLowerCase();
-
-    return source === "teyseer motors";
+    return (
+      normalizeSource(sourceName) ===
+      "teyseer motors"
+    );
   }
 
   function isTeyseerSalahSource(sourceName) {
-    const source = String(sourceName || "")
-      .trim()
-      .toLowerCase();
+    const source = normalizeSource(sourceName);
 
     return (
       source === "teyseer-salah" ||
@@ -191,9 +180,7 @@ function Dashboard() {
   }
 
   function isTeyseerBahaaSource(sourceName) {
-    const source = String(sourceName || "")
-      .trim()
-      .toLowerCase();
+    const source = normalizeSource(sourceName);
 
     return (
       source === "teyseer-bahaa" ||
@@ -205,6 +192,174 @@ function Dashboard() {
     return String(serviceName || "")
       .toLowerCase()
       .includes("wtt");
+  }
+
+  // =====================================
+  // GROSS CALCULATION
+  //
+  // Gross = price × quantity
+  //
+  // DISCOUNT IS NOT SUBTRACTED.
+  // =====================================
+
+  function getServiceGross(
+    serviceName,
+    serviceDetails
+  ) {
+    const details =
+      serviceDetails[serviceName] || {};
+
+    const price = Number(details.price || 0);
+    const quantity = Number(
+      details.quantity || 1
+    );
+
+    return Math.max(
+      price * quantity,
+      0
+    );
+  }
+
+  function getJobGross(job) {
+    const services = Array.isArray(job.services)
+      ? job.services
+      : [];
+
+    const serviceDetails =
+      job.serviceDetails &&
+      typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
+
+    return services.reduce(
+      (total, serviceName) => {
+        return (
+          total +
+          getServiceGross(
+            serviceName,
+            serviceDetails
+          )
+        );
+      },
+      0
+    );
+  }
+
+  // =====================================
+  // JOB SALES BREAKDOWN
+  //
+  // RULES:
+  //
+  // Teyseer Motors:
+  //   ALL SERVICES -> TEYSEER
+  //
+  // Teyseer-Salah:
+  //   WTT -> TEYSEER
+  //   OTHER -> CUSTOMER
+  //
+  // Teyseer-Bahaa:
+  //   WTT -> TEYSEER
+  //   OTHER -> CUSTOMER
+  //
+  // Salah:
+  //   ALL -> CUSTOMER
+  //
+  // Bahaa:
+  //   ALL -> CUSTOMER
+  //
+  // Any other source:
+  //   ALL -> CUSTOMER
+  // =====================================
+
+  function getJobSalesBreakdown(job) {
+    const services = Array.isArray(job.services)
+      ? job.services
+      : [];
+
+    const serviceDetails =
+      job.serviceDetails &&
+      typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
+
+    const source = normalizeSource(
+      job.source
+    );
+
+    let gross = 0;
+    let teyseer = 0;
+    let customer = 0;
+
+    services.forEach((serviceName) => {
+      const amount = getServiceGross(
+        serviceName,
+        serviceDetails
+      );
+
+      gross += amount;
+
+      const isWtt =
+        isWttService(serviceName);
+
+      // ---------------------------------
+      // PURE TEYSEER MOTORS
+      //
+      // ALL SERVICES = TEYSEER
+      // ---------------------------------
+
+      if (isPureTeyseerSource(source)) {
+        teyseer += amount;
+        return;
+      }
+
+      // ---------------------------------
+      // TEYSEER - SALAH
+      //
+      // WTT = TEYSEER
+      // OTHER = CUSTOMER
+      // ---------------------------------
+
+      if (isTeyseerSalahSource(source)) {
+        if (isWtt) {
+          teyseer += amount;
+        } else {
+          customer += amount;
+        }
+
+        return;
+      }
+
+      // ---------------------------------
+      // TEYSEER - BAHAA
+      //
+      // WTT = TEYSEER
+      // OTHER = CUSTOMER
+      // ---------------------------------
+
+      if (isTeyseerBahaaSource(source)) {
+        if (isWtt) {
+          teyseer += amount;
+        } else {
+          customer += amount;
+        }
+
+        return;
+      }
+
+      // ---------------------------------
+      // ALL OTHER SOURCES
+      //
+      // EVERYTHING = CUSTOMER
+      // ---------------------------------
+
+      customer += amount;
+    });
+
+    return {
+      gross,
+      teyseer,
+      customer
+    };
   }
 
   // =====================================
@@ -232,8 +387,10 @@ function Dashboard() {
 
     if (dateFilter === "Month") {
       return (
-        jobDate.getMonth() === now.getMonth() &&
-        jobDate.getFullYear() === now.getFullYear()
+        jobDate.getMonth() ===
+          now.getMonth() &&
+        jobDate.getFullYear() ===
+          now.getFullYear()
       );
     }
 
@@ -251,157 +408,60 @@ function Dashboard() {
   // JOB COUNTS
   // =====================================
 
-  const totalJobs = filteredJobs.length;
+  const totalJobs =
+    filteredJobs.length;
 
-  const newJobs = filteredJobs.filter(
-    (job) => (job.status || "New") === "New"
-  ).length;
+  const newJobs =
+    filteredJobs.filter(
+      (job) =>
+        (job.status || "New") === "New"
+    ).length;
 
-  const progressJobs = filteredJobs.filter(
-    (job) => job.status === "In Progress"
-  ).length;
+  const progressJobs =
+    filteredJobs.filter(
+      (job) =>
+        job.status === "In Progress"
+    ).length;
 
-  const finishedJobs = filteredJobs.filter(
-    (job) => job.status === "Finished"
-  ).length;
+  const finishedJobs =
+    filteredJobs.filter(
+      (job) =>
+        job.status === "Finished"
+    ).length;
 
-  const deliveredJobs = filteredJobs.filter(
-    (job) => job.status === "Delivered"
-  ).length;
+  const deliveredJobs =
+    filteredJobs.filter(
+      (job) =>
+        job.status === "Delivered"
+    ).length;
 
   // =====================================
   // SALES CALCULATION
-  //
-  // GROSS AMOUNT IS USED.
-  //
-  // 1. Internal Sales:
-  //    All service gross amounts.
-  //
-  // 2. Teyseer Motors:
-  //    ENTIRE GROSS JOB IS PAID BY TEYSEER.
-  //    Full WTT + Full PPF + any other service.
-  //
-  // 3. Teyseer-Salah / Teyseer-Bahaa:
-  //    ONLY WTT is paid by Teyseer.
-  //    Other services are customer/sales-team.
-  //
-  // 4. Other sources:
-  //    All services are customer/sales-team.
-  //
-  // 5. Customer Net Sales:
-  //    Customer-payable GROSS amount.
-  //    Teyseer-paid amounts are excluded.
   // =====================================
 
   let internalSales = 0;
   let customerNetSales = 0;
   let teyseerSales = 0;
-  let salesTeamSales = 0;
 
   filteredJobs.forEach((job) => {
-    const services = Array.isArray(job.services)
-      ? job.services
-      : [];
+    const breakdown =
+      getJobSalesBreakdown(job);
 
-    const serviceDetails =
-      job.serviceDetails &&
-      typeof job.serviceDetails === "object"
-        ? job.serviceDetails
-        : {};
+    // ALL GROSS SALES
+    internalSales += breakdown.gross;
 
-    const source = String(job.source || "")
-      .trim()
-      .toLowerCase();
+    // CUSTOMER-PAYABLE GROSS
+    customerNetSales +=
+      breakdown.customer;
 
-    let jobInternalTotal = 0;
-    let jobCustomerTotal = 0;
-    let jobTeyseerTotal = 0;
-    let jobSalesTeamTotal = 0;
-
-    services.forEach((serviceName) => {
-      const details =
-        serviceDetails[serviceName] || {};
-
-      const price = Number(details.price || 0);
-      const quantity = Number(details.quantity || 1);
-
-      // GROSS AMOUNT ONLY.
-      // Discount is intentionally NOT subtracted.
-      const grossServiceAmount = Math.max(
-        price * quantity,
-        0
-      );
-
-      const isWtt = isWttService(serviceName);
-
-      // -------------------------------------
-      // INTERNAL SALES
-      // -------------------------------------
-
-      jobInternalTotal += grossServiceAmount;
-
-      // -------------------------------------
-      // PURE TEYSEER MOTORS
-      //
-      // ENTIRE SERVICE IS PAID BY TEYSEER.
-      // This includes Full WTT, Full PPF,
-      // and any other service.
-      // -------------------------------------
-
-      if (isPureTeyseerSource(source)) {
-        jobTeyseerTotal += grossServiceAmount;
-        return;
-      }
-
-      // -------------------------------------
-      // TEYSEER-SALAH
-      //
-      // WTT -> Teyseer
-      // Non-WTT -> Customer/Salah
-      // -------------------------------------
-
-      if (isTeyseerSalahSource(source)) {
-        if (isWtt) {
-          jobTeyseerTotal += grossServiceAmount;
-        } else {
-          jobCustomerTotal += grossServiceAmount;
-          jobSalesTeamTotal += grossServiceAmount;
-        }
-
-        return;
-      }
-
-      // -------------------------------------
-      // TEYSEER-BAHAA
-      //
-      // WTT -> Teyseer
-      // Non-WTT -> Customer/Bahaa
-      // -------------------------------------
-
-      if (isTeyseerBahaaSource(source)) {
-        if (isWtt) {
-          jobTeyseerTotal += grossServiceAmount;
-        } else {
-          jobCustomerTotal += grossServiceAmount;
-          jobSalesTeamTotal += grossServiceAmount;
-        }
-
-        return;
-      }
-
-      // -------------------------------------
-      // ALL OTHER SOURCES
-      // -------------------------------------
-
-      jobCustomerTotal += grossServiceAmount;
-      jobSalesTeamTotal += grossServiceAmount;
-    });
-
-    internalSales += jobInternalTotal;
-    customerNetSales += jobCustomerTotal;
-    teyseerSales += jobTeyseerTotal;
-    salesTeamSales += jobSalesTeamTotal;
+    // TEYSEER-PAYABLE GROSS
+    teyseerSales +=
+      breakdown.teyseer;
   });
+
+  // Sales Team Sales = all customer sales
+  const salesTeamSales =
+    customerNetSales;
 
   // =====================================
   // PAYMENTS
@@ -411,52 +471,74 @@ function Dashboard() {
     filteredJobs.map((job) => job.id)
   );
 
-  const filteredPayments = payments.filter(
-    (payment) =>
-      filteredJobIds.has(payment.job_id)
-  );
+  const filteredPayments =
+    payments.filter((payment) =>
+      filteredJobIds.has(
+        payment.job_id
+      )
+    );
 
-  /*
-   * Customer payments:
-   *
-   * Pure Teyseer Motors jobs:
-   *    Ignore payment completely because
-   *    the entire gross amount is paid by Teyseer.
-   *
-   * Teyseer-Salah / Teyseer-Bahaa:
-   *    Customer payments apply to non-WTT
-   *    customer services.
-   *
-   * Normal jobs:
-   *    Customer payments apply normally.
-   */
+  // =====================================
+  // CUSTOMER PAID
+  //
+  // Only payments on jobs that have
+  // customer-payable amounts count.
+  // =====================================
 
-  const totalPaid = filteredPayments.reduce(
-    (sum, payment) => {
-      const job = filteredJobs.find(
-        (item) => item.id === payment.job_id
-      );
+  const totalPaid =
+    filteredPayments.reduce(
+      (sum, payment) => {
+        const job = filteredJobs.find(
+          (item) =>
+            item.id === payment.job_id
+        );
 
-      if (!job) {
-        return sum;
-      }
+        if (!job) {
+          return sum;
+        }
 
-      if (isPureTeyseerSource(job.source)) {
-        return sum;
-      }
+        const breakdown =
+          getJobSalesBreakdown(job);
 
-      return (
-        sum +
-        Number(payment.amount || 0)
-      );
-    },
-    0
-  );
+        // Pure Teyseer job:
+        // customer amount = 0
+        //
+        // Therefore customer payment
+        // should not be counted.
+        if (breakdown.customer <= 0) {
+          return sum;
+        }
+
+        return (
+          sum +
+          Number(payment.amount || 0)
+        );
+      },
+      0
+    );
+
+  // =====================================
+  // CUSTOMER BALANCE
+  // =====================================
 
   const customerBalance = Math.max(
     customerNetSales - totalPaid,
     0
   );
+
+  // =====================================
+  // SALES TEAM PAYMENT / BALANCE
+  // =====================================
+
+  const salesTeamPaid =
+    totalPaid;
+
+  const salesTeamBalance =
+    Math.max(
+      salesTeamSales -
+        salesTeamPaid,
+      0
+    );
 
   // =====================================
   // SOURCE REPORT
@@ -485,149 +567,132 @@ function Dashboard() {
   };
 
   filteredJobs.forEach((job) => {
-    const services = Array.isArray(job.services)
-      ? job.services
-      : [];
+    const services =
+      Array.isArray(job.services)
+        ? job.services
+        : [];
 
     const serviceDetails =
       job.serviceDetails &&
-      typeof job.serviceDetails === "object"
+      typeof job.serviceDetails ===
+        "object"
         ? job.serviceDetails
         : {};
 
-    const source = String(job.source || "")
-      .trim()
-      .toLowerCase();
+    const source =
+      normalizeSource(job.source);
 
-    services.forEach((serviceName) => {
-      const details =
-        serviceDetails[serviceName] || {};
+    services.forEach(
+      (serviceName) => {
+        const amount =
+          getServiceGross(
+            serviceName,
+            serviceDetails
+          );
 
-      const price = Number(details.price || 0);
-      const quantity = Number(details.quantity || 1);
+        const isWtt =
+          isWttService(
+            serviceName
+          );
 
-      // GROSS ONLY.
-      // Do NOT subtract discount.
-      const amount = Math.max(
-        price * quantity,
-        0
-      );
+        let reportSource =
+          "Sales Team";
 
-      const isWtt = isWttService(serviceName);
+        // ---------------------------------
+        // PURE TEYSEER
+        //
+        // ALL SERVICES -> TEYSEER
+        // ---------------------------------
 
-      let reportSource = "Sales Team";
+        if (
+          isPureTeyseerSource(source)
+        ) {
+          reportSource =
+            "Teyseer Motors";
+        }
 
-      // -------------------------------------
-      // PURE TEYSEER MOTORS
-      //
-      // ALL SERVICES -> TEYSEER
-      //
-      // Full WTT -> Teyseer
-      // Full PPF -> Teyseer
-      // Any other service -> Teyseer
-      // -------------------------------------
+        // ---------------------------------
+        // TEYSEER-SALAH
+        //
+        // WTT -> TEYSEER
+        // OTHER -> SALAH
+        // ---------------------------------
 
-      if (isPureTeyseerSource(source)) {
-        reportSource = "Teyseer Motors";
-      }
+        else if (
+          isTeyseerSalahSource(
+            source
+          )
+        ) {
+          reportSource = isWtt
+            ? "Teyseer Motors"
+            : "Salah";
+        }
 
-      // -------------------------------------
-      // TEYSEER-SALAH
-      //
-      // WTT -> Teyseer
-      // Non-WTT -> Salah
-      // -------------------------------------
+        // ---------------------------------
+        // TEYSEER-BAHAA
+        //
+        // WTT -> TEYSEER
+        // OTHER -> BAHAA
+        // ---------------------------------
 
-      else if (isTeyseerSalahSource(source)) {
-        if (isWtt) {
-          reportSource = "Teyseer Motors";
-        } else {
+        else if (
+          isTeyseerBahaaSource(
+            source
+          )
+        ) {
+          reportSource = isWtt
+            ? "Teyseer Motors"
+            : "Bahaa";
+        }
+
+        // ---------------------------------
+        // NORMAL SALAH
+        // ---------------------------------
+
+        else if (source === "salah") {
           reportSource = "Salah";
         }
-      }
 
-      // -------------------------------------
-      // TEYSEER-BAHAA
-      //
-      // WTT -> Teyseer
-      // Non-WTT -> Bahaa
-      // -------------------------------------
+        // ---------------------------------
+        // NORMAL BAHAA
+        // ---------------------------------
 
-      else if (isTeyseerBahaaSource(source)) {
-        if (isWtt) {
-          reportSource = "Teyseer Motors";
-        } else {
+        else if (source === "bahaa") {
           reportSource = "Bahaa";
         }
+
+        // ---------------------------------
+        // EVERYTHING ELSE
+        // ---------------------------------
+
+        else {
+          reportSource =
+            "Sales Team";
+        }
+
+        if (
+          !sourceReport[
+            reportSource
+          ]
+        ) {
+          sourceReport[
+            reportSource
+          ] = {
+            jobs: 0,
+            sales: 0
+          };
+        }
+
+        sourceReport[
+          reportSource
+        ].jobs += 1;
+
+        sourceReport[
+          reportSource
+        ].sales += amount;
       }
-
-      // -------------------------------------
-      // NORMAL BAHAA
-      // -------------------------------------
-
-      else if (source === "bahaa") {
-        reportSource = "Bahaa";
-      }
-
-      // -------------------------------------
-      // NORMAL SALAH
-      // -------------------------------------
-
-      else if (source === "salah") {
-        reportSource = "Salah";
-      }
-
-      // -------------------------------------
-      // OTHER SOURCES
-      // -------------------------------------
-
-      else {
-        reportSource = "Sales Team";
-      }
-
-      if (!sourceReport[reportSource]) {
-        sourceReport[reportSource] = {
-          jobs: 0,
-          sales: 0
-        };
-      }
-
-      sourceReport[reportSource].jobs += 1;
-      sourceReport[reportSource].sales += amount;
-    });
+    );
   });
-
-  // =====================================
-  // SALES TEAM PAYMENTS
-  // =====================================
-
-  const salesTeamPaid = filteredPayments.reduce(
-    (sum, payment) => {
-      const job = filteredJobs.find(
-        (item) => item.id === payment.job_id
-      );
-
-      if (!job) {
-        return sum;
-      }
-
-      // Entire pure Teyseer job is paid by Teyseer.
-      if (isPureTeyseerSource(job.source)) {
-        return sum;
-      }
-
-      return (
-        sum +
-        Number(payment.amount || 0)
-      );
-    },
-    0
-  );
-
-  const salesTeamBalance = Math.max(
-    salesTeamSales - salesTeamPaid,
-    0
-  );
 
   // =====================================
   // CHART DATA
@@ -701,7 +766,9 @@ function Dashboard() {
                 textDecoration: "none"
               }}
             >
-              <button style={styles.newButton}>
+              <button
+                style={styles.newButton}
+              >
                 + New Job
               </button>
             </Link>
@@ -712,7 +779,11 @@ function Dashboard() {
                 textDecoration: "none"
               }}
             >
-              <button style={styles.secondaryButton}>
+              <button
+                style={
+                  styles.secondaryButton
+                }
+              >
                 📦 Inventory
               </button>
             </Link>
@@ -723,7 +794,11 @@ function Dashboard() {
                 textDecoration: "none"
               }}
             >
-              <button style={styles.secondaryButton}>
+              <button
+                style={
+                  styles.secondaryButton
+                }
+              >
                 👷 Technician Earnings
               </button>
             </Link>
@@ -735,14 +810,18 @@ function Dashboard() {
 
         <div style={styles.filterBox}>
 
-          <label style={styles.filterLabel}>
+          <label
+            style={styles.filterLabel}
+          >
             Dashboard Period
           </label>
 
           <select
             value={dateFilter}
             onChange={(e) =>
-              setDateFilter(e.target.value)
+              setDateFilter(
+                e.target.value
+              )
             }
             style={styles.select}
           >
@@ -805,49 +884,65 @@ function Dashboard() {
 
           <Card
             title="Internal Sales"
-            value={`QAR ${internalSales.toFixed(2)}`}
+            value={`QAR ${internalSales.toFixed(
+              2
+            )}`}
             icon="💰"
           />
 
           <Card
             title="Customer Net Sales"
-            value={`QAR ${customerNetSales.toFixed(2)}`}
+            value={`QAR ${customerNetSales.toFixed(
+              2
+            )}`}
             icon="💵"
           />
 
           <Card
             title="Teyseer Sales"
-            value={`QAR ${teyseerSales.toFixed(2)}`}
+            value={`QAR ${teyseerSales.toFixed(
+              2
+            )}`}
             icon="🏢"
           />
 
           <Card
             title="Sales Team Sales"
-            value={`QAR ${salesTeamSales.toFixed(2)}`}
+            value={`QAR ${salesTeamSales.toFixed(
+              2
+            )}`}
             icon="👥"
           />
 
           <Card
             title="Sales Team Paid"
-            value={`QAR ${salesTeamPaid.toFixed(2)}`}
+            value={`QAR ${salesTeamPaid.toFixed(
+              2
+            )}`}
             icon="👥💳"
           />
 
           <Card
             title="Sales Team Balance"
-            value={`QAR ${salesTeamBalance.toFixed(2)}`}
+            value={`QAR ${salesTeamBalance.toFixed(
+              2
+            )}`}
             icon="👥⚠️"
           />
 
           <Card
             title="Paid"
-            value={`QAR ${totalPaid.toFixed(2)}`}
+            value={`QAR ${totalPaid.toFixed(
+              2
+            )}`}
             icon="💳"
           />
 
           <Card
             title="Balance Due"
-            value={`QAR ${customerBalance.toFixed(2)}`}
+            value={`QAR ${customerBalance.toFixed(
+              2
+            )}`}
             icon="⚠️"
           />
 
@@ -895,55 +990,71 @@ function Dashboard() {
 
               {filteredJobs
                 .slice(0, 5)
-                .map((job) => (
+                .map((job) => {
 
-                  <tr key={job.id}>
+                  const breakdown =
+                    getJobSalesBreakdown(
+                      job
+                    );
 
-                    <td style={styles.td}>
-                      {job.customer || "Unknown"}
-                    </td>
+                  return (
+                    <tr key={job.id}>
 
-                    <td style={styles.td}>
-                      {job.carModel || "-"}
-                    </td>
+                      <td style={styles.td}>
+                        {job.customer ||
+                          "Unknown"}
+                      </td>
 
-                    <td style={styles.td}>
-                      {job.source || "-"}
-                    </td>
+                      <td style={styles.td}>
+                        {job.carModel || "-"}
+                      </td>
 
-                    <td style={styles.td}>
-                      <span style={styles.status}>
-                        {job.status || "New"}
-                      </span>
-                    </td>
+                      <td style={styles.td}>
+                        {job.source || "-"}
+                      </td>
 
-                    <td style={styles.td}>
-                      QAR{" "}
-                      {Number(
-                        job.price || 0
-                      ).toFixed(2)}
-                    </td>
+                      <td style={styles.td}>
+                        <span
+                          style={
+                            styles.status
+                          }
+                        >
+                          {job.status ||
+                            "New"}
+                        </span>
+                      </td>
 
-                    <td style={styles.td}>
-                      QAR{" "}
-                      {isPureTeyseerSource(job.source)
-                        ? "0.00"
-                        : Number(
-                            job.balance || 0
-                          ).toFixed(2)}
-                    </td>
+                      <td style={styles.td}>
+                        QAR{" "}
+                        {breakdown.gross.toFixed(
+                          2
+                        )}
+                      </td>
 
-                  </tr>
+                      <td style={styles.td}>
+                        QAR{" "}
+                        {breakdown.customer <=
+                        0
+                          ? "0.00"
+                          : Number(
+                              job.balance ||
+                                0
+                            ).toFixed(2)}
+                      </td>
 
-                ))}
+                    </tr>
+                  );
+                })}
 
             </tbody>
 
           </table>
 
-          {filteredJobs.length === 0 && (
+          {filteredJobs.length ===
+            0 && (
             <p style={styles.empty}>
-              No jobs found for this period.
+              No jobs found for this
+              period.
             </p>
           )}
 
@@ -959,7 +1070,9 @@ function Dashboard() {
 
           <div style={styles.chartBox}>
 
-            <h3 style={styles.chartTitle}>
+            <h3
+              style={styles.chartTitle}
+            >
               Job Status
             </h3>
 
@@ -978,10 +1091,15 @@ function Dashboard() {
                 >
 
                   {statusData.map(
-                    (entry, index) => (
+                    (
+                      entry,
+                      index
+                    ) => (
                       <Cell
                         key={index}
-                        fill={COLORS[index]}
+                        fill={
+                          COLORS[index]
+                        }
                       />
                     )
                   )}
@@ -1001,8 +1119,11 @@ function Dashboard() {
 
           <div style={styles.chartBox}>
 
-            <h3 style={styles.chartTitle}>
-              Customer Financial Overview
+            <h3
+              style={styles.chartTitle}
+            >
+              Customer Financial
+              Overview
             </h3>
 
             <ResponsiveContainer
@@ -1010,7 +1131,9 @@ function Dashboard() {
               height={250}
             >
 
-              <BarChart data={salesData}>
+              <BarChart
+                data={salesData}
+              >
 
                 <XAxis
                   dataKey="name"
@@ -1054,31 +1177,51 @@ function Dashboard() {
 
         <div style={styles.recent}>
 
-          {Object.entries(sourceReport).map(
+          {Object.entries(
+            sourceReport
+          ).map(
             ([name, data]) => (
 
               <div
                 key={name}
-                style={styles.recentCard}
+                style={
+                  styles.recentCard
+                }
               >
 
-                <h3 style={styles.goldText}>
+                <h3
+                  style={
+                    styles.goldText
+                  }
+                >
                   {name}
                 </h3>
 
-                <h2 style={styles.bigNumber}>
+                <h2
+                  style={
+                    styles.bigNumber
+                  }
+                >
                   {data.jobs}
                 </h2>
 
-                <p style={styles.muted}>
+                <p
+                  style={styles.muted}
+                >
                   Service Items
                 </p>
 
                 <h3>
                   Gross Sales:{" "}
-                  <span style={styles.goldText}>
+                  <span
+                    style={
+                      styles.goldText
+                    }
+                  >
                     QAR{" "}
-                    {data.sales.toFixed(2)}
+                    {data.sales.toFixed(
+                      2
+                    )}
                   </span>
                 </h3>
 
@@ -1098,9 +1241,15 @@ function Dashboard() {
 
           <Link
             to="/new-job"
-            style={styles.actionCard}
+            style={
+              styles.actionCard
+            }
           >
-            <div style={styles.actionIcon}>
+            <div
+              style={
+                styles.actionIcon
+              }
+            >
               ➕
             </div>
 
@@ -1113,9 +1262,15 @@ function Dashboard() {
 
           <Link
             to="/jobs"
-            style={styles.actionCard}
+            style={
+              styles.actionCard
+            }
           >
-            <div style={styles.actionIcon}>
+            <div
+              style={
+                styles.actionIcon
+              }
+            >
               📋
             </div>
 
@@ -1128,24 +1283,37 @@ function Dashboard() {
 
           <Link
             to="/jobs"
-            style={styles.actionCard}
+            style={
+              styles.actionCard
+            }
           >
-            <div style={styles.actionIcon}>
+            <div
+              style={
+                styles.actionIcon
+              }
+            >
               🧾
             </div>
 
             <h3>Invoice</h3>
 
             <p>
-              Select a car to create invoice
+              Select a car to create
+              invoice
             </p>
           </Link>
 
           <Link
             to="/settings"
-            style={styles.actionCard}
+            style={
+              styles.actionCard
+            }
           >
-            <div style={styles.actionIcon}>
+            <div
+              style={
+                styles.actionIcon
+              }
+            >
               ⚙️
             </div>
 
@@ -1158,9 +1326,15 @@ function Dashboard() {
 
           <Link
             to="/reports"
-            style={styles.actionCard}
+            style={
+              styles.actionCard
+            }
           >
-            <div style={styles.actionIcon}>
+            <div
+              style={
+                styles.actionIcon
+              }
+            >
               📊
             </div>
 
@@ -1173,9 +1347,15 @@ function Dashboard() {
 
           <Link
             to="/inventory"
-            style={styles.actionCard}
+            style={
+              styles.actionCard
+            }
           >
-            <div style={styles.actionIcon}>
+            <div
+              style={
+                styles.actionIcon
+              }
+            >
               📦
             </div>
 
@@ -1192,6 +1372,7 @@ function Dashboard() {
     </div>
   );
 }
+
 
 // =====================================
 // DASHBOARD CARD
@@ -1225,7 +1406,8 @@ function Card({
         ...styles.card,
         borderTop:
           `4px solid ${
-            colors[title] || "#d4af37"
+            colors[title] ||
+            "#d4af37"
           }`
       }}
     >
@@ -1234,11 +1416,15 @@ function Card({
         {icon}
       </div>
 
-      <h3 style={styles.cardTitle}>
+      <h3
+        style={styles.cardTitle}
+      >
         {title}
       </h3>
 
-      <h2 style={styles.cardValue}>
+      <h2
+        style={styles.cardValue}
+      >
         {value}
       </h2>
 
@@ -1262,6 +1448,7 @@ function Card({
 
   return content;
 }
+
 
 // =====================================
 // STYLES
