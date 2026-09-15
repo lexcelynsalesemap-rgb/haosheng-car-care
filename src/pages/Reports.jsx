@@ -2,46 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
 import gaLogo from "../assets/ga-logo.png";
 
-/* ============================================================
-   REPORT CALCULATION RULES
-============================================================
-
-NORMAL / CUSTOMER JOB
----------------------
-Gross   = job.price
-Discount = job.discount
-Net     = max(Gross - Discount, 0)
-Paid    = payments linked to job.id
-Balance = Net - Paid
-
-
-TEYSEER JOB
------------
-Sources:
-- Teyseer Motors
-- Teyseer Motors - Salah
-- Teyseer Motors - Bahaa
-
-If job_services exist:
-    Net = SUM(job_services.price)
-
-If no services exist:
-    Net = max(job.price - job.discount, 0)
-
-
-PAYMENTS
---------
-A payment is counted for a job ONLY when:
-
-payment.job_id === job.id
-
-
-IMPORTANT
----------
-All reports use calculateJob() as the single source of truth.
-
-============================================================ */
-
 const TEYSEER_SOURCES = [
   "Teyseer Motors",
   "Teyseer Motors - Bahaa",
@@ -56,10 +16,6 @@ const DEFAULT_PENDING = {
 
 const DEFAULT_PREVIOUS_TEYSEER = 181200;
 
-/* ============================================================
-   NUMBER HELPERS
-============================================================ */
-
 function number(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -72,16 +28,6 @@ function money(value) {
   });
 }
 
-function wholeMoney(value) {
-  return number(value).toLocaleString("en-US", {
-    maximumFractionDigits: 2,
-  });
-}
-
-/* ============================================================
-   HTML ESCAPE
-============================================================ */
-
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -90,10 +36,6 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
-/* ============================================================
-   DATE HELPERS - QATAR TIME
-============================================================ */
 
 function qatarDate(value) {
   if (!value) return null;
@@ -138,19 +80,15 @@ function isDateInRange(date, startDate, endDate) {
   return true;
 }
 
-/* ============================================================
-   JOB TYPE
-============================================================ */
+function normalizeSource(source) {
+  return String(source || "").trim();
+}
 
 function isTeyseerJob(job) {
   return TEYSEER_SOURCES.includes(
-    String(job.source || "").trim()
+    normalizeSource(job.source)
   );
 }
-
-/* ============================================================
-   PAYMENT METHODS
-============================================================ */
 
 function getPaymentMethod(payment) {
   return String(
@@ -192,10 +130,6 @@ function isBankTransfer(payment) {
   );
 }
 
-/* ============================================================
-   SERVICE HELPERS
-============================================================ */
-
 function getServicesForJob(jobServices, jobId) {
   return jobServices.filter(
     (service) =>
@@ -206,7 +140,13 @@ function getServicesForJob(jobServices, jobId) {
 function getServiceAmount(services) {
   return services.reduce(
     (sum, service) =>
-      sum + number(service.price),
+      sum +
+      number(
+        service.price ??
+          service.amount ??
+          service.total ??
+          0
+      ),
     0
   );
 }
@@ -224,9 +164,49 @@ function getServiceNames(services) {
     .join(", ");
 }
 
-/* ============================================================
-   CANONICAL JOB CALCULATION
-============================================================ */
+function isWttService(service) {
+  const serviceName = String(
+    service.service_name ||
+      service.name ||
+      service.title ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return (
+    serviceName === "wtt" ||
+    serviceName.includes("wtt")
+  );
+}
+
+/*
+============================================================
+CANONICAL JOB CALCULATION
+============================================================
+
+NORMAL JOB:
+  customerSales = price - discount
+
+TEYSEER MOTORS:
+  with services:
+    all services = Teyseer sales
+
+  without services:
+    price - discount = Teyseer sales
+
+SALAH / BAHAA:
+  WTT services = Teyseer sales
+  everything else = Customer sales
+
+PAYMENTS:
+  only payment.job_id === job.id
+
+PAYMENT ALLOCATION:
+  Customer payments are applied first to customer sales.
+  Any remaining payment on a mixed job is Teyseer payment.
+============================================================
+*/
 
 function calculateJob(
   job,
@@ -249,102 +229,47 @@ function calculateJob(
   const serviceTotal =
     getServiceAmount(services);
 
-  const normalizedSource =
-    String(job.source || "").trim();
+  const source = normalizeSource(
+    job.source
+  );
 
   let teyseerSales = 0;
   let customerSales = 0;
 
-  /* ==========================================================
-     TEYSEER MOTORS
-     
-     Everything is Teyseer sales.
-  ========================================================== */
-
-  if (
-    normalizedSource === "Teyseer Motors"
-  ) {
+  if (source === "Teyseer Motors") {
     teyseerSales =
       services.length > 0
         ? serviceTotal
         : jobNet;
-  }
-
-  /* ==========================================================
-     TEYSEER MOTORS - SALAH
-     TEYSEER MOTORS - BAHAA
-
-     WTT = Teyseer Sales
-     Everything else = Customer Sales
-  ========================================================== */
-
-  else if (
-    normalizedSource ===
-      "Teyseer Motors - Salah" ||
-    normalizedSource ===
-      "Teyseer Motors - Bahaa"
+  } else if (
+    source === "Teyseer Motors - Salah" ||
+    source === "Teyseer Motors - Bahaa"
   ) {
-
     if (services.length > 0) {
-
       services.forEach((service) => {
-
-        const serviceName = String(
-          service.service_name ||
-            service.name ||
-            service.title ||
-            ""
-        )
-          .trim()
-          .toLowerCase();
-
         const amount = number(
-          service.price
+          service.price ??
+            service.amount ??
+            service.total ??
+            0
         );
 
-        if (
-          serviceName === "wtt" ||
-          serviceName.includes("wtt")
-        ) {
+        if (isWttService(service)) {
           teyseerSales += amount;
         } else {
           customerSales += amount;
         }
-
       });
-
     } else {
-
-      /*
-        If there are no service records,
-        treat the job as CUSTOMER sales.
-
-        We cannot identify WTT without
-        service information.
-      */
       customerSales = jobNet;
     }
-  }
-
-  /* ==========================================================
-     NORMAL CUSTOMER JOB
-  ========================================================== */
-
-  else {
+  } else {
     customerSales = jobNet;
   }
-
-  /* ==========================================================
-     TOTAL SALES
-  ========================================================== */
 
   const canonicalNet =
     teyseerSales +
     customerSales;
-
-  /* ==========================================================
-     PAYMENTS LINKED TO THIS JOB
-  ========================================================== */
 
   const linkedPayments =
     paymentsByJob[String(job.id)] || [];
@@ -355,73 +280,26 @@ function calculateJob(
     0
   );
 
-  /* ==========================================================
-     PAYMENT ALLOCATION
-     
-     Customer balance is based ONLY on customer sales.
-
-     Teyseer is paid monthly, so Teyseer sales do NOT
-     increase the customer balance.
-
-     For mixed jobs:
-       - Customer payments are applied to customer sales.
-       - Any amount above customer sales is considered
-         Teyseer payment.
-  ========================================================== */
-
   let customerPaid = 0;
   let teyseerPaid = 0;
-
-  /* ----------------------------------------------------------
-     CUSTOMER JOB
-  ---------------------------------------------------------- */
 
   if (
     customerSales > 0 &&
     teyseerSales === 0
   ) {
-
     customerPaid = Math.min(
       paid,
       customerSales
     );
-
-    teyseerPaid = 0;
-  }
-
-  /* ----------------------------------------------------------
-     PURE TEYSEER JOB
-  ---------------------------------------------------------- */
-
-  else if (
+  } else if (
     teyseerSales > 0 &&
     customerSales === 0
   ) {
-
-    customerPaid = 0;
-
     teyseerPaid = paid;
-  }
-
-  /* ----------------------------------------------------------
-     MIXED TEYSEER / CUSTOMER JOB
-     
-     Example:
-       WTT       = 500
-       Customer  = 300
-       Paid      = 300
-
-     Result:
-       Customer Paid = 300
-       Teyseer Paid  = 0
-       Customer Balance = 0
-  ---------------------------------------------------------- */
-
-  else if (
+  } else if (
     teyseerSales > 0 &&
     customerSales > 0
   ) {
-
     customerPaid = Math.min(
       paid,
       customerSales
@@ -433,51 +311,15 @@ function calculateJob(
     );
   }
 
-  /* ----------------------------------------------------------
-     NO SALES
-  ---------------------------------------------------------- */
+  const customerBalance = Math.max(
+    customerSales - customerPaid,
+    0
+  );
 
-  else {
-    customerPaid = 0;
-    teyseerPaid = 0;
-  }
-
-  /* ==========================================================
-     CUSTOMER BALANCE
-     
-     IMPORTANT:
-     Teyseer sales are NOT included here.
-  ========================================================== */
-
-  const customerBalance =
-    Math.max(
-      customerSales -
-        customerPaid,
-      0
-    );
-
-  /* ==========================================================
-     TEYSEER BALANCE
-     
-     This is informational only.
-     It does NOT affect customer balance.
-  ========================================================== */
-
-  const teyseerBalance =
-    Math.max(
-      teyseerSales -
-        teyseerPaid,
-      0
-    );
-
-  /* ==========================================================
-     MAIN BALANCE
-     
-     Main balance = CUSTOMER BALANCE ONLY
-  ========================================================== */
-
-  const balance =
-    customerBalance;
+  const teyseerBalance = Math.max(
+    teyseerSales - teyseerPaid,
+    0
+  );
 
   return {
     ...job,
@@ -488,47 +330,56 @@ function calculateJob(
 
     services,
     serviceTotal,
+    serviceNames: getServiceNames(services),
 
     canonicalNet,
 
-    /* SALES */
     teyseerSales,
     customerSales,
 
-    /* ALL ACTUAL PAYMENTS */
     paid,
-
-    /* ALLOCATED PAYMENTS */
-    teyseerPaid,
     customerPaid,
+    teyseerPaid,
 
-    /* BALANCES */
-    teyseerBalance,
     customerBalance,
+    teyseerBalance,
 
-    /* MAIN BALANCE = CUSTOMER ONLY */
-    balance,
+    balance: customerBalance,
 
     discrepancy: 0,
 
-    isTeyseer:
-      normalizedSource ===
-        "Teyseer Motors" ||
-      normalizedSource ===
-        "Teyseer Motors - Salah" ||
-      normalizedSource ===
-        "Teyseer Motors - Bahaa",
-
-    serviceNames:
-      getServiceNames(services),
+    isTeyseer: isTeyseerJob(job),
 
     linkedPayments,
   };
 }
 
-/* ============================================================
-   COMPONENT
-============================================================ */
+function Card({
+  title,
+  value,
+  color = "blue",
+  subtitle,
+}) {
+  return (
+    <div className="report-card">
+      <div className="report-card-title">
+        {title}
+      </div>
+
+      <div
+        className={`report-card-value ${color}`}
+      >
+        {value}
+      </div>
+
+      {subtitle && (
+        <div className="report-card-subtitle">
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Reports() {
   const [jobs, setJobs] = useState([]);
@@ -573,10 +424,6 @@ function Reports() {
     loadReports();
     loadReportSettings();
   }, []);
-
-  /* ==========================================================
-     LOAD REPORT DATA
-  ========================================================== */
 
   async function loadReports() {
     try {
@@ -637,10 +484,6 @@ function Reports() {
       setLoading(false);
     }
   }
-
-  /* ==========================================================
-     SETTINGS
-  ========================================================== */
 
   async function loadReportSettings() {
     const { data, error } = await supabase
@@ -796,20 +639,10 @@ function Reports() {
     );
   }
 
-  /* ==========================================================
-     PAYMENT MAP
-  ========================================================== */
-
   const paymentsByJob = useMemo(() => {
     const map = {};
 
     payments.forEach((payment) => {
-      /*
-        IMPORTANT:
-        Payments without job_id are NOT
-        assigned to any job.
-      */
-
       if (
         payment.job_id === null ||
         payment.job_id === undefined ||
@@ -832,10 +665,6 @@ function Reports() {
     return map;
   }, [payments]);
 
-  /* ==========================================================
-     CANONICAL JOBS
-  ========================================================== */
-
   const calculatedJobs = useMemo(() => {
     return jobs.map((job) =>
       calculateJob(
@@ -850,10 +679,6 @@ function Reports() {
     paymentsByJob,
   ]);
 
-  /* ==========================================================
-     LINKED PAYMENTS ONLY
-  ========================================================== */
-
   const linkedPayments = useMemo(() => {
     return payments.filter(
       (payment) =>
@@ -863,293 +688,334 @@ function Reports() {
     );
   }, [payments]);
 
-  /* ==========================================================
-   GENERAL FINANCIAL TOTALS
-========================================================== */
+  /*
+  ============================================================
+  FINANCIAL TOTALS
+  ============================================================
+  */
 
-const financial = useMemo(() => {
-  let customerSales = 0;
-  let teyseerSales = 0;
-
-  calculatedJobs.forEach((job) => {
-    const source = String(
-      job.source || ""
-    ).trim();
-
-    /* --------------------------------------------------------
-       NORMAL CUSTOMER JOB
-    -------------------------------------------------------- */
-
-    if (
-      source !== "Teyseer Motors" &&
-      source !== "Teyseer Motors - Salah" &&
-      source !== "Teyseer Motors - Bahaa"
-    ) {
-      customerSales += job.canonicalNet;
-      return;
-    }
-
-    /* --------------------------------------------------------
-       TEYSEER MOTORS
-       
-       All services = Teyseer Sales
-    -------------------------------------------------------- */
-
-    if (source === "Teyseer Motors") {
-      teyseerSales += job.canonicalNet;
-      return;
-    }
-
-    /* --------------------------------------------------------
-       TEYSEER SALAH / BAHAA
-
-       WTT = Teyseer Sales
-       Everything else = Customer Sales
-    -------------------------------------------------------- */
-
-    const services = job.services || [];
-
-    services.forEach((service) => {
-      const serviceName = String(
-        service.service_name ||
-          service.name ||
-          service.title ||
-          ""
-      )
-        .trim()
-        .toLowerCase();
-
-      const amount = number(
-        service.price
-      );
-
-      if (serviceName === "wtt") {
-        teyseerSales += amount;
-      } else {
-        customerSales += amount;
-      }
-    });
-  });
-
-  /* --------------------------------------------------------
-     ALL LINKED PAYMENTS
-  -------------------------------------------------------- */
-
-  const paid = calculatedJobs.reduce(
-    (sum, job) =>
-      sum + job.paid,
-    0
-  );
-
-  /* --------------------------------------------------------
-     TOTAL INTERNAL SALES
-
-     Customer + Teyseer
-  -------------------------------------------------------- */
-
-  const netSales =
-    customerSales +
-    teyseerSales;
-
-  /* --------------------------------------------------------
-     BALANCE
-
-     Teyseer is paid monthly.
-
-     Therefore Teyseer sales are NOT
-     included in the outstanding balance.
-
-     Balance =
-     Customer Sales - All Paid
-  -------------------------------------------------------- */
-
-  const balance =
-    customerSales - paid;
-
-  /* --------------------------------------------------------
-     PAYMENT METHODS
-  -------------------------------------------------------- */
-
-  const cashPaid =
-    linkedPayments
-      .filter(isCash)
-      .reduce(
-        (sum, payment) =>
-          sum + number(payment.amount),
+  const financial = useMemo(() => {
+    const customerSales =
+      calculatedJobs.reduce(
+        (sum, job) =>
+          sum + job.customerSales,
         0
       );
 
-  const cardPaid =
-    linkedPayments
-      .filter(isCard)
-      .reduce(
-        (sum, payment) =>
-          sum + number(payment.amount),
+    const teyseerSales =
+      calculatedJobs.reduce(
+        (sum, job) =>
+          sum + job.teyseerSales,
         0
       );
 
-  const bankTransferPaid =
-    linkedPayments
-      .filter(isBankTransfer)
-      .reduce(
-        (sum, payment) =>
-          sum + number(payment.amount),
+    const paid =
+      calculatedJobs.reduce(
+        (sum, job) =>
+          sum + job.paid,
         0
       );
 
-  const otherPaid =
-    linkedPayments
-      .filter(
-        (payment) =>
-          !isCash(payment) &&
-          !isCard(payment) &&
-          !isBankTransfer(payment)
-      )
-      .reduce(
-        (sum, payment) =>
-          sum + number(payment.amount),
+    const customerPaid =
+      calculatedJobs.reduce(
+        (sum, job) =>
+          sum + job.customerPaid,
         0
       );
 
-  const categorizedPaid =
-    cashPaid +
-    cardPaid +
-    bankTransferPaid +
-    otherPaid;
+    const teyseerPaid =
+      calculatedJobs.reduce(
+        (sum, job) =>
+          sum + job.teyseerPaid,
+        0
+      );
 
-  return {
-    customerSales,
-    teyseerSales,
+    const customerBalance =
+      calculatedJobs.reduce(
+        (sum, job) =>
+          sum + job.customerBalance,
+        0
+      );
 
-    netSales,
+    const teyseerBalance =
+      calculatedJobs.reduce(
+        (sum, job) =>
+          sum + job.teyseerBalance,
+        0
+      );
 
-    paid,
-    balance,
+    const cashPaid =
+      linkedPayments
+        .filter(isCash)
+        .reduce(
+          (sum, payment) =>
+            sum + number(payment.amount),
+          0
+        );
 
-    cashPaid,
-    cardPaid,
-    bankTransferPaid,
-    otherPaid,
+    const cardPaid =
+      linkedPayments
+        .filter(isCard)
+        .reduce(
+          (sum, payment) =>
+            sum + number(payment.amount),
+          0
+        );
 
-    categorizedPaid,
-  };
-}, [
-  calculatedJobs,
-  linkedPayments,
-]);
+    const bankTransferPaid =
+      linkedPayments
+        .filter(isBankTransfer)
+        .reduce(
+          (sum, payment) =>
+            sum + number(payment.amount),
+          0
+        );
 
+    const otherPaid =
+      linkedPayments
+        .filter(
+          (payment) =>
+            !isCash(payment) &&
+            !isCard(payment) &&
+            !isBankTransfer(payment)
+        )
+        .reduce(
+          (sum, payment) =>
+            sum + number(payment.amount),
+          0
+        );
 
-/* ==========================================================
-   TEYSEER
-========================================================== */
+    const categorizedPaid =
+      cashPaid +
+      cardPaid +
+      bankTransferPaid +
+      otherPaid;
 
-const teyseerJobs = useMemo(
-  () =>
-    calculatedJobs.filter(
-      (job) =>
-        job.isTeyseer &&
-        job.canonicalNet > 0
-    ),
-  [calculatedJobs]
-);
+    return {
+      customerSales,
+      teyseerSales,
 
-const customerJobs = useMemo(
-  () =>
-    calculatedJobs.filter(
-      (job) => !job.isTeyseer
-    ),
-  [calculatedJobs]
-);
+      netSales:
+        customerSales +
+        teyseerSales,
 
+      paid,
+      customerPaid,
+      teyseerPaid,
 
-/* ==========================================================
-   CUSTOMER / TEYSEER TOTALS
-========================================================== */
+      customerBalance,
+      teyseerBalance,
 
-/*
-  IMPORTANT:
+      cashPaid,
+      cardPaid,
+      bankTransferPaid,
+      otherPaid,
+      categorizedPaid,
+    };
+  }, [
+    calculatedJobs,
+    linkedPayments,
+  ]);
 
-  Do NOT calculate customerSales from
-  customerJobs anymore.
+  const customerSales =
+    financial.customerSales;
 
-  financial.customerSales already contains
-  the correct WTT / non-WTT split.
-*/
+  const teyseerSales =
+    financial.teyseerSales;
 
-const customerSales =
-  financial.customerSales;
+  const customerPaid =
+    financial.customerPaid;
 
-const teyseerSales =
-  financial.teyseerSales;
+  const customerBalance =
+    financial.customerBalance;
 
+  const teyseerPaid =
+    financial.teyseerPaid;
 
-/* ==========================================================
-   CUSTOMER PAID
-========================================================== */
+  const teyseerBalance =
+    financial.teyseerBalance;
 
-/*
-  Customer paid is all linked payments.
+  /*
+  ============================================================
+  TEYSEER JOBS
+  ============================================================
+  */
 
-  Teyseer is paid monthly, so we don't
-  use Teyseer paid to calculate the
-  customer balance.
-*/
+  const teyseerJobs = useMemo(() => {
+    return calculatedJobs.filter(
+      (job) => job.isTeyseer
+    );
+  }, [calculatedJobs]);
 
-const customerPaid =
-  financial.paid;
+  const filteredTeyseerJobs =
+    useMemo(() => {
+      return teyseerJobs.filter((job) =>
+        isDateInRange(
+          getJobDate(job),
+          teyseerStartDate,
+          teyseerEndDate
+        )
+      );
+    }, [
+      teyseerJobs,
+      teyseerStartDate,
+      teyseerEndDate,
+    ]);
 
+  /*
+  ============================================================
+  TEYSEER SOURCE TOTALS
+  ============================================================
+  */
 
-/* ==========================================================
-   CUSTOMER BALANCE
-========================================================== */
+  const teyseerMotorsAmount =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) === "Teyseer Motors"
+        )
+        .reduce(
+          (sum, job) =>
+            sum + job.teyseerSales,
+          0
+        );
+    }, [filteredTeyseerJobs]);
 
-const customerBalance =
-  financial.balance;
+  const salahAmount =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) ===
+            "Teyseer Motors - Salah"
+        )
+        .reduce(
+          (sum, job) =>
+            sum + job.teyseerSales,
+          0
+        );
+    }, [filteredTeyseerJobs]);
 
+  const bahaaAmount =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) ===
+            "Teyseer Motors - Bahaa"
+        )
+        .reduce(
+          (sum, job) =>
+            sum + job.teyseerSales,
+          0
+        );
+    }, [filteredTeyseerJobs]);
 
-/* ==========================================================
-   TEYSEER PAID
-========================================================== */
-
-const teyseerPaid = useMemo(
-  () =>
-    teyseerJobs.reduce(
+  const filteredTeyseerSales =
+    filteredTeyseerJobs.reduce(
       (sum, job) =>
-        sum + job.paid,
+        sum + job.teyseerSales,
       0
-    ),
-  [teyseerJobs]
-);
+    );
 
+  const filteredTeyseerPaid =
+    filteredTeyseerJobs.reduce(
+      (sum, job) =>
+        sum + job.teyseerPaid,
+      0
+    );
 
-/* ==========================================================
-   TEYSEER BALANCE
-========================================================== */
+  const filteredTeyseerBalance =
+    filteredTeyseerJobs.reduce(
+      (sum, job) =>
+        sum + job.teyseerBalance,
+      0
+    );
 
-/*
-  This is informational only.
+  /*
+  ============================================================
+  TEYSEER SERVICE COUNTS
+  ============================================================
+  */
 
-  Teyseer is paid monthly, so it does
-  NOT affect the main customer balance.
-*/
+  const teyseerMotorsServiceItems =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) === "Teyseer Motors"
+        )
+        .reduce(
+          (count, job) =>
+            count +
+            job.services.length,
+          0
+        );
+    }, [filteredTeyseerJobs]);
 
-const teyseerBalance =
-  teyseerSales -
-  teyseerPaid;
-  /* ==========================================================
-     DISCREPANCIES
-  ========================================================== */
+  const salahServiceItems =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) ===
+            "Teyseer Motors - Salah"
+        )
+        .reduce(
+          (count, job) =>
+            count +
+            job.services.length,
+          0
+        );
+    }, [filteredTeyseerJobs]);
 
-  const discrepancyJobs = useMemo(
-    () =>
-      teyseerJobs.filter(
+  const bahaaServiceItems =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) ===
+            "Teyseer Motors - Bahaa"
+        )
+        .reduce(
+          (count, job) =>
+            count +
+            job.services.length,
+          0
+        );
+    }, [filteredTeyseerJobs]);
+
+  const filteredTeyseerCars =
+    filteredTeyseerJobs.length;
+
+  /*
+  ============================================================
+  DISCREPANCIES
+  ============================================================
+  */
+
+  const discrepancyJobs =
+    useMemo(() => {
+      return teyseerJobs.filter(
         (job) =>
           Math.abs(
             job.discrepancy
           ) > 0.01
-      ),
-    [teyseerJobs]
-  );
+      );
+    }, [teyseerJobs]);
 
   const totalTeyseerDiscrepancy =
     discrepancyJobs.reduce(
@@ -1158,20 +1024,21 @@ const teyseerBalance =
       0
     );
 
-  /* ==========================================================
-     UNLINKED PAYMENTS
-  ========================================================== */
+  /*
+  ============================================================
+  UNLINKED PAYMENTS
+  ============================================================
+  */
 
-  const unlinkedPayments = useMemo(
-    () =>
-      payments.filter(
+  const unlinkedPayments =
+    useMemo(() => {
+      return payments.filter(
         (payment) =>
           payment.job_id === null ||
           payment.job_id === undefined ||
           payment.job_id === ""
-      ),
-    [payments]
-  );
+      );
+    }, [payments]);
 
   const unlinkedPaymentTotal =
     unlinkedPayments.reduce(
@@ -1180,9 +1047,11 @@ const teyseerBalance =
       0
     );
 
-  /* ==========================================================
-     DAILY PAYMENTS
-  ========================================================== */
+  /*
+  ============================================================
+  DAILY PAYMENTS
+  ============================================================
+  */
 
   const dailyPayments = useMemo(() => {
     const result = {};
@@ -1241,14 +1110,16 @@ const teyseerBalance =
     );
   }, [linkedPayments]);
 
-  /* ==========================================================
-     SELECTED DATE PAYMENTS
-  ========================================================== */
+  /*
+  ============================================================
+  SELECTED DATE
+  ============================================================
+  */
 
   const selectedDatePayments =
-    useMemo(
-      () =>
-        linkedPayments.filter((payment) => {
+    useMemo(() => {
+      return linkedPayments.filter(
+        (payment) => {
           if (!payment.payment_date) {
             return false;
           }
@@ -1259,9 +1130,12 @@ const teyseerBalance =
             ).slice(0, 10) ===
             reportDate
           );
-        }),
-      [linkedPayments, reportDate]
-    );
+        }
+      );
+    }, [
+      linkedPayments,
+      reportDate,
+    ]);
 
   const selectedDatePaymentTotal =
     selectedDatePayments.reduce(
@@ -1270,23 +1144,35 @@ const teyseerBalance =
       0
     );
 
-  /* ==========================================================
-     DAILY JOB REPORT
-  ========================================================== */
-
   const selectedDateJobs =
-    calculatedJobs.filter(
-      (job) =>
-        getJobDate(job) ===
-        reportDate
+    useMemo(() => {
+      return calculatedJobs.filter(
+        (job) =>
+          getJobDate(job) ===
+          reportDate
+      );
+    }, [
+      calculatedJobs,
+      reportDate,
+    ]);
+
+  const selectedDateCustomerSales =
+    selectedDateJobs.reduce(
+      (sum, job) =>
+        sum + job.customerSales,
+      0
+    );
+
+  const selectedDateTeyseerSales =
+    selectedDateJobs.reduce(
+      (sum, job) =>
+        sum + job.teyseerSales,
+      0
     );
 
   const selectedDateSales =
-    selectedDateJobs.reduce(
-      (sum, job) =>
-        sum + job.canonicalNet,
-      0
-    );
+    selectedDateCustomerSales +
+    selectedDateTeyseerSales;
 
   const selectedDatePaid =
     selectedDateJobs.reduce(
@@ -1295,13 +1181,25 @@ const teyseerBalance =
       0
     );
 
-  const selectedDateBalance =
-    selectedDateSales -
-    selectedDatePaid;
+  const selectedDateCustomerPaid =
+    selectedDateJobs.reduce(
+      (sum, job) =>
+        sum + job.customerPaid,
+      0
+    );
 
-  /* ==========================================================
-     CAR COUNTS
-  ========================================================== */
+  const selectedDateBalance =
+    selectedDateJobs.reduce(
+      (sum, job) =>
+        sum + job.customerBalance,
+      0
+    );
+
+  /*
+  ============================================================
+  CAR COUNTS
+  ============================================================
+  */
 
   const today = todayQatar();
 
@@ -1353,25 +1251,11 @@ const teyseerBalance =
         mondayOffset
     );
 
-    monday.setHours(
-      0,
-      0,
-      0,
-      0
-    );
-
     const sunday =
       new Date(monday);
 
     sunday.setDate(
       sunday.getDate() + 6
-    );
-
-    sunday.setHours(
-      23,
-      59,
-      59,
-      999
     );
 
     return (
@@ -1387,10 +1271,6 @@ const teyseerBalance =
           getJobDate(job)
         )
     ).length;
-
-  /* ==========================================================
-     DAILY CARS
-  ========================================================== */
 
   const dailyCars = {};
 
@@ -1412,39 +1292,47 @@ const teyseerBalance =
         b.localeCompare(a)
     );
 
-  /* ==========================================================
-     AL NUSOOR
-  ========================================================== */
+  /*
+  ============================================================
+  AL NUSOOR
+  ============================================================
+  */
 
   const alnusoorJobs =
-    calculatedJobs.filter(
-      (job) => {
-        const customer =
-          String(
-            job.customer || ""
-          )
-            .toLowerCase()
-            .trim();
+    useMemo(() => {
+      return calculatedJobs.filter(
+        (job) => {
+          const customer =
+            String(
+              job.customer || ""
+            )
+              .toLowerCase()
+              .trim();
 
-        const isAlnusoor =
-          customer.includes(
-            "al nusoor"
-          ) ||
-          customer.includes(
-            "alnusoor"
+          const isAlnusoor =
+            customer.includes(
+              "al nusoor"
+            ) ||
+            customer.includes(
+              "alnusoor"
+            );
+
+          if (!isAlnusoor) {
+            return false;
+          }
+
+          return isDateInRange(
+            getJobDate(job),
+            alnusoorStartDate,
+            alnusoorEndDate
           );
-
-        if (!isAlnusoor) {
-          return false;
         }
-
-        return isDateInRange(
-          getJobDate(job),
-          alnusoorStartDate,
-          alnusoorEndDate
-        );
-      }
-    );
+      );
+    }, [
+      calculatedJobs,
+      alnusoorStartDate,
+      alnusoorEndDate,
+    ]);
 
   const alnusoorGross =
     alnusoorJobs.reduce(
@@ -1470,49 +1358,22 @@ const teyseerBalance =
   const alnusoorPaid =
     alnusoorJobs.reduce(
       (sum, job) =>
-        sum + job.paid,
+        sum + job.customerPaid,
       0
     );
 
   const alnusoorBalance =
-    alnusoorNet -
-    alnusoorPaid;
-
-  /* ==========================================================
-     FILTERED TEYSEER
-  ========================================================== */
-
-  const filteredTeyseerJobs =
-    teyseerJobs.filter(
-      (job) =>
-        isDateInRange(
-          getJobDate(job),
-          teyseerStartDate,
-          teyseerEndDate
-        )
-    );
-
-  const filteredTeyseerSales =
-    filteredTeyseerJobs.reduce(
+    alnusoorJobs.reduce(
       (sum, job) =>
-        sum + job.canonicalNet,
+        sum + job.customerBalance,
       0
     );
 
-  const filteredTeyseerPaid =
-    filteredTeyseerJobs.reduce(
-      (sum, job) =>
-        sum + job.paid,
-      0
-    );
-
-  const filteredTeyseerBalance =
-    filteredTeyseerSales -
-    filteredTeyseerPaid;
-
-  /* ==========================================================
-     PRINT AL NUSOOR REPORT
-  ========================================================== */
+  /*
+  ============================================================
+  PRINT AL NUSOOR
+  ============================================================
+  */
 
   function printAlnusoorReport() {
     if (
@@ -1530,32 +1391,40 @@ const teyseerBalance =
           (job) => `
             <tr>
               <td>${getJobDate(job) || "-"}</td>
+
               <td>${escapeHtml(
                 job.customer || "-"
               )}</td>
+
               <td>${escapeHtml(
                 job.carMake ||
                   job.carType ||
                   job.carModel ||
                   "-"
               )}</td>
+
               <td>${escapeHtml(
                 job.plate || "-"
               )}</td>
+
               <td class="money">${money(
                 job.gross
               )}</td>
+
               <td class="money">${money(
                 job.discount
               )}</td>
+
               <td class="money">${money(
                 job.canonicalNet
               )}</td>
+
               <td class="money">${money(
-                job.paid
+                job.customerPaid
               )}</td>
+
               <td class="money">${money(
-                job.balance
+                job.customerBalance
               )}</td>
             </tr>
           `
@@ -1652,7 +1521,7 @@ const teyseerBalance =
           .summary {
             margin-top: 20px;
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(6, 1fr);
             gap: 10px;
           }
 
@@ -1705,9 +1574,7 @@ const teyseerBalance =
           </div>
         </div>
 
-        <h2>
-          AL NUSOOR CENTER REPORT
-        </h2>
+        <h2>AL NUSOOR CENTER REPORT</h2>
 
         <p>
           Period:
@@ -1767,6 +1634,13 @@ const teyseerBalance =
           </div>
 
           <div class="box">
+            <div class="label">PAID</div>
+            <div class="value">
+              QAR ${money(alnusoorPaid)}
+            </div>
+          </div>
+
+          <div class="box">
             <div class="label">BALANCE</div>
             <div class="value">
               QAR ${money(alnusoorBalance)}
@@ -1804,9 +1678,11 @@ const teyseerBalance =
     };
   }
 
-  /* ==========================================================
-     PRINT TEYSEER REPORT
-  ========================================================== */
+  /*
+  ============================================================
+  PRINT TEYSEER
+  ============================================================
+  */
 
   function printTeyseerReport() {
     if (
@@ -1852,8 +1728,7 @@ const teyseerBalance =
 
               <td>
                 ${escapeHtml(
-                  job.serviceNames ||
-                    "-"
+                  job.serviceNames || "-"
                 )}
               </td>
 
@@ -1873,7 +1748,13 @@ const teyseerBalance =
 
               <td class="money">
                 QAR ${money(
-                  job.canonicalNet
+                  job.teyseerSales
+                )}
+              </td>
+
+              <td class="money">
+                QAR ${money(
+                  job.teyseerPaid
                 )}
               </td>
             </tr>
@@ -2074,7 +1955,7 @@ const teyseerBalance =
             </div>
 
             <div class="boxValue">
-              ${filteredTeyseerJobs.length}
+              ${filteredTeyseerCars}
             </div>
           </div>
 
@@ -2128,7 +2009,8 @@ const teyseerBalance =
               <th>ALL SERVICES</th>
               <th>VOUCHER NO.</th>
               <th>RECEIPT NO.</th>
-              <th>NET AMOUNT</th>
+              <th>TEYSEER NET</th>
+              <th>TEYSEER PAID</th>
             </tr>
           </thead>
 
@@ -2166,636 +2048,498 @@ const teyseerBalance =
       }, 500);
     };
   }
-/* ==========================================================
-   PRINT DAILY REPORT
-========================================================== */
-
-function printDailyReport() {
-  if (!reportDate) {
-    alert("Please select a date.");
-    return;
-  }
-
-  const dailyJobs = selectedDateJobs || [];
 
   /*
-    ==========================================================
-    DAILY SALES CALCULATION
-
-    TEYSEER:
-    - Teyseer Motors
-    - Teyseer Motors - Salah
-    - Teyseer Motors - Bahaa
-
-    ONLY WTT SERVICES = TEYSEER SALES
-
-    ALL OTHER SERVICES = CUSTOMER SALES
-
-    NORMAL CUSTOMER JOBS:
-    - Entire canonicalNet = CUSTOMER SALES
-
-    BALANCE:
-    - Customer Sales - Customer Paid
-    - Teyseer is paid monthly, so Teyseer is NOT
-      deducted from the daily balance.
-    ==========================================================
+  ============================================================
+  PRINT DAILY
+  ============================================================
   */
 
-  let totalTeyseerSales = 0;
-  let totalCustomerSales = 0;
-  let totalCustomerPaid = 0;
-
-  /*
-    Calculate sales by job.
-  */
-
-  dailyJobs.forEach((job) => {
-    const source = String(
-      job.source || ""
-    )
-      .trim()
-      .toLowerCase();
-
-    const isTeyseerSource =
-      source === "teyseer motors" ||
-      source === "teyseer motors - salah" ||
-      source === "teyseer motors - bahaa";
-
-    /*
-      Normal customer job
-    */
-
-    if (!isTeyseerSource) {
-      totalCustomerSales +=
-        number(job.canonicalNet);
-
-      totalCustomerPaid +=
-        number(job.paid);
-
+  function printDailyReport() {
+    if (!reportDate) {
+      alert(
+        "Please select a date."
+      );
       return;
     }
 
-    /*
-      Teyseer job:
-      Separate WTT from all other services.
-    */
+    const dailyJobs =
+      selectedDateJobs || [];
 
-    const services =
-      job.services || [];
+    const totalTeyseerSales =
+      selectedDateTeyseerSales;
 
-    services.forEach((service) => {
-      const serviceName = String(
-        service.service_name ||
-          service.name ||
-          service.title ||
-          ""
+    const totalCustomerSales =
+      selectedDateCustomerSales;
+
+    const totalSales =
+      selectedDateSales;
+
+    const totalCustomerPaid =
+      selectedDateCustomerPaid;
+
+    const totalBalance =
+      selectedDateBalance;
+
+    const rows = dailyJobs
+      .map(
+        (job, index) => `
+          <tr>
+            <td>${index + 1}</td>
+
+            <td>
+              ${escapeHtml(
+                getJobDate(job) || "-"
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                job.source || "-"
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                job.customer || "-"
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                job.carMake ||
+                  job.carType ||
+                  job.carModel ||
+                  "-"
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                job.plate || "-"
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                job.serviceNames || "-"
+              )}
+            </td>
+
+            <td class="money">
+              QAR ${money(job.gross)}
+            </td>
+
+            <td class="money">
+              QAR ${money(job.discount)}
+            </td>
+
+            <td class="money">
+              QAR ${money(
+                job.canonicalNet
+              )}
+            </td>
+
+            <td class="money">
+              QAR ${money(job.paid)}
+            </td>
+
+            <td class="money">
+              QAR ${money(
+                job.customerBalance
+              )}
+            </td>
+          </tr>
+        `
       )
-        .trim()
-        .toLowerCase();
+      .join("");
 
-      const serviceAmount =
-        number(service.price);
+    const printWindow =
+      window.open(
+        "",
+        "_blank",
+        "width=1500,height=1000"
+      );
 
-      const isWTT =
-        serviceName.includes("wtt");
+    if (!printWindow) {
+      alert(
+        "Please allow pop-ups for this website."
+      );
+      return;
+    }
 
-      if (isWTT) {
-        totalTeyseerSales +=
-          serviceAmount;
-      } else {
-        totalCustomerSales +=
-          serviceAmount;
-      }
-    });
+    const selectedPaymentRows =
+      dailyPayments
+        .filter(
+          ([date]) =>
+            date === reportDate
+        )
+        .map(
+          ([date, data]) => `
+            <tr>
+              <td>${escapeHtml(date)}</td>
 
-    /*
-      Payments belonging to this job are customer payments
-      for the purpose of the daily customer balance.
+              <td class="money">
+                QAR ${money(data.cash)}
+              </td>
 
-      If you want Teyseer payments excluded completely
-      from Total Paid as well, this is where we would change it.
-    */
+              <td class="money">
+                QAR ${money(data.visa)}
+              </td>
 
-    totalCustomerPaid +=
-      number(job.paid);
-  });
+              <td class="money">
+                QAR ${money(data.mastercard)}
+              </td>
 
-  /*
-    ==========================================================
-    TOTALS
-    ==========================================================
-  */
+              <td class="money">
+                QAR ${money(
+                  data.bankTransfer
+                )}
+              </td>
 
-  const totalSales =
-    totalTeyseerSales +
-    totalCustomerSales;
+              <td class="money">
+                QAR ${money(data.other)}
+              </td>
 
-  const totalBalance =
-    totalCustomerSales -
-    totalCustomerPaid;
+              <td class="money">
+                QAR ${money(data.total)}
+              </td>
+            </tr>
+          `
+        )
+        .join("");
 
-  /*
-    ==========================================================
-    DAILY JOB ROWS
-    ==========================================================
-  */
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
 
-  const rows = dailyJobs
-    .map(
-      (job, index) => `
-        <tr>
-          <td>${index + 1}</td>
+      <head>
 
-          <td>
-            ${escapeHtml(
-              getJobDate(job) || "-"
-            )}
-          </td>
+        <title>
+          Daily Report - ${escapeHtml(
+            reportDate
+          )}
+        </title>
 
-          <td>
-            ${escapeHtml(
-              job.source || "-"
-            )}
-          </td>
+        <style>
 
-          <td>
-            ${escapeHtml(
-              job.customer || "-"
-            )}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              job.carModel || "-"
-            )}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              job.plate || "-"
-            )}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              job.serviceNames || "-"
-            )}
-          </td>
-
-          <td class="money">
-            QAR ${money(job.gross)}
-          </td>
-
-          <td class="money">
-            QAR ${money(job.discount)}
-          </td>
-
-          <td class="money">
-            QAR ${money(job.canonicalNet)}
-          </td>
-
-          <td class="money">
-            QAR ${money(job.paid)}
-          </td>
-
-          <td class="money">
-            QAR ${money(job.balance)}
-          </td>
-        </tr>
-      `
-    )
-    .join("");
-
-  /*
-    ==========================================================
-    PRINT WINDOW
-    ==========================================================
-  */
-
-  const printWindow =
-    window.open(
-      "",
-      "_blank",
-      "width=1500,height=1000"
-    );
-
-  if (!printWindow) {
-    alert(
-      "Please allow pop-ups for this website."
-    );
-    return;
-  }
-
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-
-    <head>
-
-      <title>
-        Daily Report - ${escapeHtml(reportDate)}
-      </title>
-
-      <style>
-
-        * {
-          box-sizing: border-box;
-        }
-
-        @page {
-          size: A4 landscape;
-          margin: 10mm;
-        }
-
-        body {
-          font-family: Arial, sans-serif;
-          color: #000;
-          margin: 0;
-          padding: 15px;
-          font-size: 9px;
-        }
-
-        .header {
-          display: flex;
-          width: 100%;
-          min-height: 100px;
-          margin-bottom: 15px;
-        }
-
-        .logo {
-          width: 100px;
-          height: 90px;
-          object-fit: contain;
-        }
-
-        .company {
-          padding-left: 20px;
-        }
-
-        .companyName {
-          font-size: 17px;
-          font-weight: bold;
-          margin-bottom: 8px;
-        }
-
-        .arabicName {
-          font-size: 15px;
-          font-weight: bold;
-          margin-bottom: 8px;
-        }
-
-        .reportTitle {
-          font-size: 16px;
-          font-weight: bold;
-          margin-bottom: 6px;
-        }
-
-        .period {
-          margin-bottom: 15px;
-        }
-
-        /*
-          SUMMARY
-        */
-
-        .summary {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 10px;
-          margin: 15px 0;
-        }
-
-        .box {
-          border: 1px solid #999;
-          padding: 8px;
-        }
-
-        .boxLabel {
-          font-size: 8px;
-          color: #666;
-        }
-
-        .boxValue {
-          font-size: 13px;
-          font-weight: bold;
-          margin-top: 4px;
-        }
-
-        /*
-          TABLE
-        */
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 20px;
-        }
-
-        th {
-          background: #111827;
-          color: white;
-          padding: 6px;
-          text-align: left;
-        }
-
-        td {
-          padding: 6px;
-          border: 1px solid #ddd;
-          vertical-align: top;
-        }
-
-        .money {
-          text-align: right;
-          white-space: nowrap;
-        }
-
-        .number {
-          text-align: center;
-        }
-
-        .section-title {
-          font-size: 13px;
-          font-weight: bold;
-          margin: 18px 0 8px;
-        }
-
-        /*
-          FOOTER
-        */
-
-        .footer {
-          margin-top: 35px;
-          border-top: 1px solid #000;
-          padding-top: 8px;
-          text-align: center;
-          font-size: 8px;
-        }
-
-        @media print {
-
-          thead {
-            display: table-header-group;
+          * {
+            box-sizing: border-box;
           }
 
-          tr {
-            page-break-inside: avoid;
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
           }
 
-        }
-
-      </style>
-
-    </head>
-
-    <body>
-
-      <!-- =====================================================
-           HEADER
-      ====================================================== -->
-
-      <div class="header">
-
-        <img
-          src="${gaLogo}"
-          class="logo"
-        />
-
-        <div class="company">
-
-          <div class="companyName">
-            HAOSHENG CAR SERVICE AND ACCESSORIES
-          </div>
-
-          <div class="arabicName">
-            هاوشنغ لخدمات وزينة السيارات
-          </div>
-
-          <div>
-            Building 358,
-            Salwa Road,
-            Doha - Qatar
-          </div>
-
-        </div>
-
-      </div>
-
-      <!-- =====================================================
-           TITLE
-      ====================================================== -->
-
-      <div class="reportTitle">
-        DAILY REPORT
-      </div>
-
-      <div class="period">
-        Date: ${escapeHtml(reportDate)}
-      </div>
-
-      <!-- =====================================================
-           SUMMARY
-      ====================================================== -->
-
-      <div class="summary">
-
-        <div class="box">
-
-          <div class="boxLabel">
-            CARS
-          </div>
-
-          <div class="boxValue">
-            ${dailyJobs.length}
-          </div>
-
-        </div>
-
-        <div class="box">
-
-          <div class="boxLabel">
-            TEYSEER SALES
-          </div>
-
-          <div class="boxValue">
-            QAR ${money(totalTeyseerSales)}
-          </div>
-
-        </div>
-
-        <div class="box">
-
-          <div class="boxLabel">
-            CUSTOMER SALES
-          </div>
-
-          <div class="boxValue">
-            QAR ${money(totalCustomerSales)}
-          </div>
-
-        </div>
-
-        <div class="box">
-
-          <div class="boxLabel">
-            TOTAL SALES
-          </div>
-
-          <div class="boxValue">
-            QAR ${money(totalSales)}
-          </div>
-
-        </div>
-
-        <div class="box">
-
-          <div class="boxLabel">
-            TOTAL PAID
-          </div>
-
-          <div class="boxValue">
-            QAR ${money(totalCustomerPaid)}
-          </div>
-
-        </div>
-
-        <div class="box">
-
-          <div class="boxLabel">
-            CUSTOMER BALANCE
-          </div>
-
-          <div class="boxValue">
-            QAR ${money(totalBalance)}
-          </div>
-
-        </div>
-
-      </div>
-
-      <!-- =====================================================
-           DAILY PAYMENTS
-      ====================================================== -->
-
-      <div class="section-title">
-        DAILY PAYMENTS
-      </div>
-
-      <table>
-
-        <thead>
-
-          <tr>
-            <th>DATE</th>
-            <th>CASH</th>
-            <th>VISA</th>
-            <th>MASTERCARD</th>
-            <th>BANK</th>
-            <th>OTHER</th>
-            <th>TOTAL</th>
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-          ${
-            dailyPayments
-              .filter(
-                ([date]) =>
-                  date === reportDate
-              )
-              .map(
-                ([date, data]) => `
-                  <tr>
-
-                    <td>
-                      ${escapeHtml(date)}
-                    </td>
-
-                    <td class="money">
-                      QAR ${money(data.cash)}
-                    </td>
-
-                    <td class="money">
-                      QAR ${money(data.visa)}
-                    </td>
-
-                    <td class="money">
-                      QAR ${money(data.mastercard)}
-                    </td>
-
-                    <td class="money">
-                      QAR ${money(data.bankTransfer)}
-                    </td>
-
-                    <td class="money">
-                      QAR ${money(data.other)}
-                    </td>
-
-                    <td class="money">
-                      QAR ${money(data.total)}
-                    </td>
-
-                  </tr>
-                `
-              )
-              .join("") ||
-            `
-              <tr>
-
-                <td
-                  colspan="7"
-                  style="text-align:center;"
-                >
-                  No payment data found.
-                </td>
-
-              </tr>
-            `
+          body {
+            font-family: Arial, sans-serif;
+            color: #000;
+            margin: 0;
+            padding: 15px;
+            font-size: 9px;
           }
 
-        </tbody>
+          .header {
+            display: flex;
+            width: 100%;
+            min-height: 100px;
+            margin-bottom: 15px;
+          }
 
-      </table>
+          .logo {
+            width: 100px;
+            height: 90px;
+            object-fit: contain;
+          }
 
-      <!-- =====================================================
-           DAILY CARS
-      ====================================================== -->
+          .company {
+            padding-left: 20px;
+          }
 
-      <div class="section-title">
-        DAILY CARS
-      </div>
+          .companyName {
+            font-size: 17px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
 
-      <table>
+          .arabicName {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
 
-        <thead>
+          .reportTitle {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 6px;
+          }
 
-          <tr>
-            <th>#</th>
-            <th>DATE</th>
-            <th>SOURCE</th>
-            <th>CUSTOMER</th>
-            <th>CAR MODEL</th>
-            <th>PLATE</th>
-            <th>SERVICES</th>
-            <th>GROSS</th>
-            <th>DISCOUNT</th>
-            <th>NET</th>
-            <th>PAID</th>
-            <th>BALANCE</th>
-          </tr>
+          .period {
+            margin-bottom: 15px;
+          }
 
-        </thead>
+          .summary {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+          }
 
-        <tbody>
+          .box {
+            border: 1px solid #999;
+            padding: 8px;
+          }
 
-          ${rows}
+          .boxLabel {
+            font-size: 8px;
+            color: #666;
+          }
 
-          ${
-            dailyJobs.length === 0
-              ? `
+          .boxValue {
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 4px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+          }
+
+          th {
+            background: #111827;
+            color: white;
+            padding: 6px;
+            text-align: left;
+          }
+
+          td {
+            padding: 6px;
+            border: 1px solid #ddd;
+            vertical-align: top;
+          }
+
+          .money {
+            text-align: right;
+            white-space: nowrap;
+          }
+
+          .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 18px 0 8px;
+          }
+
+          .footer {
+            margin-top: 35px;
+            border-top: 1px solid #000;
+            padding-top: 8px;
+            text-align: center;
+            font-size: 8px;
+          }
+
+          @media print {
+
+            thead {
+              display: table-header-group;
+            }
+
+            tr {
+              page-break-inside: avoid;
+            }
+
+          }
+
+        </style>
+
+      </head>
+
+      <body>
+
+        <div class="header">
+
+          <img
+            src="${gaLogo}"
+            class="logo"
+          />
+
+          <div class="company">
+
+            <div class="companyName">
+              HAOSHENG CAR SERVICE AND ACCESSORIES
+            </div>
+
+            <div class="arabicName">
+              هاوشنغ لخدمات وزينة السيارات
+            </div>
+
+            <div>
+              Building 358,
+              Salwa Road,
+              Doha - Qatar
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="reportTitle">
+          DAILY REPORT
+        </div>
+
+        <div class="period">
+          Date: ${escapeHtml(
+            reportDate
+          )}
+        </div>
+
+        <div class="summary">
+
+          <div class="box">
+            <div class="boxLabel">
+              CARS
+            </div>
+
+            <div class="boxValue">
+              ${dailyJobs.length}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              TEYSEER SALES
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalTeyseerSales
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              CUSTOMER SALES
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalCustomerSales
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              TOTAL SALES
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalSales
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              CUSTOMER PAID
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalCustomerPaid
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              CUSTOMER BALANCE
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalBalance
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        <div class="section-title">
+          DAILY PAYMENTS
+        </div>
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>DATE</th>
+              <th>CASH</th>
+              <th>VISA</th>
+              <th>MASTERCARD</th>
+              <th>BANK</th>
+              <th>OTHER</th>
+              <th>TOTAL</th>
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            ${
+              selectedPaymentRows ||
+              `
                 <tr>
+                  <td
+                    colspan="7"
+                    style="text-align:center;"
+                  >
+                    No payment data found.
+                  </td>
+                </tr>
+              `
+            }
 
+          </tbody>
+
+        </table>
+
+        <div class="section-title">
+          DAILY CARS
+        </div>
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>#</th>
+              <th>DATE</th>
+              <th>SOURCE</th>
+              <th>CUSTOMER</th>
+              <th>CAR MODEL</th>
+              <th>PLATE</th>
+              <th>SERVICES</th>
+              <th>GROSS</th>
+              <th>DISCOUNT</th>
+              <th>NET</th>
+              <th>PAID</th>
+              <th>BALANCE</th>
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            ${
+              rows ||
+              `
+                <tr>
                   <td
                     colspan="12"
                     style="
@@ -2805,1541 +2549,816 @@ function printDailyReport() {
                   >
                     No jobs found for this date.
                   </td>
-
                 </tr>
               `
-              : ""
-          }
+            }
 
-        </tbody>
+          </tbody>
 
-      </table>
+        </table>
 
-      <!-- =====================================================
-           FOOTER
-      ====================================================== -->
+        <div class="footer">
 
-      <div class="footer">
+          Tel: +974 4441 5866 |
+          C.R.NO: 199725 |
+          E-mail: info@haoshengcar.com
 
-        Tel: +974 4441 5866 |
-        C.R.NO: 199725 |
-        E-mail: info@haoshengcar.com
+          <br />
 
-        <br />
+          Fereej Al Manaseer,
+          Zone 55, St. 340,
+          Bldg 358, Salwa Road,
+          Doha, Qatar
 
-        Fereej Al Manaseer,
-        Zone 55, St. 340,
-        Bldg 358, Salwa Road,
-        Doha, Qatar
-
-      </div>
-
-    </body>
-
-    </html>
-  `);
-
-  printWindow.document.close();
-
-  printWindow.onload = () => {
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 500);
-  };
-}
-
-/* ==========================================================
-   UI HELPERS
-========================================================== */
-
-function Card({
-  title,
-  value,
-  color = "blue",
-  subtitle,
-}) {
-  return (
-    <div className="report-card">
-      <div className="report-card-title">
-        {title}
-      </div>
-
-      <div
-        className={`report-card-value ${color}`}
-      >
-        {value}
-      </div>
-
-      {subtitle && (
-        <div className="report-card-subtitle">
-          {subtitle}
         </div>
-      )}
-    </div>
-  );
-}
 
+      </body>
 
-/* ==========================================================
-   LOADING
-========================================================== */
+      </html>
+    `);
 
-if (loading) {
+    printWindow.document.close();
+
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 500);
+    };
+  }
+
+  /*
+  ============================================================
+  LOADING
+  ============================================================
+  */
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: 40,
+          textAlign: "center",
+          fontSize: 18,
+        }}
+      >
+        Loading reports...
+      </div>
+    );
+  }
+
+  /*
+  ============================================================
+  RENDER
+  ============================================================
+  */
+
   return (
-    <div
-      style={{
-        padding: 40,
-        textAlign: "center",
-        fontSize: 18,
-      }}
-    >
-      Loading reports...
-    </div>
-  );
-}
+    <div className="reports-page">
 
+      <style>{`
+        * {
+          box-sizing: border-box;
+        }
 
-/* ==========================================================
-   RENDER
-========================================================== */
-
-return (
-  <div className="reports-page">
-
-    <style>{`
-      * {
-        box-sizing: border-box;
-      }
-
-      .reports-page {
-        padding: 24px;
-        background: #f3f4f6;
-        min-height: 100vh;
-        color: #111827;
-        font-family: Arial, sans-serif;
-      }
-
-      .reports-header {
-        background: white;
-        border-radius: 16px;
-        padding: 22px;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.06);
-      }
-
-      .reports-header img {
-        width: 75px;
-        height: 75px;
-        object-fit: contain;
-      }
-
-      .reports-header h1 {
-        margin: 0 0 5px;
-        font-size: 25px;
-      }
-
-      .reports-header p {
-        margin: 0;
-        color: #6b7280;
-      }
-
-      .tabs {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-      }
-
-      .tab {
-        border: none;
-        background: white;
-        padding: 11px 18px;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: 600;
-        color: #4b5563;
-      }
-
-      .tab.active {
-        background: #111827;
-        color: white;
-      }
-
-      .cards {
-        display: grid;
-        grid-template-columns:
-          repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
-        margin-bottom: 20px;
-      }
-
-      .report-card {
-        background: white;
-        border-radius: 14px;
-        padding: 18px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.05);
-      }
-
-      .report-card-title {
-        color: #6b7280;
-        font-size: 13px;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-
-      .report-card-value {
-        font-size: 24px;
-        font-weight: 800;
-      }
-
-      .report-card-subtitle {
-        margin-top: 5px;
-        font-size: 12px;
-        color: #9ca3af;
-      }
-
-      .blue {
-        color: #2563eb;
-      }
-
-      .green {
-        color: #16a34a;
-      }
-
-      .red {
-        color: #dc2626;
-      }
-
-      .purple {
-        color: #7c3aed;
-      }
-
-      .orange {
-        color: #ea580c;
-      }
-
-      .section {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.05);
-      }
-
-      .section h2 {
-        margin-top: 0;
-        font-size: 19px;
-      }
-
-      .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 15px;
-        flex-wrap: wrap;
-      }
-
-      .filters {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: end;
-      }
-
-      .field {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-
-      .field label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #6b7280;
-      }
-
-      .field input {
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
-        padding: 9px 11px;
-        background: white;
-      }
-
-      .btn {
-        border: none;
-        border-radius: 8px;
-        padding: 10px 14px;
-        cursor: pointer;
-        font-weight: 700;
-      }
-
-      .btn-dark {
-        background: #111827;
-        color: white;
-      }
-
-      .btn-blue {
-        background: #2563eb;
-        color: white;
-      }
-
-      .btn-green {
-        background: #16a34a;
-        color: white;
-      }
-
-      .btn-gray {
-        background: #e5e7eb;
-        color: #111827;
-      }
-
-      .table-wrap {
-        overflow-x: auto;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 750px;
-      }
-
-      th {
-        background: #111827;
-        color: white;
-        padding: 11px;
-        text-align: left;
-        font-size: 12px;
-      }
-
-      td {
-        padding: 10px;
-        border-bottom: 1px solid #e5e7eb;
-        font-size: 13px;
-      }
-
-      .right {
-        text-align: right;
-      }
-
-      .negative {
-        color: #dc2626;
-      }
-
-      .positive {
-        color: #16a34a;
-      }
-
-      .warning {
-        background: #fff7ed;
-        border: 1px solid #fed7aa;
-        color: #9a3412;
-        padding: 13px;
-        border-radius: 10px;
-        margin-bottom: 15px;
-      }
-
-      .settings-grid {
-        display: grid;
-        grid-template-columns:
-          repeat(auto-fit, minmax(220px, 1fr));
-        gap: 15px;
-      }
-
-      .setting {
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 15px;
-      }
-
-      .setting-title {
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-
-      .setting input {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
-      }
-
-      .source-grid {
-        display: grid;
-        grid-template-columns:
-          repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
-      }
-
-      .source-box {
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 15px;
-      }
-
-      .source-name {
-        color: #6b7280;
-        font-size: 12px;
-        margin-bottom: 6px;
-      }
-
-      .source-value {
-        font-size: 21px;
-        font-weight: 800;
-      }
-
-      @media (max-width: 700px) {
         .reports-page {
-          padding: 12px;
+          padding: 24px;
+          background: #f3f4f6;
+          min-height: 100vh;
+          color: #111827;
+          font-family: Arial, sans-serif;
         }
 
         .reports-header {
+          background: white;
+          border-radius: 16px;
+          padding: 22px;
+          margin-bottom: 20px;
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+
+        .reports-header img {
+          width: 75px;
+          height: 75px;
+          object-fit: contain;
+        }
+
+        .reports-header h1 {
+          margin: 0 0 5px;
+          font-size: 25px;
+        }
+
+        .reports-header p {
+          margin: 0;
+          color: #6b7280;
+        }
+
+        .tabs {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+
+        .tab {
+          border: none;
+          background: white;
+          padding: 11px 18px;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+          color: #4b5563;
+        }
+
+        .tab.active {
+          background: #111827;
+          color: white;
+        }
+
+        .cards {
+          display: grid;
+          grid-template-columns:
+            repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
+          margin-bottom: 20px;
+        }
+
+        .report-card {
+          background: white;
+          border-radius: 14px;
+          padding: 18px;
+          box-shadow: 0 2px 8px rgba(0,0,0,.05);
+        }
+
+        .report-card-title {
+          color: #6b7280;
+          font-size: 13px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .report-card-value {
+          font-size: 24px;
+          font-weight: 800;
+        }
+
+        .report-card-subtitle {
+          margin-top: 5px;
+          font-size: 12px;
+          color: #9ca3af;
+        }
+
+        .blue {
+          color: #2563eb;
+        }
+
+        .green {
+          color: #16a34a;
+        }
+
+        .red {
+          color: #dc2626;
+        }
+
+        .purple {
+          color: #7c3aed;
+        }
+
+        .orange {
+          color: #ea580c;
+        }
+
+        .section {
+          background: white;
+          border-radius: 16px;
+          padding: 20px;
+          margin-bottom: 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,.05);
+        }
+
+        .section h2 {
+          margin-top: 0;
+          font-size: 19px;
+        }
+
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 15px;
+          flex-wrap: wrap;
+        }
+
+        .filters {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          align-items: end;
+        }
+
+        .field {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
+        .field label {
+          font-size: 12px;
+          font-weight: 600;
+          color: #6b7280;
+        }
+
+        .field input {
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          padding: 9px 11px;
+          background: white;
+        }
+
+        .btn {
+          border: none;
+          border-radius: 8px;
+          padding: 10px 14px;
+          cursor: pointer;
+          font-weight: 700;
+        }
+
+        .btn-dark {
+          background: #111827;
+          color: white;
+        }
+
+        .btn-blue {
+          background: #2563eb;
+          color: white;
+        }
+
+        .btn-green {
+          background: #16a34a;
+          color: white;
+        }
+
+        .btn-gray {
+          background: #e5e7eb;
+          color: #111827;
+        }
+
+        .table-wrap {
+          overflow-x: auto;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 750px;
+        }
+
+        th {
+          background: #111827;
+          color: white;
+          padding: 11px;
+          text-align: left;
+          font-size: 12px;
+        }
+
+        td {
+          padding: 10px;
+          border-bottom: 1px solid #e5e7eb;
+          font-size: 13px;
+        }
+
+        .right {
+          text-align: right;
+        }
+
+        .negative {
+          color: #dc2626;
+        }
+
+        .positive {
+          color: #16a34a;
+        }
+
+        .warning {
+          background: #fff7ed;
+          border: 1px solid #fed7aa;
+          color: #9a3412;
+          padding: 13px;
+          border-radius: 10px;
+          margin-bottom: 15px;
+        }
+
+        .settings-grid {
+          display: grid;
+          grid-template-columns:
+            repeat(auto-fit, minmax(220px, 1fr));
+          gap: 15px;
+        }
+
+        .setting {
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
           padding: 15px;
         }
-      }
-    `}</style>
 
-
-    {/* =====================================================
-        HEADER
-    ===================================================== */}
-
-    <div className="reports-header">
-
-      <img
-        src={gaLogo}
-        alt="Haosheng"
-      />
-
-      <div>
-        <h1>
-          Financial Reports
-        </h1>
-
-        <p>
-          Haosheng Car Service and Accessories
-        </p>
-      </div>
-
-    </div>
-
-
-    {/* =====================================================
-        TABS
-    ===================================================== */}
-
-    <div className="tabs">
-
-      <button
-        className={`tab ${
-          activeSection === "overview"
-            ? "active"
-            : ""
-        }`}
-        onClick={() =>
-          setActiveSection("overview")
+        .setting-title {
+          font-weight: 700;
+          margin-bottom: 8px;
         }
-      >
-        Overview
-      </button>
 
-      <button
-        className={`tab ${
-          activeSection === "teyseer"
-            ? "active"
-            : ""
-        }`}
-        onClick={() =>
-          setActiveSection("teyseer")
+        .setting input {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
         }
-      >
-        Teyseer
-      </button>
 
-      <button
-        className={`tab ${
-          activeSection === "alnusoor"
-            ? "active"
-            : ""
-        }`}
-        onClick={() =>
-          setActiveSection("alnusoor")
+        .source-grid {
+          display: grid;
+          grid-template-columns:
+            repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
         }
-      >
-        Al Nusoor
-      </button>
 
-      <button
-        className={`tab ${
-          activeSection === "daily"
-            ? "active"
-            : ""
-        }`}
-        onClick={() =>
-          setActiveSection("daily")
+        .source-box {
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 15px;
         }
-      >
-        Daily
-      </button>
 
-      <button
-        className={`tab ${
-          activeSection === "settings"
-            ? "active"
-            : ""
-        }`}
-        onClick={() =>
-          setActiveSection("settings")
+        .source-name {
+          color: #6b7280;
+          font-size: 12px;
+          margin-bottom: 6px;
         }
-      >
-        Settings
-      </button>
 
-    </div>
-
-
-    {/* =====================================================
-    OVERVIEW
-===================================================== */}
-
-{activeSection === "overview" && (
-  <>
-    <div className="cards">
-
-      {/* TOTAL INTERNAL SALES */}
-      <Card
-        title="Internal Sales"
-        value={`QAR ${money(
-          financial.customerSales +
-          financial.teyseerSales
-        )}`}
-        color="blue"
-      />
-
-      {/* CUSTOMER SALES */}
-      <Card
-        title="Customer Net Sales"
-        value={`QAR ${money(
-          financial.customerSales
-        )}`}
-        color="purple"
-      />
-
-      {/* TEYSEER SALES */}
-      <Card
-        title="Teyseer Sales"
-        value={`QAR ${money(
-          financial.teyseerSales
-        )}`}
-        color="orange"
-      />
-
-      {/* CUSTOMER PAID ONLY */}
-      <Card
-        title="Customer Paid"
-        value={`QAR ${money(
-          customerPaid
-        )}`}
-        color="green"
-      />
-
-      {/* CUSTOMER BALANCE ONLY */}
-      <Card
-        title="Customer Balance"
-        value={`QAR ${money(
-          customerBalance
-        )}`}
-        color={
-          customerBalance > 0
-            ? "red"
-            : "green"
+        .source-value {
+          font-size: 21px;
+          font-weight: 800;
         }
-      />
 
-      <Card
-        title="Total Cars"
-        value={calculatedJobs.length}
-        color="blue"
-      />
+        @media (max-width: 700px) {
+          .reports-page {
+            padding: 12px;
+          }
 
-      <Card
-        title="Cars Today"
-        value={carsToday}
-        color="green"
-      />
+          .reports-header {
+            padding: 15px;
+          }
+        }
+      `}</style>
 
-      <Card
-        title="Cars This Week"
-        value={carsThisWeek}
-        color="purple"
-      />
+      <div className="reports-header">
 
-      <Card
-        title="Cars This Month"
-        value={carsThisMonth}
-        color="orange"
-      />
-
-    </div>
-
-
-    {/* =====================================================
-        CUSTOMER VS TEYSEER
-    ===================================================== */}
-
-    <div className="section">
-
-      <h2>
-        Customer vs Teyseer
-      </h2>
-
-      <div className="cards">
-
-        {/* CUSTOMER */}
-
-        <Card
-          title="Customer Sales"
-          value={`QAR ${money(
-            financial.customerSales
-          )}`}
-          color="blue"
+        <img
+          src={gaLogo}
+          alt="Haosheng"
         />
 
-        <Card
-          title="Customer Paid"
-          value={`QAR ${money(
-            customerPaid
-          )}`}
-          color="green"
-        />
+        <div>
+          <h1>
+            Financial Reports
+          </h1>
 
-        <Card
-          title="Customer Balance"
-          value={`QAR ${money(
-            customerBalance
-          )}`}
-          color="red"
-        />
-
-        {/* TEYSEER */}
-
-        <Card
-          title="Teyseer Sales"
-          value={`QAR ${money(
-            financial.teyseerSales
-          )}`}
-          color="purple"
-        />
-
-        <Card
-          title="Teyseer Paid"
-          value={`QAR ${money(
-            teyseerPaid
-          )}`}
-          color="green"
-        />
-
-        <Card
-          title="Teyseer Balance"
-          value={`QAR ${money(
-            teyseerBalance
-          )}`}
-          color="red"
-        />
-
-      </div>
-
-    </div>
-
-
-    {/* =====================================================
-        PAYMENT METHODS
-    ===================================================== */}
-
-    <div className="section">
-
-      <h2>
-        Payment Methods
-      </h2>
-
-      <div className="cards">
-
-        <Card
-          title="Cash"
-          value={`QAR ${money(
-            financial.cashPaid
-          )}`}
-          color="green"
-        />
-
-        <Card
-          title="Card"
-          value={`QAR ${money(
-            financial.cardPaid
-          )}`}
-          color="blue"
-        />
-
-        <Card
-          title="Bank Transfer"
-          value={`QAR ${money(
-            financial.bankTransferPaid
-          )}`}
-          color="purple"
-        />
-
-        <Card
-          title="Other"
-          value={`QAR ${money(
-            financial.otherPaid
-          )}`}
-          color="orange"
-        />
-
-      </div>
-
-
-      {Math.abs(
-        financial.paid -
-        financial.categorizedPaid
-      ) > 0.01 && (
-        <div className="warning">
-
-          Payment method totals do not
-          equal total linked payments.
-          Please check payment methods.
-
+          <p>
+            Haosheng Car Service and Accessories
+          </p>
         </div>
-      )}
 
+      </div>
 
-      {unlinkedPayments.length > 0 && (
-        <div className="warning">
+      <div className="tabs">
 
-          There are{" "}
-          <strong>
-            {unlinkedPayments.length}
-          </strong>{" "}
-          payments without a job ID,
-          totaling{" "}
-          <strong>
-            QAR{" "}
-            {money(
-              unlinkedPaymentTotal
+        {[
+          ["overview", "Overview"],
+          ["teyseer", "Teyseer"],
+          ["alnusoor", "Al Nusoor"],
+          ["daily", "Daily"],
+          ["settings", "Settings"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            className={`tab ${
+              activeSection === key
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActiveSection(key)
+            }
+          >
+            {label}
+          </button>
+        ))}
+
+      </div>
+
+      {activeSection === "overview" && (
+        <>
+          <div className="cards">
+
+            <Card
+              title="Internal Sales"
+              value={`QAR ${money(
+                financial.netSales
+              )}`}
+              color="blue"
+            />
+
+            <Card
+              title="Customer Net Sales"
+              value={`QAR ${money(
+                customerSales
+              )}`}
+              color="purple"
+            />
+
+            <Card
+              title="Teyseer Sales"
+              value={`QAR ${money(
+                teyseerSales
+              )}`}
+              color="orange"
+            />
+
+            <Card
+              title="Customer Paid"
+              value={`QAR ${money(
+                customerPaid
+              )}`}
+              color="green"
+            />
+
+            <Card
+              title="Customer Balance"
+              value={`QAR ${money(
+                customerBalance
+              )}`}
+              color={
+                customerBalance > 0
+                  ? "red"
+                  : "green"
+              }
+            />
+
+            <Card
+              title="Total Cars"
+              value={
+                calculatedJobs.length
+              }
+              color="blue"
+            />
+
+            <Card
+              title="Cars Today"
+              value={carsToday}
+              color="green"
+            />
+
+            <Card
+              title="Cars This Week"
+              value={carsThisWeek}
+              color="purple"
+            />
+
+            <Card
+              title="Cars This Month"
+              value={carsThisMonth}
+              color="orange"
+            />
+
+          </div>
+
+          <div className="section">
+
+            <h2>
+              Customer vs Teyseer
+            </h2>
+
+            <div className="cards">
+
+              <Card
+                title="Customer Sales"
+                value={`QAR ${money(
+                  customerSales
+                )}`}
+                color="blue"
+              />
+
+              <Card
+                title="Customer Paid"
+                value={`QAR ${money(
+                  customerPaid
+                )}`}
+                color="green"
+              />
+
+              <Card
+                title="Customer Balance"
+                value={`QAR ${money(
+                  customerBalance
+                )}`}
+                color="red"
+              />
+
+              <Card
+                title="Teyseer Sales"
+                value={`QAR ${money(
+                  teyseerSales
+                )}`}
+                color="purple"
+              />
+
+              <Card
+                title="Teyseer Paid"
+                value={`QAR ${money(
+                  teyseerPaid
+                )}`}
+                color="green"
+              />
+
+              <Card
+                title="Teyseer Balance"
+                value={`QAR ${money(
+                  teyseerBalance
+                )}`}
+                color="red"
+              />
+
+            </div>
+
+          </div>
+
+          <div className="section">
+
+            <h2>
+              Payment Methods
+            </h2>
+
+            <div className="cards">
+
+              <Card
+                title="Cash"
+                value={`QAR ${money(
+                  financial.cashPaid
+                )}`}
+                color="green"
+              />
+
+              <Card
+                title="Card"
+                value={`QAR ${money(
+                  financial.cardPaid
+                )}`}
+                color="blue"
+              />
+
+              <Card
+                title="Bank Transfer"
+                value={`QAR ${money(
+                  financial.bankTransferPaid
+                )}`}
+                color="purple"
+              />
+
+              <Card
+                title="Other"
+                value={`QAR ${money(
+                  financial.otherPaid
+                )}`}
+                color="orange"
+              />
+
+            </div>
+
+            {Math.abs(
+              financial.paid -
+                financial.categorizedPaid
+            ) > 0.01 && (
+              <div className="warning">
+                Payment method totals do not
+                equal total linked payments.
+                Please check payment methods.
+              </div>
             )}
-          </strong>
-          .
 
-          These are intentionally NOT
-          included in job balances.
+            {unlinkedPayments.length > 0 && (
+              <div className="warning">
+                There are{" "}
+                <strong>
+                  {unlinkedPayments.length}
+                </strong>{" "}
+                payments without a job ID,
+                totaling{" "}
+                <strong>
+                  QAR{" "}
+                  {money(
+                    unlinkedPaymentTotal
+                  )}
+                </strong>
+                .
+                These are intentionally NOT
+                included in job balances.
+              </div>
+            )}
 
-        </div>
+          </div>
+
+          <div className="section">
+
+            <div className="section-header">
+
+              <h2>
+                Teyseer Discrepancies
+              </h2>
+
+              <button
+                className="btn btn-gray"
+                onClick={() =>
+                  setShowDiscrepancies(
+                    (prev) => !prev
+                  )
+                }
+              >
+                {showDiscrepancies
+                  ? "Hide"
+                  : "Show"}
+              </button>
+
+            </div>
+
+            <div className="cards">
+
+              <Card
+                title="Jobs With Difference"
+                value={
+                  discrepancyJobs.length
+                }
+                color={
+                  discrepancyJobs.length
+                    ? "red"
+                    : "green"
+                }
+              />
+
+              <Card
+                title="Total Difference"
+                value={`QAR ${money(
+                  totalTeyseerDiscrepancy
+                )}`}
+                color={
+                  Math.abs(
+                    totalTeyseerDiscrepancy
+                  ) > 0.01
+                    ? "red"
+                    : "green"
+                }
+              />
+
+            </div>
+
+            {showDiscrepancies &&
+              discrepancyJobs.length > 0 && (
+                <div className="table-wrap">
+
+                  <table>
+
+                    <thead>
+                      <tr>
+                        <th>DATE</th>
+                        <th>SOURCE</th>
+                        <th>CUSTOMER</th>
+                        <th>JOB NET</th>
+                        <th>SERVICES</th>
+                        <th>DIFFERENCE</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+
+                      {discrepancyJobs.map(
+                        (job) => (
+                          <tr key={job.id}>
+
+                            <td>
+                              {getJobDate(
+                                job
+                              ) || "-"}
+                            </td>
+
+                            <td>
+                              {job.source ||
+                                "-"}
+                            </td>
+
+                            <td>
+                              {job.customer ||
+                                "-"}
+                            </td>
+
+                            <td className="right">
+                              QAR{" "}
+                              {money(
+                                job.jobNet
+                              )}
+                            </td>
+
+                            <td className="right">
+                              QAR{" "}
+                              {money(
+                                job.serviceTotal
+                              )}
+                            </td>
+
+                            <td
+                              className={`right ${
+                                job.discrepancy >
+                                0
+                                  ? "positive"
+                                  : "negative"
+                              }`}
+                            >
+                              QAR{" "}
+                              {money(
+                                job.discrepancy
+                              )}
+                            </td>
+
+                          </tr>
+                        )
+                      )}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+              )}
+
+          </div>
+        </>
       )}
 
-    </div>
+      {activeSection === "teyseer" && (
+        <>
+          <div className="section">
 
+            <div className="section-header">
 
-    {/* =====================================================
-        TEYSEER DISCREPANCIES
-    ===================================================== */}
-
-    <div className="section">
-
-      <div className="section-header">
-
-        <h2>
-          Teyseer Discrepancies
-        </h2>
-
-        <button
-          className="btn btn-gray"
-          onClick={() =>
-            setShowDiscrepancies(
-              (prev) => !prev
-            )
-          }
-        >
-          {showDiscrepancies
-            ? "Hide"
-            : "Show"}
-        </button>
-
-      </div>
-
-
-      <div className="cards">
-
-        <Card
-          title="Jobs With Difference"
-          value={
-            discrepancyJobs.length
-          }
-          color={
-            discrepancyJobs.length
-              ? "red"
-              : "green"
-          }
-        />
-
-        <Card
-          title="Total Difference"
-          value={`QAR ${money(
-            totalTeyseerDiscrepancy
-          )}`}
-          color={
-            Math.abs(
-              totalTeyseerDiscrepancy
-            ) > 0.01
-              ? "red"
-              : "green"
-          }
-        />
-
-      </div>
-
-
-      {showDiscrepancies &&
-        discrepancyJobs.length > 0 && (
-          <div className="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-
-                  <th>
-                    DATE
-                  </th>
-
-                  <th>
-                    SOURCE
-                  </th>
-
-                  <th>
-                    CUSTOMER
-                  </th>
-
-                  <th>
-                    JOB NET
-                  </th>
-
-                  <th>
-                    SERVICES
-                  </th>
-
-                  <th>
-                    DIFFERENCE
-                  </th>
-
-                </tr>
-
-              </thead>
-
-
-              <tbody>
-
-                {discrepancyJobs.map(
-                  (job) => (
-                    <tr
-                      key={job.id}
-                    >
-
-                      <td>
-                        {getJobDate(
-                          job
-                        ) || "-"}
-                      </td>
-
-                      <td>
-                        {job.source ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.customer ||
-                          "-"}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.jobNet
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.serviceTotal
-                        )}
-                      </td>
-
-                      <td
-                        className={`right ${
-                          job.discrepancy > 0
-                            ? "positive"
-                            : "negative"
-                        }`}
-                      >
-                        QAR{" "}
-                        {money(
-                          job.discrepancy
-                        )}
-                      </td>
-
-                    </tr>
-                  )
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-        )}
-
-    </div>
-
-  </>
-)}
-
-    {/* =====================================================
-        TEYSEER
-    ===================================================== */}
-
-    {activeSection === "teyseer" && (
-      <>
-        <div className="section">
-
-          <div className="section-header">
-
-            <h2>
-              Teyseer Motors Report
-            </h2>
-
-            <button
-              className="btn btn-dark"
-              onClick={
-                printTeyseerReport
-              }
-            >
-              Print Report
-            </button>
-
-          </div>
-
-          <div className="filters">
-
-            <div className="field">
-
-              <label>
-                Start Date
-              </label>
-
-              <input
-                type="date"
-                value={
-                  teyseerStartDate
-                }
-                onChange={(e) =>
-                  setTeyseerStartDate(
-                    e.target.value
-                  )
-                }
-              />
-
-            </div>
-
-
-            <div className="field">
-
-              <label>
-                End Date
-              </label>
-
-              <input
-                type="date"
-                value={
-                  teyseerEndDate
-                }
-                onChange={(e) =>
-                  setTeyseerEndDate(
-                    e.target.value
-                  )
-                }
-              />
-
-            </div>
-
-
-            <button
-              className="btn btn-gray"
-              onClick={() => {
-                setTeyseerStartDate("");
-                setTeyseerEndDate("");
-              }}
-            >
-              Clear
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div className="cards">
-
-          <Card
-            title="Teyseer Cars"
-            value={
-              filteredTeyseerJobs.length
-            }
-            color="blue"
-          />
-
-          <Card
-            title="Net Sales"
-            value={`QAR ${money(
-              filteredTeyseerSales
-            )}`}
-            color="purple"
-          />
-
-          <Card
-            title="Paid"
-            value={`QAR ${money(
-              filteredTeyseerPaid
-            )}`}
-            color="green"
-          />
-
-          <Card
-            title="Balance"
-            value={`QAR ${money(
-              filteredTeyseerBalance
-            )}`}
-            color="red"
-          />
-
-        </div>
-
-
-        <div className="section">
-
-          <h2>
-            Teyseer By Source
-          </h2>
-
-          <div className="source-grid">
-
-            <div className="source-box">
-
-              <div className="source-name">
-                Teyseer Motors
-              </div>
-
-              <div className="source-value">
-                QAR{" "}
-                {money(
-                  teyseerMotorsAmount
-                )}
-              </div>
-
-            </div>
-
-
-            <div className="source-box">
-
-              <div className="source-name">
-                Teyseer Motors - Salah
-              </div>
-
-              <div className="source-value">
-                QAR{" "}
-                {money(
-                  salahAmount
-                )}
-              </div>
-
-            </div>
-
-
-            <div className="source-box">
-
-              <div className="source-name">
-                Teyseer Motors - Bahaa
-              </div>
-
-              <div className="source-value">
-                QAR{" "}
-                {money(
-                  bahaaAmount
-                )}
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div className="section">
-
-          <div className="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-                  <th>#</th>
-                  <th>DATE</th>
-                  <th>SOURCE</th>
-                  <th>CUSTOMER</th>
-                  <th>CAR</th>
-                  <th>PLATE</th>
-                  <th>SERVICES</th>
-                  <th>VOUCHER</th>
-                  <th>RECEIPT</th>
-                  <th className="right">
-                    NET
-                  </th>
-                  <th className="right">
-                    PAID
-                  </th>
-                  <th className="right">
-                    BALANCE
-                  </th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {filteredTeyseerJobs.map(
-                  (job, index) => (
-                    <tr key={job.id}>
-
-                      <td>
-                        {index + 1}
-                      </td>
-
-                      <td>
-                        {getJobDate(
-                          job
-                        ) || "-"}
-                      </td>
-
-                      <td>
-                        {job.source ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.customer ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.carMake ||
-                          job.carType ||
-                          job.carModel ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.plate ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.serviceNames ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.voucherNumber ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.receipt_number ||
-                          "-"}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.canonicalNet
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.paid
-                        )}
-                      </td>
-
-                      <td
-                        className={`right ${
-                          job.balance > 0
-                            ? "negative"
-                            : "positive"
-                        }`}
-                      >
-                        QAR{" "}
-                        {money(
-                          job.balance
-                        )}
-                      </td>
-
-                    </tr>
-                  )
-                )}
-
-                {filteredTeyseerJobs.length ===
-                  0 && (
-                  <tr>
-                    <td
-                      colSpan="12"
-                      style={{
-                        textAlign:
-                          "center",
-                        padding: 30,
-                      }}
-                    >
-                      No Teyseer jobs
-                      found.
-                    </td>
-                  </tr>
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-      </>
-    )}
-
-
-    {/* =====================================================
-        AL NUSOOR
-    ===================================================== */}
-
-    {activeSection === "alnusoor" && (
-      <>
-        <div className="section">
-
-          <div className="section-header">
-
-            <h2>
-              Al Nusoor Center
-            </h2>
-
-            <button
-              className="btn btn-dark"
-              onClick={
-                printAlnusoorReport
-              }
-            >
-              Print Report
-            </button>
-
-          </div>
-
-          <div className="filters">
-
-            <div className="field">
-
-              <label>
-                Start Date
-              </label>
-
-              <input
-                type="date"
-                value={
-                  alnusoorStartDate
-                }
-                onChange={(e) =>
-                  setAlnusoorStartDate(
-                    e.target.value
-                  )
-                }
-              />
-
-            </div>
-
-
-            <div className="field">
-
-              <label>
-                End Date
-              </label>
-
-              <input
-                type="date"
-                value={
-                  alnusoorEndDate
-                }
-                onChange={(e) =>
-                  setAlnusoorEndDate(
-                    e.target.value
-                  )
-                }
-              />
-
-            </div>
-
-
-            <button
-              className="btn btn-gray"
-              onClick={() => {
-                setAlnusoorStartDate("");
-                setAlnusoorEndDate("");
-              }}
-            >
-              Clear
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <div className="cards">
-
-          <Card
-            title="Cars"
-            value={
-              alnusoorJobs.length
-            }
-            color="blue"
-          />
-
-          <Card
-            title="Gross"
-            value={`QAR ${money(
-              alnusoorGross
-            )}`}
-            color="blue"
-          />
-
-          <Card
-            title="Discount"
-            value={`QAR ${money(
-              alnusoorDiscount
-            )}`}
-            color="orange"
-          />
-
-          <Card
-            title="Net"
-            value={`QAR ${money(
-              alnusoorNet
-            )}`}
-            color="purple"
-          />
-
-          <Card
-            title="Paid"
-            value={`QAR ${money(
-              alnusoorPaid
-            )}`}
-            color="green"
-          />
-
-          <Card
-            title="Balance"
-            value={`QAR ${money(
-              alnusoorBalance
-            )}`}
-            color="red"
-          />
-
-        </div>
-
-
-        <div className="section">
-
-          <div className="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-                  <th>DATE</th>
-                  <th>CUSTOMER</th>
-                  <th>CAR</th>
-                  <th>PLATE</th>
-                  <th className="right">
-                    GROSS
-                  </th>
-                  <th className="right">
-                    DISCOUNT
-                  </th>
-                  <th className="right">
-                    NET
-                  </th>
-                  <th className="right">
-                    PAID
-                  </th>
-                  <th className="right">
-                    BALANCE
-                  </th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {alnusoorJobs.map(
-                  (job) => (
-                    <tr key={job.id}>
-
-                      <td>
-                        {getJobDate(
-                          job
-                        ) || "-"}
-                      </td>
-
-                      <td>
-                        {job.customer ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.carMake ||
-                          job.carType ||
-                          job.carModel ||
-                          "-"}
-                      </td>
-
-                      <td>
-                        {job.plate ||
-                          "-"}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.gross
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.discount
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.canonicalNet
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          job.paid
-                        )}
-                      </td>
-
-                      <td
-                        className={`right ${
-                          job.balance > 0
-                            ? "negative"
-                            : "positive"
-                        }`}
-                      >
-                        QAR{" "}
-                        {money(
-                          job.balance
-                        )}
-                      </td>
-
-                    </tr>
-                  )
-                )}
-
-                {alnusoorJobs.length ===
-                  0 && (
-                  <tr>
-                    <td
-                      colSpan="9"
-                      style={{
-                        textAlign:
-                          "center",
-                        padding: 30,
-                      }}
-                    >
-                      No Al Nusoor
-                      jobs found.
-                    </td>
-                  </tr>
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-      </>
-    )}
-
-
-    {/* =====================================================
-        DAILY
-    ===================================================== */}
-
-    {activeSection === "daily" && (
-      <>
-
-        <div className="section">
-
-          <div className="section-header">
-
-            <div>
               <h2>
-                Daily Report
+                Teyseer Motors Report
               </h2>
+
+              <button
+                className="btn btn-dark"
+                onClick={
+                  printTeyseerReport
+                }
+              >
+                Print Report
+              </button>
+
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "end",
-                flexWrap: "wrap",
-              }}
-            >
+            <div className="filters">
 
               <div className="field">
 
                 <label>
-                  Select Date
+                  Start Date
                 </label>
 
                 <input
                   type="date"
-                  value={reportDate}
+                  value={
+                    teyseerStartDate
+                  }
                   onChange={(e) =>
-                    setReportDate(
+                    setTeyseerStartDate(
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              <div className="field">
+
+                <label>
+                  End Date
+                </label>
+
+                <input
+                  type="date"
+                  value={
+                    teyseerEndDate
+                  }
+                  onChange={(e) =>
+                    setTeyseerEndDate(
                       e.target.value
                     )
                   }
@@ -4348,407 +3367,1140 @@ return (
               </div>
 
               <button
-                className="btn btn-dark"
-                onClick={
-                  printDailyReport
-                }
+                className="btn btn-gray"
+                onClick={() => {
+                  setTeyseerStartDate("");
+                  setTeyseerEndDate("");
+                }}
               >
-                Print Daily Report
+                Clear
               </button>
 
             </div>
 
           </div>
 
-
           <div className="cards">
 
             <Card
-              title="Cars"
+              title="Teyseer Cars"
               value={
-                selectedDateJobs.length
+                filteredTeyseerCars
               }
               color="blue"
             />
 
             <Card
-              title="Sales"
+              title="Net Sales"
               value={`QAR ${money(
-                selectedDateSales
+                filteredTeyseerSales
               )}`}
               color="purple"
             />
 
             <Card
-              title="Paid From Jobs"
+              title="Paid"
               value={`QAR ${money(
-                selectedDatePaid
+                filteredTeyseerPaid
               )}`}
               color="green"
             />
 
             <Card
-              title="Payment Transactions"
-              value={`QAR ${money(
-                selectedDatePaymentTotal
-              )}`}
-              color="blue"
-            />
-
-            <Card
               title="Balance"
               value={`QAR ${money(
-                selectedDateBalance
+                filteredTeyseerBalance
               )}`}
               color="red"
             />
 
           </div>
 
-        </div>
+          <div className="section">
 
+            <h2>
+              Teyseer By Source
+            </h2>
 
-        <div className="section">
+            <div className="source-grid">
 
-          <h2>
-            Daily Payments
-          </h2>
+              <div className="source-box">
 
-          <div className="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-                  <th>DATE</th>
-
-                  <th className="right">
-                    CASH
-                  </th>
-
-                  <th className="right">
-                    VISA
-                  </th>
-
-                  <th className="right">
-                    MASTERCARD
-                  </th>
-
-                  <th className="right">
-                    BANK
-                  </th>
-
-                  <th className="right">
-                    OTHER
-                  </th>
-
-                  <th className="right">
-                    TOTAL
-                  </th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {dailyPayments.map(
-                  ([date, data]) => (
-                    <tr key={date}>
-
-                      <td>
-                        {date}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          data.cash
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          data.visa
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          data.mastercard
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          data.bankTransfer
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          data.other
-                        )}
-                      </td>
-
-                      <td className="right">
-                        QAR{" "}
-                        {money(
-                          data.total
-                        )}
-                      </td>
-
-                    </tr>
-                  )
-                )}
-
-                {dailyPayments.length ===
-                  0 && (
-                  <tr>
-                    <td
-                      colSpan="7"
-                      style={{
-                        textAlign:
-                          "center",
-                        padding: 30,
-                      }}
-                    >
-                      No payment data
-                      found.
-                    </td>
-                  </tr>
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-
-
-        <div className="section">
-
-          <h2>
-            Daily Cars
-          </h2>
-
-          <div className="table-wrap">
-
-            <table>
-
-              <thead>
-
-                <tr>
-                  <th>DATE</th>
-
-                  <th className="right">
-                    CARS
-                  </th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {dailyCarRows.map(
-                  ([date, count]) => (
-                    <tr key={date}>
-
-                      <td>
-                        {date}
-                      </td>
-
-                      <td className="right">
-                        {count}
-                      </td>
-
-                    </tr>
-                  )
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-
-      </>
-    )}
-
-
-    {/* =====================================================
-        SETTINGS
-    ===================================================== */}
-
-    {activeSection === "settings" && (
-      <>
-
-        <div className="section">
-
-          <h2>
-            Manual Report Settings
-          </h2>
-
-          <div className="settings-grid">
-
-            {[
-              ["June", manualPending.June],
-              ["July", manualPending.July],
-              [
-                "August",
-                manualPending.August,
-              ],
-            ].map(
-              ([month, amount]) => (
-                <div
-                  className="setting"
-                  key={month}
-                >
-
-                  <div className="setting-title">
-                    {month} Pending
-                  </div>
-
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={amount}
-                    onChange={(e) =>
-                      changePending(
-                        month,
-                        e.target.value
-                      )
-                    }
-                  />
-
-                  {savingSetting ===
-                    `${month} Pending` && (
-                    <small>
-                      Saving...
-                    </small>
-                  )}
-
+                <div className="source-name">
+                  Teyseer Motors
                 </div>
-              )
-            )}
 
+                <div className="source-value">
+                  QAR{" "}
+                  {money(
+                    teyseerMotorsAmount
+                  )}
+                </div>
 
-            <div className="setting">
-
-              <div className="setting-title">
-                Previous Teyseer
               </div>
 
-              <input
-                type="number"
-                step="0.01"
-                value={
-                  manualTeyseer
-                }
-                onChange={(e) =>
-                  changeTeyseer(
-                    e.target.value
-                  )
-                }
-              />
+              <div className="source-box">
 
-              {savingSetting ===
-                "Previous Teyseer" && (
-                <small>
-                  Saving...
-                </small>
-              )}
+                <div className="source-name">
+                  Teyseer Motors - Salah
+                </div>
+
+                <div className="source-value">
+                  QAR{" "}
+                  {money(
+                    salahAmount
+                  )}
+                </div>
+
+              </div>
+
+              <div className="source-box">
+
+                <div className="source-name">
+                  Teyseer Motors - Bahaa
+                </div>
+
+                <div className="source-value">
+                  QAR{" "}
+                  {money(
+                    bahaaAmount
+                  )}
+                </div>
+
+              </div>
 
             </div>
 
           </div>
 
-        </div>
+          <div className="section">
 
+            <h2>
+              Service Items
+            </h2>
 
-        <div className="section">
+            <div className="source-grid">
 
-          <h2>
-            Current Data Summary
-          </h2>
+              <div className="source-box">
+
+                <div className="source-name">
+                  Teyseer Motors
+                </div>
+
+                <div className="source-value">
+                  {teyseerMotorsServiceItems}
+                </div>
+
+                <div>
+                  Net Sales: QAR{" "}
+                  {money(
+                    teyseerMotorsAmount
+                  )}
+                </div>
+
+              </div>
+
+              <div className="source-box">
+
+                <div className="source-name">
+                  Salah
+                </div>
+
+                <div className="source-value">
+                  {salahServiceItems}
+                </div>
+
+                <div>
+                  Net Sales: QAR{" "}
+                  {money(
+                    salahAmount
+                  )}
+                </div>
+
+              </div>
+
+              <div className="source-box">
+
+                <div className="source-name">
+                  Bahaa
+                </div>
+
+                <div className="source-value">
+                  {bahaaServiceItems}
+                </div>
+
+                <div>
+                  Net Sales: QAR{" "}
+                  {money(
+                    bahaaAmount
+                  )}
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div className="section">
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+                    <th>#</th>
+                    <th>DATE</th>
+                    <th>SOURCE</th>
+                    <th>CUSTOMER</th>
+                    <th>CAR</th>
+                    <th>PLATE</th>
+                    <th>SERVICES</th>
+                    <th>VOUCHER</th>
+                    <th>RECEIPT</th>
+                    <th className="right">
+                      TEYSEER NET
+                    </th>
+                    <th className="right">
+                      PAID
+                    </th>
+                    <th className="right">
+                      BALANCE
+                    </th>
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {filteredTeyseerJobs.map(
+                    (job, index) => (
+                      <tr key={job.id}>
+
+                        <td>
+                          {index + 1}
+                        </td>
+
+                        <td>
+                          {getJobDate(
+                            job
+                          ) || "-"}
+                        </td>
+
+                        <td>
+                          {job.source ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.customer ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.carMake ||
+                            job.carType ||
+                            job.carModel ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.plate ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.serviceNames ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.voucherNumber ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.receipt_number ||
+                            "-"}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.teyseerSales
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.teyseerPaid
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.teyseerBalance
+                          )}
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                  {filteredTeyseerJobs.length ===
+                    0 && (
+                    <tr>
+                      <td
+                        colSpan="12"
+                        style={{
+                          textAlign:
+                            "center",
+                          padding: 30,
+                        }}
+                      >
+                        No Teyseer jobs found.
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+        </>
+      )}
+
+      {activeSection === "alnusoor" && (
+        <>
+          <div className="section">
+
+            <div className="section-header">
+
+              <h2>
+                Al Nusoor Center
+              </h2>
+
+              <button
+                className="btn btn-dark"
+                onClick={
+                  printAlnusoorReport
+                }
+              >
+                Print Report
+              </button>
+
+            </div>
+
+            <div className="filters">
+
+              <div className="field">
+
+                <label>
+                  Start Date
+                </label>
+
+                <input
+                  type="date"
+                  value={
+                    alnusoorStartDate
+                  }
+                  onChange={(e) =>
+                    setAlnusoorStartDate(
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              <div className="field">
+
+                <label>
+                  End Date
+                </label>
+
+                <input
+                  type="date"
+                  value={
+                    alnusoorEndDate
+                  }
+                  onChange={(e) =>
+                    setAlnusoorEndDate(
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              <button
+                className="btn btn-gray"
+                onClick={() => {
+                  setAlnusoorStartDate("");
+                  setAlnusoorEndDate("");
+                }}
+              >
+                Clear
+              </button>
+
+            </div>
+
+          </div>
 
           <div className="cards">
 
             <Card
-              title="Jobs"
+              title="Cars"
               value={
-                calculatedJobs.length
+                alnusoorJobs.length
               }
               color="blue"
             />
 
             <Card
-              title="Payments"
-              value={
-                payments.length
-              }
-              color="green"
+              title="Gross"
+              value={`QAR ${money(
+                alnusoorGross
+              )}`}
+              color="blue"
             />
 
             <Card
-              title="Job Services"
-              value={
-                jobServices.length
-              }
+              title="Discount"
+              value={`QAR ${money(
+                alnusoorDiscount
+              )}`}
+              color="orange"
+            />
+
+            <Card
+              title="Net"
+              value={`QAR ${money(
+                alnusoorNet
+              )}`}
               color="purple"
             />
 
             <Card
-              title="Unlinked Payments"
-              value={
-                unlinkedPayments.length
-              }
-              color={
-                unlinkedPayments.length
-                  ? "red"
-                  : "green"
-              }
+              title="Paid"
+              value={`QAR ${money(
+                alnusoorPaid
+              )}`}
+              color="green"
+            />
+
+            <Card
+              title="Balance"
+              value={`QAR ${money(
+                alnusoorBalance
+              )}`}
+              color="red"
             />
 
           </div>
 
-        </div>
+          <div className="section">
 
-      </>
-    )}
+            <div className="table-wrap">
 
+              <table>
 
-    {/* =====================================================
-        REFRESH
-    ===================================================== */}
+                <thead>
 
-    <div
-      style={{
-        textAlign: "center",
-        marginTop: 20,
-      }}
-    >
+                  <tr>
+                    <th>DATE</th>
+                    <th>CUSTOMER</th>
+                    <th>CAR</th>
+                    <th>PLATE</th>
+                    <th className="right">
+                      GROSS
+                    </th>
+                    <th className="right">
+                      DISCOUNT
+                    </th>
+                    <th className="right">
+                      NET
+                    </th>
+                    <th className="right">
+                      PAID
+                    </th>
+                    <th className="right">
+                      BALANCE
+                    </th>
+                  </tr>
 
-      <button
-        className="btn btn-blue"
-        onClick={loadReports}
+                </thead>
+
+                <tbody>
+
+                  {alnusoorJobs.map(
+                    (job) => (
+                      <tr key={job.id}>
+
+                        <td>
+                          {getJobDate(
+                            job
+                          ) || "-"}
+                        </td>
+
+                        <td>
+                          {job.customer ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.carMake ||
+                            job.carType ||
+                            job.carModel ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.plate ||
+                            "-"}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.gross
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.discount
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.canonicalNet
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.customerPaid
+                          )}
+                        </td>
+
+                        <td
+                          className={`right ${
+                            job.customerBalance >
+                            0
+                              ? "negative"
+                              : "positive"
+                          }`}
+                        >
+                          QAR{" "}
+                          {money(
+                            job.customerBalance
+                          )}
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                  {alnusoorJobs.length ===
+                    0 && (
+                    <tr>
+                      <td
+                        colSpan="9"
+                        style={{
+                          textAlign:
+                            "center",
+                          padding: 30,
+                        }}
+                      >
+                        No Al Nusoor
+                        jobs found.
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+        </>
+      )}
+
+      {activeSection === "daily" && (
+        <>
+          <div className="section">
+
+            <div className="section-header">
+
+              <h2>
+                Daily Report
+              </h2>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "end",
+                  flexWrap: "wrap",
+                }}
+              >
+
+                <div className="field">
+
+                  <label>
+                    Select Date
+                  </label>
+
+                  <input
+                    type="date"
+                    value={reportDate}
+                    onChange={(e) =>
+                      setReportDate(
+                        e.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <button
+                  className="btn btn-dark"
+                  onClick={
+                    printDailyReport
+                  }
+                >
+                  Print Daily Report
+                </button>
+
+              </div>
+
+            </div>
+
+            <div className="cards">
+
+              <Card
+                title="Cars"
+                value={
+                  selectedDateJobs.length
+                }
+                color="blue"
+              />
+
+              <Card
+                title="Customer Sales"
+                value={`QAR ${money(
+                  selectedDateCustomerSales
+                )}`}
+                color="purple"
+              />
+
+              <Card
+                title="Teyseer Sales"
+                value={`QAR ${money(
+                  selectedDateTeyseerSales
+                )}`}
+                color="orange"
+              />
+
+              <Card
+                title="Total Sales"
+                value={`QAR ${money(
+                  selectedDateSales
+                )}`}
+                color="blue"
+              />
+
+              <Card
+                title="Customer Paid"
+                value={`QAR ${money(
+                  selectedDateCustomerPaid
+                )}`}
+                color="green"
+              />
+
+              <Card
+                title="Payment Transactions"
+                value={`QAR ${money(
+                  selectedDatePaymentTotal
+                )}`}
+                color="blue"
+              />
+
+              <Card
+                title="Customer Balance"
+                value={`QAR ${money(
+                  selectedDateBalance
+                )}`}
+                color="red"
+              />
+
+            </div>
+
+          </div>
+
+          <div className="section">
+
+            <h2>
+              Daily Payments
+            </h2>
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+                    <th>DATE</th>
+
+                    <th className="right">
+                      CASH
+                    </th>
+
+                    <th className="right">
+                      VISA
+                    </th>
+
+                    <th className="right">
+                      MASTERCARD
+                    </th>
+
+                    <th className="right">
+                      BANK
+                    </th>
+
+                    <th className="right">
+                      OTHER
+                    </th>
+
+                    <th className="right">
+                      TOTAL
+                    </th>
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {dailyPayments.map(
+                    ([date, data]) => (
+                      <tr key={date}>
+
+                        <td>
+                          {date}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            data.cash
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            data.visa
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            data.mastercard
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            data.bankTransfer
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            data.other
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            data.total
+                          )}
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                  {dailyPayments.length ===
+                    0 && (
+                    <tr>
+                      <td
+                        colSpan="7"
+                        style={{
+                          textAlign:
+                            "center",
+                          padding: 30,
+                        }}
+                      >
+                        No payment data
+                        found.
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+          <div className="section">
+
+            <h2>
+              Daily Cars
+            </h2>
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+                    <th>DATE</th>
+
+                    <th className="right">
+                      CARS
+                    </th>
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {dailyCarRows.map(
+                    ([date, count]) => (
+                      <tr key={date}>
+
+                        <td>
+                          {date}
+                        </td>
+
+                        <td className="right">
+                          {count}
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+          <div className="section">
+
+            <h2>
+              Daily Jobs
+            </h2>
+
+            <div className="table-wrap">
+
+              <table>
+
+                <thead>
+
+                  <tr>
+                    <th>DATE</th>
+                    <th>SOURCE</th>
+                    <th>CUSTOMER</th>
+                    <th>CAR</th>
+                    <th>PLATE</th>
+                    <th>SERVICES</th>
+                    <th className="right">
+                      NET
+                    </th>
+                    <th className="right">
+                      PAID
+                    </th>
+                    <th className="right">
+                      BALANCE
+                    </th>
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {selectedDateJobs.map(
+                    (job) => (
+                      <tr key={job.id}>
+
+                        <td>
+                          {getJobDate(
+                            job
+                          ) || "-"}
+                        </td>
+
+                        <td>
+                          {job.source ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.customer ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.carMake ||
+                            job.carType ||
+                            job.carModel ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.plate ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {job.serviceNames ||
+                            "-"}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.canonicalNet
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.paid
+                          )}
+                        </td>
+
+                        <td className="right">
+                          QAR{" "}
+                          {money(
+                            job.customerBalance
+                          )}
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                  {selectedDateJobs.length ===
+                    0 && (
+                    <tr>
+                      <td
+                        colSpan="9"
+                        style={{
+                          textAlign:
+                            "center",
+                          padding: 30,
+                        }}
+                      >
+                        No jobs found for
+                        this date.
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+        </>
+      )}
+
+      {activeSection === "settings" && (
+        <>
+          <div className="section">
+
+            <h2>
+              Manual Report Settings
+            </h2>
+
+            <div className="settings-grid">
+
+              {[
+                [
+                  "June",
+                  manualPending.June,
+                ],
+                [
+                  "July",
+                  manualPending.July,
+                ],
+                [
+                  "August",
+                  manualPending.August,
+                ],
+              ].map(
+                ([month, amount]) => (
+                  <div
+                    className="setting"
+                    key={month}
+                  >
+
+                    <div className="setting-title">
+                      {month} Pending
+                    </div>
+
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={amount}
+                      onChange={(e) =>
+                        changePending(
+                          month,
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    {savingSetting ===
+                      `${month} Pending` && (
+                      <small>
+                        Saving...
+                      </small>
+                    )}
+
+                  </div>
+                )
+              )}
+
+              <div className="setting">
+
+                <div className="setting-title">
+                  Previous Teyseer
+                </div>
+
+                <input
+                  type="number"
+                  step="0.01"
+                  value={
+                    manualTeyseer
+                  }
+                  onChange={(e) =>
+                    changeTeyseer(
+                      e.target.value
+                    )
+                  }
+                />
+
+                {savingSetting ===
+                  "Previous Teyseer" && (
+                  <small>
+                    Saving...
+                  </small>
+                )}
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div className="section">
+
+            <h2>
+              Current Data Summary
+            </h2>
+
+            <div className="cards">
+
+              <Card
+                title="Jobs"
+                value={
+                  calculatedJobs.length
+                }
+                color="blue"
+              />
+
+              <Card
+                title="Payments"
+                value={
+                  payments.length
+                }
+                color="green"
+              />
+
+              <Card
+                title="Job Services"
+                value={
+                  jobServices.length
+                }
+                color="purple"
+              />
+
+              <Card
+                title="Unlinked Payments"
+                value={
+                  unlinkedPayments.length
+                }
+                color={
+                  unlinkedPayments.length
+                    ? "red"
+                    : "green"
+                }
+              />
+
+            </div>
+
+          </div>
+        </>
+      )}
+
+      <div
+        style={{
+          textAlign: "center",
+          marginTop: 20,
+        }}
       >
-        Refresh Reports
-      </button>
+        <button
+          className="btn btn-blue"
+          onClick={loadReports}
+        >
+          Refresh Reports
+        </button>
+      </div>
 
     </div>
-
-  </div>
-);
-
+  );
 }
 
 export default Reports;

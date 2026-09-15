@@ -172,12 +172,15 @@ function Dashboard() {
   }
 
   function isPureTeyseerSource(sourceName) {
-    const source = String(sourceName || "")
-      .trim()
-      .toLowerCase();
+  const source = String(sourceName || "")
+    .trim()
+    .toLowerCase();
 
-    return source === "teyseer motors";
-  }
+  return (
+    source === "teyseer" ||
+    source === "teyseer motors"
+  );
+}
 
   function isTeyseerSalahSource(sourceName) {
     const source = String(sourceName || "")
@@ -345,10 +348,10 @@ function Dashboard() {
       // Entire job is paid by Teyseer.
       // -------------------------------------
 
-      if (isPureTeyseerSource(source)) {
-        jobTeyseerTotal += finalServiceAmount;
-        return;
-      }
+    if (isPureTeyseerSource(source)) {
+  jobTeyseerTotal += finalServiceAmount;
+  return;
+}
 
       // -------------------------------------
       // TEYSEER-SALAH
@@ -444,8 +447,8 @@ function Dashboard() {
 
       // Entire job is paid by Teyseer.
       if (isPureTeyseerSource(job.source)) {
-        return sum;
-      }
+  return sum;
+}
 
       return (
         sum +
