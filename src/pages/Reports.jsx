@@ -1475,11 +1475,18 @@ function printTeyseerReport() {
             )}
           </td>
 
-          <td class="services">
-            ${escapeHtml(
-              job.serviceNames || "-"
-            )}
-          </td>
+      <td class="services">
+  ${escapeHtml(
+    ["TEYSEER-SALAH", "TEYSEER-BAHAA", "TEYSEER-ABDOU"]
+      .includes(String(job.source || "").toUpperCase())
+      ? String(job.serviceNames || "")
+          .split(",")
+          .map(s => s.trim())
+          .filter(s => s.toUpperCase().includes("WTT"))
+          .join(", ") || "-"
+      : job.serviceNames || "-"
+  )}
+</td>
 
           <td>
             ${escapeHtml(
