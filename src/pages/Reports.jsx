@@ -1486,19 +1486,44 @@ function printTeyseerReport() {
 
   const rows = filteredTeyseerJobs
     .map((job) => {
-     const carMake =
+    const fullCarName =
+  job.carMake ||
+  job.carBrand ||
+  job.carType ||
+  job.carModel ||
+  job.vehicleName ||
+  job.vehicle ||
+  "";
+
+let carMake =
   job.carMake ||
   job.car_make ||
   job.make ||
   job.brand ||
   job.vehicleMake ||
   job.vehicle_make ||
-  "-";
+  "";
 
-      const model =
-        job.carModel ||
-        job.carType ||
-        "-";
+let model =
+  job.carModel ||
+  job.car_model ||
+  job.model ||
+  "";
+
+if (!carMake && fullCarName) {
+  const parts = String(fullCarName)
+    .trim()
+    .split(/\s+/);
+
+  carMake = parts[0] || "-";
+
+  if (!model && parts.length > 1) {
+    model = parts.slice(1).join(" ");
+  }
+}
+
+carMake = carMake || "-";
+model = model || "-";
 
       const plate =
         job.plate ||
