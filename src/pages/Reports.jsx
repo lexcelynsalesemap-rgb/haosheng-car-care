@@ -2619,14 +2619,14 @@ model = model || "-";
               )}
             </td>
 
-            <td>
-              ${escapeHtml(
-                job.carMake ||
-                  job.carType ||
-                  job.vehicleMake ||
-                  "-"
-              )}
-            </td>
+           <td>
+  ${escapeHtml(
+    job.carModel ||
+      job.carType ||
+      job.carMake ||
+      "-"
+  )}
+</td>
 
             <td>
               ${escapeHtml(
@@ -2648,11 +2648,6 @@ model = model || "-";
               QAR ${money(job.discount)}
             </td>
 
-            <td class="money">
-              QAR ${money(
-                job.canonicalNet
-              )}
-            </td>
 
             <td class="money">
               QAR ${money(job.paid)}
