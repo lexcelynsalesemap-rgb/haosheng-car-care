@@ -2596,72 +2596,75 @@ model = model || "-";
       selectedDateBalance;
 
     const rows = dailyJobs
-      .map(
-        (job, index) => `
-          <tr>
-            <td>${index + 1}</td>
+  .map(
+    (job, index) => `
+      <tr>
+        <td>${index + 1}</td>
 
-            <td>
-              ${escapeHtml(
-                getJobDate(job) || "-"
-              )}
-            </td>
+        <td>
+          ${escapeHtml(
+            getJobDate(job) || "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(
-                job.source || "-"
-              )}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.source || "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(
-                job.customer || "-"
-              )}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.customer || "-"
+          )}
+        </td>
 
-           <td>
-  ${escapeHtml(
-    job.carModel ||
-      job.carType ||
-      job.carMake ||
-      "-"
-  )}
-</td>
+        <td>
+          ${escapeHtml(
+            job.carModel ||
+              job.carType ||
+              job.carMake ||
+              "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(
-                job.plate || "-"
-              )}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.plate || "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(
-                job.serviceNames || "-"
-              )}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.serviceNames || "-"
+          )}
+        </td>
 
-            <td class="money">
-              QAR ${money(job.gross)}
-            </td>
+        <td class="money">
+          QAR ${money(job.gross)}
+        </td>
 
-            <td class="money">
-              QAR ${money(job.discount)}
-            </td>
+        <td class="money">
+          QAR ${money(
+            job.serviceDiscount ??
+            job.discount ??
+            0
+          )}
+        </td>
 
+        <td class="money">
+          QAR ${money(job.paid)}
+        </td>
 
-            <td class="money">
-              QAR ${money(job.paid)}
-            </td>
-
-            <td class="money">
-              QAR ${money(
-                job.customerBalance
-              )}
-            </td>
-          </tr>
-        `
-      )
-      .join("");
+        <td class="money">
+          QAR ${money(
+            job.customerBalance
+          )}
+        </td>
+      </tr>
+    `
+  )
+  .join("");
 
     const printWindow =
       window.open(
@@ -3041,20 +3044,19 @@ td {
 
           <thead>
 
-            <tr>
-              <th>#</th>
-              <th>DATE</th>
-              <th>SOURCE</th>
-              <th>CUSTOMER</th>
-              <th>CAR MODEL</th>
-              <th>PLATE</th>
-              <th>SERVICES</th>
-              <th>GROSS</th>
-              <th>DISCOUNT</th>
-              <th>NET</th>
-              <th>PAID</th>
-              <th>BALANCE</th>
-            </tr>
+         <tr>
+  <th>#</th>
+  <th>DATE</th>
+  <th>SOURCE</th>
+  <th>CUSTOMER</th>
+  <th>CAR MODEL</th>
+  <th>PLATE</th>
+  <th>SERVICES</th>
+  <th>GROSS TOTAL</th>
+  <th>DISCOUNT</th>
+  <th>PAID</th>
+  <th>BALANCE</th>
+</tr>
 
           </thead>
 
@@ -3065,7 +3067,7 @@ td {
               `
                 <tr>
                   <td
-                    colspan="12"
+                    colspan="11"
                     style="
                       text-align:center;
                       padding:20px;
