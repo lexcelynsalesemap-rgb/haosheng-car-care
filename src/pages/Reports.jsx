@@ -1651,20 +1651,27 @@ function printTeyseerReport() {
           overflow-wrap: anywhere;
         }
 
-        .number {
-          width: 4%;
-          text-align: center;
-        }
+       .number {
+  width: 2.5%;
+  text-align: center;
+  padding-left: 2px;
+  padding-right: 2px;
+}
 
-        .money {
-          text-align: right;
-          white-space: nowrap;
-          width: 12%;
-        }
+table th:first-child,
+table td:first-child {
+  width: 2.5%;
+}
 
-        .services {
-          width: 25%;
-        }
+.money {
+  text-align: right;
+  white-space: nowrap;
+  width: 12%;
+}
+
+.services {
+  width: 28%;
+}
 
         .footer {
           margin-top: 20px;
@@ -1773,12 +1780,7 @@ function printTeyseerReport() {
           </div>
 
           <div class="boxValue">
-            ${
-              teyseerMotorsServiceItems +
-              salahServiceItems +
-              bahaaServiceItems +
-              abdouServiceItems
-            }
+            ${teyseerMotorsServiceItems}
           </div>
         </div>
 
@@ -2091,28 +2093,43 @@ function printTeyseerReport() {
           }
 
           table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-          }
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
 
-          th {
-            background: #111827;
-            color: white;
-            padding: 6px;
-            text-align: left;
-          }
+th {
+  background: #111827;
+  color: white;
+  padding: 6px 4px;
+  text-align: left;
+  font-size: 8px;
+  font-weight: 700;
+}
 
-          td {
-            padding: 6px;
-            border: 1px solid #ddd;
-            vertical-align: top;
-          }
+td {
+  padding: 5px 4px;
+  border: 1px solid #d1d5db;
+  vertical-align: top;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
 
-          .money {
-            text-align: right;
-            white-space: nowrap;
-          }
+.number {
+  width: 2.5%;
+  text-align: center;
+  padding: 4px 1px;
+}
+
+.services {
+  width: 28%;
+}
+
+.money {
+  width: 12%;
+  text-align: right;
+  white-space: nowrap;
+}
 
           .section-title {
             font-size: 13px;
