@@ -1453,35 +1453,26 @@ function printTeyseerReport() {
   ];
 
   const getTeyseerDescription = (job) => {
-    const source = String(
-      job.source ||
-        job.jobSource ||
-        job.customerSource ||
-        ""
-    )
-      .trim()
-      .toUpperCase();
+   const source = String(
+  job.source ||
+    job.jobSource ||
+    job.customerSource ||
+    ""
+)
+  .trim()
+  .toUpperCase();
 
-    const services = String(
-      job.serviceNames || ""
-    );
+const services = String(job.serviceNames || "");
 
-    /*
-      Teyseer jobs:
-      Only show WTT in the description.
-    */
-    if (teyseerSources.includes(source)) {
-      const wttServices = services
-        .split(",")
-        .map((service) => service.trim())
-        .filter((service) =>
-          service.toUpperCase().includes("WTT")
-        );
+/*
+  Teyseer jobs:
+  Only show WTT in the description.
+*/
+if (teyseerSources.includes(source)) {
+  return "WTT";
+}
 
-      return wttServices.join(", ") || "WTT";
-    }
-
-    return services || "-";
+return services || "-";
   };
 
   const rows = filteredTeyseerJobs
