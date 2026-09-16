@@ -155,22 +155,34 @@ function isWttService(service) {
 ============================================================
 CANONICAL JOB CALCULATION
 ============================================================
-NORMAL JOB:
-  customerSales = price - discount
+
+SERVICE CALCULATION:
+  serviceGross = service price × quantity
+  serviceDiscount = service discount
+  serviceFinal = serviceGross - serviceDiscount
+
+NORMAL SOURCES:
+  Customer pays ALL services after their individual discounts.
+
 TEYSEER MOTORS:
-  with services:
-    all services = Teyseer sales
-  without services:
-    price - discount = Teyseer sales
-SALAH / BAHAA:
+  If services exist:
+    ALL services = Teyseer sales
+  If no services:
+    job price - job discount = Teyseer sales
+
+TEYSEER MOTORS - SALAH / BAHAA / ABDOU:
   WTT services = Teyseer sales
-  everything else = Customer sales
+  Everything else = Customer sales
+  Each service's own discount is applied to that service.
+
 PAYMENTS:
-  only payment.job_id === job.id
+  Only payment.job_id === job.id
+
 PAYMENT ALLOCATION:
-  All payment are applied to customer sales.
+  Payments are applied to customer sales first.
 ============================================================
 */
+
 function calculateJob(
   job,
   jobServices,
@@ -178,113 +190,370 @@ function calculateJob(
 ) {
   const gross = number(job.price);
   const discount = number(job.discount);
-  const jobNet = Math.max(
-    gross - discount,
-    0
-  );
+
   const services = getServicesForJob(
     jobServices,
     job.id
   );
-  const serviceTotal =
-    getServiceAmount(services);
-  const source = normalizeSource(
-    job.source
+
+  /*
+  ============================================================
+  SERVICE TOTALS
+  ============================================================
+  */
+
+  let serviceGross = 0;
+  let serviceDiscount = 0;
+  let serviceFinal = 0;
+
+  services.forEach((service) => {
+    const quantity = Math.max(
+      number(
+        service.quantity ??
+          service.qty ??
+          1
+      ),
+      1
+    );
+
+    const price = number(
+      service.price ??
+        service.unit_price ??
+        service.amount ??
+        0
+    );
+
+    const discount = number(
+      service.discount ??
+        service.discount_amount ??
+        0
+    );
+
+    const grossAmount =
+      price * quantity;
+
+    const discountAmount =
+      discount;
+
+    const finalAmount =
+      Math.max(
+        grossAmount -
+          discountAmount,
+        0
+      );
+
+    serviceGross += grossAmount;
+    serviceDiscount +=
+      discountAmount;
+    serviceFinal +=
+      finalAmount;
+  });
+
+  /*
+  ============================================================
+  FALLBACK
+  ============================================================
+
+  If the job has no job_services records,
+  use the job-level price/discount.
+  ============================================================
+  */
+
+  const hasServices =
+    services.length > 0;
+
+  const jobNet = Math.max(
+    gross - discount,
+    0
   );
+
+  /*
+  ============================================================
+  SOURCE
+  ============================================================
+  */
+
+  const source = String(
+    job.source || ""
+  ).trim();
+
+  const isMainTeyseer =
+    source ===
+    "Teyseer Motors";
+
+  const isTeyseerPerson =
+    source ===
+      "Teyseer Motors - Salah" ||
+    source ===
+      "Teyseer Motors - Bahaa" ||
+    source ===
+      "Teyseer Motors - Abdou";
+
   let teyseerSales = 0;
   let customerSales = 0;
-  if (source === "Teyseer Motors") {
-    teyseerSales =
-      services.length > 0
-        ? serviceTotal
-        : jobNet;
-  } else if (
-    source === "Teyseer Motors - Salah" ||
-    source === "Teyseer Motors - Bahaa" ||
-    source === "Teyseer Motors - Abdou"
-  ) {
-    if (services.length > 0) {
-      services.forEach((service) => {
-        const amount = number(
-          service.price ??
-            service.amount ??
-            service.total ??
+
+  /*
+  ============================================================
+  TEYSEER MOTORS
+  ============================================================
+
+  All services are Teyseer sales.
+
+  IMPORTANT:
+  We use the FINAL service amount
+  (price - service discount).
+
+  If there are no services, use jobNet.
+  ============================================================
+  */
+
+  if (isMainTeyseer) {
+    if (hasServices) {
+      teyseerSales =
+        serviceFinal;
+    } else {
+      teyseerSales =
+        jobNet;
+    }
+  }
+
+  /*
+  ============================================================
+  TEYSEER MOTORS - SALAH / BAHAA / ABDOU
+  ============================================================
+
+  WTT:
+    Teyseer pays
+
+  Non-WTT:
+    Customer pays
+
+  Each service already has its own discount.
+  Therefore we use serviceFinal.
+
+  DO NOT subtract job.discount here.
+  ============================================================
+  */
+
+  else if (isTeyseerPerson) {
+    services.forEach((service) => {
+      const quantity = Math.max(
+        number(
+          service.quantity ??
+            service.qty ??
+            1
+        ),
+        1
+      );
+
+      const price = number(
+        service.price ??
+          service.unit_price ??
+          service.amount ??
+          0
+      );
+
+      const serviceDiscount =
+        number(
+          service.discount ??
+            service.discount_amount ??
             0
         );
-        if (isWttService(service)) {
-          teyseerSales += amount;
-        } else {
-          customerSales += amount;
-        }
-      });
-    } else {
-      customerSales = jobNet;
+
+      const amount =
+        Math.max(
+          price * quantity -
+            serviceDiscount,
+          0
+        );
+
+      if (isWttService(service)) {
+        teyseerSales += amount;
+      } else {
+        customerSales += amount;
+      }
+    });
+
+    /*
+    If somehow the Teyseer-person job
+    has no services, use jobNet.
+    */
+
+    if (!hasServices) {
+      customerSales =
+        jobNet;
     }
-  } else {
-    customerSales = jobNet;
   }
+
+  /*
+  ============================================================
+  ALL OTHER SOURCES
+  ============================================================
+
+  Examples:
+    Salah
+    Bahaa
+    Abdou
+    Walk-in
+    Other
+
+  CUSTOMER PAYS EVERYTHING.
+
+  Use each service's FINAL amount.
+  Do NOT subtract job.discount again.
+  ============================================================
+  */
+
+  else {
+    if (hasServices) {
+      customerSales =
+        serviceFinal;
+    } else {
+      customerSales =
+        jobNet;
+    }
+  }
+
+  /*
+  ============================================================
+  CANONICAL NET
+  ============================================================
+  */
+
   const canonicalNet =
     teyseerSales +
     customerSales;
+
+  /*
+  ============================================================
+  PAYMENTS
+  ============================================================
+  */
+
   const linkedPayments =
-    paymentsByJob[String(job.id)] || [];
-  const paid = linkedPayments.reduce(
-    (sum, payment) =>
-      sum + number(payment.amount),
-    0
-  );
+    paymentsByJob[
+      String(job.id)
+    ] || [];
+
+  const paid =
+    linkedPayments.reduce(
+      (sum, payment) =>
+        sum +
+        number(payment.amount),
+      0
+    );
+
   let customerPaid = 0;
   let teyseerPaid = 0;
-  if (
-    customerSales > 0 &&
-    teyseerSales === 0
-  ) {
-    customerPaid = Math.min(
-      paid,
-      customerSales
-    );
+
+  /*
+  ============================================================
+  PAYMENT ALLOCATION
+  ============================================================
+  */
+
+  if (customerSales > 0) {
+    customerPaid =
+      Math.min(
+        paid,
+        customerSales
+      );
   } else if (
-    teyseerSales > 0 &&
-    customerSales === 0
+    teyseerSales > 0
   ) {
     teyseerPaid = paid;
-  } else if (
-    teyseerSales > 0 &&
-    customerSales > 0
-  ) {
-    customerPaid = Math.min(
-      paid,
-      customerSales
-    );
   }
-  const customerBalance = Math.max(
-    customerSales - customerPaid,
-    0
-  );
-  const teyseerBalance = Math.max(
-    teyseerSales,
-    0
-  );
+
+  /*
+  ============================================================
+  BALANCES
+  ============================================================
+  */
+
+  const customerBalance =
+    Math.max(
+      customerSales -
+        customerPaid,
+      0
+    );
+
+  const teyseerBalance =
+    Math.max(
+      teyseerSales -
+        teyseerPaid,
+      0
+    );
+
+  /*
+  ============================================================
+  RETURN
+  ============================================================
+  */
+
   return {
     ...job,
+
+    /*
+    Original job values
+    */
     gross,
     discount,
     jobNet,
+
+    /*
+    Service calculations
+    */
     services,
-    serviceTotal,
-    serviceNames: getServiceNames(services),
+    serviceTotal:
+      serviceGross,
+
+    serviceGross,
+    serviceDiscount,
+    serviceFinal,
+
+    serviceNames:
+      getServiceNames(
+        services
+      ),
+
+    /*
+    Sales
+    */
     canonicalNet,
     teyseerSales,
     customerSales,
+
+    /*
+    Payments
+    */
     paid,
     customerPaid,
+    teyseerPaid,
+
+    /*
+    Balances
+    */
     customerBalance,
     teyseerBalance,
-    balance: customerBalance,
+
+    balance:
+      customerBalance,
+
     discrepancy: 0,
-    isTeyseer: isTeyseerJob(job),
+
+    /*
+    Teyseer identification
+    */
+    isTeyseer:
+      isMainTeyseer ||
+      isTeyseerPerson,
+
+    /*
+    Payments linked to this job
+    */
     linkedPayments,
   };
+
 }
 function Card({
   title,
