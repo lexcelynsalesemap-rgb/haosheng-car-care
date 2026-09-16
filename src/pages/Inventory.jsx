@@ -2,167 +2,70 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
 import { canSeeInventoryCost } from "../utils/permissions";
 
-/*
-============================================================
-CHINESE TRANSLATIONS
-============================================================
-Chinese translations are stored in this React file.
-NO name_chinese column is required in Supabase.
-*/
+/* =========================================================
+   CHINESE TRANSLATIONS
+========================================================= */
 
 const categoryChinese = {
-  "Compounds & Chemicals": "研磨剂和化学品",
-  "Gloves & PPE": "手套和个人防护用品",
-  "Polishing Materials": "抛光材料",
-  "PPF & Wrapping Materials": "PPF 和汽车贴膜材料",
-  "Squeegees & Scrapers": "刮板和刮刀",
-  "Tapes & Adhesives": "胶带和粘合剂",
-  "Tools & Blades": "工具和刀片",
-  "Window Tinting Materials": "汽车隔热膜材料",
+  "PPF": "漆面保护膜",
+  "Window Film": "车窗膜",
+  "Ceramic Coating": "陶瓷涂层",
+  "Accessories": "配件",
+  "Maintenance": "保养",
+  "Parts": "零部件",
+  "Other": "其他",
 };
-
-/*
-============================================================
-PRODUCT CHINESE TRANSLATIONS
-============================================================
-Supabase only stores the English product name.
-Chinese is displayed automatically from this list.
-*/
 
 const productChinese = {
-  "10%": "10%",
-  "15%": "15%",
-  "25%": "25%",
-  "35%": "35%",
-  "50%": "50%",
-  "60%": "60%",
-  "70%": "70%",
-
-  "3M Medium Size": "3M 中号",
-  "3M Small Double Sided Tape": "3M 小号双面胶带",
-  "AC CLEANER FOAM": "空调清洁泡沫",
-  "AC VISUAL CLEANING SET": "空调可视清洁套装",
-  "AIR GUN": "气枪",
-  "ASPHALT CLEANER": "沥青清洁剂",
-  "BLACK COLOR": "黑色",
-  "Black Foam": "黑色泡沫",
-  "Black Gloves": "黑色手套",
-  "BLADE CONTAINER": "刀片收纳盒",
-  "Blade Glue Remover for Windshield": "挡风玻璃刀片胶水清除剂",
-  "BLUE BIG TOWEL": "蓝色大毛巾",
-  "BLUE COLOR": "蓝色",
-  "Blue Handle with Small Blades": "蓝色手柄小刀片",
-  "BROWN SMALL TOWEL": "棕色小毛巾",
-  "Brush Big": "大刷子",
-  "CAR CARE FABRIC POLISH": "汽车护理织物抛光剂",
-  "Car Wrap Tool": "汽车贴膜工具",
-  "CERAMIC COATING PLASTIC PART": "陶瓷涂层塑料部件",
-  "CHROME PARTS REPAIR": "镀铬部件修复剂",
-  "Clothe Polish": "布料抛光剂",
-  "COLD MIST DISINFECTANT": "冷雾消毒剂",
-  "CREAM COLOR": "奶油色",
-  "Cutter Blade": "切割刀片",
-  "Dark Blue Squeegee": "深蓝色刮板",
-  "DESSERT YELLOW COLOR": "甜点黄色",
-  "Dual Color Squeegee": "双色刮板",
-  "Endura Blades": "Endura 刀片",
-  "ENGINE CLEANER": "发动机清洁剂",
-  "ENGINE HARNESS POLISH": "发动机线束抛光剂",
-  "FABRIC TOOLS FOR WASH": "织物清洗工具",
-  "FOAM BRUSH FOR MAGS": "轮毂泡沫刷",
-  "GA Grey Mattings": "GA 灰色脚垫",
-  "GLOSS BLACK": "亮黑色",
-  "GLOSSY": "亮光",
-  "Gloves Large": "大号手套",
-  "Glue Remover Blades": "胶水清除刀片",
-  "Green Foam for Polish": "抛光绿色泡沫",
-  "Green Long Scraper": "绿色长刮板",
-  "Green Rubber Squeegee": "绿色橡胶刮板",
-  "Heat Gun": "热风枪",
-  "Heavy Cut Compound": "重切削研磨剂",
-  "INTERIOR CLEANER": "内饰清洁剂",
-  "INTERIOR CLEANING AGENT": "内饰清洁剂",
-  "JKJ - 019": "JKJ - 019",
-  "LEATHER CAR CREAM": "汽车皮革护理霜",
-  "MATTE": "哑光",
-  "METALIC GREY COLOR": "金属灰色",
-  "Mint Green Squeegee": "薄荷绿色刮板",
-  "MOSQUITO SELF CLEANING DETERGENT": "蚊虫自清洁清洁剂",
-  "NANO COATING": "纳米涂层",
-  "Neon Green Squeegee": "荧光绿色刮板",
-  "OIL FILM CLEANER": "油膜清洁剂",
-  "OIL SEAL SCREW DRIVER": "油封螺丝刀",
-  "OIL TIRE WAX": "轮胎油蜡",
-  "PAINT DEGREASER": "油漆脱脂剂",
   "Paint Protection Film": "漆面保护膜",
-  "PALM WAX": "棕榈蜡",
-  "Pink Long Scraper": "粉色长刮板",
-  "Pink Squeegee": "粉色刮板",
-  "Plastic WTT Roll": "塑料 WTT 卷",
-  "Polish Agent": "抛光剂",
-  "POLISH CUP": "抛光杯",
-  "POLISH FOAM": "抛光泡沫",
-  "PPF Bag": "PPF 袋",
-  "PPF Clay": "PPF 清洁泥",
-  "PPF Cutter": "PPF 切割器",
-  "PPF CUTTER GUIDE": "PPF 切割导轨",
-  "PPF SURFACE": "PPF 表面处理剂",
-  "PPF Tissue Cloth": "PPF 纸巾布",
-  "PURPLE COLOR": "紫色",
-  "PURPLE SMALL TOWEL": "紫色小毛巾",
-  "R-G PLASTIC BLADE": "R-G 塑料刀片",
-  "RACING GREEN COLOR": "赛车绿色",
-  "RED COLOR": "红色",
-  "Red Flat Squeegee": "红色平刮板",
-  "RED SMALL TOWEL": "红色小毛巾",
-  "Reducing Agent": "还原剂",
-  "REMOVE IRON POWDER": "除铁粉剂",
-  "S5-JKJCO34": "S5-JKJCO34",
-  "Scraper Green": "绿色刮板",
-  "Scraper Red Long": "红色长刮板",
-  "Sensor Cutter": "传感器切割器",
-  "SIDEMENT LOOSING AGENT": "水泥松动剂",
-  "Small Rubber Scraper": "小型橡胶刮板",
-  "Spray Bottle": "喷雾瓶",
-  "Squeegee Green Rubber": "绿色橡胶刮板",
-  "Squeegee WTT Pink Rubber": "WTT 粉色橡胶刮板",
-  "SURFACE RENOVATION": "表面翻新剂",
+  "Full Body PPF": "全车漆面保护膜",
+  "Front PPF": "前部漆面保护膜",
+  "Matte PPF": "哑光漆面保护膜",
+  "Glossy PPF": "高光漆面保护膜",
+  "Window Film": "车窗膜",
+  "Ceramic Coating": "陶瓷涂层",
+  "Car Wash": "洗车",
+  "Oil Change": "换机油",
+  "Engine Oil": "发动机机油",
+  "Brake Pads": "刹车片",
+  "Air Filter": "空气滤芯",
+  "Cabin Filter": "空调滤芯",
+  "Wiper": "雨刷",
+  "Car Accessories": "汽车配件",
 };
 
-/*
-============================================================
-HELPER FUNCTIONS
-============================================================
-*/
+/* =========================================================
+   HELPERS
+========================================================= */
 
 function getProductDisplay(name) {
-  const english = String(name || "");
-  const chinese = productChinese[english];
+  const chinese = productChinese[name];
 
-  if (chinese && chinese !== english) {
+  if (chinese) {
     return (
-      <span>
-        {english}
-        <span style={styles.chineseText}>
-          {" / "}
-          {chinese}
-        </span>
-      </span>
+      <div>
+        <div style={{ fontWeight: 700 }}>{name}</div>
+        <div style={{ color: "#9ca3af", fontSize: 12 }}>{chinese}</div>
+      </div>
     );
   }
 
-  return english;
+  return name;
 }
 
 function getCategoryDisplay(name) {
-  const english = String(name || "No Category");
-  const chinese = categoryChinese[english];
+  const chinese = categoryChinese[name];
 
   if (chinese) {
-    return `${english} / ${chinese}`;
+    return (
+      <div>
+        <div style={{ fontWeight: 600 }}>{name}</div>
+        <div style={{ color: "#9ca3af", fontSize: 11 }}>{chinese}</div>
+      </div>
+    );
   }
 
-  return english;
+  return name;
 }
 
 function getStatus(product) {
@@ -170,35 +73,60 @@ function getStatus(product) {
   const minimum = Number(product.minimum_stock || 0);
 
   if (stock <= 0) {
-    return "OUT";
+    return {
+      label: "Out of Stock",
+      chinese: "缺货",
+      color: "#ef4444",
+      background: "rgba(239,68,68,0.12)",
+    };
   }
 
   if (stock <= minimum) {
-    return "LOW";
+    return {
+      label: "Low Stock",
+      chinese: "库存不足",
+      color: "#f59e0b",
+      background: "rgba(245,158,11,0.12)",
+    };
   }
 
-  return "OK";
+  return {
+    label: "In Stock",
+    chinese: "有库存",
+    color: "#22c55e",
+    background: "rgba(34,197,94,0.12)",
+  };
 }
 
-/*
-============================================================
-INVENTORY
-============================================================
-*/
+/* =========================================================
+   COMPONENT
+========================================================= */
 
-function Inventory() {
+export default function Inventory() {
   const loggedInUser = JSON.parse(
-    localStorage.getItem("user") || "null"
+    localStorage.getItem("loggedInUser") ||
+      localStorage.getItem("user") ||
+      "null"
   );
 
   const showCost = canSeeInventoryCost(loggedInUser);
-  const isAdmin = loggedInUser?.role === "admin";
+  const isAdmin =
+    loggedInUser?.role === "admin" ||
+    loggedInUser?.role === "Admin" ||
+    loggedInUser?.is_admin === true;
+
+  const shopId = loggedInUser?.shop_id;
+
+  /* =========================================================
+     STATE
+  ========================================================= */
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -214,14 +142,25 @@ function Inventory() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const [movementType, setMovementType] = useState("IN");
+  const [movementType, setMovementType] = useState("in");
 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const [categoryName, setCategoryName] = useState("");
 
-  const [productForm, setProductForm] = useState({
+  /* =========================================================
+     IMAGE STATE
+  ========================================================= */
+
+  const [productImage, setProductImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+
+  /* =========================================================
+     PRODUCT FORM
+  ========================================================= */
+
+  const emptyProductForm = {
     sku: "",
     name: "",
     category_id: "",
@@ -230,7 +169,14 @@ function Inventory() {
     current_stock: "0",
     minimum_stock: "0",
     description: "",
-  });
+    image_url: "",
+  };
+
+  const [productForm, setProductForm] = useState(emptyProductForm);
+
+  /* =========================================================
+     MOVEMENT FORM
+  ========================================================= */
 
   const [movementForm, setMovementForm] = useState({
     quantity: "",
@@ -239,246 +185,213 @@ function Inventory() {
     notes: "",
   });
 
+  /* =========================================================
+     CLEAN UP IMAGE PREVIEW
+  ========================================================= */
+
   useEffect(() => {
-    loadData();
-  }, []);
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
-  async function loadData() {
-    setLoading(true);
-    setError("");
+  /* =========================================================
+     LOAD DATA
+  ========================================================= */
 
-    await Promise.all([
-      loadCategories(),
-      loadProducts(),
-    ]);
-
-    setLoading(false);
-  }
+  useEffect(() => {
+    loadProducts();
+    loadCategories();
+  }, [shopId]);
 
   async function loadProducts() {
-    const user = JSON.parse(
-      localStorage.getItem("user") || "null"
-    );
-
-    if (!user?.shop_id) {
-      setProducts([]);
-      setError(
-        "Your account is not connected to a shop. / 您的账户未连接到店铺。"
-      );
+    if (!shopId) {
+      setLoading(false);
+      setError("No shop is assigned to this user.");
       return;
     }
 
-    /*
-    IMPORTANT:
-    There is NO name_chinese here.
-    */
+    try {
+      setLoading(true);
+      setError("");
 
-    const { data, error } = await supabase
-      .from("inventory_products")
-      .select(`
-        id,
-        sku,
-        name,
-        category_id,
-        supplier_id,
-        description,
-        unit,
-        cost_price,
-        selling_price,
-        current_stock,
-        minimum_stock,
-        active,
-        created_at,
-        updated_at,
-        shop_id
-      `)
-      .eq("shop_id", user.shop_id)
-      .eq("active", true)
-      .order("name");
+      const { data, error: productsError } = await supabase
+        .from("inventory_products")
+        .select(
+          `
+          id,
+          sku,
+          name,
+          category_id,
+          supplier_id,
+          description,
+          unit,
+          cost_price,
+          selling_price,
+          current_stock,
+          minimum_stock,
+          active,
+          created_at,
+          updated_at,
+          shop_id,
+          image_url
+        `
+        )
+        .eq("shop_id", shopId)
+        .eq("active", true)
+        .order("name", { ascending: true });
 
-    if (error) {
-      console.error(
-        "LOAD PRODUCTS ERROR:",
-        error
-      );
+      if (productsError) throw productsError;
 
-      setProducts([]);
-      setError(error.message);
-      return;
+      setProducts(data || []);
+    } catch (err) {
+      console.error("loadProducts error:", err);
+      setError(err.message || "Failed to load products.");
+    } finally {
+      setLoading(false);
     }
-
-    setProducts(data || []);
   }
 
   async function loadCategories() {
-    const user = JSON.parse(
-      localStorage.getItem("user") || "null"
-    );
+    if (!shopId) return;
 
-    if (!user?.shop_id) {
-      setCategories([]);
-      return;
+    try {
+      const { data, error: categoriesError } = await supabase
+        .from("inventory_categories")
+        .select(
+          `
+          id,
+          name,
+          description,
+          active,
+          shop_id
+        `
+        )
+        .eq("shop_id", shopId)
+        .eq("active", true)
+        .order("name", { ascending: true });
+
+      if (categoriesError) throw categoriesError;
+
+      setCategories(data || []);
+    } catch (err) {
+      console.error("loadCategories error:", err);
+      setError(err.message || "Failed to load categories.");
     }
-
-    const { data, error } = await supabase
-      .from("inventory_categories")
-      .select(`
-        id,
-        name,
-        description,
-        active,
-        shop_id
-      `)
-      .eq("shop_id", user.shop_id)
-      .eq("active", true)
-      .order("name");
-
-    if (error) {
-      console.error(
-        "LOAD CATEGORIES ERROR:",
-        error
-      );
-
-      setCategories([]);
-      setError(error.message);
-      return;
-    }
-
-    setCategories(data || []);
   }
 
-  function getCategoryName(categoryId) {
-    if (
-      categoryId === null ||
-      categoryId === undefined ||
-      categoryId === ""
-    ) {
-      return "No Category";
-    }
-
-    const category = categories.find(
-      (item) =>
-        String(item.id) === String(categoryId)
-    );
-
-    return category?.name || "No Category";
-  }
+  /* =========================================================
+     FILTERED PRODUCTS
+  ========================================================= */
 
   const filteredProducts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
     return products.filter((product) => {
-      const searchText =
-        search.trim().toLowerCase();
+      const category = categories.find(
+        (item) => item.id === product.category_id
+      );
 
-      const englishName = String(
-        product.name || ""
-      ).toLowerCase();
-
-      const chineseName = String(
-        productChinese[product.name] || ""
-      ).toLowerCase();
-
-      const sku = String(
-        product.sku || ""
-      ).toLowerCase();
+      const categoryNameValue = category?.name || "";
 
       const matchesSearch =
-        !searchText ||
-        englishName.includes(searchText) ||
-        chineseName.includes(searchText) ||
-        sku.includes(searchText);
+        !query ||
+        product.name?.toLowerCase().includes(query) ||
+        product.sku?.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query) ||
+        categoryNameValue.toLowerCase().includes(query);
 
       const matchesCategory =
-        !categoryFilter ||
-        String(product.category_id) ===
-          String(categoryFilter);
+        !categoryFilter || product.category_id === categoryFilter;
+
+      const status = getStatus(product);
 
       const matchesStatus =
         !statusFilter ||
-        getStatus(product) === statusFilter;
+        (statusFilter === "in" && status.label === "In Stock") ||
+        (statusFilter === "low" && status.label === "Low Stock") ||
+        (statusFilter === "out" && status.label === "Out of Stock");
 
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesStatus
-      );
+      return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [
     products,
+    categories,
     search,
     categoryFilter,
     statusFilter,
   ]);
 
-  const totalProducts = products.length;
+  /* =========================================================
+     STATS
+  ========================================================= */
 
-  const lowStock = products.filter(
-    (product) =>
-      Number(product.current_stock || 0) > 0 &&
-      Number(product.current_stock || 0) <=
-        Number(product.minimum_stock || 0)
-  ).length;
+  const stats = useMemo(() => {
+    const totalProducts = products.length;
 
-  const outOfStock = products.filter(
-    (product) =>
-      Number(product.current_stock || 0) <= 0
-  ).length;
+    const totalUnits = products.reduce(
+      (sum, product) => sum + Number(product.current_stock || 0),
+      0
+    );
 
-  const inventoryValue = products.reduce(
-    (total, product) =>
-      total +
-      Number(product.current_stock || 0) *
-        Number(product.cost_price || 0),
-    0
-  );
+    const lowStock = products.filter((product) => {
+      const stock = Number(product.current_stock || 0);
+      const minimum = Number(product.minimum_stock || 0);
+
+      return stock > 0 && stock <= minimum;
+    }).length;
+
+    const outOfStock = products.filter(
+      (product) => Number(product.current_stock || 0) <= 0
+    ).length;
+
+    const inventoryValue = products.reduce((sum, product) => {
+      return (
+        sum +
+        Number(product.current_stock || 0) *
+          Number(product.cost_price || 0)
+      );
+    }, 0);
+
+    return {
+      totalProducts,
+      totalUnits,
+      lowStock,
+      outOfStock,
+      inventoryValue,
+    };
+  }, [products]);
+
+  /* =========================================================
+     ADD PRODUCT
+  ========================================================= */
 
   function openAddProduct() {
-    if (!isAdmin) {
-      setError(
-        "Only administrators can add products. / 只有管理员可以添加产品。"
-      );
-      return;
-    }
-
     setEditingProduct(null);
-
-    setProductForm({
-      sku: "",
-      name: "",
-      category_id: "",
-      unit: "pcs",
-      cost_price: "",
-      current_stock: "0",
-      minimum_stock: "0",
-      description: "",
-    });
-
+    setProductForm(emptyProductForm);
+    setProductImage(null);
+    setImagePreview("");
     setError("");
     setMessage("");
     setShowProductForm(true);
   }
 
-  function openEditProduct(product) {
-    if (!isAdmin) {
-      setError(
-        "Only administrators can edit products. / 只有管理员可以编辑产品。"
-      );
-      return;
-    }
+  /* =========================================================
+     EDIT PRODUCT
+  ========================================================= */
 
+  function openEditProduct(product) {
     setEditingProduct(product);
 
     setProductForm({
       sku: product.sku || "",
       name: product.name || "",
-      category_id:
-        product.category_id !== null &&
-        product.category_id !== undefined
-          ? String(product.category_id)
-          : "",
+      category_id: product.category_id || "",
       unit: product.unit || "pcs",
       cost_price:
-        product.cost_price !== null &&
-        product.cost_price !== undefined
+        product.cost_price !== null && product.cost_price !== undefined
           ? String(product.cost_price)
           : "",
       current_stock:
@@ -492,312 +405,263 @@ function Inventory() {
           ? String(product.minimum_stock)
           : "0",
       description: product.description || "",
+      image_url: product.image_url || "",
     });
+
+    setProductImage(null);
+    setImagePreview(product.image_url || "");
 
     setError("");
     setMessage("");
     setShowProductForm(true);
   }
 
+  /* =========================================================
+     IMAGE CHANGE
+  ========================================================= */
+
+  function handleProductImageChange(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError(
+        "Please select an image file. / 请选择图片文件。"
+      );
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError(
+        "Image must be smaller than 5 MB. / 图片必须小于 5 MB。"
+      );
+      return;
+    }
+
+    setError("");
+
+    setProductImage(file);
+
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+  }
+
+  /* =========================================================
+     REMOVE IMAGE
+  ========================================================= */
+
+  function removeProductImage() {
+    setProductImage(null);
+    setProductForm((prev) => ({
+      ...prev,
+      image_url: "",
+    }));
+    setImagePreview("");
+  }
+
+  /* =========================================================
+     UPLOAD IMAGE
+  ========================================================= */
+
+  async function uploadProductImage(file, sku) {
+    if (!file) {
+      return productForm.image_url || null;
+    }
+
+    const extension =
+      file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+    const safeSku = String(sku)
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, "_");
+
+    const fileName = `${safeSku}-${Date.now()}.${extension}`;
+
+    const filePath = `${shopId}/${fileName}`;
+
+    setUploadingImage(true);
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from("inventory-images")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage
+        .from("inventory-images")
+        .getPublicUrl(filePath);
+
+      return data?.publicUrl || null;
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  /* =========================================================
+     SAVE PRODUCT
+  ========================================================= */
+
   async function saveProduct(event) {
     event.preventDefault();
 
     if (!isAdmin) {
       setError(
-        "Only administrators can add or edit products. / 只有管理员可以添加或编辑产品。"
+        "Only administrators can add or edit inventory products."
       );
       return;
     }
 
-    const user = JSON.parse(
-      localStorage.getItem("user") || "null"
-    );
-
-    if (!user?.shop_id) {
-      setError(
-        "Your account is not connected to a shop. / 您的账户未连接到店铺。"
-      );
+    if (!shopId) {
+      setError("No shop is assigned to this user.");
       return;
     }
 
-    if (!productForm.sku.trim()) {
-      setError(
-        "SKU is required. / SKU 是必填项。"
-      );
+    const sku = productForm.sku.trim();
+    const name = productForm.name.trim();
+
+    if (!sku) {
+      setError("SKU is required.");
       return;
     }
 
-    if (!productForm.name.trim()) {
-      setError(
-        "Product name is required. / 产品名称是必填项。"
-      );
+    if (!name) {
+      setError("Product name is required.");
       return;
     }
 
-    const currentStock = Number(
-      productForm.current_stock || 0
-    );
-
-    const minimumStock = Number(
-      productForm.minimum_stock || 0
-    );
-
-    const costPrice = Number(
-      productForm.cost_price || 0
-    );
+    const currentStock = Number(productForm.current_stock || 0);
+    const minimumStock = Number(productForm.minimum_stock || 0);
+    const costPrice = Number(productForm.cost_price || 0);
 
     if (currentStock < 0) {
-      setError(
-        "Stock cannot be negative. / 库存不能为负数。"
-      );
+      setError("Current stock cannot be negative.");
       return;
     }
 
     if (minimumStock < 0) {
-      setError(
-        "Minimum stock cannot be negative. / 最低库存不能为负数。"
-      );
+      setError("Minimum stock cannot be negative.");
       return;
     }
 
     if (costPrice < 0) {
-      setError(
-        "Cost price cannot be negative. / 成本价格不能为负数。"
-      );
+      setError("Cost price cannot be negative.");
       return;
     }
 
-    let categoryId = null;
+    const categoryId = productForm.category_id || null;
 
-    if (productForm.category_id !== "") {
-      categoryId = Number(
-        productForm.category_id
+    if (categoryId) {
+      const categoryExists = categories.some(
+        (category) => category.id === categoryId
       );
 
-      if (!Number.isInteger(categoryId)) {
-        setError(
-          "Invalid category selected. / 所选类别无效。"
-        );
-        return;
-      }
-
-      const selectedCategory =
-        categories.find(
-          (category) =>
-            Number(category.id) === categoryId
-        );
-
-      if (!selectedCategory) {
-        setError(
-          "The selected category could not be found. / 找不到所选类别。"
-        );
-        return;
-      }
-
-      if (
-        String(selectedCategory.shop_id) !==
-        String(user.shop_id)
-      ) {
-        setError(
-          "The selected category belongs to another shop. / 所选类别属于其他店铺。"
-        );
+      if (!categoryExists) {
+        setError("Selected category is not valid.");
         return;
       }
     }
 
-    /*
-    IMPORTANT:
-    No name_chinese is saved.
-    */
-
-    const productData = {
-      sku: productForm.sku.trim(),
-      name: productForm.name.trim(),
-      category_id: categoryId,
-      unit: productForm.unit || "pcs",
-      cost_price: costPrice,
-      current_stock: currentStock,
-      minimum_stock: minimumStock,
-      description:
-        productForm.description.trim() ||
-        null,
-      shop_id: user.shop_id,
-      active: true,
-      updated_at: new Date().toISOString(),
-    };
-
-    setSaving(true);
-    setError("");
-    setMessage("");
-
     try {
+      setSaving(true);
+      setError("");
+      setMessage("");
+
+      /* ---------------------------------------------
+         UPLOAD IMAGE FIRST
+      --------------------------------------------- */
+
+      let imageUrl = productForm.image_url || null;
+
+      if (productImage) {
+        imageUrl = await uploadProductImage(productImage, sku);
+      }
+
+      const productData = {
+        sku,
+        name,
+        category_id: categoryId,
+        unit: productForm.unit || "pcs",
+        cost_price: costPrice,
+        current_stock: currentStock,
+        minimum_stock: minimumStock,
+        description: productForm.description.trim() || null,
+        image_url: imageUrl,
+        shop_id: shopId,
+        active: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      /* ---------------------------------------------
+         UPDATE
+      --------------------------------------------- */
+
       if (editingProduct) {
-        const { error: updateError } =
-          await supabase
-            .from("inventory_products")
-            .update(productData)
-            .eq("id", editingProduct.id)
-            .eq("shop_id", user.shop_id);
+        const { error: updateError } = await supabase
+          .from("inventory_products")
+          .update(productData)
+          .eq("id", editingProduct.id)
+          .eq("shop_id", shopId);
 
         if (updateError) {
-          console.error(
-            "UPDATE PRODUCT ERROR:",
-            updateError
-          );
-
-          setError(updateError.message);
-          setSaving(false);
-          return;
+          throw updateError;
         }
-      } else {
-        const { error: insertError } =
-          await supabase
-            .from("inventory_products")
-            .insert(productData);
+
+        setMessage(
+          "Product updated successfully. / 产品更新成功。"
+        );
+      }
+
+      /* ---------------------------------------------
+         INSERT
+      --------------------------------------------- */
+
+      else {
+        const { error: insertError } = await supabase
+          .from("inventory_products")
+          .insert(productData);
 
         if (insertError) {
-          console.error(
-            "INSERT PRODUCT ERROR:",
-            insertError
-          );
-
-          setError(insertError.message);
-          setSaving(false);
-          return;
+          throw insertError;
         }
+
+        setMessage(
+          "Product added successfully. / 产品添加成功。"
+        );
       }
 
       await loadProducts();
-      await loadCategories();
 
       setShowProductForm(false);
+      setProductImage(null);
+      setImagePreview("");
+      setProductForm(emptyProductForm);
       setEditingProduct(null);
-
-      setMessage(
-        editingProduct
-          ? "Product updated successfully. / 产品更新成功。"
-          : "Product added successfully. / 产品添加成功。"
-      );
     } catch (err) {
-      console.error(
-        "SAVE PRODUCT EXCEPTION:",
-        err
-      );
+      console.error("saveProduct error:", err);
 
       setError(
-        err?.message ||
-          "An unexpected error occurred. / 发生意外错误。"
+        err.message ||
+          "Failed to save product. / 保存产品失败。"
       );
+    } finally {
+      setSaving(false);
+      setUploadingImage(false);
     }
-
-    setSaving(false);
   }
 
-  function openAddCategory() {
-    if (!isAdmin) {
-      setError(
-        "Only administrators can add categories. / 只有管理员可以添加类别。"
-      );
-      return;
-    }
-
-    setCategoryName("");
-    setError("");
-    setMessage("");
-    setShowCategoryForm(true);
-  }
-
-  async function saveCategory(event) {
-    event.preventDefault();
-
-    if (!isAdmin) {
-      setError(
-        "Only administrators can add categories. / 只有管理员可以添加类别。"
-      );
-      return;
-    }
-
-    const user = JSON.parse(
-      localStorage.getItem("user") || "null"
-    );
-
-    if (!user?.shop_id) {
-      setError(
-        "Your account is not connected to a shop. / 您的账户未连接到店铺。"
-      );
-      return;
-    }
-
-    if (!categoryName.trim()) {
-      setError(
-        "Category name is required. / 类别名称是必填项。"
-      );
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    const {
-      data: existingCategory,
-      error: findError,
-    } = await supabase
-      .from("inventory_categories")
-      .select("id, name, shop_id")
-      .eq("name", categoryName.trim())
-      .eq("shop_id", user.shop_id)
-      .maybeSingle();
-
-    if (findError) {
-      console.error(
-        "CHECK CATEGORY ERROR:",
-        findError
-      );
-
-      setError(findError.message);
-      setSaving(false);
-      return;
-    }
-
-    if (existingCategory) {
-      setError(
-        "A category with this name already exists. / 此类别已经存在。"
-      );
-      setSaving(false);
-      return;
-    }
-
-    const { error: insertError } =
-      await supabase
-        .from("inventory_categories")
-        .insert({
-          name: categoryName.trim(),
-          shop_id: user.shop_id,
-          active: true,
-        });
-
-    if (insertError) {
-      console.error(
-        "SAVE CATEGORY ERROR:",
-        insertError
-      );
-
-      setError(insertError.message);
-      setSaving(false);
-      return;
-    }
-
-    await loadCategories();
-
-    setCategoryName("");
-    setShowCategoryForm(false);
-    setSaving(false);
-
-    setMessage(
-      "Category added successfully. / 类别添加成功。"
-    );
-  }
+  /* =========================================================
+     OPEN STOCK MOVEMENT
+  ========================================================= */
 
   function openMovement(product, type) {
     setSelectedProduct(product);
@@ -806,261 +670,366 @@ function Inventory() {
     setMovementForm({
       quantity: "",
       unit_cost:
-        Number(product.cost_price || 0) > 0
+        product.cost_price !== null &&
+        product.cost_price !== undefined
           ? String(product.cost_price)
           : "",
       reference: "",
       notes: "",
     });
 
-    setShowMovementForm(true);
     setError("");
     setMessage("");
-
-    loadHistory(product.id);
+    setShowMovementForm(true);
   }
+
+  /* =========================================================
+     SAVE STOCK MOVEMENT
+  ========================================================= */
 
   async function saveMovement(event) {
     event.preventDefault();
 
+    if (!isAdmin) {
+      setError(
+        "Only administrators can record inventory movements."
+      );
+      return;
+    }
+
     if (!selectedProduct) {
-      setError(
-        "No product selected. / 未选择产品。"
-      );
+      setError("No product selected.");
       return;
     }
 
-    const quantity = Number(
-      movementForm.quantity
-    );
+    const quantity = Number(movementForm.quantity || 0);
 
-    if (!quantity || quantity <= 0) {
-      setError(
-        "Enter a quantity greater than zero. / 请输入大于零的数量。"
-      );
+    if (quantity <= 0) {
+      setError("Quantity must be greater than zero.");
       return;
     }
 
-    if (
-      movementType === "OUT" &&
-      quantity >
-        Number(
-          selectedProduct.current_stock || 0
-        )
-    ) {
-      setError(
-        `Only ${selectedProduct.current_stock} ${selectedProduct.unit} available. / 目前只有 ${selectedProduct.current_stock} ${selectedProduct.unit} 可用。`
+    try {
+      setSaving(true);
+      setError("");
+      setMessage("");
+
+      const { error: rpcError } = await supabase.rpc(
+        "record_inventory_movement",
+        {
+          p_product_id: selectedProduct.id,
+          p_movement_type: movementType,
+          p_quantity: quantity,
+          p_unit_cost: Number(movementForm.unit_cost || 0),
+          p_reference:
+            movementForm.reference.trim() || null,
+          p_notes: movementForm.notes.trim() || null,
+        }
       );
-      return;
-    }
 
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    const { error } = await supabase.rpc(
-      "record_inventory_movement",
-      {
-        p_product_id: selectedProduct.id,
-        p_movement_type: movementType,
-        p_quantity: quantity,
-        p_supplier_id: null,
-        p_job_id: null,
-        p_user_id: null,
-        p_reference:
-          movementForm.reference.trim() ||
-          null,
-        p_notes:
-          movementForm.notes.trim() || null,
-        p_unit_cost:
-          movementForm.unit_cost === ""
-            ? null
-            : Number(movementForm.unit_cost),
+      if (rpcError) {
+        throw rpcError;
       }
-    );
 
-    if (error) {
-      console.error(
-        "SAVE MOVEMENT ERROR:",
-        error
+      setMessage(
+        "Stock movement recorded successfully. / 库存变动记录成功。"
       );
 
-      setError(error.message);
+      await loadProducts();
+
+      setShowMovementForm(false);
+      setSelectedProduct(null);
+    } catch (err) {
+      console.error("saveMovement error:", err);
+
+      setError(
+        err.message ||
+          "Failed to record stock movement."
+      );
+    } finally {
       setSaving(false);
+    }
+  }
+
+  /* =========================================================
+     LOAD HISTORY
+  ========================================================= */
+
+  async function loadHistory(product) {
+    if (!product) return;
+
+    setSelectedProduct(product);
+    setHistoryLoading(true);
+    setError("");
+
+    try {
+      const { data, error: historyError } = await supabase
+        .from("inventory_movements")
+        .select("*")
+        .eq("product_id", product.id)
+        .order("created_at", { ascending: false });
+
+      if (historyError) {
+        throw historyError;
+      }
+
+      setHistory(data || []);
+    } catch (err) {
+      console.error("loadHistory error:", err);
+      setError(
+        err.message ||
+          "Failed to load inventory history."
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  /* =========================================================
+     CATEGORY
+  ========================================================= */
+
+  async function saveCategory(event) {
+    event.preventDefault();
+
+    if (!isAdmin) {
+      setError(
+        "Only administrators can create categories."
+      );
       return;
     }
 
-    await loadProducts();
+    const name = categoryName.trim();
 
-    setShowMovementForm(false);
-    setSaving(false);
-
-    setMessage(
-      movementType === "IN"
-        ? "Stock added successfully. / 库存增加成功。"
-        : "Stock removed successfully. / 库存减少成功。"
-    );
-  }
-
-  async function loadHistory(productId) {
-    setHistoryLoading(true);
-
-    const { data, error } = await supabase
-      .from("inventory_stock_movements")
-      .select(`
-        id,
-        movement_type,
-        quantity,
-        unit_cost,
-        reference,
-        notes,
-        created_at
-      `)
-      .eq("product_id", productId)
-      .order("created_at", {
-        ascending: false,
-      });
-
-    if (error) {
-      console.error(
-        "LOAD HISTORY ERROR:",
-        error
-      );
-
-      setHistory([]);
-    } else {
-      setHistory(data || []);
+    if (!name) {
+      setError("Category name is required.");
+      return;
     }
 
-    setHistoryLoading(false);
+    try {
+      setSaving(true);
+      setError("");
+      setMessage("");
+
+      const { error: categoryError } = await supabase
+        .from("inventory_categories")
+        .insert({
+          name,
+          shop_id: shopId,
+          active: true,
+        });
+
+      if (categoryError) {
+        throw categoryError;
+      }
+
+      setMessage(
+        "Category created successfully. / 分类创建成功。"
+      );
+
+      setCategoryName("");
+      setShowCategoryForm(false);
+
+      await loadCategories();
+    } catch (err) {
+      console.error("saveCategory error:", err);
+
+      setError(
+        err.message ||
+          "Failed to create category."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function statusColor(status) {
-    if (status === "OUT") return "#dc2626";
-    if (status === "LOW") return "#d4a017";
-    return "#16a34a";
+  /* =========================================================
+     FORMAT DATE
+  ========================================================= */
+
+  function formatDate(date) {
+    if (!date) return "-";
+
+    return new Date(date).toLocaleString();
   }
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <div style={styles.page}>
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>
-            Inventory / 库存
+            Inventory
           </h1>
 
-          <p style={styles.subtitle}>
-            Manage products, categories, stock and inventory movements.
-            <br />
-            管理产品、类别、库存和库存变动。
-          </p>
+          <div style={styles.subtitle}>
+            库存管理
+          </div>
         </div>
 
-        {isAdmin && (
-          <div style={styles.headerButtons}>
-            <button
-              style={styles.secondaryButton}
-              onClick={openAddCategory}
-            >
-              + Add Category / 添加类别
-            </button>
+        <div style={styles.headerButtons}>
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={() => {
+                  setCategoryName("");
+                  setError("");
+                  setShowCategoryForm(true);
+                }}
+              >
+                + Category
+              </button>
 
-            <button
-              style={styles.primaryButton}
-              onClick={openAddProduct}
-            >
-              + Add Product / 添加产品
-            </button>
-          </div>
-        )}
+              <button
+                type="button"
+                style={styles.primaryButton}
+                onClick={openAddProduct}
+              >
+                + Add Product
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {message && (
-        <div style={styles.success}>
-          {message}
-        </div>
-      )}
+      {/* =====================================================
+          MESSAGE / ERROR
+      ===================================================== */}
 
       {error && (
-        <div style={styles.error}>
-          <strong>Error / 错误:</strong>{" "}
+        <div style={styles.errorBox}>
           {error}
         </div>
       )}
 
-      <div style={styles.stats}>
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            Products / 产品
+      {message && (
+        <div style={styles.messageBox}>
+          {message}
+        </div>
+      )}
+
+      {/* =====================================================
+          STATS
+      ===================================================== */}
+
+      <div style={styles.statsGrid}>
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>
+            Total Products
           </div>
 
-          <div style={styles.cardValue}>
-            {totalProducts}
+          <div style={styles.statValue}>
+            {stats.totalProducts}
+          </div>
+
+          <div style={styles.statChinese}>
+            产品总数
           </div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            Low Stock / 低库存
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>
+            Total Units
+          </div>
+
+          <div style={styles.statValue}>
+            {stats.totalUnits}
+          </div>
+
+          <div style={styles.statChinese}>
+            总库存数量
+          </div>
+        </div>
+
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>
+            Low Stock
           </div>
 
           <div
             style={{
-              ...styles.cardValue,
-              color: "#d4a017",
+              ...styles.statValue,
+              color: "#f59e0b",
             }}
           >
-            {lowStock}
+            {stats.lowStock}
+          </div>
+
+          <div style={styles.statChinese}>
+            库存不足
           </div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>
-            Out of Stock / 缺货
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>
+            Out of Stock
           </div>
 
           <div
             style={{
-              ...styles.cardValue,
-              color: "#dc2626",
+              ...styles.statValue,
+              color: "#ef4444",
             }}
           >
-            {outOfStock}
+            {stats.outOfStock}
+          </div>
+
+          <div style={styles.statChinese}>
+            缺货
           </div>
         </div>
 
-        {isAdmin && (
-          <div style={styles.card}>
-            <div style={styles.cardLabel}>
-              Inventory Value / 库存价值
+        {showCost && (
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>
+              Inventory Value
             </div>
 
-            <div style={styles.cardValue}>
-              QAR {inventoryValue.toFixed(2)}
+            <div style={styles.statValue}>
+              QAR{" "}
+              {stats.inventoryValue.toLocaleString(
+                undefined,
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }
+              )}
+            </div>
+
+            <div style={styles.statChinese}>
+              库存价值
             </div>
           </div>
         )}
       </div>
 
-      <div style={styles.filters}>
+      {/* =====================================================
+          FILTERS
+      ===================================================== */}
+
+      <div style={styles.filterBar}>
         <input
-          style={styles.search}
-          placeholder="Search product or SKU / 搜索产品或 SKU..."
+          type="text"
+          placeholder="Search SKU, product, category..."
           value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
+          onChange={(e) => setSearch(e.target.value)}
+          style={styles.searchInput}
         />
 
         <select
-          style={styles.select}
           value={categoryFilter}
           onChange={(e) =>
             setCategoryFilter(e.target.value)
           }
+          style={styles.select}
         >
           <option value="">
-            All Categories / 所有类别
+            All Categories / 所有分类
           </option>
 
           {categories.map((category) => (
@@ -1068,185 +1037,247 @@ function Inventory() {
               key={category.id}
               value={category.id}
             >
-              {getCategoryDisplay(
-                category.name
-              )}
+              {category.name}
             </option>
           ))}
         </select>
 
         <select
-          style={styles.select}
           value={statusFilter}
           onChange={(e) =>
             setStatusFilter(e.target.value)
           }
+          style={styles.select}
         >
           <option value="">
             All Status / 所有状态
           </option>
 
-          <option value="OK">
+          <option value="in">
             In Stock / 有库存
           </option>
 
-          <option value="LOW">
-            Low Stock / 低库存
+          <option value="low">
+            Low Stock / 库存不足
           </option>
 
-          <option value="OUT">
+          <option value="out">
             Out of Stock / 缺货
           </option>
         </select>
-
-        <button
-          style={styles.refreshButton}
-          onClick={loadData}
-        >
-          Refresh / 刷新
-        </button>
       </div>
+
+      {/* =====================================================
+          TABLE
+      ===================================================== */}
 
       <div style={styles.tableContainer}>
         {loading ? (
-          <div style={styles.empty}>
-            Loading inventory / 正在加载库存...
+          <div style={styles.emptyState}>
+            Loading inventory...
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div style={styles.empty}>
-            No products match your search.
-            <br />
-            没有符合搜索条件的产品。
+          <div style={styles.emptyState}>
+            No products found.
           </div>
         ) : (
           <table style={styles.table}>
             <thead>
               <tr>
+                <th
+                  style={{
+                    ...styles.th,
+                    width: 75,
+                  }}
+                >
+                  Photo
+                </th>
+
                 <th style={styles.th}>
                   SKU
                 </th>
 
                 <th style={styles.th}>
-                  Product / 产品
+                  Product
                 </th>
 
                 <th style={styles.th}>
-                  Category / 类别
+                  Category
                 </th>
 
                 <th style={styles.th}>
-                  Stock / 库存
+                  Stock
                 </th>
 
                 <th style={styles.th}>
-                  Min. / 最低
+                  Min.
                 </th>
 
-                {isAdmin && (
+                {showCost && (
                   <th style={styles.th}>
-                    Cost / 成本
+                    Cost
                   </th>
                 )}
 
                 <th style={styles.th}>
-                  Status / 状态
+                  Status
                 </th>
 
                 <th style={styles.th}>
-                  Actions / 操作
+                  Actions
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredProducts.map(
-                (product) => {
-                  const status =
-                    getStatus(product);
+              {filteredProducts.map((product) => {
+                const category = categories.find(
+                  (item) =>
+                    item.id === product.category_id
+                );
 
-                  return (
-                    <tr key={product.id}>
-                      <td style={styles.td}>
-                        <strong>
-                          {product.sku}
-                        </strong>
-                      </td>
+                const status = getStatus(product);
 
-                      <td style={styles.td}>
-                        <strong
-                          style={
-                            styles.productName
-                          }
-                        >
-                          {getProductDisplay(
-                            product.name
-                          )}
-                        </strong>
-                      </td>
+                return (
+                  <tr key={product.id}>
+                    {/* PHOTO */}
 
-                      <td style={styles.td}>
-                        {getCategoryDisplay(
-                          getCategoryName(
-                            product.category_id
-                          )
-                        )}
-                      </td>
-
-                      <td style={styles.td}>
-                        <strong>
-                          {
-                            product.current_stock
-                          }
-                        </strong>{" "}
-                        {product.unit}
-                      </td>
-
-                      <td style={styles.td}>
-                        {product.minimum_stock}
-                      </td>
-
-                      {isAdmin && (
-                        <td style={styles.td}>
-                          QAR{" "}
-                          {Number(
-                            product.cost_price ||
-                              0
-                          ).toFixed(2)}
-                        </td>
+                    <td style={styles.td}>
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          style={styles.tableImage}
+                          onError={(event) => {
+                            event.currentTarget.style.display =
+                              "none";
+                          }}
+                        />
+                      ) : (
+                        <div style={styles.tableImagePlaceholder}>
+                          📷
+                        </div>
                       )}
+                    </td>
 
+                    {/* SKU */}
+
+                    <td style={styles.td}>
+                      <span style={styles.sku}>
+                        {product.sku}
+                      </span>
+                    </td>
+
+                    {/* PRODUCT */}
+
+                    <td style={styles.td}>
+                      {getProductDisplay(
+                        product.name
+                      )}
+                    </td>
+
+                    {/* CATEGORY */}
+
+                    <td style={styles.td}>
+                      {category
+                        ? getCategoryDisplay(
+                            category.name
+                          )
+                        : "-"}
+                    </td>
+
+                    {/* STOCK */}
+
+                    <td
+                      style={{
+                        ...styles.td,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {product.current_stock}{" "}
+                      {product.unit || "pcs"}
+                    </td>
+
+                    {/* MINIMUM */}
+
+                    <td style={styles.td}>
+                      {product.minimum_stock}
+                    </td>
+
+                    {/* COST */}
+
+                    {showCost && (
                       <td style={styles.td}>
-                        <span
+                        QAR{" "}
+                        {Number(
+                          product.cost_price || 0
+                        ).toFixed(2)}
+                      </td>
+                    )}
+
+                    {/* STATUS */}
+
+                    <td style={styles.td}>
+                      <span
+                        style={{
+                          ...styles.statusBadge,
+                          color: status.color,
+                          background:
+                            status.background,
+                        }}
+                      >
+                        {status.label}
+
+                        <small
                           style={{
-                            ...styles.status,
-                            color:
-                              statusColor(
-                                status
-                              ),
-                            backgroundColor:
-                              `${statusColor(
-                                status
-                              )}15`,
+                            display: "block",
+                            marginTop: 2,
+                            fontSize: 9,
                           }}
                         >
-                          {status === "OUT"
-                            ? "OUT OF STOCK / 缺货"
-                            : status === "LOW"
-                            ? "LOW STOCK / 低库存"
-                            : "IN STOCK / 有库存"}
-                        </span>
-                      </td>
+                          {status.chinese}
+                        </small>
+                      </span>
+                    </td>
 
-                      <td style={styles.td}>
-                        <div
-                          style={
-                            styles.actions
-                          }
-                        >
-                          {isAdmin && (
+                    {/* ACTIONS */}
+
+                    <td style={styles.td}>
+                      <div style={styles.actionGroup}>
+                        {isAdmin && (
+                          <>
                             <button
+                              type="button"
+                              style={styles.smallButton}
+                              onClick={() =>
+                                openMovement(
+                                  product,
+                                  "in"
+                                )
+                              }
+                            >
+                              + Stock
+                            </button>
+
+                            <button
+                              type="button"
                               style={
-                                styles.editButton
+                                styles.smallDangerButton
+                              }
+                              onClick={() =>
+                                openMovement(
+                                  product,
+                                  "out"
+                                )
+                              }
+                            >
+                              - Stock
+                            </button>
+
+                            <button
+                              type="button"
+                              style={
+                                styles.smallButton
                               }
                               onClick={() =>
                                 openEditProduct(
@@ -1254,147 +1285,33 @@ function Inventory() {
                                 )
                               }
                             >
-                              Edit / 编辑
+                              Edit
                             </button>
-                          )}
+                          </>
+                        )}
 
-                          <button
-                            style={
-                              styles.inButton
-                            }
-                            onClick={() =>
-                              openMovement(
-                                product,
-                                "IN"
-                              )
-                            }
-                          >
-                            + Stock / 入库
-                          </button>
-
-                          <button
-                            style={
-                              styles.outButton
-                            }
-                            onClick={() =>
-                              openMovement(
-                                product,
-                                "OUT"
-                              )
-                            }
-                          >
-                            - Stock / 出库
-                          </button>
-
-                          <button
-                            style={
-                              styles.historyButton
-                            }
-                            onClick={() => {
-                              setSelectedProduct(
-                                product
-                              );
-                              setHistory([]);
-                              loadHistory(
-                                product.id
-                              );
-                            }}
-                          >
-                            History / 历史
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }
-              )}
+                        <button
+                          type="button"
+                          style={styles.smallDarkButton}
+                          onClick={() =>
+                            loadHistory(product)
+                          }
+                        >
+                          History
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
 
-      {showCategoryForm && (
-        <div style={styles.overlay}>
-          <div style={styles.smallModal}>
-            <div style={styles.modalHeader}>
-              <div>
-                <h2 style={styles.modalTitle}>
-                  Add Category / 添加类别
-                </h2>
-
-                <p
-                  style={
-                    styles.modalSubtitle
-                  }
-                >
-                  Add a category for this shop.
-                  <br />
-                  为此店铺添加类别。
-                </p>
-              </div>
-
-              <button
-                style={styles.closeButton}
-                onClick={() =>
-                  setShowCategoryForm(false)
-                }
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={saveCategory}>
-              <label style={styles.label}>
-                Category Name / 类别名称 *
-
-                <input
-                  autoFocus
-                  style={styles.input}
-                  value={categoryName}
-                  onChange={(e) =>
-                    setCategoryName(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Window Tinting Materials"
-                />
-
-                <small
-                  style={styles.helpText}
-                >
-                  Use the English category name.
-                  <br />
-                  请使用英文类别名称。
-                </small>
-              </label>
-
-              <div
-                style={styles.modalActions}
-              >
-                <button
-                  type="button"
-                  style={styles.cancelButton}
-                  onClick={() =>
-                    setShowCategoryForm(false)
-                  }
-                >
-                  Cancel / 取消
-                </button>
-
-                <button
-                  type="submit"
-                  style={styles.primaryButton}
-                  disabled={saving}
-                >
-                  {saving
-                    ? "Saving..."
-                    : "Save Category / 保存类别"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* =====================================================
+          PRODUCT MODAL
+      ===================================================== */}
 
       {showProductForm && (
         <div style={styles.overlay}>
@@ -1403,39 +1320,142 @@ function Inventory() {
               <div>
                 <h2 style={styles.modalTitle}>
                   {editingProduct
-                    ? "Edit Product / 编辑产品"
-                    : "Add Product / 添加产品"}
+                    ? "Edit Product"
+                    : "Add Product"}
                 </h2>
 
-                <p
-                  style={
-                    styles.modalSubtitle
-                  }
-                >
+                <div style={styles.modalChinese}>
                   {editingProduct
-                    ? "Update product information. / 更新产品信息。"
-                    : "Add a new inventory item. / 添加新的库存产品。"}
-                </p>
+                    ? "编辑产品"
+                    : "添加产品"}
+                </div>
               </div>
 
               <button
+                type="button"
                 style={styles.closeButton}
-                onClick={() => {
-                  setShowProductForm(false);
-                  setEditingProduct(null);
-                }}
+                onClick={() =>
+                  setShowProductForm(false)
+                }
               >
                 ×
               </button>
             </div>
 
             <form onSubmit={saveProduct}>
+              {/* =================================================
+                  IMAGE UPLOAD
+              ================================================= */}
+
+              <div style={styles.imageUploadSection}>
+                <div style={styles.imageUploadLabel}>
+                  Product Photo / 产品图片
+                </div>
+
+                <div style={styles.imageUploadContent}>
+                  {imagePreview ? (
+                    <div style={styles.imagePreviewWrapper}>
+                      <img
+                        src={imagePreview}
+                        alt="Product preview"
+                        style={styles.imagePreview}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      style={
+                        styles.largeImagePlaceholder
+                      }
+                    >
+                      <div
+                        style={
+                          styles.placeholderIcon
+                        }
+                      >
+                        📷
+                      </div>
+
+                      <div
+                        style={
+                          styles.imagePlaceholderText
+                        }
+                      >
+                        No photo
+                      </div>
+
+                      <div
+                        style={
+                          styles.imagePlaceholderChinese
+                        }
+                      >
+                        没有图片
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={styles.imageButtons}>
+                    <label
+                      htmlFor="product-image"
+                      style={
+                        styles.chooseImageButton
+                      }
+                    >
+                      {imagePreview
+                        ? "Change Photo"
+                        : "Choose Photo"}
+                    </label>
+
+                    <input
+                      id="product-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={
+                        handleProductImageChange
+                      }
+                      style={{
+                        display: "none",
+                      }}
+                    />
+
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        style={
+                          styles.removeImageButton
+                        }
+                        onClick={
+                          removeProductImage
+                        }
+                      >
+                        Remove
+                      </button>
+                    )}
+
+                    <div
+                      style={
+                        styles.imageHelpText
+                      }
+                    >
+                      JPG, PNG or WebP • Max 5 MB
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* =================================================
+                  FORM GRID
+              ================================================= */}
+
               <div style={styles.formGrid}>
-                <label style={styles.label}>
-                  SKU *
+                {/* SKU */}
+
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    SKU *
+                  </label>
 
                   <input
-                    style={styles.input}
+                    type="text"
                     value={productForm.sku}
                     onChange={(e) =>
                       setProductForm({
@@ -1443,14 +1463,20 @@ function Inventory() {
                         sku: e.target.value,
                       })
                     }
+                    style={styles.input}
+                    placeholder="e.g. PPF-001"
                   />
-                </label>
+                </div>
 
-                <label style={styles.label}>
-                  Product Name / 产品名称 *
+                {/* PRODUCT NAME */}
+
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Product Name *
+                  </label>
 
                   <input
-                    style={styles.input}
+                    type="text"
                     value={productForm.name}
                     onChange={(e) =>
                       setProductForm({
@@ -1458,98 +1484,56 @@ function Inventory() {
                         name: e.target.value,
                       })
                     }
+                    style={styles.input}
+                    placeholder="Product name"
                   />
+                </div>
 
-                  {productForm.name &&
-                    productChinese[
-                      productForm.name
-                    ] && (
-                      <small
-                        style={
-                          styles.translationPreview
-                        }
-                      >
-                        Chinese / 中文:{" "}
-                        {
-                          productChinese[
-                            productForm.name
-                          ]
-                        }
-                      </small>
-                    )}
+                {/* CATEGORY */}
 
-                  <small
-                    style={styles.helpText}
-                  >
-                    Chinese translation is shown automatically when available.
-                    <br />
-                    如果有对应翻译，中文名称会自动显示。
-                  </small>
-                </label>
-
-                <label style={styles.label}>
-                  Category / 类别
-
-                  <div
-                    style={
-                      styles.categoryRow
-                    }
-                  >
-                    <select
-                      style={{
-                        ...styles.input,
-                        flex: 1,
-                      }}
-                      value={
-                        productForm.category_id
-                      }
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          category_id:
-                            e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">
-                        No Category / 无类别
-                      </option>
-
-                      {categories.map(
-                        (category) => (
-                          <option
-                            key={category.id}
-                            value={category.id}
-                          >
-                            {getCategoryDisplay(
-                              category.name
-                            )}
-                          </option>
-                        )
-                      )}
-                    </select>
-
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        style={
-                          styles.addSmallButton
-                        }
-                        onClick={
-                          openAddCategory
-                        }
-                      >
-                        + Add / 添加
-                      </button>
-                    )}
-                  </div>
-                </label>
-
-                <label style={styles.label}>
-                  Unit / 单位
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Category
+                  </label>
 
                   <select
+                    value={
+                      productForm.category_id
+                    }
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        category_id:
+                          e.target.value,
+                      })
+                    }
                     style={styles.input}
+                  >
+                    <option value="">
+                      Select category
+                    </option>
+
+                    {categories.map(
+                      (category) => (
+                        <option
+                          key={category.id}
+                          value={category.id}
+                        >
+                          {category.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                {/* UNIT */}
+
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Unit
+                  </label>
+
+                  <select
                     value={productForm.unit}
                     onChange={(e) =>
                       setProductForm({
@@ -1557,50 +1541,46 @@ function Inventory() {
                         unit: e.target.value,
                       })
                     }
+                    style={styles.input}
                   >
                     <option value="pcs">
                       Pieces / 件
-                    </option>
-
-                    <option value="box">
-                      Box / 箱
-                    </option>
-
-                    <option value="bottle">
-                      Bottle / 瓶
-                    </option>
-
-                    <option value="liter">
-                      Liter / 升
-                    </option>
-
-                    <option value="kg">
-                      Kilogram / 公斤
                     </option>
 
                     <option value="roll">
                       Roll / 卷
                     </option>
 
-                    <option value="sack">
-                      Sack / 袋
+                    <option value="meter">
+                      Meter / 米
                     </option>
 
-                    <option value="piece">
-                      Piece / 件
+                    <option value="liter">
+                      Liter / 升
+                    </option>
+
+                    <option value="set">
+                      Set / 套
+                    </option>
+
+                    <option value="box">
+                      Box / 箱
                     </option>
                   </select>
-                </label>
+                </div>
 
-                {isAdmin && (
-                  <label style={styles.label}>
-                    Cost Price (QAR) / 成本价格
+                {/* COST */}
+
+                {showCost && (
+                  <div style={styles.field}>
+                    <label style={styles.label}>
+                      Cost Price
+                    </label>
 
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      style={styles.input}
                       value={
                         productForm.cost_price
                       }
@@ -1611,20 +1591,23 @@ function Inventory() {
                             e.target.value,
                         })
                       }
+                      style={styles.input}
+                      placeholder="0.00"
                     />
-                  </label>
+                  </div>
                 )}
 
-                <label style={styles.label}>
-                  {editingProduct
-                    ? "Current Stock / 当前库存"
-                    : "Opening Stock / 初始库存"}
+                {/* CURRENT STOCK */}
+
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Opening / Current Stock
+                  </label>
 
                   <input
                     type="number"
                     min="0"
-                    step="0.001"
-                    style={styles.input}
+                    step="0.01"
                     value={
                       productForm.current_stock
                     }
@@ -1635,17 +1618,21 @@ function Inventory() {
                           e.target.value,
                       })
                     }
+                    style={styles.input}
                   />
-                </label>
+                </div>
 
-                <label style={styles.label}>
-                  Minimum Stock / 最低库存
+                {/* MINIMUM STOCK */}
+
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Minimum Stock
+                  </label>
 
                   <input
                     type="number"
                     min="0"
-                    step="0.001"
-                    style={styles.input}
+                    step="0.01"
                     value={
                       productForm.minimum_stock
                     }
@@ -1656,56 +1643,73 @@ function Inventory() {
                           e.target.value,
                       })
                     }
+                    style={styles.input}
                   />
-                </label>
+                </div>
+
+                {/* DESCRIPTION */}
+
+                <div
+                  style={{
+                    ...styles.field,
+                    gridColumn: "1 / -1",
+                  }}
+                >
+                  <label style={styles.label}>
+                    Description
+                  </label>
+
+                  <textarea
+                    value={
+                      productForm.description
+                    }
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        description:
+                          e.target.value,
+                      })
+                    }
+                    style={{
+                      ...styles.input,
+                      minHeight: 90,
+                      resize: "vertical",
+                    }}
+                    placeholder="Optional description"
+                  />
+                </div>
               </div>
 
-              <label style={styles.label}>
-                Description / 描述
+              {/* =================================================
+                  BUTTONS
+              ================================================= */}
 
-                <textarea
-                  style={{
-                    ...styles.input,
-                    minHeight: "80px",
-                    resize: "vertical",
-                  }}
-                  value={
-                    productForm.description
-                  }
-                  onChange={(e) =>
-                    setProductForm({
-                      ...productForm,
-                      description:
-                        e.target.value,
-                    })
-                  }
-                />
-              </label>
-
-              <div
-                style={styles.modalActions}
-              >
+              <div style={styles.modalFooter}>
                 <button
                   type="button"
                   style={styles.cancelButton}
-                  onClick={() => {
-                    setShowProductForm(false);
-                    setEditingProduct(null);
-                  }}
+                  onClick={() =>
+                    setShowProductForm(false)
+                  }
+                  disabled={saving}
                 >
-                  Cancel / 取消
+                  Cancel
                 </button>
 
                 <button
                   type="submit"
                   style={styles.primaryButton}
-                  disabled={saving}
+                  disabled={
+                    saving || uploadingImage
+                  }
                 >
-                  {saving
+                  {uploadingImage
+                    ? "Uploading Photo..."
+                    : saving
                     ? "Saving..."
                     : editingProduct
-                    ? "Update Product / 更新产品"
-                    : "Save Product / 保存产品"}
+                    ? "Save Changes"
+                    : "Add Product"}
                 </button>
               </div>
             </form>
@@ -1713,32 +1717,33 @@ function Inventory() {
         </div>
       )}
 
+      {/* =====================================================
+          STOCK MOVEMENT MODAL
+      ===================================================== */}
+
       {showMovementForm &&
         selectedProduct && (
           <div style={styles.overlay}>
-            <div style={styles.modal}>
+            <div style={styles.modalSmall}>
               <div style={styles.modalHeader}>
                 <div>
                   <h2 style={styles.modalTitle}>
-                    {movementType === "IN"
-                      ? "Stock In / 入库"
-                      : "Stock Out / 出库"}
+                    {movementType === "in"
+                      ? "Add Stock"
+                      : "Remove Stock"}
                   </h2>
 
-                  <p
-                    style={
-                      styles.modalSubtitle
-                    }
+                  <div
+                    style={styles.modalChinese}
                   >
-                    <strong>
-                      {getProductDisplay(
-                        selectedProduct.name
-                      )}
-                    </strong>
-                  </p>
+                    {movementType === "in"
+                      ? "入库"
+                      : "出库"}
+                  </div>
                 </div>
 
                 <button
+                  type="button"
                   style={styles.closeButton}
                   onClick={() =>
                     setShowMovementForm(false)
@@ -1748,24 +1753,63 @@ function Inventory() {
                 </button>
               </div>
 
-              <div style={styles.stockInfo}>
-                Current Stock / 当前库存:{" "}
-                <strong>
-                  {selectedProduct.current_stock}{" "}
-                  {selectedProduct.unit}
-                </strong>
+              <div style={styles.selectedProductBox}>
+                {selectedProduct.image_url && (
+                  <img
+                    src={
+                      selectedProduct.image_url
+                    }
+                    alt={selectedProduct.name}
+                    style={
+                      styles.movementProductImage
+                    }
+                  />
+                )}
+
+                <div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                    }}
+                  >
+                    {selectedProduct.name}
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#9ca3af",
+                      fontSize: 12,
+                    }}
+                  >
+                    SKU:{" "}
+                    {selectedProduct.sku}
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#d4af37",
+                      fontSize: 12,
+                      marginTop: 4,
+                    }}
+                  >
+                    Current Stock:{" "}
+                    {
+                      selectedProduct.current_stock
+                    }
+                  </div>
+                </div>
               </div>
 
               <form onSubmit={saveMovement}>
-                <label style={styles.label}>
-                  Quantity / 数量 *
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Quantity *
+                  </label>
 
                   <input
-                    autoFocus
                     type="number"
-                    min="0.001"
-                    step="0.001"
-                    style={styles.input}
+                    min="0.01"
+                    step="0.01"
                     value={
                       movementForm.quantity
                     }
@@ -1776,18 +1820,21 @@ function Inventory() {
                           e.target.value,
                       })
                     }
+                    style={styles.input}
+                    placeholder="Enter quantity"
                   />
-                </label>
+                </div>
 
                 {showCost && (
-                  <label style={styles.label}>
-                    Unit Cost (QAR) / 单位成本
+                  <div style={styles.field}>
+                    <label style={styles.label}>
+                      Unit Cost
+                    </label>
 
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      style={styles.input}
                       value={
                         movementForm.unit_cost
                       }
@@ -1798,15 +1845,18 @@ function Inventory() {
                             e.target.value,
                         })
                       }
+                      style={styles.input}
                     />
-                  </label>
+                  </div>
                 )}
 
-                <label style={styles.label}>
-                  Reference / 参考
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Reference
+                  </label>
 
                   <input
-                    style={styles.input}
+                    type="text"
                     value={
                       movementForm.reference
                     }
@@ -1817,18 +1867,17 @@ function Inventory() {
                           e.target.value,
                       })
                     }
+                    style={styles.input}
+                    placeholder="Invoice, PO, job number..."
                   />
-                </label>
+                </div>
 
-                <label style={styles.label}>
-                  Notes / 备注
+                <div style={styles.field}>
+                  <label style={styles.label}>
+                    Notes
+                  </label>
 
                   <textarea
-                    style={{
-                      ...styles.input,
-                      minHeight: "80px",
-                      resize: "vertical",
-                    }}
                     value={movementForm.notes}
                     onChange={(e) =>
                       setMovementForm({
@@ -1836,12 +1885,15 @@ function Inventory() {
                         notes: e.target.value,
                       })
                     }
+                    style={{
+                      ...styles.input,
+                      minHeight: 80,
+                      resize: "vertical",
+                    }}
                   />
-                </label>
+                </div>
 
-                <div
-                  style={styles.modalActions}
-                >
+                <div style={styles.modalFooter}>
                   <button
                     type="button"
                     style={styles.cancelButton}
@@ -1849,23 +1901,23 @@ function Inventory() {
                       setShowMovementForm(false)
                     }
                   >
-                    Cancel / 取消
+                    Cancel
                   </button>
 
                   <button
                     type="submit"
                     style={
-                      movementType === "IN"
-                        ? styles.inPrimaryButton
-                        : styles.outPrimaryButton
+                      movementType === "in"
+                        ? styles.primaryButton
+                        : styles.dangerButton
                     }
                     disabled={saving}
                   >
                     {saving
                       ? "Saving..."
-                      : movementType === "IN"
-                      ? "Add Stock / 添加库存"
-                      : "Remove Stock / 移除库存"}
+                      : movementType === "in"
+                      ? "Add Stock"
+                      : "Remove Stock"}
                   </button>
                 </div>
               </form>
@@ -1873,645 +1925,839 @@ function Inventory() {
           </div>
         )}
 
-      {selectedProduct &&
-        !showMovementForm &&
-        !showProductForm &&
-        !showCategoryForm && (
-          <div style={styles.historyPanel}>
-            <div
-              style={styles.historyHeader}
-            >
+      {/* =====================================================
+          CATEGORY MODAL
+      ===================================================== */}
+
+      {showCategoryForm && (
+        <div style={styles.overlay}>
+          <div style={styles.modalSmall}>
+            <div style={styles.modalHeader}>
               <div>
-                <h2 style={styles.historyTitle}>
-                  {getProductDisplay(
-                    selectedProduct.name
-                  )}
+                <h2 style={styles.modalTitle}>
+                  Add Category
                 </h2>
 
-                <p
-                  style={
-                    styles.modalSubtitle
-                  }
-                >
-                  Stock movement history / 库存变动历史
-                </p>
+                <div style={styles.modalChinese}>
+                  添加分类
+                </div>
               </div>
 
               <button
+                type="button"
                 style={styles.closeButton}
                 onClick={() =>
-                  setSelectedProduct(null)
+                  setShowCategoryForm(false)
                 }
               >
                 ×
               </button>
             </div>
 
-            <div style={styles.stockInfo}>
-              Current Stock / 当前库存:{" "}
-              <strong>
-                {selectedProduct.current_stock}{" "}
-                {selectedProduct.unit}
-              </strong>
-            </div>
+            <form onSubmit={saveCategory}>
+              <div style={styles.field}>
+                <label style={styles.label}>
+                  Category Name *
+                </label>
 
-            {historyLoading ? (
-              <div style={styles.empty}>
-                Loading history / 正在加载历史记录...
+                <input
+                  type="text"
+                  value={categoryName}
+                  onChange={(e) =>
+                    setCategoryName(
+                      e.target.value
+                    )
+                  }
+                  style={styles.input}
+                  placeholder="e.g. PPF"
+                  autoFocus
+                />
               </div>
-            ) : history.length === 0 ? (
-              <div style={styles.empty}>
-                No stock movements recorded yet.
-                <br />
-                尚未记录库存变动。
+
+              <div style={styles.modalFooter}>
+                <button
+                  type="button"
+                  style={styles.cancelButton}
+                  onClick={() =>
+                    setShowCategoryForm(false)
+                  }
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  style={styles.primaryButton}
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : "Add Category"}
+                </button>
               </div>
-            ) : (
-              <div
-                style={styles.historyTable}
-              >
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>
-                        Date / 日期
-                      </th>
+            </form>
+          </div>
+        </div>
+      )}
 
-                      <th style={styles.th}>
-                        Type / 类型
-                      </th>
+      {/* =====================================================
+          HISTORY MODAL
+      ===================================================== */}
 
-                      <th style={styles.th}>
-                        Quantity / 数量
-                      </th>
+      {selectedProduct &&
+        !showMovementForm &&
+        !showProductForm &&
+        !showCategoryForm &&
+        history.length >= 0 && (
+          <div style={styles.overlay}>
+            <div style={styles.historyModal}>
+              <div style={styles.modalHeader}>
+                <div>
+                  <h2 style={styles.modalTitle}>
+                    Inventory History
+                  </h2>
 
-                      <th style={styles.th}>
-                        Reference / 参考
-                      </th>
+                  <div style={styles.modalChinese}>
+                    库存记录
+                  </div>
+                </div>
 
-                      <th style={styles.th}>
-                        Notes / 备注
-                      </th>
-                    </tr>
-                  </thead>
+                <button
+                  type="button"
+                  style={styles.closeButton}
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setHistory([]);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
 
-                  <tbody>
-                    {history.map(
-                      (movement) => (
-                        <tr
-                          key={movement.id}
-                        >
-                          <td
-                            style={styles.td}
-                          >
-                            {new Date(
-                              movement.created_at
-                            ).toLocaleString()}
-                          </td>
+              <div style={styles.historyProduct}>
+                {selectedProduct.image_url ? (
+                  <img
+                    src={
+                      selectedProduct.image_url
+                    }
+                    alt={selectedProduct.name}
+                    style={styles.historyProductImage}
+                  />
+                ) : (
+                  <div
+                    style={
+                      styles.historyPlaceholder
+                    }
+                  >
+                    📷
+                  </div>
+                )}
 
-                          <td
-                            style={styles.td}
-                          >
-                            <strong>
-                              {movement.movement_type ===
-                              "IN"
-                                ? "IN / 入库"
-                                : "OUT / 出库"}
-                            </strong>
-                          </td>
+                <div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 16,
+                    }}
+                  >
+                    {selectedProduct.name}
+                  </div>
 
-                          <td
+                  <div
+                    style={{
+                      color: "#9ca3af",
+                      fontSize: 12,
+                    }}
+                  >
+                    SKU:{" "}
+                    {selectedProduct.sku}
+                  </div>
+                </div>
+              </div>
+
+              {historyLoading ? (
+                <div style={styles.emptyState}>
+                  Loading history...
+                </div>
+              ) : history.length === 0 ? (
+                <div style={styles.emptyState}>
+                  No inventory movements found.
+                </div>
+              ) : (
+                <div style={styles.historyList}>
+                  {history.map((item) => {
+                    const isIn =
+                      item.movement_type ===
+                      "in";
+
+                    return (
+                      <div
+                        key={item.id}
+                        style={
+                          styles.historyItem
+                        }
+                      >
+                        <div>
+                          <div
                             style={{
-                              ...styles.td,
-                              color:
-                                movement.movement_type ===
-                                "IN"
-                                  ? "#16a34a"
-                                  : "#dc2626",
-                              fontWeight: "700",
+                              fontWeight: 700,
+                              color: isIn
+                                ? "#22c55e"
+                                : "#ef4444",
                             }}
                           >
-                            {movement.movement_type ===
-                            "IN"
-                              ? "+"
-                              : "-"}
-                            {Number(
-                              movement.quantity
-                            ).toLocaleString()}
-                          </td>
+                            {isIn
+                              ? "STOCK IN / 入库"
+                              : "STOCK OUT / 出库"}
+                          </div>
 
-                          <td
-                            style={styles.td}
+                          <div
+                            style={{
+                              color:
+                                "#d1d5db",
+                              marginTop: 4,
+                            }}
                           >
-                            {movement.reference ||
-                              "-"}
-                          </td>
+                            Quantity:{" "}
+                            {item.quantity}
+                          </div>
 
-                          <td
-                            style={styles.td}
-                          >
-                            {movement.notes ||
-                              "-"}
-                          </td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                          {item.reference && (
+                            <div
+                              style={{
+                                color:
+                                  "#9ca3af",
+                                fontSize: 12,
+                                marginTop: 4,
+                              }}
+                            >
+                              Ref:{" "}
+                              {
+                                item.reference
+                              }
+                            </div>
+                          )}
+
+                          {item.notes && (
+                            <div
+                              style={{
+                                color:
+                                  "#9ca3af",
+                                fontSize: 12,
+                                marginTop: 4,
+                              }}
+                            >
+                              {
+                                item.notes
+                              }
+                            </div>
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            textAlign:
+                              "right",
+                            color:
+                              "#9ca3af",
+                            fontSize: 12,
+                          }}
+                        >
+                          {formatDate(
+                            item.created_at
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
     </div>
   );
 }
 
-/*
-============================================================
-BLACK + GOLD THEME
-============================================================
-*/
+/* =========================================================
+   STYLES
+========================================================= */
 
 const styles = {
- page: {
-  width: "100%",
-  maxWidth: "100%",
-  boxSizing: "border-box",
-  padding: "20px",
-  margin: "0 auto",
-  background: "#f8f8f6",
-  minHeight: "100vh",
-  overflowX: "hidden",
-},
+  page: {
+    minHeight: "100%",
+    background: "#0b0b0b",
+    color: "#f5f5f5",
+    padding: 24,
+    boxSizing: "border-box",
+  },
 
- header: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: "20px",
-  gap: "15px",
-  flexWrap: "wrap",
-},
-
-headerButtons: {
-  display: "flex",
-  gap: "8px",
-  alignItems: "center",
-  flexWrap: "wrap",
-},
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 20,
+    marginBottom: 24,
+  },
 
   title: {
     margin: 0,
-    fontSize: "28px",
-    fontWeight: "800",
-    color: "#111111",
+    fontSize: 28,
+    fontWeight: 800,
+    letterSpacing: "-0.5px",
   },
 
   subtitle: {
-    marginTop: "6px",
-    marginBottom: 0,
-    color: "#6b7280",
-    lineHeight: "1.5",
-    fontSize: "14px",
+    color: "#9ca3af",
+    fontSize: 13,
+    marginTop: 4,
+  },
+
+  headerButtons: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
   },
 
   primaryButton: {
-    border: "none",
-    background: "#111111",
-    color: "#d4a017",
-    padding: "10px 15px",
-    borderRadius: "8px",
+    border: "1px solid #d4af37",
+    background: "#d4af37",
+    color: "#080808",
+    padding: "11px 16px",
+    borderRadius: 8,
+    fontWeight: 800,
     cursor: "pointer",
-    fontWeight: "700",
-    borderBottom: "2px solid #d4a017",
   },
 
   secondaryButton: {
-    border: "1px solid #d4a017",
-    background: "#ffffff",
-    color: "#111111",
-    padding: "9px 14px",
-    borderRadius: "8px",
+    border: "1px solid #3f3f46",
+    background: "#171717",
+    color: "#f5f5f5",
+    padding: "11px 16px",
+    borderRadius: 8,
+    fontWeight: 700,
     cursor: "pointer",
-    fontWeight: "700",
   },
 
-  addSmallButton: {
-    border: "none",
-    background: "#111111",
-    color: "#d4a017",
-    padding: "10px 12px",
-    borderRadius: "8px",
+  dangerButton: {
+    border: "1px solid #ef4444",
+    background: "#ef4444",
+    color: "#fff",
+    padding: "11px 16px",
+    borderRadius: 8,
+    fontWeight: 800,
     cursor: "pointer",
-    fontWeight: "700",
+  },
+
+  cancelButton: {
+    border: "1px solid #3f3f46",
+    background: "#18181b",
+    color: "#f5f5f5",
+    padding: "11px 16px",
+    borderRadius: 8,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
+  errorBox: {
+    background: "rgba(239,68,68,0.12)",
+    border: "1px solid rgba(239,68,68,0.35)",
+    color: "#fca5a5",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+
+  messageBox: {
+    background: "rgba(34,197,94,0.12)",
+    border: "1px solid rgba(34,197,94,0.3)",
+    color: "#86efac",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: 12,
+    marginBottom: 18,
+  },
+
+  statCard: {
+    background: "#111111",
+    border: "1px solid #27272a",
+    borderRadius: 12,
+    padding: 16,
+  },
+
+  statLabel: {
+    color: "#9ca3af",
+    fontSize: 12,
+    fontWeight: 600,
+  },
+
+  statValue: {
+    fontSize: 24,
+    fontWeight: 800,
+    marginTop: 6,
+  },
+
+  statChinese: {
+    color: "#71717a",
+    fontSize: 10,
+    marginTop: 3,
+  },
+
+  filterBar: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    marginBottom: 16,
+  },
+
+  searchInput: {
+    flex: 1,
+    minWidth: 240,
+    background: "#111111",
+    border: "1px solid #27272a",
+    color: "#f5f5f5",
+    borderRadius: 8,
+    padding: "11px 13px",
+    outline: "none",
+  },
+
+  select: {
+    minWidth: 180,
+    background: "#111111",
+    border: "1px solid #27272a",
+    color: "#f5f5f5",
+    borderRadius: 8,
+    padding: "11px 13px",
+    outline: "none",
+  },
+
+  tableContainer: {
+    background: "#111111",
+    border: "1px solid #27272a",
+    borderRadius: 12,
+    overflowX: "auto",
+    overflowY: "hidden",
+  },
+
+  table: {
+    width: "100%",
+    minWidth: 1050,
+    borderCollapse: "collapse",
+  },
+
+  th: {
+    textAlign: "left",
+    padding: "13px 12px",
+    borderBottom: "1px solid #27272a",
+    color: "#a1a1aa",
+    fontSize: 11,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
     whiteSpace: "nowrap",
   },
-
-  editButton: {
-    border: "1px solid #d4a017",
-    background: "#fffaf0",
-    color: "#8a6500",
-    padding: "6px 8px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "700",
-  },
-
-  inPrimaryButton: {
-    border: "none",
-    background: "#111111",
-    color: "#d4a017",
-    padding: "10px 15px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "700",
-    borderBottom: "2px solid #16a34a",
-  },
-
-  outPrimaryButton: {
-    border: "none",
-    background: "#111111",
-    color: "#d4a017",
-    padding: "10px 15px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "700",
-    borderBottom: "2px solid #dc2626",
-  },
-
-  refreshButton: {
-    border: "1px solid #d4a017",
-    background: "#111111",
-    color: "#d4a017",
-    padding: "10px 15px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "700",
-  },
-
-  success: {
-    background: "#f7f3e8",
-    color: "#6b4f00",
-    border: "1px solid #d4a017",
-    padding: "11px 14px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-  },
-
-  error: {
-    background: "#fef2f2",
-    color: "#991b1b",
-    border: "1px solid #fecaca",
-    padding: "11px 14px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-  },
-
- stats: {
-  display: "grid",
-  gridTemplateColumns:
-    "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: "12px",
-  marginBottom: "20px",
-},
-
-  card: {
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderTop: "3px solid #d4a017",
-    borderRadius: "10px",
-    padding: "16px",
-    boxShadow:
-      "0 3px 10px rgba(0,0,0,0.04)",
-  },
-
-  cardLabel: {
-    color: "#6b7280",
-    fontSize: "13px",
-    fontWeight: "600",
-  },
-
-  cardValue: {
-    fontSize: "25px",
-    fontWeight: "800",
-    marginTop: "7px",
-    color: "#111111",
-  },
-
- filters: {
-  display: "flex",
-  gap: "8px",
-  marginBottom: "15px",
-  flexWrap: "wrap",
-  width: "100%",
-  boxSizing: "border-box",
-},
-
- search: {
-  flex: "1 1 220px",
-  minWidth: "0",
-  boxSizing: "border-box",
-  padding: "10px 12px",
-  border: "1px solid #d1d5db",
-  borderRadius: "8px",
-  fontSize: "13px",
-  background: "#ffffff",
-},
-
-select: {
-  flex: "1 1 150px",
-  minWidth: "0",
-  maxWidth: "100%",
-  boxSizing: "border-box",
-  padding: "10px 12px",
-  border: "1px solid #d1d5db",
-  borderRadius: "8px",
-  background: "#ffffff",
-  fontSize: "13px",
-},
- tableContainer: {
-  width: "100%",
-  maxWidth: "100%",
-  boxSizing: "border-box",
-  background: "#ffffff",
-  border: "1px solid #d4a017",
-  borderRadius: "12px",
-  overflow: "hidden",
-  boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
-},
-
-  historyTable: {
-    overflowX: "auto",
-  },
-
- table: {
-  width: "100%",
-  maxWidth: "100%",
-  tableLayout: "fixed",
-  borderCollapse: "collapse",
-},
-
- th: {
-  textAlign: "left",
-  padding: "9px 7px",
-  background: "#111111",
-  color: "#d4a017",
-  borderBottom: "2px solid #d4a017",
-  fontSize: "11px",
-  whiteSpace: "normal",
-  wordBreak: "break-word",
-  fontWeight: "700",
-},
 
   td: {
-  padding: "9px 7px",
-  borderBottom: "1px solid #f3f4f6",
-  fontSize: "12px",
-  whiteSpace: "normal",
-  wordBreak: "break-word",
-  overflowWrap: "anywhere",
-  color: "#222222",
-  verticalAlign: "middle",
-},
-
- productName: {
-  fontWeight: "800",
-  color: "#111111",
-  whiteSpace: "normal",
-  wordBreak: "break-word",
-  overflowWrap: "anywhere",
-},
-
-  chineseText: {
-    color: "#6b4f00",
-    fontWeight: "700",
+    padding: "13px 12px",
+    borderBottom: "1px solid #1f1f22",
+    fontSize: 13,
+    verticalAlign: "middle",
   },
 
-  translationPreview: {
-    color: "#6b4f00",
-    fontSize: "12px",
-    fontWeight: "700",
+  sku: {
+    color: "#d4af37",
+    fontWeight: 700,
+    fontFamily: "monospace",
   },
 
-  status: {
+  tableImage: {
+    width: 52,
+    height: 52,
+    objectFit: "cover",
+    borderRadius: 8,
+    border: "1px solid #3f3f46",
+    display: "block",
+  },
+
+  tableImagePlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    border: "1px dashed #3f3f46",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#71717a",
+    fontSize: 20,
+    background: "#18181b",
+  },
+
+  statusBadge: {
     display: "inline-block",
-    padding: "5px 8px",
-    borderRadius: "999px",
-    fontSize: "10px",
-    fontWeight: "800",
+    padding: "5px 9px",
+    borderRadius: 6,
+    fontSize: 10,
+    fontWeight: 800,
     whiteSpace: "nowrap",
   },
 
-  actions: {
-  display: "flex",
-  gap: "4px",
-  flexWrap: "wrap",
-  width: "100%",
-},
-
-  inButton: {
-    border: "1px solid #bbf7d0",
-    background: "#f0fdf4",
-    color: "#166534",
-    padding: "6px 8px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "700",
+  actionGroup: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
   },
 
-  outButton: {
-    border: "1px solid #fecaca",
-    background: "#fef2f2",
-    color: "#991b1b",
+  smallButton: {
+    background: "#18181b",
+    border: "1px solid #3f3f46",
+    color: "#f5f5f5",
     padding: "6px 8px",
-    borderRadius: "6px",
+    borderRadius: 6,
     cursor: "pointer",
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: 700,
   },
 
-  historyButton: {
-    border: "1px solid #d4a017",
-    background: "#fffaf0",
-    color: "#6b4f00",
+  smallDangerButton: {
+    background: "rgba(239,68,68,0.08)",
+    border: "1px solid rgba(239,68,68,0.35)",
+    color: "#fca5a5",
     padding: "6px 8px",
-    borderRadius: "6px",
+    borderRadius: 6,
     cursor: "pointer",
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: 700,
   },
 
-  empty: {
-    padding: "40px 20px",
+  smallDarkButton: {
+    background: "#0b0b0b",
+    border: "1px solid #27272a",
+    color: "#a1a1aa",
+    padding: "6px 8px",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 11,
+    fontWeight: 700,
+  },
+
+  emptyState: {
+    padding: 50,
     textAlign: "center",
-    color: "#6b7280",
-    lineHeight: "1.7",
+    color: "#71717a",
   },
+
+  /* =======================================================
+     MODAL
+  ======================================================= */
 
   overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.65)",
+    background: "rgba(0,0,0,0.75)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "15px",
+    padding: 20,
     zIndex: 1000,
+    overflowY: "auto",
   },
 
   modal: {
-    background: "#ffffff",
-    borderTop: "4px solid #d4a017",
-    borderRadius: "12px",
-    width: "100%",
-    maxWidth: "680px",
+    width: "min(760px, 100%)",
     maxHeight: "90vh",
     overflowY: "auto",
-    padding: "22px",
-    boxShadow:
-      "0 20px 50px rgba(0,0,0,0.35)",
-    boxSizing: "border-box",
+    background: "#111111",
+    border: "1px solid #2f2f33",
+    borderRadius: 14,
+    boxShadow: "0 25px 80px rgba(0,0,0,0.55)",
+    padding: 22,
   },
 
-  smallModal: {
-    background: "#ffffff",
-    borderTop: "4px solid #d4a017",
-    borderRadius: "12px",
-    width: "100%",
-    maxWidth: "440px",
-    padding: "22px",
-    boxShadow:
-      "0 20px 50px rgba(0,0,0,0.35)",
-    boxSizing: "border-box",
+  modalSmall: {
+    width: "min(500px, 100%)",
+    background: "#111111",
+    border: "1px solid #2f2f33",
+    borderRadius: 14,
+    boxShadow: "0 25px 80px rgba(0,0,0,0.55)",
+    padding: 22,
+  },
+
+  historyModal: {
+    width: "min(850px, 100%)",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    background: "#111111",
+    border: "1px solid #2f2f33",
+    borderRadius: 14,
+    boxShadow: "0 25px 80px rgba(0,0,0,0.55)",
+    padding: 22,
   },
 
   modalHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: "18px",
-    gap: "15px",
+    gap: 20,
+    marginBottom: 20,
   },
 
   modalTitle: {
     margin: 0,
-    fontSize: "21px",
-    color: "#111111",
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: 800,
   },
 
-  modalSubtitle: {
-    color: "#6b7280",
-    marginTop: "5px",
-    marginBottom: 0,
-    lineHeight: "1.5",
-    fontSize: "13px",
+  modalChinese: {
+    color: "#71717a",
+    fontSize: 11,
+    marginTop: 3,
   },
 
   closeButton: {
-    border: "none",
-    background: "#111111",
-    color: "#d4a017",
-    width: "32px",
-    height: "32px",
-    borderRadius: "50%",
-    fontSize: "21px",
+    width: 34,
+    height: 34,
+    borderRadius: 7,
+    border: "1px solid #3f3f46",
+    background: "#18181b",
+    color: "#d4d4d8",
+    fontSize: 22,
+    lineHeight: 1,
     cursor: "pointer",
-    fontWeight: "700",
+  },
+
+  /* =======================================================
+     IMAGE UPLOAD
+  ======================================================= */
+
+  imageUploadSection: {
+    background: "#0c0c0c",
+    border: "1px solid #27272a",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 18,
+  },
+
+  imageUploadLabel: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#d4d4d8",
+    marginBottom: 12,
+  },
+
+  imageUploadContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: 18,
+    flexWrap: "wrap",
+  },
+
+  imagePreviewWrapper: {
+    width: 130,
+    height: 100,
+    borderRadius: 10,
+    overflow: "hidden",
+    border: "1px solid #3f3f46",
+    background: "#18181b",
     flexShrink: 0,
   },
+
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    display: "block",
+  },
+
+  largeImagePlaceholder: {
+    width: 130,
+    height: 100,
+    borderRadius: 10,
+    border: "1px dashed #3f3f46",
+    background: "#18181b",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+
+  placeholderIcon: {
+    fontSize: 30,
+    opacity: 0.7,
+  },
+
+  imagePlaceholderText: {
+    fontSize: 11,
+    color: "#a1a1aa",
+    marginTop: 3,
+  },
+
+  imagePlaceholderChinese: {
+    fontSize: 9,
+    color: "#52525b",
+    marginTop: 2,
+  },
+
+  imageButtons: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  chooseImageButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#d4af37",
+    color: "#090909",
+    borderRadius: 7,
+    padding: "9px 12px",
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+
+  removeImageButton: {
+    background: "rgba(239,68,68,0.08)",
+    border: "1px solid rgba(239,68,68,0.35)",
+    color: "#fca5a5",
+    borderRadius: 7,
+    padding: "8px 11px",
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
+  imageHelpText: {
+    width: "100%",
+    color: "#71717a",
+    fontSize: 10,
+  },
+
+  /* =======================================================
+     FORM
+  ======================================================= */
 
   formGrid: {
     display: "grid",
     gridTemplateColumns:
       "repeat(2, minmax(0, 1fr))",
-    gap: "12px",
+    gap: 15,
   },
 
-  categoryRow: {
-    display: "flex",
-    gap: "7px",
-    alignItems: "center",
+  field: {
+    marginBottom: 14,
   },
 
   label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    fontSize: "12px",
-    fontWeight: "700",
-    marginBottom: "13px",
-    color: "#222222",
+    display: "block",
+    color: "#a1a1aa",
+    fontSize: 11,
+    fontWeight: 700,
+    marginBottom: 6,
   },
 
   input: {
     width: "100%",
     boxSizing: "border-box",
+    background: "#0b0b0b",
+    border: "1px solid #3f3f46",
+    color: "#f5f5f5",
+    borderRadius: 7,
     padding: "10px 11px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "13px",
-    fontWeight: "400",
-    background: "#ffffff",
-    color: "#111111",
+    outline: "none",
+    fontSize: 13,
   },
 
-  helpText: {
-    color: "#8a6500",
-    fontSize: "10px",
-    fontWeight: "500",
-    lineHeight: "1.5",
-  },
-
-  modalActions: {
+  modalFooter: {
     display: "flex",
     justifyContent: "flex-end",
-    gap: "8px",
-    marginTop: "18px",
-    flexWrap: "wrap",
+    gap: 9,
+    marginTop: 18,
+    paddingTop: 16,
+    borderTop: "1px solid #27272a",
   },
 
-  cancelButton: {
-    border: "1px solid #d1d5db",
-    background: "#ffffff",
-    color: "#374151",
-    padding: "10px 15px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
+  /* =======================================================
+     SELECTED PRODUCT
+  ======================================================= */
+
+  selectedProductBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    background: "#0b0b0b",
+    border: "1px solid #27272a",
+    borderRadius: 9,
+    padding: 12,
+    marginBottom: 18,
   },
 
-  stockInfo: {
-    background: "#111111",
-    color: "#ffffff",
-    padding: "12px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-    borderLeft: "4px solid #d4a017",
-    fontSize: "13px",
+  movementProductImage: {
+    width: 55,
+    height: 55,
+    objectFit: "cover",
+    borderRadius: 7,
+    border: "1px solid #3f3f46",
   },
 
-  historyPanel: {
-    marginTop: "20px",
-    background: "#ffffff",
-    border: "1px solid #d4a017",
-    borderRadius: "10px",
-    overflow: "hidden",
-    boxShadow:
-      "0 4px 15px rgba(0,0,0,0.05)",
+  /* =======================================================
+     HISTORY
+  ======================================================= */
+
+  historyProduct: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    background: "#0b0b0b",
+    border: "1px solid #27272a",
+    borderRadius: 9,
+    padding: 12,
+    marginBottom: 15,
   },
 
-  historyHeader: {
+  historyProductImage: {
+    width: 60,
+    height: 60,
+    objectFit: "cover",
+    borderRadius: 8,
+    border: "1px solid #3f3f46",
+  },
+
+  historyPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    border: "1px dashed #3f3f46",
+    background: "#18181b",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 24,
+  },
+
+  historyList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+
+  historyItem: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    padding: "18px",
-    borderBottom: "1px solid #e5e7eb",
-    gap: "15px",
-  },
-
-  historyTitle: {
-    margin: 0,
-    fontSize: "18px",
-    color: "#111111",
+    gap: 20,
+    background: "#0b0b0b",
+    border: "1px solid #27272a",
+    borderRadius: 9,
+    padding: 13,
   },
 };
 
-export default Inventory;
