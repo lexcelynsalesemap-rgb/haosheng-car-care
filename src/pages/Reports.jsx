@@ -6,6 +6,7 @@ const TEYSEER_SOURCES = [
   "Teyseer Motors",
   "Teyseer Motors - Bahaa",
   "Teyseer Motors - Salah",
+  "Teyseer Motors - Abdou"
 ];
 
 const DEFAULT_PENDING = {
@@ -203,8 +204,7 @@ PAYMENTS:
   only payment.job_id === job.id
 
 PAYMENT ALLOCATION:
-  Customer payments are applied first to customer sales.
-  Any remaining payment on a mixed job is Teyseer payment.
+  All payment are applied to customer sales.
 ============================================================
 */
 
@@ -243,7 +243,8 @@ function calculateJob(
         : jobNet;
   } else if (
     source === "Teyseer Motors - Salah" ||
-    source === "Teyseer Motors - Bahaa"
+    source === "Teyseer Motors - Bahaa" ||
+    source === "Teyseer Motors - Abdou"
   ) {
     if (services.length > 0) {
       services.forEach((service) => {
@@ -304,11 +305,6 @@ function calculateJob(
       paid,
       customerSales
     );
-
-    teyseerPaid = Math.max(
-      paid - customerPaid,
-      0
-    );
   }
 
   const customerBalance = Math.max(
@@ -317,7 +313,7 @@ function calculateJob(
   );
 
   const teyseerBalance = Math.max(
-    teyseerSales - teyseerPaid,
+    teyseerSales,
     0
   );
 
@@ -339,7 +335,6 @@ function calculateJob(
 
     paid,
     customerPaid,
-    teyseerPaid,
 
     customerBalance,
     teyseerBalance,
@@ -801,7 +796,6 @@ function Reports() {
 
       paid,
       customerPaid,
-      teyseerPaid,
 
       customerBalance,
       teyseerBalance,
@@ -828,9 +822,6 @@ function Reports() {
 
   const customerBalance =
     financial.customerBalance;
-
-  const teyseerPaid =
-    financial.teyseerPaid;
 
   const teyseerBalance =
     financial.teyseerBalance;
@@ -918,17 +909,27 @@ function Reports() {
         );
     }, [filteredTeyseerJobs]);
 
+    const abdouAmount =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) ===
+            "Teyseer Motors - Abdou"
+        )
+        .reduce(
+          (sum, job) =>
+            sum + job.teyseerSales,
+          0
+        );
+    }, [filteredTeyseerJobs]);
+
   const filteredTeyseerSales =
     filteredTeyseerJobs.reduce(
       (sum, job) =>
         sum + job.teyseerSales,
-      0
-    );
-
-  const filteredTeyseerPaid =
-    filteredTeyseerJobs.reduce(
-      (sum, job) =>
-        sum + job.teyseerPaid,
       0
     );
 
@@ -989,6 +990,24 @@ function Reports() {
               job.source
             ) ===
             "Teyseer Motors - Bahaa"
+        )
+        .reduce(
+          (count, job) =>
+            count +
+            job.services.length,
+          0
+        );
+    }, [filteredTeyseerJobs]);
+
+     const abdouServiceItems =
+    useMemo(() => {
+      return filteredTeyseerJobs
+        .filter(
+          (job) =>
+            normalizeSource(
+              job.source
+            ) ===
+            "Teyseer Motors - Abdou"
         )
         .reduce(
           (count, job) =>
@@ -1684,257 +1703,309 @@ function Reports() {
   ============================================================
   */
 
-  function printTeyseerReport() {
-    if (
-      filteredTeyseerJobs.length === 0
-    ) {
-      alert(
-        "No Teyseer jobs found."
-      );
-      return;
-    }
+ function printTeyseerReport() {
+  if (filteredTeyseerJobs.length === 0) {
+    alert("No Teyseer jobs found.");
+    return;
+  }
 
-    const rows =
-      filteredTeyseerJobs
-        .map(
-          (job, index) => `
-            <tr>
-              <td>${index + 1}</td>
+  const rows = filteredTeyseerJobs
+    .map(
+      (job, index) => `
+        <tr>
+          <td class="number">
+            ${index + 1}
+          </td>
 
-              <td>
-                ${getJobDate(job) || "-"}
-              </td>
+          <td>
+            ${escapeHtml(
+              getJobDate(job) || "-"
+            )}
+          </td>
 
-              <td>
-                ${escapeHtml(
-                  job.source || "-"
-                )}
-              </td>
+          <td>
+            ${escapeHtml(
+              job.carMake ||
+                job.carType ||
+                job.carModel ||
+                "-"
+            )}
+          </td>
 
-              <td>
-                ${escapeHtml(
-                  job.carMake ||
-                    job.carType ||
-                    job.carModel ||
-                    "-"
-                )}
-              </td>
+          <td>
+            ${escapeHtml(
+              job.plate || "-"
+            )}
+          </td>
 
-              <td>
-                ${escapeHtml(
-                  job.plate || "-"
-                )}
-              </td>
+          <td class="services">
+            ${escapeHtml(
+              job.serviceNames || "-"
+            )}
+          </td>
 
-              <td>
-                ${escapeHtml(
-                  job.serviceNames || "-"
-                )}
-              </td>
+          <td>
+            ${escapeHtml(
+              job.voucherNumber || "-"
+            )}
+          </td>
 
-              <td>
-                ${escapeHtml(
-                  job.voucherNumber ||
-                    "-"
-                )}
-              </td>
+          <td>
+            ${escapeHtml(
+              job.receipt_number || "-"
+            )}
+          </td>
 
-              <td>
-                ${escapeHtml(
-                  job.receipt_number ||
-                    "-"
-                )}
-              </td>
+          <td class="money">
+            QAR ${money(
+              number(job.teyseerSales)
+            )}
+          </td>
 
-              <td class="money">
-                QAR ${money(
-                  job.teyseerSales
-                )}
-              </td>
+          <td class="money">
+            QAR ${money(
+              number(job.teyseerPaid)
+            )}
+          </td>
 
-              <td class="money">
-                QAR ${money(
-                  job.teyseerPaid
-                )}
-              </td>
-            </tr>
-          `
-        )
-        .join("");
+          <td class="money">
+            QAR ${money(
+              number(job.teyseerBalance)
+            )}
+          </td>
+        </tr>
+      `
+    )
+    .join("");
 
-    const printWindow =
-      window.open(
-        "",
-        "_blank",
-        "width=1500,height=1000"
-      );
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1500,height=1000"
+  );
 
-    if (!printWindow) {
-      alert(
-        "Please allow pop-ups for this website."
-      );
-      return;
-    }
+  if (!printWindow) {
+    alert(
+      "Please allow pop-ups for this website."
+    );
+    return;
+  }
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
 
-      <head>
-        <title>
-          Teyseer Motors Report
-        </title>
+    <head>
 
-        <style>
-          * {
-            box-sizing: border-box;
+      <meta charset="UTF-8" />
+
+      <title>
+        Teyseer Motors Report
+      </title>
+
+      <style>
+
+        * {
+          box-sizing: border-box;
+        }
+
+        @page {
+          size: A4 landscape;
+          margin: 9mm;
+        }
+
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+        }
+
+        body {
+          font-family: Arial, sans-serif;
+          color: #111827;
+          font-size: 9px;
+          padding: 10px;
+        }
+
+        .header {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding-bottom: 12px;
+          margin-bottom: 12px;
+          border-bottom: 2px solid #111827;
+        }
+
+        .logo {
+          width: 90px;
+          height: 80px;
+          object-fit: contain;
+        }
+
+        .companyName {
+          font-size: 17px;
+          font-weight: 800;
+          margin-bottom: 6px;
+        }
+
+        .arabicName {
+          font-size: 14px;
+          font-weight: 700;
+          margin-bottom: 6px;
+        }
+
+        .address {
+          font-size: 9px;
+          color: #4b5563;
+        }
+
+        .reportHeader {
+          display: flex;
+          justify-content: space-between;
+          align-items: end;
+          margin-bottom: 12px;
+        }
+
+        .reportTitle {
+          font-size: 18px;
+          font-weight: 800;
+          color: #111827;
+        }
+
+        .period {
+          font-size: 10px;
+          color: #4b5563;
+          text-align: right;
+        }
+
+        .summary {
+          display: grid;
+          grid-template-columns:
+            repeat(5, 1fr);
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+
+        .box {
+          border: 1px solid #d1d5db;
+          border-radius: 5px;
+          padding: 8px;
+          background: #f9fafb;
+        }
+
+        .boxLabel {
+          font-size: 8px;
+          color: #6b7280;
+          text-transform: uppercase;
+          margin-bottom: 4px;
+        }
+
+        .boxValue {
+          font-size: 13px;
+          font-weight: 800;
+          color: #111827;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+
+        th {
+          background: #111827;
+          color: white;
+          padding: 6px 5px;
+          text-align: left;
+          font-size: 8px;
+          font-weight: 700;
+        }
+
+        td {
+          padding: 5px;
+          border: 1px solid #d1d5db;
+          vertical-align: top;
+          font-size: 8px;
+          overflow-wrap: anywhere;
+        }
+
+        .number {
+          width: 3%;
+          text-align: center;
+        }
+
+        .money {
+          text-align: right;
+          white-space: nowrap;
+        }
+
+        .services {
+          width: 22%;
+        }
+
+        .footer {
+          margin-top: 20px;
+          padding-top: 7px;
+          border-top: 1px solid #111827;
+          text-align: center;
+          font-size: 7px;
+          color: #374151;
+          line-height: 1.5;
+        }
+
+        @media print {
+
+          thead {
+            display: table-header-group;
           }
 
-          @page {
-            size: A4 landscape;
-            margin: 10mm;
+          tfoot {
+            display: table-footer-group;
           }
 
-          body {
-            font-family: Arial, sans-serif;
-            color: #000;
-            margin: 0;
-            padding: 15px;
-            font-size: 9px;
-          }
-
-          .header {
-            display: flex;
-            width: 100%;
-            min-height: 100px;
-            margin-bottom: 15px;
-          }
-
-          .logo {
-            width: 100px;
-            height: 90px;
-            object-fit: contain;
-          }
-
-          .company {
-            padding-left: 20px;
-          }
-
-          .companyName {
-            font-size: 17px;
-            font-weight: bold;
-            margin-bottom: 8px;
-          }
-
-          .arabicName {
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 8px;
-          }
-
-          .reportTitle {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 6px;
-          }
-
-          .period {
-            margin-bottom: 15px;
-          }
-
-          table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          th {
-            background: #111827;
-            color: white;
-            padding: 6px;
-            text-align: left;
-          }
-
-          td {
-            padding: 6px;
-            border: 1px solid #ddd;
-            vertical-align: top;
-          }
-
-          .money {
-            text-align: right;
-            white-space: nowrap;
-          }
-
-          .summary {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-          }
-
-          .box {
-            border: 1px solid #999;
-            padding: 8px;
-            min-width: 150px;
-          }
-
-          .boxLabel {
-            font-size: 8px;
-            color: #666;
-          }
-
-          .boxValue {
-            font-size: 13px;
-            font-weight: bold;
-            margin-top: 4px;
+          tr {
+            page-break-inside: avoid;
           }
 
           .footer {
-            margin-top: 35px;
-            border-top: 1px solid #000;
-            padding-top: 8px;
-            text-align: center;
-            font-size: 8px;
+            page-break-inside: avoid;
           }
 
-          @media print {
-            thead {
-              display: table-header-group;
-            }
+        }
 
-            tr {
-              page-break-inside: avoid;
-            }
-          }
-        </style>
-      </head>
+      </style>
 
-      <body>
+    </head>
 
-        <div class="header">
+    <body>
 
-          <img
-            src="${gaLogo}"
-            class="logo"
-          />
+      <div class="header">
 
-          <div class="company">
+        <img
+          src="${gaLogo}"
+          class="logo"
+        />
 
-            <div class="companyName">
-              HAOSHENG CAR SERVICE AND ACCESSORIES
-            </div>
+        <div>
 
-            <div class="arabicName">
-              هاوشنغ لخدمات وزينة السيارات
-            </div>
-
-            <div>
-              Building 358,
-              Salwa Road,
-              Doha - Qatar
-            </div>
-
+          <div class="companyName">
+            HAOSHENG CAR SERVICE AND ACCESSORIES
           </div>
+
+          <div class="arabicName">
+            هاوشنغ لخدمات وزينة السيارات
+          </div>
+
+          <div class="address">
+            Building 358, Salwa Road,
+            Doha - Qatar
+          </div>
+
         </div>
+
+      </div>
+
+      <div class="reportHeader">
 
         <div class="reportTitle">
           TEYSEER MOTORS REPORT
@@ -1942,113 +2013,136 @@ function Reports() {
 
         <div class="period">
           Period:
-          ${teyseerStartDate || "All dates"}
+          ${escapeHtml(
+            teyseerStartDate || "All dates"
+          )}
           -
-          ${teyseerEndDate || "All dates"}
+          ${escapeHtml(
+            teyseerEndDate || "All dates"
+          )}
         </div>
 
-        <div class="summary">
+      </div>
 
-          <div class="box">
-            <div class="boxLabel">
-              TEYSEER CARS
-            </div>
+      <div class="summary">
 
-            <div class="boxValue">
-              ${filteredTeyseerCars}
-            </div>
+        <div class="box">
+          <div class="boxLabel">
+            Teyseer Cars
           </div>
 
-          <div class="box">
-            <div class="boxLabel">
-              NET AMOUNT
-            </div>
-
-            <div class="boxValue">
-              QAR ${money(
-                filteredTeyseerSales
-              )}
-            </div>
+          <div class="boxValue">
+            ${filteredTeyseerCars}
           </div>
-
-          <div class="box">
-            <div class="boxLabel">
-              PAID
-            </div>
-
-            <div class="boxValue">
-              QAR ${money(
-                filteredTeyseerPaid
-              )}
-            </div>
-          </div>
-
-          <div class="box">
-            <div class="boxLabel">
-              BALANCE
-            </div>
-
-            <div class="boxValue">
-              QAR ${money(
-                filteredTeyseerBalance
-              )}
-            </div>
-          </div>
-
         </div>
 
-        <table>
+        <div class="box">
+          <div class="boxLabel">
+            Net Sales
+          </div>
 
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>DATE</th>
-              <th>SOURCE</th>
-              <th>CAR</th>
-              <th>PLATE</th>
-              <th>ALL SERVICES</th>
-              <th>VOUCHER NO.</th>
-              <th>RECEIPT NO.</th>
-              <th>TEYSEER NET</th>
-              <th>TEYSEER PAID</th>
-            </tr>
-          </thead>
+          <div class="boxValue">
+            QAR ${money(
+              filteredTeyseerSales
+            )}
+          </div>
+        </div>
 
-          <tbody>
-            ${rows}
-          </tbody>
+        <div class="box">
+          <div class="boxLabel">
+            Paid
+          </div>
 
-        </table>
+          <div class="boxValue">
+            QAR ${money(
+              filteredTeyseerPaid
+            )}
+          </div>
+        </div>
 
-        <div class="footer">
+        <div class="box">
+          <div class="boxLabel">
+            Balance
+          </div>
 
+          <div class="boxValue">
+            QAR ${money(
+              filteredTeyseerBalance
+            )}
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="boxLabel">
+            Service Items
+          </div>
+
+          <div class="boxValue">
+            ${
+              teyseerMotorsStats.serviceItems +
+              salahStats.serviceItems +
+              bahaaStats.serviceItems +
+              abdouStats.serviceItems
+            }
+          </div>
+        </div>
+
+      </div>
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>DATE</th>
+            <th>CAR</th>
+            <th>PLATE</th>
+            <th>SERVICES</th>
+            <th>VOUCHER NO.</th>
+            <th>RECEIPT NO.</th>
+            <th>TEYSEER NET</th>
+            <th>TEYSEER PAID</th>
+            <th>BALANCE</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${rows}
+        </tbody>
+
+      </table>
+
+      <div class="footer">
+
+        <strong>
           Tel: +974 4441 5866 |
           C.R.NO: 199725 |
           E-mail: info@haoshengcar.com
+        </strong>
 
-          <br />
+        <br />
 
-          Fereej Al Manaseer,
-          Zone 55, St. 340,
-          Bldg 358, Salwa Road,
-          Doha, Qatar
+        Fereej Al Manaseer,
+        Zone 55, St. 340,
+        Bldg 358, Salwa Road,
+        Doha, Qatar
 
-        </div>
+      </div>
 
-      </body>
-      </html>
-    `);
+    </body>
 
-    printWindow.document.close();
+    </html>
+  `);
 
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 500);
-    };
-  }
+  printWindow.document.close();
 
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 500);
+  };
+}
   /*
   ============================================================
   PRINT DAILY
@@ -3073,22 +3167,6 @@ function Reports() {
                 color="purple"
               />
 
-              <Card
-                title="Teyseer Paid"
-                value={`QAR ${money(
-                  teyseerPaid
-                )}`}
-                color="green"
-              />
-
-              <Card
-                title="Teyseer Balance"
-                value={`QAR ${money(
-                  teyseerBalance
-                )}`}
-                color="red"
-              />
-
             </div>
 
           </div>
@@ -3424,52 +3502,63 @@ function Reports() {
 
             <div className="source-grid">
 
-              <div className="source-box">
+  <div className="source-box">
+    <div className="source-name">
+      Teyseer Motors
+    </div>
 
-                <div className="source-name">
-                  Teyseer Motors
-                </div>
+    <div className="source-value">
+      QAR {money(teyseerMotorsStats.sales)}
+    </div>
 
-                <div className="source-value">
-                  QAR{" "}
-                  {money(
-                    teyseerMotorsAmount
-                  )}
-                </div>
+    <div className="source-meta">
+      {teyseerMotorsStats.cars} cars
+    </div>
+  </div>
 
-              </div>
+  <div className="source-box">
+    <div className="source-name">
+      Teyseer Motors - Salah
+    </div>
 
-              <div className="source-box">
+    <div className="source-value">
+      QAR {money(salahStats.sales)}
+    </div>
 
-                <div className="source-name">
-                  Teyseer Motors - Salah
-                </div>
+    <div className="source-meta">
+      {salahStats.cars} cars
+    </div>
+  </div>
 
-                <div className="source-value">
-                  QAR{" "}
-                  {money(
-                    salahAmount
-                  )}
-                </div>
+  <div className="source-box">
+    <div className="source-name">
+      Teyseer Motors - Bahaa
+    </div>
 
-              </div>
+    <div className="source-value">
+      QAR {money(bahaaStats.sales)}
+    </div>
 
-              <div className="source-box">
+    <div className="source-meta">
+      {bahaaStats.cars} cars
+    </div>
+  </div>
 
-                <div className="source-name">
-                  Teyseer Motors - Bahaa
-                </div>
+  <div className="source-box">
+    <div className="source-name">
+      Teyseer Motors - Abdou
+    </div>
 
-                <div className="source-value">
-                  QAR{" "}
-                  {money(
-                    bahaaAmount
-                  )}
-                </div>
+    <div className="source-value">
+      QAR {money(abdouStats.sales)}
+    </div>
 
-              </div>
+    <div className="source-meta">
+      {abdouStats.cars} cars
+    </div>
+  </div>
 
-            </div>
+</div>
 
           </div>
 
@@ -3481,64 +3570,83 @@ function Reports() {
 
             <div className="source-grid">
 
-              <div className="source-box">
+  <div className="source-box">
+    <div className="source-name">
+      Teyseer Motors
+    </div>
 
-                <div className="source-name">
-                  Teyseer Motors
-                </div>
+    <div className="source-value">
+      {teyseerMotorsStats.serviceItems}
+    </div>
 
-                <div className="source-value">
-                  {teyseerMotorsServiceItems}
-                </div>
+    <div className="source-meta">
+      Service Items
+    </div>
 
-                <div>
-                  Net Sales: QAR{" "}
-                  {money(
-                    teyseerMotorsAmount
-                  )}
-                </div>
+    <div>
+      Net Sales: QAR{" "}
+      {money(teyseerMotorsStats.sales)}
+    </div>
+  </div>
 
-              </div>
+  <div className="source-box">
+    <div className="source-name">
+      Salah
+    </div>
 
-              <div className="source-box">
+    <div className="source-value">
+      {salahStats.serviceItems}
+    </div>
 
-                <div className="source-name">
-                  Salah
-                </div>
+    <div className="source-meta">
+      Service Items
+    </div>
 
-                <div className="source-value">
-                  {salahServiceItems}
-                </div>
+    <div>
+      Net Sales: QAR{" "}
+      {money(salahStats.sales)}
+    </div>
+  </div>
 
-                <div>
-                  Net Sales: QAR{" "}
-                  {money(
-                    salahAmount
-                  )}
-                </div>
+  <div className="source-box">
+    <div className="source-name">
+      Bahaa
+    </div>
 
-              </div>
+    <div className="source-value">
+      {bahaaStats.serviceItems}
+    </div>
 
-              <div className="source-box">
+    <div className="source-meta">
+      Service Items
+    </div>
 
-                <div className="source-name">
-                  Bahaa
-                </div>
+    <div>
+      Net Sales: QAR{" "}
+      {money(bahaaStats.sales)}
+    </div>
+  </div>
 
-                <div className="source-value">
-                  {bahaaServiceItems}
-                </div>
+  <div className="source-box">
+    <div className="source-name">
+      Abdou
+    </div>
 
-                <div>
-                  Net Sales: QAR{" "}
-                  {money(
-                    bahaaAmount
-                  )}
-                </div>
+    <div className="source-value">
+      {abdouStats.serviceItems}
+    </div>
 
-              </div>
+    <div className="source-meta">
+      Service Items
+    </div>
 
-            </div>
+    <div>
+      Net Sales: QAR{" "}
+      {money(abdouStats.sales)}
+    </div>
+  </div>
+
+</div>
 
           </div>
 

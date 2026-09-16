@@ -12,14 +12,17 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip
+  Tooltip,
 } from "recharts";
 
 function Dashboard() {
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [jobServices, setJobServices] = useState([]);
   const [dateFilter, setDateFilter] = useState("All");
+
+  // ==========================================
+  // LOAD
+  // ==========================================
 
   useEffect(() => {
     loadDashboard();
@@ -31,7 +34,7 @@ function Dashboard() {
         {
           event: "*",
           schema: "public",
-          table: "jobs"
+          table: "jobs",
         },
         () => loadJobs()
       )
@@ -44,29 +47,15 @@ function Dashboard() {
         {
           event: "*",
           schema: "public",
-          table: "payments"
+          table: "payments",
         },
         () => loadPayments()
-      )
-      .subscribe();
-
-    const servicesChannel = supabase
-      .channel("dashboard-services")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "job_services"
-        },
-        () => loadJobServices()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(jobsChannel);
       supabase.removeChannel(paymentsChannel);
-      supabase.removeChannel(servicesChannel);
     };
   }, []);
 
@@ -74,12 +63,14 @@ function Dashboard() {
     await Promise.all([
       loadJobs(),
       loadPayments(),
-      loadJobServices()
     ]);
   }
 
   async function loadJobs() {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = JSON.parse(
+      localStorage.getItem("user")
+    );
+
     const shopId = user?.shop_id;
 
     if (!shopId) {
@@ -87,16 +78,22 @@ function Dashboard() {
       return;
     }
 
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("jobs")
       .select("*")
       .eq("shop_id", shopId)
       .order("created_at", {
-        ascending: false
+        ascending: false,
       });
 
     if (error) {
-      console.error("LOAD JOBS ERROR:", error);
+      console.error(
+        "LOAD JOBS ERROR:",
+        error
+      );
       return;
     }
 
@@ -104,7 +101,10 @@ function Dashboard() {
   }
 
   async function loadPayments() {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = JSON.parse(
+      localStorage.getItem("user")
+    );
+
     const shopId = user?.shop_id;
 
     if (!shopId) {
@@ -112,7 +112,10 @@ function Dashboard() {
       return;
     }
 
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("payments")
       .select(`
         *,
@@ -121,70 +124,65 @@ function Dashboard() {
       .eq("jobs.shop_id", shopId);
 
     if (error) {
-      console.error("LOAD PAYMENTS ERROR:", error);
+      console.error(
+        "LOAD PAYMENTS ERROR:",
+        error
+      );
       return;
     }
 
     setPayments(data || []);
   }
 
-  async function loadJobServices() {
-    const user = JSON.parse(localStorage.getItem("user"));
-    const shopId = user?.shop_id;
+  // ==========================================
+  // HELPERS
+  // ==========================================
 
-    if (!shopId) {
-      console.error("NO SHOP ID FOUND");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("job_services")
-      .select(`
-        *,
-        jobs!inner(shop_id)
-      `)
-      .eq("jobs.shop_id", shopId);
-
-    if (error) {
-      console.error("LOAD JOB SERVICES ERROR:", error);
-      return;
-    }
-
-    setJobServices(data || []);
+  function money(value) {
+    return Number(value || 0).toFixed(2);
   }
 
-  // =====================================
-  // SOURCE HELPERS
-  // =====================================
-
-  function normalizeSource(sourceName) {
-    return String(sourceName || "")
+  function normalizeSource(source) {
+    return String(source || "")
       .trim()
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/\s+/g, " ");
   }
 
-  function isPureTeyseerSource(sourceName) {
+  function isPureTeyseerSource(source) {
     return (
-      normalizeSource(sourceName) ===
+      normalizeSource(source) ===
       "teyseer motors"
     );
   }
 
-  function isTeyseerSalahSource(sourceName) {
-    const source = normalizeSource(sourceName);
+  function isTeyseerSalahSource(source) {
+    const value = normalizeSource(source);
 
     return (
-      source === "teyseer-salah" ||
-      source === "teyseer motors - salah"
+      value === "teyseer motors - salah" ||
+      value === "teyseer motors-salah" ||
+      value === "teyseer-salah"
     );
   }
 
-  function isTeyseerBahaaSource(sourceName) {
-    const source = normalizeSource(sourceName);
+  function isTeyseerBahaaSource(source) {
+    const value = normalizeSource(source);
 
     return (
-      source === "teyseer-bahaa" ||
-      source === "teyseer motors - bahaa"
+      value === "teyseer motors - bahaa" ||
+      value === "teyseer motors-bahaa" ||
+      value === "teyseer-bahaa"
+    );
+  }
+
+  function isTeyseerAbdouSource(source) {
+    const value = normalizeSource(source);
+
+    return (
+      value === "teyseer motors - abdou" ||
+      value === "teyseer motors-abdou" ||
+      value === "teyseer-abdou"
     );
   }
 
@@ -194,39 +192,55 @@ function Dashboard() {
       .includes("wtt");
   }
 
-  // =====================================
-  // GROSS CALCULATION
+  // ==========================================
+  // SERVICE GROSS
   //
-  // Gross = price × quantity
+  // IMPORTANT:
+  // Dashboard uses the same value saved by
+  // NewJob:
   //
-  // DISCOUNT IS NOT SUBTRACTED.
-  // =====================================
+  // price × quantity - service discount
+  // ==========================================
 
   function getServiceGross(
     serviceName,
     serviceDetails
   ) {
     const details =
-      serviceDetails[serviceName] || {};
+      serviceDetails?.[serviceName] || {};
 
-    const price = Number(details.price || 0);
+    const price = Number(
+      details.price || 0
+    );
+
     const quantity = Number(
       details.quantity || 1
     );
 
+    const serviceDiscount = Number(
+      details.discount || 0
+    );
+
     return Math.max(
-      price * quantity,
+      price * quantity -
+        serviceDiscount,
       0
     );
   }
 
+  // ==========================================
+  // JOB GROSS
+  // ==========================================
+
   function getJobGross(job) {
-    const services = Array.isArray(job.services)
+    const services = Array.isArray(
+      job?.services
+    )
       ? job.services
       : [];
 
     const serviceDetails =
-      job.serviceDetails &&
+      job?.serviceDetails &&
       typeof job.serviceDetails === "object"
         ? job.serviceDetails
         : {};
@@ -245,168 +259,232 @@ function Dashboard() {
     );
   }
 
-  // =====================================
-  // JOB SALES BREAKDOWN
+  // ==========================================
+  // SALES BREAKDOWN
   //
-  // RULES:
+  // Teyseer Motors
+  //   -> ALL = Teyseer
   //
-  // Teyseer Motors:
-  //   ALL SERVICES -> TEYSEER
+  // Teyseer Motors - Salah
+  //   -> WTT = Teyseer
+  //   -> Other = Salah
   //
-  // Teyseer-Salah:
-  //   WTT -> TEYSEER
-  //   OTHER -> CUSTOMER
+  // Teyseer Motors - Bahaa
+  //   -> WTT = Teyseer
+  //   -> Other = Bahaa
   //
-  // Teyseer-Bahaa:
-  //   WTT -> TEYSEER
-  //   OTHER -> CUSTOMER
+  // Teyseer Motors - Abdou
+  //   -> WTT = Teyseer
+  //   -> Other = Abdou
   //
-  // Salah:
-  //   ALL -> CUSTOMER
+  // Salah
+  //   -> ALL = Salah
   //
-  // Bahaa:
-  //   ALL -> CUSTOMER
+  // Bahaa
+  //   -> ALL = Bahaa
   //
-  // Any other source:
-  //   ALL -> CUSTOMER
-  // =====================================
+  // Abdou
+  //   -> ALL = Abdou
+  //
+  // Walk-in / Other
+  //   -> ALL = Sales Team
+  // ==========================================
 
   function getJobSalesBreakdown(job) {
-    const services = Array.isArray(job.services)
+    const services = Array.isArray(
+      job?.services
+    )
       ? job.services
       : [];
 
     const serviceDetails =
-      job.serviceDetails &&
+      job?.serviceDetails &&
       typeof job.serviceDetails === "object"
         ? job.serviceDetails
         : {};
 
-    const source = normalizeSource(
-      job.source
-    );
+    const source =
+      normalizeSource(job?.source);
 
     let gross = 0;
+
     let teyseer = 0;
-    let customer = 0;
+    let salah = 0;
+    let bahaa = 0;
+    let abdou = 0;
+    let salesTeam = 0;
 
     services.forEach((serviceName) => {
-      const amount = getServiceGross(
-        serviceName,
-        serviceDetails
-      );
+      const amount =
+        getServiceGross(
+          serviceName,
+          serviceDetails
+        );
 
       gross += amount;
 
       const isWtt =
         isWttService(serviceName);
 
-      // ---------------------------------
-      // PURE TEYSEER MOTORS
-      //
-      // ALL SERVICES = TEYSEER
-      // ---------------------------------
+      // ======================================
+      // PURE TEYSEER
+      // ======================================
 
-      if (isPureTeyseerSource(source)) {
+      if (
+        isPureTeyseerSource(source)
+      ) {
         teyseer += amount;
         return;
       }
 
-      // ---------------------------------
+      // ======================================
       // TEYSEER - SALAH
-      //
-      // WTT = TEYSEER
-      // OTHER = CUSTOMER
-      // ---------------------------------
+      // ======================================
 
-      if (isTeyseerSalahSource(source)) {
+      if (
+        isTeyseerSalahSource(source)
+      ) {
         if (isWtt) {
           teyseer += amount;
         } else {
-          customer += amount;
+          salah += amount;
         }
 
         return;
       }
 
-      // ---------------------------------
+      // ======================================
       // TEYSEER - BAHAA
-      //
-      // WTT = TEYSEER
-      // OTHER = CUSTOMER
-      // ---------------------------------
+      // ======================================
 
-      if (isTeyseerBahaaSource(source)) {
+      if (
+        isTeyseerBahaaSource(source)
+      ) {
         if (isWtt) {
           teyseer += amount;
         } else {
-          customer += amount;
+          bahaa += amount;
         }
 
         return;
       }
 
-      // ---------------------------------
-      // ALL OTHER SOURCES
-      //
-      // EVERYTHING = CUSTOMER
-      // ---------------------------------
+      // ======================================
+      // TEYSEER - ABDOU
+      // ======================================
 
-      customer += amount;
+      if (
+        isTeyseerAbdouSource(source)
+      ) {
+        if (isWtt) {
+          teyseer += amount;
+        } else {
+          abdou += amount;
+        }
+
+        return;
+      }
+
+      // ======================================
+      // NORMAL SALAH
+      // ======================================
+
+      if (source === "salah") {
+        salah += amount;
+        return;
+      }
+
+      // ======================================
+      // NORMAL BAHAA
+      // ======================================
+
+      if (source === "bahaa") {
+        bahaa += amount;
+        return;
+      }
+
+      // ======================================
+      // NORMAL ABDOU
+      // ======================================
+
+      if (source === "abdou") {
+        abdou += amount;
+        return;
+      }
+
+      // ======================================
+      // WALK-IN / OTHER
+      // ======================================
+
+      salesTeam += amount;
     });
+
+    const customerSales =
+      salah +
+      bahaa +
+      abdou +
+      salesTeam;
 
     return {
       gross,
       teyseer,
-      customer
+      salah,
+      bahaa,
+      abdou,
+      salesTeam,
+      customerSales,
     };
   }
 
-  // =====================================
+  // ==========================================
   // DATE FILTER
-  // =====================================
+  // ==========================================
 
-  const filteredJobs = jobs.filter((job) => {
-    if (dateFilter === "All") {
+  const filteredJobs = jobs.filter(
+    (job) => {
+      if (dateFilter === "All") {
+        return true;
+      }
+
+      if (!job.created_at) {
+        return false;
+      }
+
+      const jobDate =
+        new Date(job.created_at);
+
+      const now = new Date();
+
+      if (dateFilter === "Today") {
+        return (
+          jobDate.toDateString() ===
+          now.toDateString()
+        );
+      }
+
+      if (dateFilter === "Month") {
+        return (
+          jobDate.getMonth() ===
+            now.getMonth() &&
+          jobDate.getFullYear() ===
+            now.getFullYear()
+        );
+      }
+
+      if (dateFilter === "Year") {
+        return (
+          jobDate.getFullYear() ===
+          now.getFullYear()
+        );
+      }
+
       return true;
     }
+  );
 
-    if (!job.created_at) {
-      return false;
-    }
-
-    const jobDate = new Date(job.created_at);
-    const now = new Date();
-
-    if (dateFilter === "Today") {
-      return (
-        jobDate.toDateString() ===
-        now.toDateString()
-      );
-    }
-
-    if (dateFilter === "Month") {
-      return (
-        jobDate.getMonth() ===
-          now.getMonth() &&
-        jobDate.getFullYear() ===
-          now.getFullYear()
-      );
-    }
-
-    if (dateFilter === "Year") {
-      return (
-        jobDate.getFullYear() ===
-        now.getFullYear()
-      );
-    }
-
-    return true;
-  });
-
-  // =====================================
+  // ==========================================
   // JOB COUNTS
-  // =====================================
+  // ==========================================
 
   const totalJobs =
     filteredJobs.length;
@@ -414,7 +492,8 @@ function Dashboard() {
   const newJobs =
     filteredJobs.filter(
       (job) =>
-        (job.status || "New") === "New"
+        (job.status || "New") ===
+        "New"
     ).length;
 
   const progressJobs =
@@ -435,135 +514,227 @@ function Dashboard() {
         job.status === "Delivered"
     ).length;
 
-  // =====================================
+  // ==========================================
   // SALES CALCULATION
-  // =====================================
+  // ==========================================
 
-  let internalSales = 0;
-  let customerNetSales = 0;
   let teyseerSales = 0;
+  let salahSales = 0;
+  let bahaaSales = 0;
+  let abdouSales = 0;
+  let salesTeamSales = 0;
+
+  let rawGrossSales = 0;
 
   filteredJobs.forEach((job) => {
     const breakdown =
       getJobSalesBreakdown(job);
 
-    // ALL GROSS SALES
-    internalSales += breakdown.gross;
-
-    // CUSTOMER-PAYABLE GROSS
-    customerNetSales +=
-      breakdown.customer;
-
-    // TEYSEER-PAYABLE GROSS
     teyseerSales +=
       breakdown.teyseer;
+
+    salahSales +=
+      breakdown.salah;
+
+    bahaaSales +=
+      breakdown.bahaa;
+
+    abdouSales +=
+      breakdown.abdou;
+
+    salesTeamSales +=
+      breakdown.salesTeam;
+
+    rawGrossSales +=
+      breakdown.gross;
   });
 
-  // Sales Team Sales = all customer sales
-  const salesTeamSales =
-    customerNetSales;
+  const customerSales =
+    salahSales +
+    bahaaSales +
+    abdouSales +
+    salesTeamSales;
 
-  // =====================================
-  // PAYMENTS
-  // =====================================
+  const totalSales =
+    teyseerSales +
+    customerSales;
 
-  const filteredJobIds = new Set(
-    filteredJobs.map((job) => job.id)
+  // ==========================================
+  // DEBUG
+  // ==========================================
+
+  console.log(
+    "========== SALES CALCULATION =========="
   );
 
-  const filteredPayments =
-    payments.filter((payment) =>
-      filteredJobIds.has(
-        payment.job_id
+  console.log(
+    "TEYSEER SALES:",
+    teyseerSales
+  );
+
+  console.log(
+    "SALAH SALES:",
+    salahSales
+  );
+
+  console.log(
+    "BAHAA SALES:",
+    bahaaSales
+  );
+
+  console.log(
+    "ABDOU SALES:",
+    abdouSales
+  );
+
+  console.log(
+    "SALES TEAM SALES:",
+    salesTeamSales
+  );
+
+  console.log(
+    "CUSTOMER / PERSONAL SALES:",
+    customerSales
+  );
+
+  console.log(
+    "CALCULATED TOTAL SALES:",
+    totalSales
+  );
+
+  console.log(
+    "RAW GROSS SALES:",
+    rawGrossSales
+  );
+
+  console.log(
+    "DIFFERENCE:",
+    totalSales - rawGrossSales
+  );
+
+  console.log(
+    "======================================="
+  );
+
+  // ==========================================
+  // PAYMENTS
+  // ==========================================
+
+  const filteredJobIds =
+    new Set(
+      filteredJobs.map(
+        (job) => job.id
       )
     );
 
-  // =====================================
-  // CUSTOMER PAID
-  //
-  // Only payments on jobs that have
-  // customer-payable amounts count.
-  // =====================================
-
-  const totalPaid =
-    filteredPayments.reduce(
-      (sum, payment) => {
-        const job = filteredJobs.find(
-          (item) =>
-            item.id === payment.job_id
-        );
-
-        if (!job) {
-          return sum;
-        }
-
-        const breakdown =
-          getJobSalesBreakdown(job);
-
-        // Pure Teyseer job:
-        // customer amount = 0
-        //
-        // Therefore customer payment
-        // should not be counted.
-        if (breakdown.customer <= 0) {
-          return sum;
-        }
-
-        return (
-          sum +
-          Number(payment.amount || 0)
-        );
-      },
-      0
+  const filteredPayments =
+    payments.filter(
+      (payment) =>
+        filteredJobIds.has(
+          payment.job_id
+        )
     );
 
-  // =====================================
-  // CUSTOMER BALANCE
-  // =====================================
+  let customerPaid = 0;
+  let teyseerPaid = 0;
 
-  const customerBalance = Math.max(
-    customerNetSales - totalPaid,
-    0
+  filteredPayments.forEach(
+    (payment) => {
+      const job =
+        filteredJobs.find(
+          (item) =>
+            item.id ===
+            payment.job_id
+        );
+
+      if (!job) {
+        return;
+      }
+
+      const breakdown =
+        getJobSalesBreakdown(job);
+
+      const paymentAmount =
+        Number(
+          payment.amount || 0
+        );
+
+      // ======================================
+      // PURE TEYSEER JOB
+      // ======================================
+
+      if (
+        breakdown.teyseer > 0 &&
+        breakdown.customerSales <= 0
+      ) {
+        teyseerPaid +=
+          paymentAmount;
+
+        return;
+      }
+
+      // ======================================
+      // CUSTOMER / PERSONAL / SALES TEAM JOB
+      //
+      // Payment belongs to customer side.
+      // ======================================
+
+      if (
+        breakdown.customerSales > 0
+      ) {
+        customerPaid +=
+          paymentAmount;
+      }
+    }
   );
 
-  // =====================================
-  // SALES TEAM PAYMENT / BALANCE
-  // =====================================
+  // ==========================================
+  // BALANCES
+  // ==========================================
 
-  const salesTeamPaid =
-    totalPaid;
-
-  const salesTeamBalance =
+  const customerBalance =
     Math.max(
-      salesTeamSales -
-        salesTeamPaid,
+      customerSales -
+        customerPaid,
       0
     );
 
-  // =====================================
+  const teyseerBalance =
+    Math.max(
+      teyseerSales -
+        teyseerPaid,
+      0
+    );
+
+  // ==========================================
   // SOURCE REPORT
-  // =====================================
+  // ==========================================
 
   const sourceReport = {
     "Teyseer Motors": {
       jobs: 0,
-      sales: 0
+      sales: 0,
     },
 
     Salah: {
       jobs: 0,
-      sales: 0
+      sales: 0,
     },
 
     Bahaa: {
       jobs: 0,
-      sales: 0
+      sales: 0,
+    },
+
+    Abdou: {
+      jobs: 0,
+      sales: 0,
     },
 
     "Sales Team": {
       jobs: 0,
-      sales: 0
-    }
+      sales: 0,
+    },
   };
 
   filteredJobs.forEach((job) => {
@@ -598,11 +769,9 @@ function Dashboard() {
         let reportSource =
           "Sales Team";
 
-        // ---------------------------------
+        // ====================================
         // PURE TEYSEER
-        //
-        // ALL SERVICES -> TEYSEER
-        // ---------------------------------
+        // ====================================
 
         if (
           isPureTeyseerSource(source)
@@ -611,59 +780,81 @@ function Dashboard() {
             "Teyseer Motors";
         }
 
-        // ---------------------------------
-        // TEYSEER-SALAH
-        //
-        // WTT -> TEYSEER
-        // OTHER -> SALAH
-        // ---------------------------------
+        // ====================================
+        // TEYSEER - SALAH
+        // ====================================
 
         else if (
-          isTeyseerSalahSource(
-            source
-          )
+          isTeyseerSalahSource(source)
         ) {
-          reportSource = isWtt
-            ? "Teyseer Motors"
-            : "Salah";
+          reportSource =
+            isWtt
+              ? "Teyseer Motors"
+              : "Salah";
         }
 
-        // ---------------------------------
-        // TEYSEER-BAHAA
-        //
-        // WTT -> TEYSEER
-        // OTHER -> BAHAA
-        // ---------------------------------
+        // ====================================
+        // TEYSEER - BAHAA
+        // ====================================
 
         else if (
-          isTeyseerBahaaSource(
-            source
-          )
+          isTeyseerBahaaSource(source)
         ) {
-          reportSource = isWtt
-            ? "Teyseer Motors"
-            : "Bahaa";
+          reportSource =
+            isWtt
+              ? "Teyseer Motors"
+              : "Bahaa";
         }
 
-        // ---------------------------------
+        // ====================================
+        // TEYSEER - ABDOU
+        // ====================================
+
+        else if (
+          isTeyseerAbdouSource(source)
+        ) {
+          reportSource =
+            isWtt
+              ? "Teyseer Motors"
+              : "Abdou";
+        }
+
+        // ====================================
         // NORMAL SALAH
-        // ---------------------------------
+        // ====================================
 
-        else if (source === "salah") {
-          reportSource = "Salah";
+        else if (
+          source === "salah"
+        ) {
+          reportSource =
+            "Salah";
         }
 
-        // ---------------------------------
+        // ====================================
         // NORMAL BAHAA
-        // ---------------------------------
+        // ====================================
 
-        else if (source === "bahaa") {
-          reportSource = "Bahaa";
+        else if (
+          source === "bahaa"
+        ) {
+          reportSource =
+            "Bahaa";
         }
 
-        // ---------------------------------
-        // EVERYTHING ELSE
-        // ---------------------------------
+        // ====================================
+        // NORMAL ABDOU
+        // ====================================
+
+        else if (
+          source === "abdou"
+        ) {
+          reportSource =
+            "Abdou";
+        }
+
+        // ====================================
+        // WALK-IN / OTHER
+        // ====================================
 
         else {
           reportSource =
@@ -679,7 +870,7 @@ function Dashboard() {
             reportSource
           ] = {
             jobs: 0,
-            sales: 0
+            sales: 0,
           };
         }
 
@@ -694,50 +885,62 @@ function Dashboard() {
     );
   });
 
-  // =====================================
+  // ==========================================
   // CHART DATA
-  // =====================================
+  // ==========================================
 
   const statusData = [
     {
       name: "New",
-      value: newJobs
+      value: newJobs,
     },
     {
       name: "Progress",
-      value: progressJobs
+      value: progressJobs,
     },
     {
       name: "Finished",
-      value: finishedJobs
+      value: finishedJobs,
     },
     {
       name: "Delivered",
-      value: deliveredJobs
-    }
+      value: deliveredJobs,
+    },
   ];
 
   const salesData = [
     {
-      name: "Customer Sales",
-      amount: customerNetSales
+      name: "Teyseer",
+      amount: teyseerSales,
     },
     {
-      name: "Paid",
-      amount: totalPaid
+      name: "Salah",
+      amount: salahSales,
     },
     {
-      name: "Due",
-      amount: customerBalance
-    }
+      name: "Bahaa",
+      amount: bahaaSales,
+    },
+    {
+      name: "Abdou",
+      amount: abdouSales,
+    },
+    {
+      name: "Sales Team",
+      amount: salesTeamSales,
+    },
   ];
 
   const COLORS = [
     "#d4af37",
     "#f59e0b",
     "#22c55e",
-    "#0891b2"
+    "#0891b2",
   ];
+
+  // ==========================================
+  // RENDER
+  // ==========================================
 
   return (
     <div style={styles.page}>
@@ -757,13 +960,12 @@ function Dashboard() {
           </div>
 
           <div style={styles.headerActions}>
-
             <UserMenu />
 
             <Link
               to="/new-job"
               style={{
-                textDecoration: "none"
+                textDecoration: "none",
               }}
             >
               <button
@@ -776,7 +978,7 @@ function Dashboard() {
             <Link
               to="/inventory"
               style={{
-                textDecoration: "none"
+                textDecoration: "none",
               }}
             >
               <button
@@ -791,7 +993,7 @@ function Dashboard() {
             <Link
               to="/technician-earnings"
               style={{
-                textDecoration: "none"
+                textDecoration: "none",
               }}
             >
               <button
@@ -802,14 +1004,12 @@ function Dashboard() {
                 👷 Technician Earnings
               </button>
             </Link>
-
           </div>
         </div>
 
         {/* DATE FILTER */}
 
         <div style={styles.filterBox}>
-
           <label
             style={styles.filterLabel}
           >
@@ -841,7 +1041,6 @@ function Dashboard() {
               This Year
             </option>
           </select>
-
         </div>
 
         {/* SUMMARY CARDS */}
@@ -883,69 +1082,92 @@ function Dashboard() {
           />
 
           <Card
-            title="Internal Sales"
-            value={`QAR ${internalSales.toFixed(
-              2
+            title="Total Sales"
+            value={`QAR ${money(
+              totalSales
             )}`}
             icon="💰"
           />
 
           <Card
-            title="Customer Net Sales"
-            value={`QAR ${customerNetSales.toFixed(
-              2
-            )}`}
-            icon="💵"
-          />
-
-          <Card
             title="Teyseer Sales"
-            value={`QAR ${teyseerSales.toFixed(
-              2
+            value={`QAR ${money(
+              teyseerSales
             )}`}
             icon="🏢"
           />
 
           <Card
+            title="Salah Sales"
+            value={`QAR ${money(
+              salahSales
+            )}`}
+            icon="👤"
+          />
+
+          <Card
+            title="Bahaa Sales"
+            value={`QAR ${money(
+              bahaaSales
+            )}`}
+            icon="👤"
+          />
+
+          <Card
+            title="Abdou Sales"
+            value={`QAR ${money(
+              abdouSales
+            )}`}
+            icon="👤"
+          />
+
+          <Card
             title="Sales Team Sales"
-            value={`QAR ${salesTeamSales.toFixed(
-              2
+            value={`QAR ${money(
+              salesTeamSales
             )}`}
-            icon="👥"
+            icon="💵"
           />
 
           <Card
-            title="Sales Team Paid"
-            value={`QAR ${salesTeamPaid.toFixed(
-              2
+            title="Customer / Personal Sales"
+            value={`QAR ${money(
+              customerSales
             )}`}
-            icon="👥💳"
+            icon="💰"
           />
 
           <Card
-            title="Sales Team Balance"
-            value={`QAR ${salesTeamBalance.toFixed(
-              2
-            )}`}
-            icon="👥⚠️"
-          />
-
-          <Card
-            title="Paid"
-            value={`QAR ${totalPaid.toFixed(
-              2
+            title="Customer / Personal Paid"
+            value={`QAR ${money(
+              customerPaid
             )}`}
             icon="💳"
           />
 
           <Card
-            title="Balance Due"
-            value={`QAR ${customerBalance.toFixed(
-              2
+            title="Customer / Personal Balance"
+            value={`QAR ${money(
+              customerBalance
             )}`}
             icon="⚠️"
           />
 
+          <Card
+            title="Teyseer Paid"
+            value={`QAR ${money(
+              teyseerPaid
+            )}`}
+            icon="🏢💳"
+          />
+
+          <Card
+            title="Teyseer Balance"
+            value={`QAR ${money(
+              teyseerBalance
+            )}`}
+            icon="🏢⚠️"
+          />
         </div>
 
         {/* RECENT JOBS */}
@@ -955,7 +1177,6 @@ function Dashboard() {
         </h2>
 
         <div style={styles.tableBox}>
-
           <table style={styles.table}>
 
             <thead>
@@ -981,36 +1202,53 @@ function Dashboard() {
                 </th>
 
                 <th style={styles.th}>
-                  Balance
+                  Teyseer
+                </th>
+
+                <th style={styles.th}>
+                  Salah
+                </th>
+
+                <th style={styles.th}>
+                  Bahaa
+                </th>
+
+                <th style={styles.th}>
+                  Abdou
+                </th>
+
+                <th style={styles.th}>
+                  Sales Team
                 </th>
               </tr>
             </thead>
 
             <tbody>
-
               {filteredJobs
                 .slice(0, 5)
                 .map((job) => {
-
                   const breakdown =
                     getJobSalesBreakdown(
                       job
                     );
 
                   return (
-                    <tr key={job.id}>
-
+                    <tr
+                      key={job.id}
+                    >
                       <td style={styles.td}>
                         {job.customer ||
                           "Unknown"}
                       </td>
 
                       <td style={styles.td}>
-                        {job.carModel || "-"}
+                        {job.carModel ||
+                          "-"}
                       </td>
 
                       <td style={styles.td}>
-                        {job.source || "-"}
+                        {job.source ||
+                          "-"}
                       </td>
 
                       <td style={styles.td}>
@@ -1026,28 +1264,49 @@ function Dashboard() {
 
                       <td style={styles.td}>
                         QAR{" "}
-                        {breakdown.gross.toFixed(
-                          2
+                        {money(
+                          breakdown.gross
                         )}
                       </td>
 
                       <td style={styles.td}>
                         QAR{" "}
-                        {breakdown.customer <=
-                        0
-                          ? "0.00"
-                          : Number(
-                              job.balance ||
-                                0
-                            ).toFixed(2)}
+                        {money(
+                          breakdown.teyseer
+                        )}
                       </td>
 
+                      <td style={styles.td}>
+                        QAR{" "}
+                        {money(
+                          breakdown.salah
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        QAR{" "}
+                        {money(
+                          breakdown.bahaa
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        QAR{" "}
+                        {money(
+                          breakdown.abdou
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        QAR{" "}
+                        {money(
+                          breakdown.salesTeam
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
-
             </tbody>
-
           </table>
 
           {filteredJobs.length ===
@@ -1057,7 +1316,6 @@ function Dashboard() {
               period.
             </p>
           )}
-
         </div>
 
         {/* STATISTICS */}
@@ -1069,7 +1327,6 @@ function Dashboard() {
         <div style={styles.charts}>
 
           <div style={styles.chartBox}>
-
             <h3
               style={styles.chartTitle}
             >
@@ -1081,7 +1338,6 @@ function Dashboard() {
               height={250}
             >
               <PieChart>
-
                 <Pie
                   data={statusData}
                   dataKey="value"
@@ -1089,7 +1345,6 @@ function Dashboard() {
                   outerRadius={90}
                   label
                 >
-
                   {statusData.map(
                     (
                       entry,
@@ -1103,7 +1358,6 @@ function Dashboard() {
                       />
                     )
                   )}
-
                 </Pie>
 
                 <Tooltip
@@ -1111,30 +1365,24 @@ function Dashboard() {
                     styles.tooltip
                   }
                 />
-
               </PieChart>
             </ResponsiveContainer>
-
           </div>
 
           <div style={styles.chartBox}>
-
             <h3
               style={styles.chartTitle}
             >
-              Customer Financial
-              Overview
+              Sales Overview
             </h3>
 
             <ResponsiveContainer
               width="100%"
               height={250}
             >
-
               <BarChart
                 data={salesData}
               >
-
                 <XAxis
                   dataKey="name"
                   stroke="#aaa"
@@ -1157,16 +1405,12 @@ function Dashboard() {
                     6,
                     6,
                     0,
-                    0
+                    0,
                   ]}
                 />
-
               </BarChart>
-
             </ResponsiveContainer>
-
           </div>
-
         </div>
 
         {/* CUSTOMER SOURCES */}
@@ -1181,14 +1425,12 @@ function Dashboard() {
             sourceReport
           ).map(
             ([name, data]) => (
-
               <div
                 key={name}
                 style={
                   styles.recentCard
                 }
               >
-
                 <h3
                   style={
                     styles.goldText
@@ -1219,16 +1461,14 @@ function Dashboard() {
                     }
                   >
                     QAR{" "}
-                    {data.sales.toFixed(
-                      2
+                    {money(
+                      data.sales
                     )}
                   </span>
                 </h3>
-
               </div>
             )
           )}
-
         </div>
 
         {/* QUICK ACTIONS */}
@@ -1253,7 +1493,9 @@ function Dashboard() {
               ➕
             </div>
 
-            <h3>New Job</h3>
+            <h3>
+              New Job
+            </h3>
 
             <p>
               Create service order
@@ -1274,7 +1516,9 @@ function Dashboard() {
               📋
             </div>
 
-            <h3>Jobs</h3>
+            <h3>
+              Jobs
+            </h3>
 
             <p>
               Manage repairs
@@ -1295,7 +1539,9 @@ function Dashboard() {
               🧾
             </div>
 
-            <h3>Invoice</h3>
+            <h3>
+              Invoice
+            </h3>
 
             <p>
               Select a car to create
@@ -1317,7 +1563,9 @@ function Dashboard() {
               ⚙️
             </div>
 
-            <h3>Settings</h3>
+            <h3>
+              Settings
+            </h3>
 
             <p>
               System setup
@@ -1338,7 +1586,9 @@ function Dashboard() {
               📊
             </div>
 
-            <h3>Reports</h3>
+            <h3>
+              Reports
+            </h3>
 
             <p>
               Financial overview
@@ -1359,30 +1609,29 @@ function Dashboard() {
               📦
             </div>
 
-            <h3>Inventory</h3>
+            <h3>
+              Inventory
+            </h3>
 
             <p>
               Manage products and stock
             </p>
           </Link>
-
         </div>
-
       </div>
     </div>
   );
 }
 
-
-// =====================================
-// DASHBOARD CARD
-// =====================================
+// ==========================================
+// CARD
+// ==========================================
 
 function Card({
   title,
   value,
   status,
-  icon
+  icon,
 }) {
   const colors = {
     "Total Jobs": "#d4af37",
@@ -1390,44 +1639,66 @@ function Card({
     "In Progress": "#f59e0b",
     Finished: "#22c55e",
     Delivered: "#0891b2",
-    "Internal Sales": "#d4af37",
-    "Customer Net Sales": "#d4af37",
+
+    "Total Sales": "#d4af37",
+
     "Teyseer Sales": "#d4af37",
-    "Sales Team Sales": "#0891b2",
-    "Sales Team Paid": "#22c55e",
-    "Sales Team Balance": "#f59e0b",
-    Paid: "#22c55e",
-    "Balance Due": "#dc2626"
+
+    "Salah Sales": "#d4af37",
+
+    "Bahaa Sales": "#d4af37",
+
+    "Abdou Sales": "#d4af37",
+
+    "Sales Team Sales": "#d4af37",
+
+    "Customer / Personal Sales":
+      "#d4af37",
+
+    "Customer / Personal Paid":
+      "#22c55e",
+
+    "Customer / Personal Balance":
+      "#f59e0b",
+
+    "Teyseer Paid":
+      "#22c55e",
+
+    "Teyseer Balance":
+      "#dc2626",
   };
 
   const content = (
     <div
       style={{
         ...styles.card,
+
         borderTop:
           `4px solid ${
             colors[title] ||
             "#d4af37"
-          }`
+          }`,
       }}
     >
-
       <div style={styles.icon}>
         {icon}
       </div>
 
       <h3
-        style={styles.cardTitle}
+        style={
+          styles.cardTitle
+        }
       >
         {title}
       </h3>
 
       <h2
-        style={styles.cardValue}
+        style={
+          styles.cardValue
+        }
       >
         {value}
       </h2>
-
     </div>
   );
 
@@ -1438,7 +1709,8 @@ function Card({
           status
         )}`}
         style={{
-          textDecoration: "none"
+          textDecoration:
+            "none",
         }}
       >
         {content}
@@ -1449,10 +1721,9 @@ function Card({
   return content;
 }
 
-
-// =====================================
+// ==========================================
 // STYLES
-// =====================================
+// ==========================================
 
 const styles = {
   page: {
@@ -1460,40 +1731,41 @@ const styles = {
     padding: "30px",
     background: "#0b0b0b",
     color: "#f5f5f5",
-    boxSizing: "border-box"
+    boxSizing: "border-box",
   },
 
   container: {
     width: "100%",
     maxWidth: "1400px",
-    margin: "0 auto"
+    margin: "0 auto",
   },
 
   header: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     gap: "20px",
     marginBottom: "30px",
-    flexWrap: "wrap"
+    flexWrap: "wrap",
   },
 
   title: {
     color: "#d4af37",
     fontSize: "30px",
-    margin: 0
+    margin: 0,
   },
 
   subtitle: {
     color: "#999",
-    marginTop: "8px"
+    marginTop: "8px",
   },
 
   headerActions: {
     display: "flex",
     gap: "12px",
     alignItems: "center",
-    flexWrap: "wrap"
+    flexWrap: "wrap",
   },
 
   newButton: {
@@ -1504,45 +1776,49 @@ const styles = {
     borderRadius: "10px",
     fontSize: "16px",
     cursor: "pointer",
-    fontWeight: "bold"
+    fontWeight: "bold",
   },
 
   secondaryButton: {
     background: "#222",
     color: "#f5f5f5",
-    border: "1px solid #555",
-    padding: "12px 18px",
+    border:
+      "1px solid #555",
+    padding:
+      "12px 18px",
     borderRadius: "10px",
     fontSize: "15px",
     cursor: "pointer",
-    fontWeight: "bold"
+    fontWeight: "bold",
   },
 
   filterBox: {
     background: "#151515",
-    border: "1px solid #3b321c",
+    border:
+      "1px solid #3b321c",
     borderRadius: "12px",
     padding: "18px",
     marginBottom: "25px",
     display: "flex",
     alignItems: "center",
     gap: "15px",
-    flexWrap: "wrap"
+    flexWrap: "wrap",
   },
 
   filterLabel: {
     color: "#d4af37",
-    fontWeight: "bold"
+    fontWeight: "bold",
   },
 
   select: {
     padding: "12px",
     borderRadius: "8px",
-    border: "1px solid #555",
+    border:
+      "1px solid #555",
     background: "#222",
     color: "#fff",
     fontSize: "16px",
-    cursor: "pointer"
+    cursor: "pointer",
   },
 
   cards: {
@@ -1550,7 +1826,7 @@ const styles = {
     gridTemplateColumns:
       "repeat(auto-fit,minmax(220px,1fr))",
     gap: "18px",
-    marginBottom: "40px"
+    marginBottom: "40px",
   },
 
   card: {
@@ -1558,73 +1834,80 @@ const styles = {
     padding: "22px",
     borderRadius: "12px",
     textAlign: "center",
-    border: "1px solid #3b321c",
+    border:
+      "1px solid #3b321c",
     boxShadow:
       "0 8px 20px rgba(0,0,0,0.35)",
     color: "#f5f5f5",
     minHeight: "150px",
-    boxSizing: "border-box"
+    boxSizing: "border-box",
   },
 
   icon: {
     fontSize: "34px",
-    marginBottom: "8px"
+    marginBottom: "8px",
   },
 
   cardTitle: {
     color: "#aaa",
-    margin: "5px 0 10px"
+    margin:
+      "5px 0 10px",
   },
 
   cardValue: {
     color: "#d4af37",
     margin: 0,
-    fontSize: "24px"
+    fontSize: "24px",
   },
 
   heading: {
     color: "#d4af37",
     marginTop: "35px",
-    marginBottom: "18px"
+    marginBottom: "18px",
   },
 
   tableBox: {
     background: "#151515",
-    border: "1px solid #3b321c",
+    border:
+      "1px solid #3b321c",
     borderRadius: "12px",
     padding: "20px",
     boxShadow:
       "0 8px 20px rgba(0,0,0,0.35)",
     marginBottom: "40px",
-    overflowX: "auto"
+    overflowX: "auto",
   },
 
   table: {
     width: "100%",
-    borderCollapse: "collapse",
-    textAlign: "left"
+    borderCollapse:
+      "collapse",
+    textAlign: "left",
   },
 
   th: {
     color: "#d4af37",
     padding: "14px",
     borderBottom:
-      "1px solid #3b321c"
+      "1px solid #3b321c",
+    whiteSpace: "nowrap",
   },
 
   td: {
     padding: "14px",
     borderBottom:
       "1px solid #292929",
-    color: "#eee"
+    color: "#eee",
+    whiteSpace: "nowrap",
   },
 
   status: {
     background: "#3b321c",
     color: "#d4af37",
-    padding: "6px 12px",
+    padding:
+      "6px 12px",
     borderRadius: "20px",
-    fontSize: "14px"
+    fontSize: "14px",
   },
 
   charts: {
@@ -1632,27 +1915,28 @@ const styles = {
     gridTemplateColumns:
       "repeat(auto-fit,minmax(300px,1fr))",
     gap: "20px",
-    marginBottom: "40px"
+    marginBottom: "40px",
   },
 
   chartBox: {
     background: "#151515",
-    border: "1px solid #3b321c",
+    border:
+      "1px solid #3b321c",
     padding: "20px",
     borderRadius: "12px",
     boxShadow:
-      "0 8px 20px rgba(0,0,0,0.35)"
+      "0 8px 20px rgba(0,0,0,0.35)",
   },
 
   chartTitle: {
-    color: "#d4af37"
+    color: "#d4af37",
   },
 
   tooltip: {
     background: "#151515",
     border:
       "1px solid #d4af37",
-    color: "#fff"
+    color: "#fff",
   },
 
   recent: {
@@ -1660,30 +1944,31 @@ const styles = {
     gridTemplateColumns:
       "repeat(auto-fit,minmax(250px,1fr))",
     gap: "20px",
-    marginBottom: "40px"
+    marginBottom: "40px",
   },
 
   recentCard: {
     background: "#151515",
     padding: "20px",
     borderRadius: "12px",
-    border: "1px solid #3b321c",
+    border:
+      "1px solid #3b321c",
     boxShadow:
-      "0 8px 20px rgba(0,0,0,0.35)"
+      "0 8px 20px rgba(0,0,0,0.35)",
   },
 
   goldText: {
-    color: "#d4af37"
+    color: "#d4af37",
   },
 
   bigNumber: {
     color: "#fff",
     fontSize: "32px",
-    marginBottom: "0"
+    marginBottom: "0",
   },
 
   muted: {
-    color: "#888"
+    color: "#888",
   },
 
   actions: {
@@ -1691,7 +1976,7 @@ const styles = {
     gridTemplateColumns:
       "repeat(auto-fit,minmax(180px,1fr))",
     gap: "20px",
-    paddingBottom: "40px"
+    paddingBottom: "40px",
   },
 
   actionCard: {
@@ -1701,23 +1986,24 @@ const styles = {
     textDecoration: "none",
     color: "#f5f5f5",
     textAlign: "center",
-    border: "1px solid #3b321c",
+    border:
+      "1px solid #3b321c",
     boxShadow:
       "0 8px 20px rgba(0,0,0,0.35)",
     display: "block",
-    transition: "0.2s"
+    transition: "0.2s",
   },
 
   actionIcon: {
     fontSize: "32px",
-    marginBottom: "8px"
+    marginBottom: "8px",
   },
 
   empty: {
     color: "#888",
     textAlign: "center",
-    padding: "20px"
-  }
+    padding: "20px",
+  },
 };
 
 export default Dashboard;

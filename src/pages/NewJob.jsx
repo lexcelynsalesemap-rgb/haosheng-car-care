@@ -53,20 +53,62 @@ function NewJob() {
   const [serviceList, setServiceList] = useState([]);
 
   // ============================================
-  // TEYSEER CHECK
+  // SOURCE HELPERS
   // ============================================
+
+  function normalizeSource(sourceName) {
+    return String(sourceName || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
+  function isPureTeyseerSource(sourceName) {
+    return normalizeSource(sourceName) === "teyseer motors";
+  }
+
+  function isTeyseerSalahSource(sourceName) {
+    const value = normalizeSource(sourceName);
+
+    return (
+      value === "teyseer motors - salah" ||
+      value === "teyseer motors-salah" ||
+      value === "teyseer-salah"
+    );
+  }
+
+  function isTeyseerBahaaSource(sourceName) {
+    const value = normalizeSource(sourceName);
+
+    return (
+      value === "teyseer motors - bahaa" ||
+      value === "teyseer motors-bahaa" ||
+      value === "teyseer-bahaa"
+    );
+  }
+
+  function isTeyseerAbdouSource(sourceName) {
+    const value = normalizeSource(sourceName);
+
+    return (
+      value === "teyseer motors - abdou" ||
+      value === "teyseer motors-abdou" ||
+      value === "teyseer-abdou"
+    );
+  }
 
   function isTeyseerSource(sourceName) {
     return (
-      sourceName === "Teyseer Motors" ||
-      sourceName === "Teyseer Motors - Bahaa" ||
-      sourceName === "Teyseer Motors - Salah"
+      isPureTeyseerSource(sourceName) ||
+      isTeyseerSalahSource(sourceName) ||
+      isTeyseerBahaaSource(sourceName) ||
+      isTeyseerAbdouSource(sourceName)
     );
   }
 
   function isWttService(serviceName) {
-    return serviceName
-      ?.toLowerCase()
+    return String(serviceName || "")
+      .toLowerCase()
       .includes("wtt");
   }
 
@@ -77,7 +119,8 @@ function NewJob() {
   async function loadServices() {
     const { data, error } = await supabase
       .from("services")
-      .select("*");
+      .select("*")
+      .order("name");
 
     if (error) {
       console.error("SERVICES ERROR:", error);
@@ -95,7 +138,8 @@ function NewJob() {
     const { data, error } = await supabase
       .from("technicians")
       .select("*")
-      .eq("active", true);
+      .eq("active", true)
+      .order("name");
 
     if (error) {
       console.error("TECHNICIANS ERROR:", error);
@@ -117,8 +161,9 @@ function NewJob() {
   // ============================================
   // TOTAL OF ALL SERVICES
   //
-  // This is the internal total.
-  // It can include WTT.
+  // Gross/internal total.
+  // Includes WTT.
+  // Service discount is subtracted here.
   // ============================================
 
   const total = services.reduce((sum, serviceName) => {
@@ -128,33 +173,24 @@ function NewJob() {
     const quantity = Number(details.quantity || 1);
     const serviceDiscount = Number(details.discount || 0);
 
-    return (
-      sum +
-      Math.max(
-        price * quantity - serviceDiscount,
-        0
-      )
+    const amount = Math.max(
+      price * quantity - serviceDiscount,
+      0
     );
+
+    return sum + amount;
   }, 0);
 
   // ============================================
-  // CUSTOMER PAYABLE TOTAL
+  // CUSTOMER SERVICES TOTAL
   //
-  // IMPORTANT:
-  //
-  // If this is a Teyseer job:
-  // WTT is paid by Teyseer.
-  //
-  // Therefore WTT is excluded from the
-  // customer's payable amount.
+  // WTT is excluded only for Teyseer sources.
   // ============================================
 
   const customerServicesTotal = services.reduce(
     (sum, serviceName) => {
-      const details =
-        serviceDetails[serviceName] || {};
+      const details = serviceDetails[serviceName] || {};
 
-      // WTT is paid by Teyseer
       if (
         isTeyseerSource(source) &&
         isWttService(serviceName)
@@ -164,24 +200,20 @@ function NewJob() {
 
       const price = Number(details.price || 0);
       const quantity = Number(details.quantity || 1);
-      const serviceDiscount =
-        Number(details.discount || 0);
+      const serviceDiscount = Number(details.discount || 0);
 
-      return (
-        sum +
-        Math.max(
-          price * quantity - serviceDiscount,
-          0
-        )
+      const amount = Math.max(
+        price * quantity - serviceDiscount,
+        0
       );
+
+      return sum + amount;
     },
     0
   );
 
   // ============================================
-  // FINAL CUSTOMER NET AMOUNT
-  //
-  // This is what the customer actually pays.
+  // CUSTOMER NET AMOUNT
   // ============================================
 
   const finalNetAmount = Math.max(
@@ -192,9 +224,6 @@ function NewJob() {
 
   // ============================================
   // CUSTOMER BALANCE
-  //
-  // Deposit is only against customer's amount.
-  // WTT is NOT part of this.
   // ============================================
 
   const finalBalance = Math.max(
@@ -215,28 +244,27 @@ function NewJob() {
 
       setServiceDetails((prev) => {
         const copy = { ...prev };
-
         delete copy[service];
-
         return copy;
       });
-    } else {
-      setServices((prev) => [
-        ...prev,
-        service,
-      ]);
 
-      setServiceDetails((prev) => ({
-        ...prev,
-
-        [service]: {
-          price: Number(price || 0),
-          discount: 0,
-          quantity: 1,
-          technicians: [],
-        },
-      }));
+      return;
     }
+
+    setServices((prev) => [
+      ...prev,
+      service,
+    ]);
+
+    setServiceDetails((prev) => ({
+      ...prev,
+      [service]: {
+        price: Number(price || 0),
+        discount: 0,
+        quantity: 1,
+        technicians: [],
+      },
+    }));
   }
 
   // ============================================
@@ -269,7 +297,6 @@ function NewJob() {
 
     setServiceDetails((prev) => ({
       ...prev,
-
       "Full WTT": {
         ...prev["Full WTT"],
         price,
@@ -278,35 +305,104 @@ function NewJob() {
   }, [source, carType, services]);
 
   // ============================================
+  // GET SERVICE OWNER
+  //
+  // IMPORTANT:
+  //
+  // Teyseer Motors
+  //   -> all services = Teyseer
+  //
+  // Teyseer Motors - Salah
+  //   -> WTT = Teyseer
+  //   -> Other = Salah
+  //
+  // Teyseer Motors - Bahaa
+  //   -> WTT = Teyseer
+  //   -> Other = Bahaa
+  //
+  // Teyseer Motors - Abdou
+  //   -> WTT = Teyseer
+  //   -> Other = Abdou
+  //
+  // Salah
+  //   -> Salah
+  //
+  // Bahaa
+  //   -> Bahaa
+  //
+  // Abdou
+  //   -> Abdou
+  //
+  // Walk-in / Other
+  //   -> Sales Team
+  // ============================================
+
+  function getServiceOwner(sourceName, serviceName) {
+    const sourceValue = normalizeSource(sourceName);
+    const isWtt = isWttService(serviceName);
+
+    if (isPureTeyseerSource(sourceValue)) {
+      return "Teyseer";
+    }
+
+    if (isTeyseerSalahSource(sourceValue)) {
+      return isWtt ? "Teyseer" : "Salah";
+    }
+
+    if (isTeyseerBahaaSource(sourceValue)) {
+      return isWtt ? "Teyseer" : "Bahaa";
+    }
+
+    if (isTeyseerAbdouSource(sourceValue)) {
+      return isWtt ? "Teyseer" : "Abdou";
+    }
+
+    if (sourceValue === "salah") {
+      return "Salah";
+    }
+
+    if (sourceValue === "bahaa") {
+      return "Bahaa";
+    }
+
+    if (sourceValue === "abdou") {
+      return "Abdou";
+    }
+
+    return "Sales Team";
+  }
+
+  // ============================================
   // SAVE JOB
   // ============================================
 
   async function saveJob() {
-    // --------------------------------------------
-    // BASIC VALIDATION
-    // --------------------------------------------
-
     if (!customer.trim()) {
       alert("Please enter customer name.");
       return;
     }
 
-    // --------------------------------------------
-    // TEYSEER VOUCHER VALIDATION
-    // --------------------------------------------
-
     const isTeyseer = isTeyseerSource(source);
 
     if (isTeyseer && !voucherNumber.trim()) {
-      alert(
-        "Please enter the Teyseer Voucher Number."
-      );
+      alert("Please enter the Teyseer Voucher Number.");
       return;
     }
 
-    // --------------------------------------------
-    // GET NEXT RECEIPT NUMBER
-    // --------------------------------------------
+    const loggedInUser = JSON.parse(
+      localStorage.getItem("user")
+    );
+
+    const shopId = loggedInUser?.shop_id;
+
+    if (!shopId) {
+      alert("Shop ID not found. Please log in again.");
+      return;
+    }
+
+    // ==========================================
+    // NEXT RECEIPT NUMBER
+    // ==========================================
 
     const {
       data: lastJob,
@@ -314,6 +410,7 @@ function NewJob() {
     } = await supabase
       .from("jobs")
       .select("receipt_number")
+      .eq("shop_id", shopId)
       .not("receipt_number", "is", null)
       .order("receipt_number", {
         ascending: false,
@@ -336,9 +433,9 @@ function NewJob() {
         ? Number(lastJob.receipt_number) + 1
         : 2718;
 
-    // --------------------------------------------
+    // ==========================================
     // PAYMENT METHOD
-    // --------------------------------------------
+    // ==========================================
 
     const savedPaymentMethod =
       paymentMethod &&
@@ -346,70 +443,57 @@ function NewJob() {
         ? paymentMethod
         : null;
 
-    // --------------------------------------------
+    // ==========================================
     // SOURCE
-    // --------------------------------------------
+    // ==========================================
 
     const savedSource =
       source === "Other"
-        ? otherSource
+        ? otherSource.trim()
         : source;
 
-    // --------------------------------------------
+    // ==========================================
     // CREATE JOB
-    // --------------------------------------------
+    // ==========================================
 
-  const loggedInUser = JSON.parse(
-  localStorage.getItem("user")
-);
+    const job = {
+      shop_id: shopId,
 
-const job = {
-  shop_id: loggedInUser?.shop_id,
+      customer,
+      phone,
+      date,
 
-  customer,
-  phone,
-
-  date,
-
-  receipt_number:
-    nextReceiptNumber,
+      receipt_number:
+        nextReceiptNumber,
 
       source: savedSource,
 
-      // KEEP TEYSEER VOUCHER NUMBER
-      voucherNumber: isTeyseer
-        ? voucherNumber
-        : "",
+      voucherNumber:
+        isTeyseer
+          ? voucherNumber
+          : "",
 
       carModel,
-
       carType,
-
       color,
-
       chassis,
-
       plate,
 
       services,
-
       serviceDetails,
 
       paymentMethod:
         savedPaymentMethod,
 
-      // INTERNAL TOTAL OF ALL SERVICES
-      price: Number(total),
+      price:
+        Number(total),
 
       discount:
         Number(discount || 0),
 
-      // CUSTOMER'S ACTUAL DEPOSIT
       deposit:
         Number(deposit || 0),
 
-      // CUSTOMER'S BALANCE
-      // WTT IS ALREADY PAID BY TEYSEER
       balance:
         Number(finalBalance),
 
@@ -421,9 +505,9 @@ const job = {
       job
     );
 
-    // --------------------------------------------
+    // ==========================================
     // INSERT JOB
-    // --------------------------------------------
+    // ==========================================
 
     const {
       data: jobData,
@@ -444,13 +528,9 @@ const job = {
       return;
     }
 
-    // --------------------------------------------
-    // CREATE CUSTOMER PAYMENT
-    //
-    // ONLY THE CUSTOMER'S DEPOSIT.
-    //
-    // NO TEYSEER MONTHLY PAYMENT IS CREATED.
-    // --------------------------------------------
+    // ==========================================
+    // CUSTOMER PAYMENT
+    // ==========================================
 
     if (Number(deposit) > 0) {
       const {
@@ -486,25 +566,21 @@ const job = {
       }
     }
 
-    // --------------------------------------------
+    // ==========================================
     // CREATE JOB SERVICES
     //
-    // WTT = TEYSEER
-    // EVERYTHING ELSE = SALES TEAM
-    // --------------------------------------------
+    // OWNER NOW MATCHES THE SOURCE.
+    // ==========================================
 
     for (const serviceName of services) {
       const details =
         serviceDetails[serviceName] || {};
 
-      let owner = "Sales Team";
-
-      if (
-        isTeyseer &&
-        isWttService(serviceName)
-      ) {
-        owner = "Teyseer";
-      }
+      const owner =
+        getServiceOwner(
+          savedSource,
+          serviceName
+        );
 
       const {
         data: serviceRow,
@@ -544,9 +620,9 @@ const job = {
         continue;
       }
 
-      // ------------------------------------------
+      // ========================================
       // TECHNICIANS
-      // ------------------------------------------
+      // ========================================
 
       const techRows =
         (details.technicians || []).map(
@@ -568,9 +644,7 @@ const job = {
         const {
           error: techError,
         } = await supabase
-          .from(
-            "service_technicians"
-          )
+          .from("service_technicians")
           .insert(techRows);
 
         if (techError) {
@@ -582,9 +656,9 @@ const job = {
       }
     }
 
-    // --------------------------------------------
-    // SUCCESS MESSAGE
-    // --------------------------------------------
+    // ==========================================
+    // SUCCESS
+    // ==========================================
 
     let successMessage =
       `Job Saved Successfully!\n\n` +
@@ -606,9 +680,9 @@ const job = {
 
     alert(successMessage);
 
-    // --------------------------------------------
-    // RESET FORM
-    // --------------------------------------------
+    // ==========================================
+    // RESET
+    // ==========================================
 
     setCustomer("");
     setPhone("");
@@ -642,10 +716,6 @@ const job = {
 
       <div style={styles.form}>
 
-        {/* =====================================
-            CUSTOMER
-        ====================================== */}
-
         <h2>
           Customer Information
         </h2>
@@ -678,10 +748,6 @@ const job = {
           }
         />
 
-        {/* =====================================
-            SOURCE
-        ====================================== */}
-
         <h2>
           Source
         </h2>
@@ -708,12 +774,20 @@ const job = {
             Teyseer Motors - Salah
           </option>
 
+          <option value="Teyseer Motors - Abdou">
+            Teyseer Motors - Abdou
+          </option>
+
           <option value="Bahaa">
             Bahaa
           </option>
 
           <option value="Salah">
             Salah
+          </option>
+
+          <option value="Abdou">
+            Abdou
           </option>
 
           <option value="Walk-in">
@@ -724,8 +798,6 @@ const job = {
             Other
           </option>
         </select>
-
-        {/* OTHER SOURCE */}
 
         {source === "Other" && (
           <input
@@ -738,10 +810,6 @@ const job = {
             }
           />
         )}
-
-        {/* =====================================
-            TEYSEER VOUCHER
-        ====================================== */}
 
         {isTeyseerSource(source) && (
           <div style={styles.teyseerBox}>
@@ -764,10 +832,6 @@ const job = {
             />
           </div>
         )}
-
-        {/* =====================================
-            VEHICLE
-        ====================================== */}
 
         <h2>
           Vehicle Information
@@ -872,10 +936,6 @@ const job = {
           }
         />
 
-        {/* =====================================
-            SERVICES
-        ====================================== */}
-
         <h2>
           Services
         </h2>
@@ -917,8 +977,6 @@ const job = {
 
                   {service}
 
-                  {/* INTERNAL LABEL ONLY */}
-
                   {isTeyseerWtt && (
                     <span
                       style={
@@ -935,8 +993,6 @@ const job = {
                 ) && (
                   <div>
                     <br />
-
-                    {/* PRICE */}
 
                     <input
                       type="number"
@@ -965,8 +1021,6 @@ const job = {
                         );
                       }}
                     />
-
-                    {/* QUANTITY */}
 
                     <input
                       type="number"
@@ -997,8 +1051,6 @@ const job = {
                       }}
                     />
 
-                    {/* DISCOUNT */}
-
                     <input
                       type="number"
                       placeholder="Discount"
@@ -1026,8 +1078,6 @@ const job = {
                         );
                       }}
                     />
-
-                    {/* TECHNICIANS */}
 
                     <h4>
                       Technicians
@@ -1077,7 +1127,6 @@ const job = {
                                         {
                                           id:
                                             person.id,
-
                                           commission:
                                             0,
                                         },
@@ -1182,10 +1231,6 @@ const job = {
           }
         )}
 
-        {/* =====================================
-            PAYMENT
-        ====================================== */}
-
         <h2>
           Payment
         </h2>
@@ -1262,12 +1307,7 @@ const job = {
           }
         />
 
-        {/* =====================================
-            TOTALS
-        ====================================== */}
-
         <div style={styles.summary}>
-
           <h3>
             All Services Total: QAR{" "}
             {total.toFixed(2)}
@@ -1289,12 +1329,7 @@ const job = {
             Customer Balance: QAR{" "}
             {finalBalance.toFixed(2)}
           </h3>
-
         </div>
-
-        {/* =====================================
-            SAVE
-        ====================================== */}
 
         <button
           type="button"
@@ -1303,14 +1338,13 @@ const job = {
         >
           SAVE JOB
         </button>
-
       </div>
     </div>
   );
 }
 
 // ============================================
-// STYLES — DARK BLACK & GOLD THEME ONLY
+// STYLES
 // ============================================
 
 const styles = {
