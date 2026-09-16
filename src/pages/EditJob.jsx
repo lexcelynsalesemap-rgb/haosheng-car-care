@@ -40,13 +40,14 @@ function EditJob() {
   // TEYSEER CHECK
   // -----------------------------------
 
-  function isTeyseerSource(sourceName) {
-    return (
-      sourceName === "Teyseer Motors" ||
-      sourceName === "Teyseer Motors - Bahaa" ||
-      sourceName === "Teyseer Motors - Salah"
-    );
-  }
+function isTeyseerSource(sourceName) {
+  return (
+    sourceName === "Teyseer Motors" ||
+    sourceName === "Teyseer Motors - Bahaa" ||
+    sourceName === "Teyseer Motors - Salah" ||
+    sourceName === "Teyseer Motors - Abdou"
+  );
+}
 
   function isWttService(serviceName) {
     return serviceName
@@ -144,13 +145,15 @@ function EditJob() {
     const existingSource = String(data.source || "").trim();
 
     const standardSources = [
-      "Teyseer Motors",
-      "Teyseer Motors - Bahaa",
-      "Teyseer Motors - Salah",
-      "Bahaa",
-      "Salah",
-      "Walk-in"
-    ];
+  "Teyseer Motors",
+  "Teyseer Motors - Bahaa",
+  "Teyseer Motors - Salah",
+  "Teyseer Motors - Abdou",
+  "Bahaa",
+  "Salah",
+  "Abdou",
+  "Walk-in"
+];
 
     const matchedSource = standardSources.find(
       (item) =>
@@ -1082,7 +1085,9 @@ const customerBalance = Math.max(
             <option value="Teyseer Motors - Salah">
               Teyseer Motors - Salah
             </option>
-
+<option value="Teyseer Motors - Abdou">
+  Teyseer Motors - Abdou
+</option>
             <option value="Bahaa">
               Bahaa
             </option>
@@ -1090,7 +1095,9 @@ const customerBalance = Math.max(
             <option value="Salah">
               Salah
             </option>
-
+<option value="Abdou">
+  Abdou
+</option>
             <option value="Walk-in">
               Walk-in
             </option>
