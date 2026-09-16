@@ -7,13 +7,13 @@ import { canSeeInventoryCost } from "../utils/permissions";
 ========================================================= */
 
 const categoryChinese = {
-  "PPF": "漆面保护膜",
+  PPF: "漆面保护膜",
   "Window Film": "车窗膜",
   "Ceramic Coating": "陶瓷涂层",
-  "Accessories": "配件",
-  "Maintenance": "保养",
-  "Parts": "零部件",
-  "Other": "其他",
+  Accessories: "配件",
+  Maintenance: "保养",
+  Parts: "零部件",
+  Other: "其他",
 };
 
 const productChinese = {
@@ -30,7 +30,7 @@ const productChinese = {
   "Brake Pads": "刹车片",
   "Air Filter": "空气滤芯",
   "Cabin Filter": "空调滤芯",
-  "Wiper": "雨刷",
+  Wiper: "雨刷",
   "Car Accessories": "汽车配件",
 };
 
@@ -45,7 +45,9 @@ function getProductDisplay(name) {
     return (
       <div>
         <div style={{ fontWeight: 700 }}>{name}</div>
-        <div style={{ color: "#9ca3af", fontSize: 12 }}>{chinese}</div>
+        <div style={{ color: "#9ca3af", fontSize: 12 }}>
+          {chinese}
+        </div>
       </div>
     );
   }
@@ -60,7 +62,9 @@ function getCategoryDisplay(name) {
     return (
       <div>
         <div style={{ fontWeight: 600 }}>{name}</div>
-        <div style={{ color: "#9ca3af", fontSize: 11 }}>{chinese}</div>
+        <div style={{ color: "#9ca3af", fontSize: 11 }}>
+          {chinese}
+        </div>
       </div>
     );
   }
@@ -110,6 +114,7 @@ export default function Inventory() {
   );
 
   const showCost = canSeeInventoryCost(loggedInUser);
+
   const isAdmin =
     loggedInUser?.role === "admin" ||
     loggedInUser?.role === "Admin" ||
@@ -138,6 +143,7 @@ export default function Inventory() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [showMovementForm, setShowMovementForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -209,7 +215,9 @@ export default function Inventory() {
   async function loadProducts() {
     if (!shopId) {
       setLoading(false);
-      setError("No shop is assigned to this user.");
+      setError(
+        "No shop is assigned to this user. / 此用户未分配店铺。"
+      );
       return;
     }
 
@@ -248,7 +256,11 @@ export default function Inventory() {
       setProducts(data || []);
     } catch (err) {
       console.error("loadProducts error:", err);
-      setError(err.message || "Failed to load products.");
+
+      setError(
+        err.message ||
+          "Failed to load products. / 加载产品失败。"
+      );
     } finally {
       setLoading(false);
     }
@@ -278,7 +290,11 @@ export default function Inventory() {
       setCategories(data || []);
     } catch (err) {
       console.error("loadCategories error:", err);
-      setError(err.message || "Failed to load categories.");
+
+      setError(
+        err.message ||
+          "Failed to load categories. / 加载分类失败。"
+      );
     }
   }
 
@@ -304,17 +320,25 @@ export default function Inventory() {
         categoryNameValue.toLowerCase().includes(query);
 
       const matchesCategory =
-        !categoryFilter || product.category_id === categoryFilter;
+        !categoryFilter ||
+        product.category_id === categoryFilter;
 
       const status = getStatus(product);
 
       const matchesStatus =
         !statusFilter ||
-        (statusFilter === "in" && status.label === "In Stock") ||
-        (statusFilter === "low" && status.label === "Low Stock") ||
-        (statusFilter === "out" && status.label === "Out of Stock");
+        (statusFilter === "in" &&
+          status.label === "In Stock") ||
+        (statusFilter === "low" &&
+          status.label === "Low Stock") ||
+        (statusFilter === "out" &&
+          status.label === "Out of Stock");
 
-      return matchesSearch && matchesCategory && matchesStatus;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesStatus
+      );
     });
   }, [
     products,
@@ -332,7 +356,8 @@ export default function Inventory() {
     const totalProducts = products.length;
 
     const totalUnits = products.reduce(
-      (sum, product) => sum + Number(product.current_stock || 0),
+      (sum, product) =>
+        sum + Number(product.current_stock || 0),
       0
     );
 
@@ -344,16 +369,17 @@ export default function Inventory() {
     }).length;
 
     const outOfStock = products.filter(
-      (product) => Number(product.current_stock || 0) <= 0
+      (product) =>
+        Number(product.current_stock || 0) <= 0
     ).length;
 
-    const inventoryValue = products.reduce((sum, product) => {
-      return (
+    const inventoryValue = products.reduce(
+      (sum, product) =>
         sum +
         Number(product.current_stock || 0) *
-          Number(product.cost_price || 0)
-      );
-    }, 0);
+          Number(product.cost_price || 0),
+      0
+    );
 
     return {
       totalProducts,
@@ -370,7 +396,7 @@ export default function Inventory() {
 
   function openAddProduct() {
     setEditingProduct(null);
-    setProductForm(emptyProductForm);
+    setProductForm({ ...emptyProductForm });
     setProductImage(null);
     setImagePreview("");
     setError("");
@@ -391,7 +417,8 @@ export default function Inventory() {
       category_id: product.category_id || "",
       unit: product.unit || "pcs",
       cost_price:
-        product.cost_price !== null && product.cost_price !== undefined
+        product.cost_price !== null &&
+        product.cost_price !== undefined
           ? String(product.cost_price)
           : "",
       current_stock:
@@ -423,9 +450,7 @@ export default function Inventory() {
   function handleProductImageChange(event) {
     const file = event.target.files?.[0];
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setError(
@@ -443,9 +468,17 @@ export default function Inventory() {
 
     setError("");
 
+    if (
+      imagePreview &&
+      imagePreview.startsWith("blob:")
+    ) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
     setProductImage(file);
 
     const previewUrl = URL.createObjectURL(file);
+
     setImagePreview(previewUrl);
   }
 
@@ -455,10 +488,19 @@ export default function Inventory() {
 
   function removeProductImage() {
     setProductImage(null);
+
     setProductForm((prev) => ({
       ...prev,
       image_url: "",
     }));
+
+    if (
+      imagePreview &&
+      imagePreview.startsWith("blob:")
+    ) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
     setImagePreview("");
   }
 
@@ -469,6 +511,12 @@ export default function Inventory() {
   async function uploadProductImage(file, sku) {
     if (!file) {
       return productForm.image_url || null;
+    }
+
+    if (!shopId) {
+      throw new Error(
+        "No shop is assigned to this user. / 此用户未分配店铺。"
+      );
     }
 
     const extension =
@@ -485,13 +533,14 @@ export default function Inventory() {
     setUploadingImage(true);
 
     try {
-      const { error: uploadError } = await supabase.storage
-        .from("inventory-images")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: file.type,
-        });
+      const { error: uploadError } =
+        await supabase.storage
+          .from("inventory-images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+          });
 
       if (uploadError) {
         throw uploadError;
@@ -501,7 +550,13 @@ export default function Inventory() {
         .from("inventory-images")
         .getPublicUrl(filePath);
 
-      return data?.publicUrl || null;
+      if (!data?.publicUrl) {
+        throw new Error(
+          "Unable to create image URL. / 无法创建图片链接。"
+        );
+      }
+
+      return data.publicUrl;
     } finally {
       setUploadingImage(false);
     }
@@ -516,13 +571,15 @@ export default function Inventory() {
 
     if (!isAdmin) {
       setError(
-        "Only administrators can add or edit inventory products."
+        "Only administrators can add or edit inventory products. / 只有管理员可以添加或编辑库存产品。"
       );
       return;
     }
 
     if (!shopId) {
-      setError("No shop is assigned to this user.");
+      setError(
+        "No shop is assigned to this user. / 此用户未分配店铺。"
+      );
       return;
     }
 
@@ -530,43 +587,63 @@ export default function Inventory() {
     const name = productForm.name.trim();
 
     if (!sku) {
-      setError("SKU is required.");
+      setError("SKU is required. / SKU 为必填项。");
       return;
     }
 
     if (!name) {
-      setError("Product name is required.");
+      setError(
+        "Product name is required. / 产品名称为必填项。"
+      );
       return;
     }
 
-    const currentStock = Number(productForm.current_stock || 0);
-    const minimumStock = Number(productForm.minimum_stock || 0);
-    const costPrice = Number(productForm.cost_price || 0);
+    const currentStock = Number(
+      productForm.current_stock || 0
+    );
+
+    const minimumStock = Number(
+      productForm.minimum_stock || 0
+    );
+
+    const costPrice = Number(
+      productForm.cost_price || 0
+    );
 
     if (currentStock < 0) {
-      setError("Current stock cannot be negative.");
+      setError(
+        "Current stock cannot be negative. / 当前库存不能为负数。"
+      );
       return;
     }
 
     if (minimumStock < 0) {
-      setError("Minimum stock cannot be negative.");
+      setError(
+        "Minimum stock cannot be negative. / 最低库存不能为负数。"
+      );
       return;
     }
 
     if (costPrice < 0) {
-      setError("Cost price cannot be negative.");
+      setError(
+        "Cost price cannot be negative. / 成本价格不能为负数。"
+      );
       return;
     }
 
-    const categoryId = productForm.category_id || null;
+    const categoryId =
+      productForm.category_id || null;
 
     if (categoryId) {
       const categoryExists = categories.some(
-        (category) => category.id === categoryId
+        (category) =>
+          category.id === categoryId
       );
 
       if (!categoryExists) {
-        setError("Selected category is not valid.");
+        setError(
+          "Selected category is not valid. / 所选分类无效。"
+        );
         return;
       }
     }
@@ -577,14 +654,22 @@ export default function Inventory() {
       setMessage("");
 
       /* ---------------------------------------------
-         UPLOAD IMAGE FIRST
+         IMAGE
       --------------------------------------------- */
 
-      let imageUrl = productForm.image_url || null;
+      let imageUrl =
+        productForm.image_url || null;
 
       if (productImage) {
-        imageUrl = await uploadProductImage(productImage, sku);
+        imageUrl = await uploadProductImage(
+          productImage,
+          sku
+        );
       }
+
+      /* ---------------------------------------------
+         PRODUCT DATA
+      --------------------------------------------- */
 
       const productData = {
         sku,
@@ -594,7 +679,8 @@ export default function Inventory() {
         cost_price: costPrice,
         current_stock: currentStock,
         minimum_stock: minimumStock,
-        description: productForm.description.trim() || null,
+        description:
+          productForm.description.trim() || null,
         image_url: imageUrl,
         shop_id: shopId,
         active: true,
@@ -606,11 +692,12 @@ export default function Inventory() {
       --------------------------------------------- */
 
       if (editingProduct) {
-        const { error: updateError } = await supabase
-          .from("inventory_products")
-          .update(productData)
-          .eq("id", editingProduct.id)
-          .eq("shop_id", shopId);
+        const { error: updateError } =
+          await supabase
+            .from("inventory_products")
+            .update(productData)
+            .eq("id", editingProduct.id)
+            .eq("shop_id", shopId);
 
         if (updateError) {
           throw updateError;
@@ -626,9 +713,10 @@ export default function Inventory() {
       --------------------------------------------- */
 
       else {
-        const { error: insertError } = await supabase
-          .from("inventory_products")
-          .insert(productData);
+        const { error: insertError } =
+          await supabase
+            .from("inventory_products")
+            .insert(productData);
 
         if (insertError) {
           throw insertError;
@@ -644,7 +732,7 @@ export default function Inventory() {
       setShowProductForm(false);
       setProductImage(null);
       setImagePreview("");
-      setProductForm(emptyProductForm);
+      setProductForm({ ...emptyProductForm });
       setEditingProduct(null);
     } catch (err) {
       console.error("saveProduct error:", err);
@@ -680,6 +768,8 @@ export default function Inventory() {
 
     setError("");
     setMessage("");
+
+    setShowHistoryModal(false);
     setShowMovementForm(true);
   }
 
@@ -692,20 +782,26 @@ export default function Inventory() {
 
     if (!isAdmin) {
       setError(
-        "Only administrators can record inventory movements."
+        "Only administrators can record inventory movements. / 只有管理员可以记录库存变动。"
       );
       return;
     }
 
     if (!selectedProduct) {
-      setError("No product selected.");
+      setError(
+        "No product selected. / 未选择产品。"
+      );
       return;
     }
 
-    const quantity = Number(movementForm.quantity || 0);
+    const quantity = Number(
+      movementForm.quantity || 0
+    );
 
     if (quantity <= 0) {
-      setError("Quantity must be greater than zero.");
+      setError(
+        "Quantity must be greater than zero. / 数量必须大于零。"
+      );
       return;
     }
 
@@ -714,18 +810,23 @@ export default function Inventory() {
       setError("");
       setMessage("");
 
-      const { error: rpcError } = await supabase.rpc(
-        "record_inventory_movement",
-        {
-          p_product_id: selectedProduct.id,
-          p_movement_type: movementType,
-          p_quantity: quantity,
-          p_unit_cost: Number(movementForm.unit_cost || 0),
-          p_reference:
-            movementForm.reference.trim() || null,
-          p_notes: movementForm.notes.trim() || null,
-        }
-      );
+      const { error: rpcError } =
+        await supabase.rpc(
+          "record_inventory_movement",
+          {
+            p_product_id: selectedProduct.id,
+            p_movement_type: movementType,
+            p_quantity: quantity,
+            p_unit_cost: Number(
+              movementForm.unit_cost || 0
+            ),
+            p_reference:
+              movementForm.reference.trim() ||
+              null,
+            p_notes:
+              movementForm.notes.trim() || null,
+          }
+        );
 
       if (rpcError) {
         throw rpcError;
@@ -744,7 +845,7 @@ export default function Inventory() {
 
       setError(
         err.message ||
-          "Failed to record stock movement."
+          "Failed to record stock movement. / 库存变动记录失败。"
       );
     } finally {
       setSaving(false);
@@ -761,13 +862,22 @@ export default function Inventory() {
     setSelectedProduct(product);
     setHistoryLoading(true);
     setError("");
+    setHistory([]);
+
+    setShowMovementForm(false);
+    setShowProductForm(false);
+    setShowCategoryForm(false);
+    setShowHistoryModal(true);
 
     try {
-      const { data, error: historyError } = await supabase
-        .from("inventory_movements")
-        .select("*")
-        .eq("product_id", product.id)
-        .order("created_at", { ascending: false });
+      const { data, error: historyError } =
+        await supabase
+          .from("inventory_movements")
+          .select("*")
+          .eq("product_id", product.id)
+          .order("created_at", {
+            ascending: false,
+          });
 
       if (historyError) {
         throw historyError;
@@ -776,13 +886,24 @@ export default function Inventory() {
       setHistory(data || []);
     } catch (err) {
       console.error("loadHistory error:", err);
+
       setError(
         err.message ||
-          "Failed to load inventory history."
+          "Failed to load inventory history. / 加载库存记录失败。"
       );
     } finally {
       setHistoryLoading(false);
     }
+  }
+
+  /* =========================================================
+     CLOSE HISTORY
+  ========================================================= */
+
+  function closeHistory() {
+    setShowHistoryModal(false);
+    setSelectedProduct(null);
+    setHistory([]);
   }
 
   /* =========================================================
@@ -794,7 +915,14 @@ export default function Inventory() {
 
     if (!isAdmin) {
       setError(
-        "Only administrators can create categories."
+        "Only administrators can create categories. / 只有管理员可以创建分类。"
+      );
+      return;
+    }
+
+    if (!shopId) {
+      setError(
+        "No shop is assigned to this user. / 此用户未分配店铺。"
       );
       return;
     }
@@ -802,7 +930,9 @@ export default function Inventory() {
     const name = categoryName.trim();
 
     if (!name) {
-      setError("Category name is required.");
+      setError(
+        "Category name is required. / 分类名称为必填项。"
+      );
       return;
     }
 
@@ -811,13 +941,14 @@ export default function Inventory() {
       setError("");
       setMessage("");
 
-      const { error: categoryError } = await supabase
-        .from("inventory_categories")
-        .insert({
-          name,
-          shop_id: shopId,
-          active: true,
-        });
+      const { error: categoryError } =
+        await supabase
+          .from("inventory_categories")
+          .insert({
+            name,
+            shop_id: shopId,
+            active: true,
+          });
 
       if (categoryError) {
         throw categoryError;
@@ -832,11 +963,14 @@ export default function Inventory() {
 
       await loadCategories();
     } catch (err) {
-      console.error("saveCategory error:", err);
+      console.error(
+        "saveCategory error:",
+        err
+      );
 
       setError(
         err.message ||
-          "Failed to create category."
+          "Failed to create category. / 创建分类失败。"
       );
     } finally {
       setSaving(false);
@@ -859,6 +993,10 @@ export default function Inventory() {
 
   return (
     <div style={styles.page}>
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>
@@ -879,6 +1017,7 @@ export default function Inventory() {
                 onClick={() => {
                   setCategoryName("");
                   setError("");
+                  setMessage("");
                   setShowCategoryForm(true);
                 }}
               >
@@ -1017,7 +1156,9 @@ export default function Inventory() {
           type="text"
           placeholder="Search SKU, product, category..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
           style={styles.searchInput}
         />
 
@@ -1074,11 +1215,11 @@ export default function Inventory() {
       <div style={styles.tableContainer}>
         {loading ? (
           <div style={styles.emptyState}>
-            Loading inventory...
+            Loading inventory... / 正在加载库存...
           </div>
         ) : filteredProducts.length === 0 ? (
           <div style={styles.emptyState}>
-            No products found.
+            No products found. / 未找到产品。
           </div>
         ) : (
           <table style={styles.table}>
@@ -1151,13 +1292,29 @@ export default function Inventory() {
                           onError={(event) => {
                             event.currentTarget.style.display =
                               "none";
+
+                            if (
+                              event.currentTarget
+                                .nextSibling
+                            ) {
+                              event.currentTarget.nextSibling.style.display =
+                                "flex";
+                            }
                           }}
                         />
-                      ) : (
-                        <div style={styles.tableImagePlaceholder}>
-                          📷
-                        </div>
-                      )}
+                      ) : null}
+
+                      <div
+                        style={{
+                          ...styles.tableImagePlaceholder,
+                          display:
+                            product.image_url
+                              ? "none"
+                              : "flex",
+                        }}
+                      >
+                        📷
+                      </div>
                     </td>
 
                     {/* SKU */}
@@ -1243,12 +1400,16 @@ export default function Inventory() {
                     {/* ACTIONS */}
 
                     <td style={styles.td}>
-                      <div style={styles.actionGroup}>
+                      <div
+                        style={styles.actionGroup}
+                      >
                         {isAdmin && (
                           <>
                             <button
                               type="button"
-                              style={styles.smallButton}
+                              style={
+                                styles.smallButton
+                              }
                               onClick={() =>
                                 openMovement(
                                   product,
@@ -1292,7 +1453,9 @@ export default function Inventory() {
 
                         <button
                           type="button"
-                          style={styles.smallDarkButton}
+                          style={
+                            styles.smallDarkButton
+                          }
                           onClick={() =>
                             loadHistory(product)
                           }
@@ -1334,9 +1497,11 @@ export default function Inventory() {
               <button
                 type="button"
                 style={styles.closeButton}
-                onClick={() =>
-                  setShowProductForm(false)
-                }
+                onClick={() => {
+                  setShowProductForm(false);
+                  setProductImage(null);
+                  setImagePreview("");
+                }}
               >
                 ×
               </button>
@@ -1347,14 +1512,26 @@ export default function Inventory() {
                   IMAGE UPLOAD
               ================================================= */}
 
-              <div style={styles.imageUploadSection}>
-                <div style={styles.imageUploadLabel}>
+              <div
+                style={styles.imageUploadSection}
+              >
+                <div
+                  style={styles.imageUploadLabel}
+                >
                   Product Photo / 产品图片
                 </div>
 
-                <div style={styles.imageUploadContent}>
+                <div
+                  style={
+                    styles.imageUploadContent
+                  }
+                >
                   {imagePreview ? (
-                    <div style={styles.imagePreviewWrapper}>
+                    <div
+                      style={
+                        styles.imagePreviewWrapper
+                      }
+                    >
                       <img
                         src={imagePreview}
                         alt="Product preview"
@@ -1393,7 +1570,9 @@ export default function Inventory() {
                     </div>
                   )}
 
-                  <div style={styles.imageButtons}>
+                  <div
+                    style={styles.imageButtons}
+                  >
                     <label
                       htmlFor="product-image"
                       style={
@@ -1401,14 +1580,14 @@ export default function Inventory() {
                       }
                     >
                       {imagePreview
-                        ? "Change Photo"
-                        : "Choose Photo"}
+                        ? "Change Photo / 更换图片"
+                        : "Choose Photo / 选择图片"}
                     </label>
 
                     <input
                       id="product-image"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       onChange={
                         handleProductImageChange
                       }
@@ -1427,7 +1606,7 @@ export default function Inventory() {
                           removeProductImage
                         }
                       >
-                        Remove
+                        Remove / 删除
                       </button>
                     )}
 
@@ -1437,6 +1616,8 @@ export default function Inventory() {
                       }
                     >
                       JPG, PNG or WebP • Max 5 MB
+                      <br />
+                      JPG、PNG 或 WebP • 最大 5 MB
                     </div>
                   </div>
                 </div>
@@ -1472,7 +1653,7 @@ export default function Inventory() {
 
                 <div style={styles.field}>
                   <label style={styles.label}>
-                    Product Name *
+                    Product Name * / 产品名称 *
                   </label>
 
                   <input
@@ -1485,7 +1666,7 @@ export default function Inventory() {
                       })
                     }
                     style={styles.input}
-                    placeholder="Product name"
+                    placeholder="Product name / 产品名称"
                   />
                 </div>
 
@@ -1493,7 +1674,7 @@ export default function Inventory() {
 
                 <div style={styles.field}>
                   <label style={styles.label}>
-                    Category
+                    Category / 分类
                   </label>
 
                   <select
@@ -1510,7 +1691,7 @@ export default function Inventory() {
                     style={styles.input}
                   >
                     <option value="">
-                      Select category
+                      Select category / 选择分类
                     </option>
 
                     {categories.map(
@@ -1520,6 +1701,15 @@ export default function Inventory() {
                           value={category.id}
                         >
                           {category.name}
+                          {categoryChinese[
+                            category.name
+                          ]
+                            ? ` / ${
+                                categoryChinese[
+                                  category.name
+                                ]
+                              }`
+                            : ""}
                         </option>
                       )
                     )}
@@ -1530,7 +1720,7 @@ export default function Inventory() {
 
                 <div style={styles.field}>
                   <label style={styles.label}>
-                    Unit
+                    Unit / 单位
                   </label>
 
                   <select
@@ -1574,7 +1764,7 @@ export default function Inventory() {
                 {showCost && (
                   <div style={styles.field}>
                     <label style={styles.label}>
-                      Cost Price
+                      Cost Price / 成本价格
                     </label>
 
                     <input
@@ -1602,6 +1792,8 @@ export default function Inventory() {
                 <div style={styles.field}>
                   <label style={styles.label}>
                     Opening / Current Stock
+                    <br />
+                    初始 / 当前库存
                   </label>
 
                   <input
@@ -1626,7 +1818,7 @@ export default function Inventory() {
 
                 <div style={styles.field}>
                   <label style={styles.label}>
-                    Minimum Stock
+                    Minimum Stock / 最低库存
                   </label>
 
                   <input
@@ -1656,7 +1848,7 @@ export default function Inventory() {
                   }}
                 >
                   <label style={styles.label}>
-                    Description
+                    Description / 描述
                   </label>
 
                   <textarea
@@ -1675,7 +1867,7 @@ export default function Inventory() {
                       minHeight: 90,
                       resize: "vertical",
                     }}
-                    placeholder="Optional description"
+                    placeholder="Optional description / 可选描述"
                   />
                 </div>
               </div>
@@ -1688,12 +1880,14 @@ export default function Inventory() {
                 <button
                   type="button"
                   style={styles.cancelButton}
-                  onClick={() =>
-                    setShowProductForm(false)
-                  }
+                  onClick={() => {
+                    setShowProductForm(false);
+                    setProductImage(null);
+                    setImagePreview("");
+                  }}
                   disabled={saving}
                 >
-                  Cancel
+                  Cancel / 取消
                 </button>
 
                 <button
@@ -1704,12 +1898,12 @@ export default function Inventory() {
                   }
                 >
                   {uploadingImage
-                    ? "Uploading Photo..."
+                    ? "Uploading Photo... / 正在上传图片..."
                     : saving
-                    ? "Saving..."
+                    ? "Saving... / 正在保存..."
                     : editingProduct
-                    ? "Save Changes"
-                    : "Add Product"}
+                    ? "Save Changes / 保存更改"
+                    : "Add Product / 添加产品"}
                 </button>
               </div>
             </form>
@@ -1745,16 +1939,19 @@ export default function Inventory() {
                 <button
                   type="button"
                   style={styles.closeButton}
-                  onClick={() =>
-                    setShowMovementForm(false)
-                  }
+                  onClick={() => {
+                    setShowMovementForm(false);
+                    setSelectedProduct(null);
+                  }}
                 >
                   ×
                 </button>
               </div>
 
-              <div style={styles.selectedProductBox}>
-                {selectedProduct.image_url && (
+              <div
+                style={styles.selectedProductBox}
+              >
+                {selectedProduct.image_url ? (
                   <img
                     src={
                       selectedProduct.image_url
@@ -1764,6 +1961,14 @@ export default function Inventory() {
                       styles.movementProductImage
                     }
                   />
+                ) : (
+                  <div
+                    style={
+                      styles.movementImagePlaceholder
+                    }
+                  >
+                    📷
+                  </div>
                 )}
 
                 <div>
@@ -1772,7 +1977,9 @@ export default function Inventory() {
                       fontWeight: 700,
                     }}
                   >
-                    {selectedProduct.name}
+                    {getProductDisplay(
+                      selectedProduct.name
+                    )}
                   </div>
 
                   <div
@@ -1792,7 +1999,7 @@ export default function Inventory() {
                       marginTop: 4,
                     }}
                   >
-                    Current Stock:{" "}
+                    Current Stock / 当前库存:{" "}
                     {
                       selectedProduct.current_stock
                     }
@@ -1803,7 +2010,7 @@ export default function Inventory() {
               <form onSubmit={saveMovement}>
                 <div style={styles.field}>
                   <label style={styles.label}>
-                    Quantity *
+                    Quantity * / 数量 *
                   </label>
 
                   <input
@@ -1821,14 +2028,14 @@ export default function Inventory() {
                       })
                     }
                     style={styles.input}
-                    placeholder="Enter quantity"
+                    placeholder="Enter quantity / 输入数量"
                   />
                 </div>
 
                 {showCost && (
                   <div style={styles.field}>
                     <label style={styles.label}>
-                      Unit Cost
+                      Unit Cost / 单位成本
                     </label>
 
                     <input
@@ -1852,7 +2059,7 @@ export default function Inventory() {
 
                 <div style={styles.field}>
                   <label style={styles.label}>
-                    Reference
+                    Reference / 参考编号
                   </label>
 
                   <input
@@ -1874,7 +2081,7 @@ export default function Inventory() {
 
                 <div style={styles.field}>
                   <label style={styles.label}>
-                    Notes
+                    Notes / 备注
                   </label>
 
                   <textarea
@@ -1897,11 +2104,12 @@ export default function Inventory() {
                   <button
                     type="button"
                     style={styles.cancelButton}
-                    onClick={() =>
-                      setShowMovementForm(false)
-                    }
+                    onClick={() => {
+                      setShowMovementForm(false);
+                      setSelectedProduct(null);
+                    }}
                   >
-                    Cancel
+                    Cancel / 取消
                   </button>
 
                   <button
@@ -1914,10 +2122,10 @@ export default function Inventory() {
                     disabled={saving}
                   >
                     {saving
-                      ? "Saving..."
+                      ? "Saving... / 正在保存..."
                       : movementType === "in"
-                      ? "Add Stock"
-                      : "Remove Stock"}
+                      ? "Add Stock / 入库"
+                      : "Remove Stock / 出库"}
                   </button>
                 </div>
               </form>
@@ -1957,7 +2165,7 @@ export default function Inventory() {
             <form onSubmit={saveCategory}>
               <div style={styles.field}>
                 <label style={styles.label}>
-                  Category Name *
+                  Category Name * / 分类名称 *
                 </label>
 
                 <input
@@ -1969,7 +2177,7 @@ export default function Inventory() {
                     )
                   }
                   style={styles.input}
-                  placeholder="e.g. PPF"
+                  placeholder="e.g. PPF / 例如 PPF"
                   autoFocus
                 />
               </div>
@@ -1982,7 +2190,7 @@ export default function Inventory() {
                     setShowCategoryForm(false)
                   }
                 >
-                  Cancel
+                  Cancel / 取消
                 </button>
 
                 <button
@@ -1991,8 +2199,8 @@ export default function Inventory() {
                   disabled={saving}
                 >
                   {saving
-                    ? "Saving..."
-                    : "Add Category"}
+                    ? "Saving... / 正在保存..."
+                    : "Add Category / 添加分类"}
                 </button>
               </div>
             </form>
@@ -2004,11 +2212,8 @@ export default function Inventory() {
           HISTORY MODAL
       ===================================================== */}
 
-      {selectedProduct &&
-        !showMovementForm &&
-        !showProductForm &&
-        !showCategoryForm &&
-        history.length >= 0 && (
+      {showHistoryModal &&
+        selectedProduct && (
           <div style={styles.overlay}>
             <div style={styles.historyModal}>
               <div style={styles.modalHeader}>
@@ -2017,7 +2222,9 @@ export default function Inventory() {
                     Inventory History
                   </h2>
 
-                  <div style={styles.modalChinese}>
+                  <div
+                    style={styles.modalChinese}
+                  >
                     库存记录
                   </div>
                 </div>
@@ -2025,23 +2232,24 @@ export default function Inventory() {
                 <button
                   type="button"
                   style={styles.closeButton}
-                  onClick={() => {
-                    setSelectedProduct(null);
-                    setHistory([]);
-                  }}
+                  onClick={closeHistory}
                 >
                   ×
                 </button>
               </div>
 
-              <div style={styles.historyProduct}>
+              <div
+                style={styles.historyProduct}
+              >
                 {selectedProduct.image_url ? (
                   <img
                     src={
                       selectedProduct.image_url
                     }
                     alt={selectedProduct.name}
-                    style={styles.historyProductImage}
+                    style={
+                      styles.historyProductImage
+                    }
                   />
                 ) : (
                   <div
@@ -2060,35 +2268,52 @@ export default function Inventory() {
                       fontSize: 16,
                     }}
                   >
-                    {selectedProduct.name}
+                    {getProductDisplay(
+                      selectedProduct.name
+                    )}
                   </div>
 
                   <div
                     style={{
                       color: "#9ca3af",
                       fontSize: 12,
+                      marginTop: 4,
                     }}
                   >
                     SKU:{" "}
                     {selectedProduct.sku}
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#d4af37",
+                      fontSize: 12,
+                      marginTop: 4,
+                    }}
+                  >
+                    Current Stock / 当前库存:{" "}
+                    {
+                      selectedProduct.current_stock
+                    }
                   </div>
                 </div>
               </div>
 
               {historyLoading ? (
                 <div style={styles.emptyState}>
-                  Loading history...
+                  Loading history... / 正在加载记录...
                 </div>
               ) : history.length === 0 ? (
                 <div style={styles.emptyState}>
                   No inventory movements found.
+                  <br />
+                  未找到库存变动记录。
                 </div>
               ) : (
                 <div style={styles.historyList}>
                   {history.map((item) => {
                     const isIn =
-                      item.movement_type ===
-                      "in";
+                      item.movement_type === "in";
 
                     return (
                       <div
@@ -2118,7 +2343,7 @@ export default function Inventory() {
                               marginTop: 4,
                             }}
                           >
-                            Quantity:{" "}
+                            Quantity / 数量:{" "}
                             {item.quantity}
                           </div>
 
@@ -2131,7 +2356,7 @@ export default function Inventory() {
                                 marginTop: 4,
                               }}
                             >
-                              Ref:{" "}
+                              Ref / 参考:{" "}
                               {
                                 item.reference
                               }
@@ -2147,20 +2372,42 @@ export default function Inventory() {
                                 marginTop: 4,
                               }}
                             >
-                              {
-                                item.notes
-                              }
+                              Notes / 备注:{" "}
+                              {item.notes}
                             </div>
                           )}
+
+                          {showCost &&
+                            item.unit_cost !==
+                              null &&
+                            item.unit_cost !==
+                              undefined && (
+                              <div
+                                style={{
+                                  color:
+                                    "#9ca3af",
+                                  fontSize: 12,
+                                  marginTop: 4,
+                                }}
+                              >
+                                Unit Cost / 单位成本:
+                                {" "}
+                                QAR{" "}
+                                {Number(
+                                  item.unit_cost ||
+                                    0
+                                ).toFixed(2)}
+                              </div>
+                            )}
                         </div>
 
                         <div
                           style={{
-                            textAlign:
-                              "right",
-                            color:
-                              "#9ca3af",
+                            textAlign: "right",
+                            color: "#9ca3af",
                             fontSize: 12,
+                            whiteSpace:
+                              "nowrap",
                           }}
                         >
                           {formatDate(
@@ -2640,6 +2887,7 @@ const styles = {
     width: "100%",
     color: "#71717a",
     fontSize: 10,
+    lineHeight: 1.5,
   },
 
   /* =======================================================
@@ -2663,6 +2911,7 @@ const styles = {
     fontSize: 11,
     fontWeight: 700,
     marginBottom: 6,
+    lineHeight: 1.5,
   },
 
   input: {
@@ -2707,6 +2956,20 @@ const styles = {
     objectFit: "cover",
     borderRadius: 7,
     border: "1px solid #3f3f46",
+    flexShrink: 0,
+  },
+
+  movementImagePlaceholder: {
+    width: 55,
+    height: 55,
+    borderRadius: 7,
+    border: "1px dashed #3f3f46",
+    background: "#18181b",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 20,
+    flexShrink: 0,
   },
 
   /* =======================================================
@@ -2730,6 +2993,7 @@ const styles = {
     objectFit: "cover",
     borderRadius: 8,
     border: "1px solid #3f3f46",
+    flexShrink: 0,
   },
 
   historyPlaceholder: {
@@ -2742,6 +3006,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     fontSize: 24,
+    flexShrink: 0,
   },
 
   historyList: {
@@ -2760,4 +3025,3 @@ const styles = {
     padding: 13,
   },
 };
-

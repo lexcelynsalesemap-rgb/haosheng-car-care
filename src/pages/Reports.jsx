@@ -1486,10 +1486,14 @@ function printTeyseerReport() {
 
   const rows = filteredTeyseerJobs
     .map((job) => {
-      const carMake =
-        job.carMake ||
-        job.carBrand ||
-        "-";
+     const carMake =
+  job.carMake ||
+  job.car_make ||
+  job.make ||
+  job.brand ||
+  job.vehicleMake ||
+  job.vehicle_make ||
+  "-";
 
       const model =
         job.carModel ||
