@@ -2623,7 +2623,7 @@ model = model || "-";
               ${escapeHtml(
                 job.carMake ||
                   job.carType ||
-                  job.carModel ||
+                  job.vehicleMake ||
                   "-"
               )}
             </td>
