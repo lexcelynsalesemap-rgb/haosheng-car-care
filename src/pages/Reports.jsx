@@ -1,34 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
 import gaLogo from "../assets/ga-logo.png";
-
 const TEYSEER_SOURCES = [
   "Teyseer Motors",
   "Teyseer Motors - Bahaa",
   "Teyseer Motors - Salah",
   "Teyseer Motors - Abdou"
 ];
-
 const DEFAULT_PENDING = {
   June: 7000,
   July: 10000,
   August: 18700,
 };
-
 const DEFAULT_PREVIOUS_TEYSEER = 181200;
-
 function number(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
-
 function money(value) {
   return number(value).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
-
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -37,27 +31,21 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
 function qatarDate(value) {
   if (!value) return null;
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
+const date = new Date(value);
+ if (Number.isNaN(date.getTime())) {
     return null;
   }
-
-  return date.toLocaleDateString("en-CA", {
+return date.toLocaleDateString("en-CA", {
     timeZone: "Asia/Qatar",
   });
 }
-
 function todayQatar() {
   return new Date().toLocaleDateString("en-CA", {
     timeZone: "Asia/Qatar",
   });
 }
-
 function getJobDate(job) {
   return qatarDate(
     job.created_at ||
@@ -66,31 +54,24 @@ function getJobDate(job) {
       job.createdDate
   );
 }
-
 function isDateInRange(date, startDate, endDate) {
   if (!date) return false;
-
-  if (startDate && date < startDate) {
+if (startDate && date < startDate) {
     return false;
   }
-
-  if (endDate && date > endDate) {
+if (endDate && date > endDate) {
     return false;
   }
-
-  return true;
+return true;
 }
-
 function normalizeSource(source) {
   return String(source || "").trim();
 }
-
 function isTeyseerJob(job) {
   return TEYSEER_SOURCES.includes(
     normalizeSource(job.source)
   );
 }
-
 function getPaymentMethod(payment) {
   return String(
     payment.payment_method ||
@@ -101,15 +82,12 @@ function getPaymentMethod(payment) {
     .trim()
     .toLowerCase();
 }
-
 function isCash(payment) {
   return getPaymentMethod(payment).includes("cash");
 }
-
 function isCard(payment) {
   const method = getPaymentMethod(payment);
-
-  return (
+ return (
     method.includes("visa") ||
     method.includes("mastercard") ||
     method.includes("master card") ||
@@ -121,23 +99,18 @@ function isCard(payment) {
     method.includes("naps")
   );
 }
-
 function isBankTransfer(payment) {
-  const method = getPaymentMethod(payment);
-
-  return (
+  const method = getPaymentMethod(payment);  return (
     method.includes("bank") ||
     method.includes("transfer")
   );
 }
-
 function getServicesForJob(jobServices, jobId) {
   return jobServices.filter(
     (service) =>
       String(service.job_id) === String(jobId)
   );
 }
-
 function getServiceAmount(services) {
   return services.reduce(
     (sum, service) =>
@@ -151,7 +124,6 @@ function getServiceAmount(services) {
     0
   );
 }
-
 function getServiceNames(services) {
   return services
     .map(
@@ -164,7 +136,6 @@ function getServiceNames(services) {
     .filter(Boolean)
     .join(", ");
 }
-
 function isWttService(service) {
   const serviceName = String(
     service.service_name ||
@@ -180,34 +151,26 @@ function isWttService(service) {
     serviceName.includes("wtt")
   );
 }
-
 /*
 ============================================================
 CANONICAL JOB CALCULATION
 ============================================================
-
 NORMAL JOB:
   customerSales = price - discount
-
 TEYSEER MOTORS:
   with services:
     all services = Teyseer sales
-
   without services:
     price - discount = Teyseer sales
-
 SALAH / BAHAA:
   WTT services = Teyseer sales
   everything else = Customer sales
-
 PAYMENTS:
   only payment.job_id === job.id
-
 PAYMENT ALLOCATION:
   All payment are applied to customer sales.
 ============================================================
 */
-
 function calculateJob(
   job,
   jobServices,
@@ -215,27 +178,21 @@ function calculateJob(
 ) {
   const gross = number(job.price);
   const discount = number(job.discount);
-
   const jobNet = Math.max(
     gross - discount,
     0
   );
-
   const services = getServicesForJob(
     jobServices,
     job.id
   );
-
   const serviceTotal =
     getServiceAmount(services);
-
   const source = normalizeSource(
     job.source
   );
-
   let teyseerSales = 0;
   let customerSales = 0;
-
   if (source === "Teyseer Motors") {
     teyseerSales =
       services.length > 0
@@ -254,7 +211,6 @@ function calculateJob(
             service.total ??
             0
         );
-
         if (isWttService(service)) {
           teyseerSales += amount;
         } else {
@@ -267,23 +223,18 @@ function calculateJob(
   } else {
     customerSales = jobNet;
   }
-
   const canonicalNet =
     teyseerSales +
     customerSales;
-
   const linkedPayments =
     paymentsByJob[String(job.id)] || [];
-
   const paid = linkedPayments.reduce(
     (sum, payment) =>
       sum + number(payment.amount),
     0
   );
-
   let customerPaid = 0;
   let teyseerPaid = 0;
-
   if (
     customerSales > 0 &&
     teyseerSales === 0
@@ -306,49 +257,35 @@ function calculateJob(
       customerSales
     );
   }
-
   const customerBalance = Math.max(
     customerSales - customerPaid,
     0
   );
-
   const teyseerBalance = Math.max(
     teyseerSales,
     0
   );
-
   return {
     ...job,
-
     gross,
     discount,
     jobNet,
-
     services,
     serviceTotal,
     serviceNames: getServiceNames(services),
-
     canonicalNet,
-
     teyseerSales,
     customerSales,
-
     paid,
     customerPaid,
-
     customerBalance,
     teyseerBalance,
-
     balance: customerBalance,
-
     discrepancy: 0,
-
     isTeyseer: isTeyseerJob(job),
-
     linkedPayments,
   };
 }
-
 function Card({
   title,
   value,
@@ -360,13 +297,11 @@ function Card({
       <div className="report-card-title">
         {title}
       </div>
-
       <div
         className={`report-card-value ${color}`}
       >
         {value}
       </div>
-
       {subtitle && (
         <div className="report-card-subtitle">
           {subtitle}
@@ -375,55 +310,40 @@ function Card({
     </div>
   );
 }
-
 function Reports() {
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
   const [jobServices, setJobServices] =
     useState([]);
-
   const [manualPending, setManualPending] =
     useState(DEFAULT_PENDING);
-
   const [manualTeyseer, setManualTeyseer] =
     useState(DEFAULT_PREVIOUS_TEYSEER);
-
   const [savingSetting, setSavingSetting] =
     useState("");
-
   const [loading, setLoading] =
     useState(true);
-
   const [reportDate, setReportDate] =
     useState(todayQatar());
-
   const [alnusoorStartDate, setAlnusoorStartDate] =
     useState("");
-
   const [alnusoorEndDate, setAlnusoorEndDate] =
     useState("");
-
   const [teyseerStartDate, setTeyseerStartDate] =
     useState("");
-
   const [teyseerEndDate, setTeyseerEndDate] =
     useState("");
-
   const [showDiscrepancies, setShowDiscrepancies] =
     useState(false);
-
   const [activeSection, setActiveSection] =
     useState("overview");
-
   useEffect(() => {
     loadReports();
     loadReportSettings();
   }, []);
-
   async function loadReports() {
     try {
       setLoading(true);
-
       const [
         jobsResult,
         paymentsResult,
@@ -432,37 +352,31 @@ function Reports() {
         supabase
           .from("jobs")
           .select("*"),
-
         supabase
           .from("payments")
           .select("*"),
-
         supabase
           .from("job_services")
           .select("*"),
       ]);
-
       if (jobsResult.error) {
         console.error(
           "JOBS ERROR:",
           jobsResult.error
         );
       }
-
       if (paymentsResult.error) {
         console.error(
           "PAYMENTS ERROR:",
           paymentsResult.error
         );
       }
-
       if (servicesResult.error) {
         console.error(
           "JOB SERVICES ERROR:",
           servicesResult.error
         );
       }
-
       setJobs(jobsResult.data || []);
       setPayments(
         paymentsResult.data || []
@@ -479,12 +393,10 @@ function Reports() {
       setLoading(false);
     }
   }
-
   async function loadReportSettings() {
     const { data, error } = await supabase
       .from("report_settings")
       .select("*");
-
     if (error) {
       console.error(
         "REPORT SETTINGS ERROR:",
@@ -492,64 +404,52 @@ function Reports() {
       );
       return;
     }
-
     if (!data) return;
-
     const june = data.find(
       (item) =>
         item.setting_name ===
         "June Pending"
     );
-
     const july = data.find(
       (item) =>
         item.setting_name ===
         "July Pending"
     );
-
     const august = data.find(
       (item) =>
         item.setting_name ===
         "August Pending"
     );
-
     const teyseer = data.find(
       (item) =>
         item.setting_name ===
         "Previous Teyseer"
     );
-
     setManualPending({
       June: june
         ? number(june.amount)
         : DEFAULT_PENDING.June,
-
       July: july
         ? number(july.amount)
         : DEFAULT_PENDING.July,
-
       August: august
         ? number(august.amount)
         : DEFAULT_PENDING.August,
     });
-
     if (teyseer) {
       setManualTeyseer(
         number(teyseer.amount)
       );
     }
   }
-
   async function saveSetting(
     settingName,
     amount
   ) {
     try {
       setSavingSetting(settingName);
-
       const numericAmount =
         number(amount);
-
       const {
         data: existing,
         error: findError,
@@ -561,7 +461,6 @@ function Reports() {
           settingName
         )
         .maybeSingle();
-
       if (findError) {
         console.error(
           "FIND SETTING ERROR:",
@@ -569,7 +468,6 @@ function Reports() {
         );
         return;
       }
-
       if (existing) {
         const { error } =
           await supabase
@@ -581,7 +479,6 @@ function Reports() {
               "setting_name",
               settingName
             );
-
         if (error) {
           console.error(
             "UPDATE SETTING ERROR:",
@@ -596,7 +493,6 @@ function Reports() {
               setting_name: settingName,
               amount: numericAmount,
             });
-
         if (error) {
           console.error(
             "INSERT SETTING ERROR:",
@@ -608,35 +504,27 @@ function Reports() {
       setSavingSetting("");
     }
   }
-
   function changePending(month, value) {
     const amount = number(value);
-
     setManualPending((prev) => ({
       ...prev,
       [month]: amount,
     }));
-
     saveSetting(
       `${month} Pending`,
       amount
     );
   }
-
   function changeTeyseer(value) {
     const amount = number(value);
-
     setManualTeyseer(amount);
-
     saveSetting(
       "Previous Teyseer",
       amount
     );
   }
-
   const paymentsByJob = useMemo(() => {
     const map = {};
-
     payments.forEach((payment) => {
       if (
         payment.job_id === null ||
@@ -645,21 +533,16 @@ function Reports() {
       ) {
         return;
       }
-
       const key = String(
         payment.job_id
       );
-
       if (!map[key]) {
         map[key] = [];
       }
-
       map[key].push(payment);
     });
-
     return map;
   }, [payments]);
-
   const calculatedJobs = useMemo(() => {
     return jobs.map((job) =>
       calculateJob(
@@ -673,7 +556,6 @@ function Reports() {
     jobServices,
     paymentsByJob,
   ]);
-
   const linkedPayments = useMemo(() => {
     return payments.filter(
       (payment) =>
@@ -682,13 +564,11 @@ function Reports() {
         payment.job_id !== ""
     );
   }, [payments]);
-
   /*
   ============================================================
   FINANCIAL TOTALS
   ============================================================
   */
-
   const financial = useMemo(() => {
     const customerSales =
       calculatedJobs.reduce(
@@ -696,49 +576,42 @@ function Reports() {
           sum + job.customerSales,
         0
       );
-
     const teyseerSales =
       calculatedJobs.reduce(
         (sum, job) =>
           sum + job.teyseerSales,
         0
       );
-
     const paid =
       calculatedJobs.reduce(
         (sum, job) =>
           sum + job.paid,
         0
       );
-
     const customerPaid =
       calculatedJobs.reduce(
         (sum, job) =>
           sum + job.customerPaid,
         0
       );
-
     const teyseerPaid =
       calculatedJobs.reduce(
         (sum, job) =>
           sum + job.teyseerPaid,
         0
       );
-
     const customerBalance =
       calculatedJobs.reduce(
         (sum, job) =>
           sum + job.customerBalance,
         0
       );
-
     const teyseerBalance =
       calculatedJobs.reduce(
         (sum, job) =>
           sum + job.teyseerBalance,
         0
       );
-
     const cashPaid =
       linkedPayments
         .filter(isCash)
@@ -747,7 +620,6 @@ function Reports() {
             sum + number(payment.amount),
           0
         );
-
     const cardPaid =
       linkedPayments
         .filter(isCard)
@@ -756,7 +628,6 @@ function Reports() {
             sum + number(payment.amount),
           0
         );
-
     const bankTransferPaid =
       linkedPayments
         .filter(isBankTransfer)
@@ -765,7 +636,6 @@ function Reports() {
             sum + number(payment.amount),
           0
         );
-
     const otherPaid =
       linkedPayments
         .filter(
@@ -779,27 +649,21 @@ function Reports() {
             sum + number(payment.amount),
           0
         );
-
     const categorizedPaid =
       cashPaid +
       cardPaid +
       bankTransferPaid +
       otherPaid;
-
     return {
       customerSales,
       teyseerSales,
-
       netSales:
         customerSales +
         teyseerSales,
-
       paid,
       customerPaid,
-
       customerBalance,
       teyseerBalance,
-
       cashPaid,
       cardPaid,
       bankTransferPaid,
@@ -810,34 +674,26 @@ function Reports() {
     calculatedJobs,
     linkedPayments,
   ]);
-
   const customerSales =
     financial.customerSales;
-
   const teyseerSales =
     financial.teyseerSales;
-
   const customerPaid =
     financial.customerPaid;
-
   const customerBalance =
     financial.customerBalance;
-
   const teyseerBalance =
     financial.teyseerBalance;
-
   /*
   ============================================================
   TEYSEER JOBS
   ============================================================
   */
-
   const teyseerJobs = useMemo(() => {
     return calculatedJobs.filter(
       (job) => job.isTeyseer
     );
   }, [calculatedJobs]);
-
   const filteredTeyseerJobs =
     useMemo(() => {
       return teyseerJobs.filter((job) =>
@@ -852,13 +708,11 @@ function Reports() {
       teyseerStartDate,
       teyseerEndDate,
     ]);
-
   /*
   ============================================================
   TEYSEER SOURCE TOTALS
   ============================================================
   */
-
   const teyseerMotorsAmount =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -874,7 +728,6 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
   const salahAmount =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -891,7 +744,6 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
   const bahaaAmount =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -908,7 +760,6 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
     const abdouAmount =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -925,11 +776,16 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
   const filteredTeyseerSales =
     filteredTeyseerJobs.reduce(
       (sum, job) =>
         sum + job.teyseerSales,
+      0
+    );
+  const filteredTeyseerPaid =
+    filteredTeyseerJobs.reduce(
+      (sum, job) =>
+        sum + job.teyseerPaid,
       0
     );
 
@@ -939,13 +795,11 @@ function Reports() {
         sum + job.teyseerBalance,
       0
     );
-
   /*
   ============================================================
   TEYSEER SERVICE COUNTS
   ============================================================
   */
-
   const teyseerMotorsServiceItems =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -962,7 +816,6 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
   const salahServiceItems =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -980,7 +833,6 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
   const bahaaServiceItems =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -998,7 +850,6 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
      const abdouServiceItems =
     useMemo(() => {
       return filteredTeyseerJobs
@@ -1016,16 +867,13 @@ function Reports() {
           0
         );
     }, [filteredTeyseerJobs]);
-
   const filteredTeyseerCars =
     filteredTeyseerJobs.length;
-
   /*
   ============================================================
   DISCREPANCIES
   ============================================================
   */
-
   const discrepancyJobs =
     useMemo(() => {
       return teyseerJobs.filter(
@@ -1035,20 +883,17 @@ function Reports() {
           ) > 0.01
       );
     }, [teyseerJobs]);
-
   const totalTeyseerDiscrepancy =
     discrepancyJobs.reduce(
       (sum, job) =>
         sum + job.discrepancy,
       0
     );
-
   /*
   ============================================================
   UNLINKED PAYMENTS
   ============================================================
   */
-
   const unlinkedPayments =
     useMemo(() => {
       return payments.filter(
@@ -1058,20 +903,17 @@ function Reports() {
           payment.job_id === ""
       );
     }, [payments]);
-
   const unlinkedPaymentTotal =
     unlinkedPayments.reduce(
       (sum, payment) =>
         sum + number(payment.amount),
       0
     );
-
   /*
   ============================================================
   DAILY PAYMENTS
   ============================================================
   */
-
   const dailyPayments = useMemo(() => {
     const result = {};
 
@@ -1079,9 +921,7 @@ function Reports() {
       const date = String(
         payment.payment_date || ""
       ).slice(0, 10);
-
       if (!date) return;
-
       if (!result[date]) {
         result[date] = {
           cash: 0,
@@ -1092,15 +932,11 @@ function Reports() {
           total: 0,
         };
       }
-
       const amount =
         number(payment.amount);
-
       const method =
         getPaymentMethod(payment);
-
       result[date].total += amount;
-
       if (isCash(payment)) {
         result[date].cash += amount;
       } else if (
@@ -1122,19 +958,16 @@ function Reports() {
         result[date].other += amount;
       }
     });
-
     return Object.entries(result).sort(
       ([a], [b]) =>
         b.localeCompare(a)
     );
   }, [linkedPayments]);
-
   /*
   ============================================================
   SELECTED DATE
   ============================================================
   */
-
   const selectedDatePayments =
     useMemo(() => {
       return linkedPayments.filter(
@@ -1142,7 +975,6 @@ function Reports() {
           if (!payment.payment_date) {
             return false;
           }
-
           return (
             String(
               payment.payment_date
@@ -1155,14 +987,12 @@ function Reports() {
       linkedPayments,
       reportDate,
     ]);
-
   const selectedDatePaymentTotal =
     selectedDatePayments.reduce(
       (sum, payment) =>
         sum + number(payment.amount),
       0
     );
-
   const selectedDateJobs =
     useMemo(() => {
       return calculatedJobs.filter(
@@ -1174,115 +1004,92 @@ function Reports() {
       calculatedJobs,
       reportDate,
     ]);
-
   const selectedDateCustomerSales =
     selectedDateJobs.reduce(
       (sum, job) =>
         sum + job.customerSales,
       0
     );
-
   const selectedDateTeyseerSales =
     selectedDateJobs.reduce(
       (sum, job) =>
         sum + job.teyseerSales,
       0
     );
-
   const selectedDateSales =
     selectedDateCustomerSales +
     selectedDateTeyseerSales;
-
   const selectedDatePaid =
     selectedDateJobs.reduce(
       (sum, job) =>
         sum + job.paid,
       0
     );
-
   const selectedDateCustomerPaid =
     selectedDateJobs.reduce(
       (sum, job) =>
         sum + job.customerPaid,
       0
     );
-
   const selectedDateBalance =
     selectedDateJobs.reduce(
       (sum, job) =>
         sum + job.customerBalance,
       0
     );
-
   /*
   ============================================================
   CAR COUNTS
   ============================================================
   */
-
   const today = todayQatar();
-
   const carsToday =
     calculatedJobs.filter(
       (job) =>
         getJobDate(job) === today
     ).length;
-
   const currentMonth =
     today.slice(0, 7);
-
-  const carsThisMonth =
+const carsThisMonth =
     calculatedJobs.filter((job) => {
       const date =
         getJobDate(job);
-
       return (
         date &&
         date.slice(0, 7) ===
           currentMonth
       );
     }).length;
-
   function isSameWeekQatar(
     dateString
   ) {
     if (!dateString) return false;
-
     const date = new Date(
       `${dateString}T12:00:00`
     );
-
     const todayDate = new Date(
       `${today}T12:00:00`
     );
-
     const day =
       todayDate.getDay();
-
     const mondayOffset =
       day === 0 ? 6 : day - 1;
-
     const monday =
       new Date(todayDate);
-
     monday.setDate(
       monday.getDate() -
         mondayOffset
     );
-
     const sunday =
       new Date(monday);
-
     sunday.setDate(
       sunday.getDate() + 6
     );
-
     return (
       date >= monday &&
       date <= sunday
     );
   }
-
   const carsThisWeek =
     calculatedJobs.filter(
       (job) =>
@@ -1290,19 +1097,15 @@ function Reports() {
           getJobDate(job)
         )
     ).length;
-
   const dailyCars = {};
-
   calculatedJobs.forEach((job) => {
     const date =
       getJobDate(job);
-
     if (!date) return;
 
     dailyCars[date] =
       (dailyCars[date] || 0) + 1;
   });
-
   const dailyCarRows =
     Object.entries(
       dailyCars
@@ -1310,13 +1113,11 @@ function Reports() {
       ([a], [b]) =>
         b.localeCompare(a)
     );
-
   /*
   ============================================================
   AL NUSOOR
   ============================================================
   */
-
   const alnusoorJobs =
     useMemo(() => {
       return calculatedJobs.filter(
@@ -1327,7 +1128,6 @@ function Reports() {
             )
               .toLowerCase()
               .trim();
-
           const isAlnusoor =
             customer.includes(
               "al nusoor"
@@ -1335,11 +1135,9 @@ function Reports() {
             customer.includes(
               "alnusoor"
             );
-
           if (!isAlnusoor) {
             return false;
           }
-
           return isDateInRange(
             getJobDate(job),
             alnusoorStartDate,
@@ -1352,48 +1150,41 @@ function Reports() {
       alnusoorStartDate,
       alnusoorEndDate,
     ]);
-
   const alnusoorGross =
     alnusoorJobs.reduce(
       (sum, job) =>
         sum + job.gross,
       0
     );
-
   const alnusoorDiscount =
     alnusoorJobs.reduce(
       (sum, job) =>
         sum + job.discount,
       0
     );
-
   const alnusoorNet =
     alnusoorJobs.reduce(
       (sum, job) =>
         sum + job.canonicalNet,
       0
     );
-
   const alnusoorPaid =
     alnusoorJobs.reduce(
       (sum, job) =>
         sum + job.customerPaid,
       0
     );
-
   const alnusoorBalance =
     alnusoorJobs.reduce(
       (sum, job) =>
         sum + job.customerBalance,
       0
     );
-
   /*
   ============================================================
   PRINT AL NUSOOR
   ============================================================
   */
-
   function printAlnusoorReport() {
     if (
       alnusoorJobs.length === 0
@@ -1403,45 +1194,36 @@ function Reports() {
       );
       return;
     }
-
     const rows =
       alnusoorJobs
         .map(
           (job) => `
             <tr>
               <td>${getJobDate(job) || "-"}</td>
-
               <td>${escapeHtml(
                 job.customer || "-"
               )}</td>
-
               <td>${escapeHtml(
                 job.carMake ||
                   job.carType ||
                   job.carModel ||
                   "-"
               )}</td>
-
               <td>${escapeHtml(
                 job.plate || "-"
               )}</td>
-
               <td class="money">${money(
                 job.gross
               )}</td>
-
               <td class="money">${money(
                 job.discount
               )}</td>
-
               <td class="money">${money(
                 job.canonicalNet
               )}</td>
-
               <td class="money">${money(
                 job.customerPaid
               )}</td>
-
               <td class="money">${money(
                 job.customerBalance
               )}</td>
@@ -1449,37 +1231,31 @@ function Reports() {
           `
         )
         .join("");
-
     const printWindow =
       window.open(
         "",
         "_blank",
         "width=1200,height=1000"
       );
-
     if (!printWindow) {
       alert(
         "Please allow pop-ups for this website."
       );
       return;
     }
-
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
         <title>Al Nusoor Center Report</title>
-
         <style>
           * {
             box-sizing: border-box;
           }
-
           @page {
             size: A4 landscape;
             margin: 10mm;
           }
-
           body {
             font-family: Arial, sans-serif;
             color: #000;
@@ -1487,79 +1263,65 @@ function Reports() {
             margin: 0;
             padding: 10px;
           }
-
           .header {
             display: flex;
             gap: 18px;
             margin-bottom: 25px;
           }
-
           .logo {
             width: 95px;
             height: 95px;
             object-fit: contain;
           }
-
           .companyName {
             font-size: 17px;
             font-weight: bold;
             margin-bottom: 8px;
           }
-
           .arabicName {
             font-size: 15px;
             font-weight: bold;
             margin-bottom: 8px;
           }
-
           .address {
             font-size: 11px;
           }
-
           table {
             width: 100%;
             border-collapse: collapse;
           }
-
           th {
             text-align: left;
             padding: 7px;
             background: #111827;
             color: white;
           }
-
           td {
             padding: 7px;
             border-bottom: 1px solid #ddd;
           }
-
           .money {
             text-align: right;
           }
-
           .summary {
             margin-top: 20px;
             display: grid;
             grid-template-columns: repeat(6, 1fr);
             gap: 10px;
           }
-
           .box {
             border: 1px solid #ccc;
             padding: 10px;
           }
-
           .label {
             font-size: 9px;
             color: #666;
           }
-
           .value {
             font-size: 14px;
             font-weight: bold;
             margin-top: 5px;
           }
-
           .footer {
             margin-top: 40px;
             border-top: 1px solid #000;
@@ -1569,39 +1331,31 @@ function Reports() {
           }
         </style>
       </head>
-
       <body>
-
         <div class="header">
           <img
             src="${gaLogo}"
             class="logo"
           />
-
           <div>
             <div class="companyName">
               HAOSHENG CAR SERVICE AND ACCESSORIES
             </div>
-
             <div class="arabicName">
               هاوشنغ لخدمات وزينة السيارات
             </div>
-
             <div class="address">
               Building 358, Salwa Road, Doha - Qatar
             </div>
           </div>
         </div>
-
         <h2>AL NUSOOR CENTER REPORT</h2>
-
         <p>
           Period:
           ${alnusoorStartDate || "All dates"}
           -
           ${alnusoorEndDate || "All dates"}
         </p>
-
         <table>
           <thead>
             <tr>
@@ -1616,79 +1370,64 @@ function Reports() {
               <th>BALANCE</th>
             </tr>
           </thead>
-
           <tbody>
             ${rows}
           </tbody>
         </table>
-
         <div class="summary">
-
           <div class="box">
             <div class="label">CARS</div>
             <div class="value">
               ${alnusoorJobs.length}
             </div>
           </div>
-
           <div class="box">
             <div class="label">GROSS</div>
             <div class="value">
               QAR ${money(alnusoorGross)}
             </div>
           </div>
-
           <div class="box">
             <div class="label">DISCOUNT</div>
             <div class="value">
               QAR ${money(alnusoorDiscount)}
             </div>
           </div>
-
           <div class="box">
             <div class="label">NET</div>
             <div class="value">
               QAR ${money(alnusoorNet)}
             </div>
           </div>
-
           <div class="box">
             <div class="label">PAID</div>
             <div class="value">
               QAR ${money(alnusoorPaid)}
             </div>
           </div>
-
           <div class="box">
             <div class="label">BALANCE</div>
             <div class="value">
               QAR ${money(alnusoorBalance)}
             </div>
           </div>
-
         </div>
-
         <div class="footer">
           <strong>
             Tel: +974 4441 5866 |
             C.R.NO: 199725 |
             E-mail: info@haoshengcar.com
           </strong>
-
           <br />
-
           Fereej Al Manaseer,
           Zone 55, St. 340,
           Bldg 358, Salwa Road,
           Doha, Qatar
         </div>
-
       </body>
       </html>
     `);
-
     printWindow.document.close();
-
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.focus();
@@ -1696,14 +1435,12 @@ function Reports() {
       }, 500);
     };
   }
-
   /*
   ============================================================
   PRINT TEYSEER
   ============================================================
   */
-
- function printTeyseerReport() {
+function printTeyseerReport() {
   if (filteredTeyseerJobs.length === 0) {
     alert("No Teyseer jobs found.");
     return;
@@ -1761,18 +1498,6 @@ function Reports() {
               number(job.teyseerSales)
             )}
           </td>
-
-          <td class="money">
-            QAR ${money(
-              number(job.teyseerPaid)
-            )}
-          </td>
-
-          <td class="money">
-            QAR ${money(
-              number(job.teyseerBalance)
-            )}
-          </td>
         </tr>
       `
     )
@@ -1796,7 +1521,6 @@ function Reports() {
     <html>
 
     <head>
-
       <meta charset="UTF-8" />
 
       <title>
@@ -1804,7 +1528,6 @@ function Reports() {
       </title>
 
       <style>
-
         * {
           box-sizing: border-box;
         }
@@ -1880,8 +1603,7 @@ function Reports() {
 
         .summary {
           display: grid;
-          grid-template-columns:
-            repeat(5, 1fr);
+          grid-template-columns: repeat(5, 1fr);
           gap: 8px;
           margin-bottom: 14px;
         }
@@ -1930,17 +1652,18 @@ function Reports() {
         }
 
         .number {
-          width: 3%;
+          width: 4%;
           text-align: center;
         }
 
         .money {
           text-align: right;
           white-space: nowrap;
+          width: 12%;
         }
 
         .services {
-          width: 22%;
+          width: 25%;
         }
 
         .footer {
@@ -1954,7 +1677,6 @@ function Reports() {
         }
 
         @media print {
-
           thead {
             display: table-header-group;
           }
@@ -1970,11 +1692,8 @@ function Reports() {
           .footer {
             page-break-inside: avoid;
           }
-
         }
-
       </style>
-
     </head>
 
     <body>
@@ -2038,7 +1757,7 @@ function Reports() {
 
         <div class="box">
           <div class="boxLabel">
-            Net Sales
+            Total Amount
           </div>
 
           <div class="boxValue">
@@ -2050,39 +1769,15 @@ function Reports() {
 
         <div class="box">
           <div class="boxLabel">
-            Paid
-          </div>
-
-          <div class="boxValue">
-            QAR ${money(
-              filteredTeyseerPaid
-            )}
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="boxLabel">
-            Balance
-          </div>
-
-          <div class="boxValue">
-            QAR ${money(
-              filteredTeyseerBalance
-            )}
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="boxLabel">
             Service Items
           </div>
 
           <div class="boxValue">
             ${
-              teyseerMotorsStats.serviceItems +
-              salahStats.serviceItems +
-              bahaaStats.serviceItems +
-              abdouStats.serviceItems
+              teyseerMotorsServiceItems +
+              salahServiceItems +
+              bahaaServiceItems +
+              abdouServiceItems
             }
           </div>
         </div>
@@ -2100,9 +1795,7 @@ function Reports() {
             <th>SERVICES</th>
             <th>VOUCHER NO.</th>
             <th>RECEIPT NO.</th>
-            <th>TEYSEER NET</th>
-            <th>TEYSEER PAID</th>
-            <th>BALANCE</th>
+            <th>AMOUNT</th>
           </tr>
         </thead>
 
@@ -2143,6 +1836,7 @@ function Reports() {
     }, 500);
   };
 }
+
   /*
   ============================================================
   PRINT DAILY
@@ -3502,63 +3196,52 @@ function Reports() {
 
             <div className="source-grid">
 
-  <div className="source-box">
-    <div className="source-name">
-      Teyseer Motors
-    </div>
+              <div className="source-box">
 
-    <div className="source-value">
-      QAR {money(teyseerMotorsStats.sales)}
-    </div>
+                <div className="source-name">
+                  Teyseer Motors
+                </div>
 
-    <div className="source-meta">
-      {teyseerMotorsStats.cars} cars
-    </div>
-  </div>
+                <div className="source-value">
+                  QAR{" "}
+                  {money(
+                    teyseerMotorsAmount
+                  )}
+                </div>
 
-  <div className="source-box">
-    <div className="source-name">
-      Teyseer Motors - Salah
-    </div>
+              </div>
 
-    <div className="source-value">
-      QAR {money(salahStats.sales)}
-    </div>
+              <div className="source-box">
 
-    <div className="source-meta">
-      {salahStats.cars} cars
-    </div>
-  </div>
+                <div className="source-name">
+                  Teyseer Motors - Salah
+                </div>
 
-  <div className="source-box">
-    <div className="source-name">
-      Teyseer Motors - Bahaa
-    </div>
+                <div className="source-value">
+                  QAR{" "}
+                  {money(
+                    salahAmount
+                  )}
+                </div>
 
-    <div className="source-value">
-      QAR {money(bahaaStats.sales)}
-    </div>
+              </div>
 
-    <div className="source-meta">
-      {bahaaStats.cars} cars
-    </div>
-  </div>
+              <div className="source-box">
 
-  <div className="source-box">
-    <div className="source-name">
-      Teyseer Motors - Abdou
-    </div>
+                <div className="source-name">
+                  Teyseer Motors - Bahaa
+                </div>
 
-    <div className="source-value">
-      QAR {money(abdouStats.sales)}
-    </div>
+                <div className="source-value">
+                  QAR{" "}
+                  {money(
+                    bahaaAmount
+                  )}
+                </div>
 
-    <div className="source-meta">
-      {abdouStats.cars} cars
-    </div>
-  </div>
+              </div>
 
-</div>
+            </div>
 
           </div>
 
@@ -3570,83 +3253,64 @@ function Reports() {
 
             <div className="source-grid">
 
-  <div className="source-box">
-    <div className="source-name">
-      Teyseer Motors
-    </div>
+              <div className="source-box">
 
-    <div className="source-value">
-      {teyseerMotorsStats.serviceItems}
-    </div>
+                <div className="source-name">
+                  Teyseer Motors
+                </div>
 
-    <div className="source-meta">
-      Service Items
-    </div>
+                <div className="source-value">
+                  {teyseerMotorsServiceItems}
+                </div>
 
-    <div>
-      Net Sales: QAR{" "}
-      {money(teyseerMotorsStats.sales)}
-    </div>
-  </div>
+                <div>
+                  Net Sales: QAR{" "}
+                  {money(
+                    teyseerMotorsAmount
+                  )}
+                </div>
 
-  <div className="source-box">
-    <div className="source-name">
-      Salah
-    </div>
+              </div>
 
-    <div className="source-value">
-      {salahStats.serviceItems}
-    </div>
+              <div className="source-box">
 
-    <div className="source-meta">
-      Service Items
-    </div>
+                <div className="source-name">
+                  Salah
+                </div>
 
-    <div>
-      Net Sales: QAR{" "}
-      {money(salahStats.sales)}
-    </div>
-  </div>
+                <div className="source-value">
+                  {salahServiceItems}
+                </div>
 
-  <div className="source-box">
-    <div className="source-name">
-      Bahaa
-    </div>
+                <div>
+                  Net Sales: QAR{" "}
+                  {money(
+                    salahAmount
+                  )}
+                </div>
 
-    <div className="source-value">
-      {bahaaStats.serviceItems}
-    </div>
+              </div>
 
-    <div className="source-meta">
-      Service Items
-    </div>
+              <div className="source-box">
 
-    <div>
-      Net Sales: QAR{" "}
-      {money(bahaaStats.sales)}
-    </div>
-  </div>
+                <div className="source-name">
+                  Bahaa
+                </div>
 
-  <div className="source-box">
-    <div className="source-name">
-      Abdou
-    </div>
+                <div className="source-value">
+                  {bahaaServiceItems}
+                </div>
 
-    <div className="source-value">
-      {abdouStats.serviceItems}
-    </div>
+                <div>
+                  Net Sales: QAR{" "}
+                  {money(
+                    bahaaAmount
+                  )}
+                </div>
 
-    <div className="source-meta">
-      Service Items
-    </div>
+              </div>
 
-    <div>
-      Net Sales: QAR{" "}
-      {money(abdouStats.sales)}
-    </div>
-  </div>
-
-</div>
+            </div>
 
           </div>
 
