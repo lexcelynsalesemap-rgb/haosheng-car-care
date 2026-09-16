@@ -1445,35 +1445,31 @@ function printTeyseerReport() {
     alert("No Teyseer jobs found.");
     return;
   }
+const teyseerSources = [
+  "TEYSEER MOTORS - SALAH",
+  "TEYSEER MOTORS - BAHAA",
+  "TEYSEER MOTORS - ABDOU",
+];
 
-  const teyseerSources = [
-    "TEYSEER-SALAH",
-    "TEYSEER-BAHAA",
-    "TEYSEER-ABDOU",
-  ];
+const getTeyseerDescription = (job) => {
+  const source = String(
+    job.source ||
+      job.jobSource ||
+      job.customerSource ||
+      ""
+  )
+    .trim()
+    .toUpperCase();
 
-  const getTeyseerDescription = (job) => {
-   const source = String(
-  job.source ||
-    job.jobSource ||
-    job.customerSource ||
-    ""
-)
-  .trim()
-  .toUpperCase();
+  const services = String(job.serviceNames || "");
 
-const services = String(job.serviceNames || "");
+  // Teyseer Motors - Salah / Bahaa / Abdou = ONLY WTT
+  if (teyseerSources.includes(source)) {
+    return "WTT";
+  }
 
-/*
-  Teyseer jobs:
-  Only show WTT in the description.
-*/
-if (teyseerSources.includes(source)) {
-  return "WTT";
-}
-
-return services || "-";
-  };
+  return services || "-";
+};
 
   const rows = filteredTeyseerJobs
     .map((job) => {
