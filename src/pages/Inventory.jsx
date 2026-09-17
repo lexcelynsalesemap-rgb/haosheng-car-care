@@ -9,13 +9,13 @@ import { canSeeInventoryCost } from "../utils/permissions";
 const categoryChinese = {
   PPF: "漆面保护膜",
   "Window Film": "车窗膜",
-  "Window Tinting": "车窗隔热膜",
-  "Window Tinting Material": "车窗膜材料",
-  "Window Tinting Materials": "车窗膜材料",
+  "Window Tinting": "车窗贴膜",
+  "Window Tinting Material": "车窗贴膜材料",
+  "Window Tinting Materials": "车窗贴膜材料",
   "Ceramic Coating": "陶瓷涂层",
-  Accessories: "配件",
+  Accessories: "汽车配件",
   Maintenance: "保养",
-  Parts: "零部件",
+  Parts: "零配件",
   Other: "其他",
 };
 
@@ -25,165 +25,68 @@ const productChinese = {
   "Front PPF": "前部漆面保护膜",
   "Matte PPF": "哑光漆面保护膜",
   "Glossy PPF": "高光漆面保护膜",
-
   "Window Film": "车窗膜",
-  "Window Tinting": "车窗隔热膜",
-  "Window Tinting Material": "车窗膜材料",
-  "Window Tinting Materials": "车窗膜材料",
-
+  "Window Tinting": "车窗贴膜",
+  "Window Tinting Material": "车窗贴膜材料",
+  "Window Tinting Materials": "车窗贴膜材料",
   "Ceramic Coating": "陶瓷涂层",
   "Car Wash": "洗车",
-  "Oil Change": "换机油",
-  "Engine Oil": "发动机机油",
+  "Oil Change": "更换机油",
+  "Engine Oil": "发动机油",
   "Brake Pads": "刹车片",
-  "Air Filter": "空气滤芯",
+  "Air Filter": "空气滤清器",
   "Cabin Filter": "空调滤芯",
   Wiper: "雨刷",
   "Car Accessories": "汽车配件",
 };
 
-/* =========================================================
-   PRODUCT CHINESE TRANSLATION
-========================================================= */
+function getProductChinese(name = "", categoryName = "") {
+  const exact = productChinese[name];
 
-function getProductChinese(name, categoryName) {
-  if (!name && !categoryName) return "";
-
-  /* Exact product translation */
-  if (name && productChinese[name]) {
-    return productChinese[name];
+  if (exact) {
+    return exact;
   }
 
-  const lowerName = String(name || "").toLowerCase();
+  const lower = name.toLowerCase();
 
-  /* Window tint / window film */
-  if (
-    lowerName.includes("window tint") ||
-    lowerName.includes("window film")
-  ) {
-    return "车窗膜材料";
-  }
+  if (lower.includes("engine oil")) return "发动机油";
+  if (lower.includes("brake pad")) return "刹车片";
+  if (lower.includes("air filter")) return "空气滤清器";
+  if (lower.includes("cabin filter")) return "空调滤芯";
+  if (lower.includes("wiper")) return "雨刷";
+  if (lower.includes("matte") && lower.includes("ppf")) return "哑光漆面保护膜";
+  if (lower.includes("gloss") && lower.includes("ppf")) return "高光漆面保护膜";
+  if (lower.includes("ppf")) return "漆面保护膜";
+  if (lower.includes("window film")) return "车窗膜";
+  if (lower.includes("window tint")) return "车窗贴膜";
+  if (lower.includes("ceramic")) return "陶瓷涂层";
+  if (lower.includes("car wash")) return "洗车";
+  if (lower.includes("oil change")) return "更换机油";
+  if (lower.includes("accessor")) return "汽车配件";
 
-  /* PPF */
-  if (lowerName.includes("ppf")) {
-    return "漆面保护膜";
-  }
-
-  if (lowerName.includes("paint protection")) {
-    return "漆面保护膜";
-  }
-
-  /* Ceramic */
-  if (lowerName.includes("ceramic")) {
-    return "陶瓷涂层";
-  }
-
-  /* Oil */
-  if (lowerName.includes("oil")) {
-    return "机油";
-  }
-
-  /* Brake */
-  if (lowerName.includes("brake")) {
-    return "刹车系统";
-  }
-
-  /* Filter */
-  if (lowerName.includes("filter")) {
-    return "滤芯";
-  }
-
-  /* Wiper */
-  if (lowerName.includes("wiper")) {
-    return "雨刷";
-  }
-
-  /* Accessories */
-  if (lowerName.includes("accessor")) {
-    return "汽车配件";
-  }
-
-  /*
-    IMPORTANT:
-    For products that are codes/percentages such as:
-
-    10%
-    15%
-    25%
-    M99-15
-    M99-25
-    Pro-2595
-
-    use the Chinese translation of their category.
-  */
-  if (categoryName && categoryChinese[categoryName]) {
-    return categoryChinese[categoryName];
-  }
-
-  return "";
+  return categoryChinese[categoryName] || "其他";
 }
 
-/* =========================================================
-   DISPLAY HELPERS
-========================================================= */
-
-function getProductDisplay(name, categoryName) {
-  const chinese = getProductChinese(
-    name,
-    categoryName
-  );
+function getProductDisplay(name = "", categoryName = "") {
+  const chinese = getProductChinese(name, categoryName);
 
   return (
-    <div>
-      <div
-        style={{
-          fontWeight: 700,
-          color: "#f5f5f5",
-        }}
-      >
-        {name || "-"}
-      </div>
-
+    <div className="product-name-wrapper">
+      <div className="product-name-en">{name || "—"}</div>
       {chinese && (
-        <div
-          style={{
-            color: "#9ca3af",
-            fontSize: 12,
-            marginTop: 3,
-          }}
-        >
-          {chinese}
-        </div>
+        <div className="product-name-cn">{chinese}</div>
       )}
     </div>
   );
 }
 
-function getCategoryDisplay(name) {
-  const chinese = categoryChinese[name];
+function getCategoryDisplay(name = "") {
+  const chinese = categoryChinese[name] || "其他";
 
   return (
-    <div>
-      <div
-        style={{
-          fontWeight: 600,
-          color: "#f5f5f5",
-        }}
-      >
-        {name || "-"}
-      </div>
-
-      {chinese && (
-        <div
-          style={{
-            color: "#9ca3af",
-            fontSize: 11,
-            marginTop: 3,
-          }}
-        >
-          {chinese}
-        </div>
-      )}
+    <div className="category-name-wrapper">
+      <div>{name || "—"}</div>
+      <div className="category-cn">{chinese}</div>
     </div>
   );
 }
@@ -193,37 +96,32 @@ function getCategoryDisplay(name) {
 ========================================================= */
 
 function getStatus(product) {
-  const stock = Number(
-    product.current_stock || 0
-  );
-
-  const minimum = Number(
-    product.minimum_stock || 0
-  );
+  const stock = Number(product.current_stock || 0);
+  const minimum = Number(product.minimum_stock || 0);
 
   if (stock <= 0) {
     return {
+      key: "out",
       label: "Out of Stock",
       chinese: "缺货",
-      color: "#ef4444",
-      background: "rgba(239,68,68,0.12)",
+      className: "status-out",
     };
   }
 
   if (stock <= minimum) {
     return {
+      key: "low",
       label: "Low Stock",
       chinese: "库存不足",
-      color: "#f59e0b",
-      background: "rgba(245,158,11,0.12)",
+      className: "status-low",
     };
   }
 
   return {
+    key: "in",
     label: "In Stock",
-    chinese: "有库存",
-    color: "#22c55e",
-    background: "rgba(34,197,94,0.12)",
+    chinese: "库存充足",
+    className: "status-in",
   };
 }
 
@@ -232,158 +130,189 @@ function getStatus(product) {
 ========================================================= */
 
 export default function Inventory() {
-  const loggedInUser = JSON.parse(
-    localStorage.getItem("loggedInUser") ||
-      localStorage.getItem("user") ||
-      "null"
-  );
+  /* =======================================================
+     USER / PERMISSIONS
+  ======================================================= */
 
-  const showCost =
-    canSeeInventoryCost(loggedInUser);
+  const loggedInUser = useMemo(() => {
+    try {
+      const stored =
+        localStorage.getItem("loggedInUser") ||
+        localStorage.getItem("user");
+
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const isAdmin =
     loggedInUser?.role === "admin" ||
     loggedInUser?.role === "Admin" ||
-    loggedInUser?.is_admin === true;
+    loggedInUser?.is_admin === true ||
+    loggedInUser?.isAdmin === true;
 
-  const shopId = loggedInUser?.shop_id;
+  const userName =
+    loggedInUser?.name ||
+    loggedInUser?.full_name ||
+    loggedInUser?.username ||
+    "";
 
-  /* =========================================================
-     STATE
-  ========================================================= */
+  const canManageStock =
+    isAdmin ||
+    userName.toLowerCase().includes("daniel");
+
+  const showCost = canSeeInventoryCost(loggedInUser);
+
+  const shopId =
+    loggedInUser?.shop_id ||
+    loggedInUser?.shopId ||
+    loggedInUser?.shop?.id ||
+    null;
+
+  /* =======================================================
+     DATA
+  ======================================================= */
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] =
-    useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  /* =======================================================
+     FILTERS
+  ======================================================= */
+
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] =
-    useState("");
-  const [statusFilter, setStatusFilter] =
-    useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  const [showProductForm, setShowProductForm] =
-    useState(false);
+  /* =======================================================
+     MODALS
+  ======================================================= */
 
-  const [showMovementForm, setShowMovementForm] =
-    useState(false);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [showMovementForm, setShowMovementForm] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
-  const [showCategoryForm, setShowCategoryForm] =
-    useState(false);
+  /* =======================================================
+     PRODUCT
+  ======================================================= */
 
-  const [showHistoryModal, setShowHistoryModal] =
-    useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
 
-  const [editingProduct, setEditingProduct] =
-    useState(null);
-
-  const [selectedProduct, setSelectedProduct] =
-    useState(null);
-
-  const [movementType, setMovementType] =
-    useState("in");
-
-  const [history, setHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] =
-    useState(false);
-
-  const [categoryName, setCategoryName] =
-    useState("");
-
-  /* =========================================================
-     IMAGE STATE
-  ========================================================= */
-
-  const [productImage, setProductImage] =
-    useState(null);
-
-  const [imagePreview, setImagePreview] =
-    useState("");
-
-  /* =========================================================
-     PRODUCT FORM
-  ========================================================= */
-
-  const emptyProductForm = {
+  const [productForm, setProductForm] = useState({
     sku: "",
     name: "",
     category_id: "",
     unit: "pcs",
     cost_price: "",
-    current_stock: "0",
-    minimum_stock: "0",
+    current_stock: "",
+    minimum_stock: "",
     description: "",
     image_url: "",
-  };
+  });
 
-  const [productForm, setProductForm] =
-    useState(emptyProductForm);
+  /* =======================================================
+     IMAGE
+  ======================================================= */
 
-  /* =========================================================
-     MOVEMENT FORM
-  ========================================================= */
+  const [productImage, setProductImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
 
-  const [movementForm, setMovementForm] =
-    useState({
-      quantity: "",
-      unit_cost: "",
-      reference: "",
-      notes: "",
+  /* =======================================================
+     LARGE IMAGE VIEWER
+  ======================================================= */
+
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  function openImageViewer(url, name) {
+    if (!url) return;
+
+    setSelectedImage({
+      url,
+      name: name || "Product Image",
     });
+  }
 
-  /* =========================================================
-     CLEAN IMAGE PREVIEW
-  ========================================================= */
+  function closeImageViewer() {
+    setSelectedImage(null);
+  }
+
+  /* =======================================================
+     MOVEMENT
+  ======================================================= */
+
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [movementType, setMovementType] = useState("in");
+
+  const [movementForm, setMovementForm] = useState({
+    quantity: "",
+    unit_cost: "",
+    reference: "",
+    notes: "",
+  });
+
+  /* =======================================================
+     HISTORY
+  ======================================================= */
+
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  /* =======================================================
+     CATEGORY
+  ======================================================= */
+
+  const [categoryName, setCategoryName] = useState("");
+
+  /* =======================================================
+     CLEANUP IMAGE PREVIEW
+  ======================================================= */
 
   useEffect(() => {
     return () => {
-      if (
-        imagePreview &&
-        imagePreview.startsWith("blob:")
-      ) {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview);
       }
     };
   }, [imagePreview]);
 
-  /* =========================================================
-     LOAD DATA
-  ========================================================= */
+  /* =======================================================
+     INITIAL LOAD
+  ======================================================= */
 
   useEffect(() => {
+    if (!shopId) {
+      setLoading(false);
+      setError("No shop is assigned to your account.");
+      return;
+    }
+
     loadProducts();
     loadCategories();
   }, [shopId]);
 
+  /* =======================================================
+     LOAD PRODUCTS
+  ======================================================= */
+
   async function loadProducts() {
-    if (!shopId) {
-      setLoading(false);
-
-      setError(
-        "No shop is assigned to this user. / 此用户未分配店铺。"
-      );
-
-      return;
-    }
+    if (!shopId) return;
 
     try {
       setLoading(true);
       setError("");
 
-      const {
-        data,
-        error: productsError,
-      } = await supabase
+      const { data, error: queryError } = await supabase
         .from("inventory_products")
-        .select(
-          `
+        .select(`
           id,
           sku,
           name,
@@ -400,124 +329,80 @@ export default function Inventory() {
           updated_at,
           shop_id,
           image_url
-        `
-        )
+        `)
         .eq("shop_id", shopId)
         .eq("active", true)
-        .order("name", {
-          ascending: true,
-        });
+        .order("name", { ascending: true });
 
-      if (productsError) {
-        throw productsError;
+      if (queryError) {
+        throw queryError;
       }
 
       setProducts(data || []);
     } catch (err) {
-      console.error(
-        "loadProducts error:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to load products. / 加载产品失败。"
-      );
+      console.error("loadProducts error:", err);
+      setError(err.message || "Failed to load inventory.");
     } finally {
       setLoading(false);
     }
   }
 
+  /* =======================================================
+     LOAD CATEGORIES
+  ======================================================= */
+
   async function loadCategories() {
     if (!shopId) return;
 
     try {
-      const {
-        data,
-        error: categoriesError,
-      } = await supabase
+      const { data, error: queryError } = await supabase
         .from("inventory_categories")
-        .select(
-          `
-          id,
-          name,
-          description,
-          active,
-          shop_id
-        `
-        )
+        .select("*")
         .eq("shop_id", shopId)
         .eq("active", true)
-        .order("name", {
-          ascending: true,
-        });
+        .order("name", { ascending: true });
 
-      if (categoriesError) {
-        throw categoriesError;
+      if (queryError) {
+        throw queryError;
       }
 
       setCategories(data || []);
     } catch (err) {
-      console.error(
-        "loadCategories error:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to load categories. / 加载分类失败。"
-      );
+      console.error("loadCategories error:", err);
+      setError(err.message || "Failed to load categories.");
     }
   }
 
-  /* =========================================================
+  /* =======================================================
      FILTERED PRODUCTS
-  ========================================================= */
+  ======================================================= */
 
   const filteredProducts = useMemo(() => {
-    const query = search
-      .trim()
-      .toLowerCase();
+    const term = search.trim().toLowerCase();
 
     return products.filter((product) => {
       const category = categories.find(
-        (item) =>
-          item.id === product.category_id
+        (cat) => cat.id === product.category_id
       );
 
-      const categoryNameValue =
-        category?.name || "";
+      const categoryNameValue = category?.name || "";
 
       const matchesSearch =
-        !query ||
-        product.name
-          ?.toLowerCase()
-          .includes(query) ||
-        product.sku
-          ?.toLowerCase()
-          .includes(query) ||
-        product.description
-          ?.toLowerCase()
-          .includes(query) ||
-        categoryNameValue
-          .toLowerCase()
-          .includes(query);
+        !term ||
+        product.name?.toLowerCase().includes(term) ||
+        product.sku?.toLowerCase().includes(term) ||
+        categoryNameValue.toLowerCase().includes(term) ||
+        product.description?.toLowerCase().includes(term);
 
       const matchesCategory =
-        !categoryFilter ||
-        product.category_id ===
-          categoryFilter;
+        categoryFilter === "all" ||
+        product.category_id === categoryFilter;
 
       const status = getStatus(product);
 
       const matchesStatus =
-        !statusFilter ||
-        (statusFilter === "in" &&
-          status.label === "In Stock") ||
-        (statusFilter === "low" &&
-          status.label === "Low Stock") ||
-        (statusFilter === "out" &&
-          status.label === "Out of Stock");
+        statusFilter === "all" ||
+        status.key === statusFilter;
 
       return (
         matchesSearch &&
@@ -533,60 +418,34 @@ export default function Inventory() {
     statusFilter,
   ]);
 
-  /* =========================================================
+  /* =======================================================
      STATS
-  ========================================================= */
+  ======================================================= */
 
   const stats = useMemo(() => {
-    const totalProducts =
-      products.length;
+    const totalProducts = products.length;
 
-    const totalUnits =
-      products.reduce(
-        (sum, product) =>
-          sum +
-          Number(
-            product.current_stock || 0
-          ),
-        0
-      );
+    const totalUnits = products.reduce(
+      (sum, product) =>
+        sum + Number(product.current_stock || 0),
+      0
+    );
 
-    const lowStock =
-      products.filter((product) => {
-        const stock = Number(
-          product.current_stock || 0
-        );
+    const lowStock = products.filter(
+      (product) => getStatus(product).key === "low"
+    ).length;
 
-        const minimum = Number(
-          product.minimum_stock || 0
-        );
+    const outOfStock = products.filter(
+      (product) => getStatus(product).key === "out"
+    ).length;
 
-        return (
-          stock > 0 &&
-          stock <= minimum
-        );
-      }).length;
-
-    const outOfStock =
-      products.filter(
-        (product) =>
-          Number(
-            product.current_stock || 0
-          ) <= 0
-      ).length;
-
-    const inventoryValue =
-      products.reduce(
-        (sum, product) =>
-          sum +
-          Number(
-            product.current_stock || 0
-          ) *
-            Number(
-              product.cost_price || 0
-            ),
-        0
-      );
+    const inventoryValue = products.reduce(
+      (sum, product) =>
+        sum +
+        Number(product.current_stock || 0) *
+          Number(product.cost_price || 0),
+      0
+    );
 
     return {
       totalProducts,
@@ -597,454 +456,467 @@ export default function Inventory() {
     };
   }, [products]);
 
-  /* =========================================================
-     ADD PRODUCT
-  ========================================================= */
+  /* =======================================================
+     FORMAT MONEY
+  ======================================================= */
+
+  function formatMoney(value) {
+    return `QAR ${Number(value || 0).toLocaleString(
+      "en-QA",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    )}`;
+  }
+
+  /* =======================================================
+     PRODUCT FORM
+  ======================================================= */
 
   function openAddProduct() {
+    setError("");
+    setMessage("");
     setEditingProduct(null);
+
     setProductForm({
-      ...emptyProductForm,
+      sku: "",
+      name: "",
+      category_id: categories[0]?.id || "",
+      unit: "pcs",
+      cost_price: "",
+      current_stock: "",
+      minimum_stock: "",
+      description: "",
+      image_url: "",
     });
 
     setProductImage(null);
+
+    if (imagePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
     setImagePreview("");
-    setError("");
-    setMessage("");
     setShowProductForm(true);
   }
 
-  /* =========================================================
-     EDIT PRODUCT
-  ========================================================= */
-
   function openEditProduct(product) {
+    setError("");
+    setMessage("");
+
     setEditingProduct(product);
 
     setProductForm({
       sku: product.sku || "",
       name: product.name || "",
-      category_id:
-        product.category_id || "",
+      category_id: product.category_id || "",
       unit: product.unit || "pcs",
-
       cost_price:
         product.cost_price !== null &&
         product.cost_price !== undefined
-          ? String(product.cost_price)
+          ? product.cost_price
           : "",
-
       current_stock:
         product.current_stock !== null &&
         product.current_stock !== undefined
-          ? String(product.current_stock)
-          : "0",
-
+          ? product.current_stock
+          : "",
       minimum_stock:
         product.minimum_stock !== null &&
         product.minimum_stock !== undefined
-          ? String(product.minimum_stock)
-          : "0",
-
-      description:
-        product.description || "",
-
-      image_url:
-        product.image_url || "",
+          ? product.minimum_stock
+          : "",
+      description: product.description || "",
+      image_url: product.image_url || "",
     });
 
     setProductImage(null);
 
-    setImagePreview(
-      product.image_url || ""
-    );
+    if (imagePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
 
-    setError("");
-    setMessage("");
+    setImagePreview(product.image_url || "");
+
     setShowProductForm(true);
   }
 
-  /* =========================================================
-     IMAGE CHANGE
-  ========================================================= */
+  function closeProductForm() {
+    if (imagePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
 
-  function handleProductImageChange(
-    event
-  ) {
-    const file =
-      event.target.files?.[0];
+    setImagePreview("");
+    setProductImage(null);
+    setEditingProduct(null);
+    setShowProductForm(false);
+  }
+
+  function handleProductFormChange(event) {
+    const { name, value } = event.target;
+
+    setProductForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  /* =======================================================
+     IMAGE SELECTION
+  ======================================================= */
+
+  function handleProductImageChange(event) {
+    const file = event.target.files?.[0];
 
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setError(
-        "Please select an image file. / 请选择图片文件。"
-      );
-
-      return;
-    }
-
-    if (
-      file.size >
-      5 * 1024 * 1024
-    ) {
-      setError(
-        "Image must be smaller than 5 MB. / 图片必须小于 5 MB。"
-      );
-
-      return;
-    }
-
     setError("");
+    setMessage("");
 
-    if (
-      imagePreview &&
-      imagePreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(
-        imagePreview
-      );
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be smaller than 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    if (imagePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
     }
 
     setProductImage(file);
+    setImagePreview(URL.createObjectURL(file));
 
-    const previewUrl =
-      URL.createObjectURL(file);
-
-    setImagePreview(previewUrl);
+    event.target.value = "";
   }
 
-  /* =========================================================
-     REMOVE IMAGE
-  ========================================================= */
-
   function removeProductImage() {
+    if (imagePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
     setProductImage(null);
+    setImagePreview("");
 
     setProductForm((prev) => ({
       ...prev,
       image_url: "",
     }));
-
-    if (
-      imagePreview &&
-      imagePreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(
-        imagePreview
-      );
-    }
-
-    setImagePreview("");
   }
 
-  /* =========================================================
-     UPLOAD IMAGE
-  ========================================================= */
+  /* =======================================================
+     UPLOAD PRODUCT IMAGE
+  ======================================================= */
 
-  async function uploadProductImage(
-    file,
-    sku
-  ) {
+  async function uploadProductImage(file, sku) {
     if (!file) {
-      return (
-        productForm.image_url ||
-        null
-      );
+      return productForm.image_url || null;
     }
 
     if (!shopId) {
       throw new Error(
-        "No shop is assigned to this user. / 此用户未分配店铺。"
+        "No shop ID was found. Cannot upload the image."
       );
     }
-
-    const extension =
-      file.name
-        .split(".")
-        .pop()
-        ?.toLowerCase() ||
-      "jpg";
-
-    const safeSku = String(sku)
-      .trim()
-      .replace(
-        /[^a-zA-Z0-9_-]/g,
-        "_"
-      );
-
-    const fileName = `${safeSku}-${Date.now()}.${extension}`;
-
-    const filePath = `${shopId}/${fileName}`;
 
     setUploadingImage(true);
 
     try {
-      const {
-        error: uploadError,
-      } = await supabase.storage
+      const originalExtension =
+        file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+      const extension = originalExtension.replace(
+        /[^a-z0-9]/g,
+        ""
+      ) || "jpg";
+
+      const safeSku =
+        String(sku || "product")
+          .trim()
+          .replace(/[^a-zA-Z0-9_-]/g, "-")
+          .replace(/-+/g, "-")
+          .slice(0, 80) || "product";
+
+      const filePath =
+        `${shopId}/${safeSku}-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
         .from("inventory-images")
-        .upload(
-          filePath,
-          file,
-          {
-            cacheControl: "3600",
-            upsert: false,
-            contentType:
-              file.type,
-          }
-        );
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
 
       if (uploadError) {
+        console.error(
+          "Product image upload error:",
+          uploadError
+        );
+
+        if (
+          uploadError.message
+            ?.toLowerCase()
+            .includes("row-level security")
+        ) {
+          throw new Error(
+            "Image upload was blocked by Supabase Storage RLS. The inventory-images bucket needs an INSERT policy for your users."
+          );
+        }
+
         throw uploadError;
       }
 
-      const { data } =
-        supabase.storage
-          .from("inventory-images")
-          .getPublicUrl(
-            filePath
-          );
+      const {
+        data: publicUrlData,
+      } = supabase.storage
+        .from("inventory-images")
+        .getPublicUrl(filePath);
 
-      if (!data?.publicUrl) {
+      const publicUrl =
+        publicUrlData?.publicUrl || "";
+
+      if (!publicUrl) {
         throw new Error(
-          "Unable to create image URL. / 无法创建图片链接。"
+          "Image uploaded, but no public URL was generated."
         );
       }
 
-      return data.publicUrl;
+      return publicUrl;
     } finally {
       setUploadingImage(false);
     }
   }
 
-  /* =========================================================
+  /* =======================================================
      SAVE PRODUCT
-  ========================================================= */
+     
+     IMPORTANT:
+     Do NOT use .select().single() here.
+     
+     Under Supabase RLS, the write can succeed while
+     PostgREST cannot return the inserted/updated row.
+  ======================================================= */
 
   async function saveProduct(event) {
     event.preventDefault();
 
     if (!isAdmin) {
       setError(
-        "Only administrators can add or edit inventory products. / 只有管理员可以添加或编辑库存产品。"
+        "Only administrators can add or edit inventory products."
       );
-
       return;
     }
 
     if (!shopId) {
-      setError(
-        "No shop is assigned to this user. / 此用户未分配店铺。"
-      );
-
+      setError("No shop is assigned to your account.");
       return;
     }
 
-    const sku =
-      productForm.sku.trim();
-
-    const name =
-      productForm.name.trim();
-
-    if (!sku) {
-      setError(
-        "SKU is required. / SKU 为必填项。"
-      );
-
-      return;
-    }
-
-    if (!name) {
-      setError(
-        "Product name is required. / 产品名称为必填项。"
-      );
-
-      return;
-    }
-
-    const currentStock =
-      Number(
-        productForm.current_stock ||
-          0
-      );
-
-    const minimumStock =
-      Number(
-        productForm.minimum_stock ||
-          0
-      );
-
-    const costPrice =
-      Number(
-        productForm.cost_price ||
-          0
-      );
-
-    if (currentStock < 0) {
-      setError(
-        "Current stock cannot be negative. / 当前库存不能为负数。"
-      );
-
-      return;
-    }
-
-    if (minimumStock < 0) {
-      setError(
-        "Minimum stock cannot be negative. / 最低库存不能为负数。"
-      );
-
-      return;
-    }
-
-    if (costPrice < 0) {
-      setError(
-        "Cost price cannot be negative. / 成本价格不能为负数。"
-      );
-
-      return;
-    }
-
-    const categoryId =
-      productForm.category_id ||
-      null;
-
-    if (categoryId) {
-      const categoryExists =
-        categories.some(
-          (category) =>
-            category.id ===
-            categoryId
-        );
-
-      if (!categoryExists) {
-        setError(
-          "Selected category is not valid. / 所选分类无效。"
-        );
-
-        return;
-      }
-    }
+    setSaving(true);
+    setError("");
+    setMessage("");
 
     try {
-      setSaving(true);
-      setError("");
-      setMessage("");
+      const sku = productForm.sku.trim();
+      const name = productForm.name.trim();
 
-      /* IMAGE */
+      const categoryId = productForm.category_id;
 
-      let imageUrl =
-        productForm.image_url ||
-        null;
+      const unit =
+        productForm.unit.trim() || "pcs";
 
-      if (productImage) {
-        imageUrl =
-          await uploadProductImage(
-            productImage,
-            sku
-          );
+      const costPrice =
+        productForm.cost_price === ""
+          ? 0
+          : Number(productForm.cost_price);
+
+      const currentStock =
+        productForm.current_stock === ""
+          ? 0
+          : Number(productForm.current_stock);
+
+      const minimumStock =
+        productForm.minimum_stock === ""
+          ? 0
+          : Number(productForm.minimum_stock);
+
+      if (!sku) {
+        throw new Error("SKU is required.");
       }
 
-      /* PRODUCT DATA */
+      if (!name) {
+        throw new Error("Product name is required.");
+      }
+
+      if (!categoryId) {
+        throw new Error("Please select a category.");
+      }
+
+      if (!Number.isFinite(costPrice) || costPrice < 0) {
+        throw new Error(
+          "Cost price must be a valid number."
+        );
+      }
+
+      if (
+        !Number.isFinite(currentStock) ||
+        currentStock < 0
+      ) {
+        throw new Error(
+          "Current stock must be a valid number."
+        );
+      }
+
+      if (
+        !Number.isFinite(minimumStock) ||
+        minimumStock < 0
+      ) {
+        throw new Error(
+          "Minimum stock must be a valid number."
+        );
+      }
+
+      const categoryExists = categories.some(
+        (category) =>
+          String(category.id) === String(categoryId)
+      );
+
+      if (!categoryExists) {
+        throw new Error(
+          "The selected category could not be found."
+        );
+      }
+
+      /* -----------------------------------------------
+         IMAGE
+      ------------------------------------------------ */
+
+      let imageUrl = productForm.image_url || null;
+
+      if (productImage) {
+        imageUrl = await uploadProductImage(
+          productImage,
+          sku
+        );
+      }
+
+      /* -----------------------------------------------
+         DATABASE DATA
+      ------------------------------------------------ */
 
       const productData = {
         sku,
         name,
         category_id: categoryId,
-        unit:
-          productForm.unit ||
-          "pcs",
-
+        unit,
         cost_price: costPrice,
-
-        current_stock:
-          currentStock,
-
-        minimum_stock:
-          minimumStock,
-
+        current_stock: currentStock,
+        minimum_stock: minimumStock,
         description:
-          productForm.description.trim() ||
-          null,
-
+          productForm.description.trim() || null,
         image_url: imageUrl,
-
-        shop_id: shopId,
-
         active: true,
-
-        updated_at:
-          new Date().toISOString(),
+        shop_id: shopId,
       };
 
-      /* UPDATE */
+      /* -----------------------------------------------
+         UPDATE
+      ------------------------------------------------ */
 
-      if (editingProduct) {
-        const {
-          error: updateError,
-        } = await supabase
-          .from(
-            "inventory_products"
-          )
+      if (editingProduct?.id) {
+        const { error: updateError } = await supabase
+          .from("inventory_products")
           .update(productData)
-          .eq(
-            "id",
-            editingProduct.id
-          )
-          .eq(
-            "shop_id",
-            shopId
-          );
+          .eq("id", editingProduct.id)
+          .eq("shop_id", shopId);
 
         if (updateError) {
+          console.error(
+            "Product update error:",
+            updateError
+          );
+
+          if (
+            updateError.message
+              ?.toLowerCase()
+              .includes("row-level security")
+          ) {
+            throw new Error(
+              "Product update was blocked by Supabase RLS. Check the UPDATE policy for inventory_products."
+            );
+          }
+
           throw updateError;
         }
 
         setMessage(
-          "Product updated successfully. / 产品更新成功。"
+          "Product updated successfully. 产品更新成功。"
         );
       }
 
-      /* INSERT */
+      /* -----------------------------------------------
+         INSERT
+      ------------------------------------------------ */
 
       else {
-        const {
-          error: insertError,
-        } = await supabase
-          .from(
-            "inventory_products"
-          )
+        const { error: insertError } = await supabase
+          .from("inventory_products")
           .insert(productData);
 
         if (insertError) {
+          console.error(
+            "Product insert error:",
+            insertError
+          );
+
+          if (
+            insertError.message
+              ?.toLowerCase()
+              .includes("row-level security")
+          ) {
+            throw new Error(
+              "Product creation was blocked by Supabase RLS. Check the INSERT policy for inventory_products."
+            );
+          }
+
+          if (
+            insertError.message
+              ?.toLowerCase()
+              .includes("duplicate")
+          ) {
+            throw new Error(
+              "A product with this SKU already exists."
+            );
+          }
+
           throw insertError;
         }
 
         setMessage(
-          "Product added successfully. / 产品添加成功。"
+          "Product added successfully. 产品添加成功。"
         );
       }
 
+      /* -----------------------------------------------
+         RELOAD
+      ------------------------------------------------ */
+
       await loadProducts();
 
-      setShowProductForm(false);
-      setProductImage(null);
-      setImagePreview("");
-
-      setProductForm({
-        ...emptyProductForm,
-      });
-
-      setEditingProduct(null);
+      closeProductForm();
     } catch (err) {
-      console.error(
-        "saveProduct error:",
-        err
-      );
+      console.error("saveProduct error:", err);
 
       setError(
         err.message ||
-          "Failed to save product. / 保存产品失败。"
+          "Failed to save product."
       );
     } finally {
       setSaving(false);
@@ -1052,123 +924,231 @@ export default function Inventory() {
     }
   }
 
-  /* =========================================================
-     OPEN STOCK MOVEMENT
-  ========================================================= */
+  /* =======================================================
+     CATEGORY
+  ======================================================= */
 
-  function openMovement(
-    product,
-    type
-  ) {
+  function openAddCategory() {
+    setCategoryName("");
+    setError("");
+    setMessage("");
+    setShowCategoryForm(true);
+  }
+
+  function closeCategoryForm() {
+    setCategoryName("");
+    setShowCategoryForm(false);
+  }
+
+  async function saveCategory(event) {
+    event.preventDefault();
+
+    if (!isAdmin) {
+      setError(
+        "Only administrators can create categories."
+      );
+      return;
+    }
+
+    if (!shopId) {
+      setError("No shop is assigned to your account.");
+      return;
+    }
+
+    const name = categoryName.trim();
+
+    if (!name) {
+      setError("Category name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const duplicate = categories.some(
+        (category) =>
+          category.name?.trim().toLowerCase() ===
+          name.toLowerCase()
+      );
+
+      if (duplicate) {
+        throw new Error(
+          "This category already exists."
+        );
+      }
+
+      const { error: insertError } = await supabase
+        .from("inventory_categories")
+        .insert({
+          name,
+          shop_id: shopId,
+          active: true,
+        });
+
+      if (insertError) {
+        console.error(
+          "Category insert error:",
+          insertError
+        );
+
+        if (
+          insertError.message
+            ?.toLowerCase()
+            .includes("row-level security")
+        ) {
+          throw new Error(
+            "Category creation was blocked by Supabase RLS. Check the INSERT policy for inventory_categories."
+          );
+        }
+
+        throw insertError;
+      }
+
+      await loadCategories();
+
+      closeCategoryForm();
+
+      setMessage(
+        "Category added successfully. 分类添加成功。"
+      );
+    } catch (err) {
+      console.error("saveCategory error:", err);
+
+      setError(
+        err.message ||
+          "Failed to create category."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* =======================================================
+     MOVEMENT
+  ======================================================= */
+
+  function openMovement(product, type = "in") {
     setSelectedProduct(product);
     setMovementType(type);
 
     setMovementForm({
       quantity: "",
-
       unit_cost:
         product.cost_price !== null &&
         product.cost_price !== undefined
-          ? String(
-              product.cost_price
-            )
+          ? product.cost_price
           : "",
-
       reference: "",
       notes: "",
     });
 
     setError("");
     setMessage("");
-
-    setShowHistoryModal(false);
     setShowMovementForm(true);
   }
 
-  /* =========================================================
-     SAVE STOCK MOVEMENT
-  ========================================================= */
+  function closeMovementForm() {
+    setSelectedProduct(null);
+    setShowMovementForm(false);
+  }
+
+  function handleMovementFormChange(event) {
+    const { name, value } = event.target;
+
+    setMovementForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
 
   async function saveMovement(event) {
     event.preventDefault();
 
-    if (!isAdmin) {
+    if (!canManageStock) {
       setError(
-        "Only administrators can record inventory movements. / 只有管理员可以记录库存变动。"
+        "You do not have permission to manage stock."
       );
-
       return;
     }
 
-    if (!selectedProduct) {
-      setError(
-        "No product selected. / 未选择产品。"
-      );
-
+    if (!shopId) {
+      setError("No shop is assigned to your account.");
       return;
     }
 
-    const quantity =
-      Number(
-        movementForm.quantity ||
-          0
-      );
-
-    if (quantity <= 0) {
-      setError(
-        "Quantity must be greater than zero. / 数量必须大于零。"
-      );
-
+    if (!selectedProduct?.id) {
+      setError("No product selected.");
       return;
     }
+
+    const quantity = Number(
+      movementForm.quantity
+    );
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setError(
+        "Quantity must be greater than zero."
+      );
+      return;
+    }
+
+    const unitCost =
+      movementForm.unit_cost === ""
+        ? 0
+        : Number(movementForm.unit_cost);
+
+    if (
+      !Number.isFinite(unitCost) ||
+      unitCost < 0
+    ) {
+      setError(
+        "Unit cost must be a valid number."
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
 
     try {
-      setSaving(true);
-      setError("");
-      setMessage("");
-
-      const {
-        error: rpcError,
-      } = await supabase.rpc(
-        "record_inventory_movement",
-        {
-          p_product_id:
-            selectedProduct.id,
-
-          p_movement_type:
-            movementType,
-
-          p_quantity:
-            quantity,
-
-          p_unit_cost:
-            Number(
-              movementForm.unit_cost ||
-                0
-            ),
-
-          p_reference:
-            movementForm.reference.trim() ||
-            null,
-
-          p_notes:
-            movementForm.notes.trim() ||
-            null,
-        }
-      );
+      const { error: rpcError } =
+        await supabase.rpc(
+          "record_inventory_movement",
+          {
+            p_product_id: selectedProduct.id,
+            p_movement_type: movementType,
+            p_quantity: quantity,
+            p_unit_cost: unitCost,
+            p_reference:
+              movementForm.reference.trim() ||
+              null,
+            p_notes:
+              movementForm.notes.trim() ||
+              null,
+          }
+        );
 
       if (rpcError) {
+        console.error(
+          "record_inventory_movement error:",
+          rpcError
+        );
+
         throw rpcError;
       }
 
-      setMessage(
-        "Stock movement recorded successfully. / 库存变动记录成功。"
-      );
-
       await loadProducts();
 
-      setShowMovementForm(false);
-      setSelectedProduct(null);
+      closeMovementForm();
+
+      setMessage(
+        movementType === "in"
+          ? "Stock added successfully. 库存增加成功。"
+          : "Stock removed successfully. 库存减少成功。"
+      );
     } catch (err) {
       console.error(
         "saveMovement error:",
@@ -1177,54 +1157,38 @@ export default function Inventory() {
 
       setError(
         err.message ||
-          "Failed to record stock movement. / 库存变动记录失败。"
+          "Failed to record stock movement."
       );
     } finally {
       setSaving(false);
     }
   }
 
-  /* =========================================================
-     LOAD HISTORY
-  ========================================================= */
+  /* =======================================================
+     HISTORY
+  ======================================================= */
 
-  async function loadHistory(
-    product
-  ) {
-    if (!product) return;
+  async function loadHistory(product) {
+    if (!product?.id) return;
 
     setSelectedProduct(product);
-    setHistoryLoading(true);
-    setError("");
-    setHistory([]);
-
-    setShowMovementForm(false);
-    setShowProductForm(false);
-    setShowCategoryForm(false);
     setShowHistoryModal(true);
+    setHistoryLoading(true);
+    setHistory([]);
+    setError("");
 
     try {
-      const {
-        data,
-        error: historyError,
-      } = await supabase
-        .from(
-          "inventory_movements"
-        )
-        .select("*")
-        .eq(
-          "product_id",
-          product.id
-        )
-        .order(
-          "created_at",
-          {
+      const { data, error: queryError } =
+        await supabase
+          .from("inventory_movements")
+          .select("*")
+          .eq("product_id", product.id)
+          .order("created_at", {
             ascending: false,
-          }
-        );
+          });
 
-      if (historyError) {
-        throw historyError;
+      if (queryError) {
+        throw queryError;
       }
 
       setHistory(data || []);
@@ -1236,700 +1200,1085 @@ export default function Inventory() {
 
       setError(
         err.message ||
-          "Failed to load inventory history. / 加载库存记录失败。"
+          "Failed to load inventory history."
       );
     } finally {
       setHistoryLoading(false);
     }
   }
 
-  /* =========================================================
-     CLOSE HISTORY
-  ========================================================= */
-
-  function closeHistory() {
+  function closeHistoryModal() {
     setShowHistoryModal(false);
     setSelectedProduct(null);
     setHistory([]);
   }
 
-  /* =========================================================
-     CATEGORY
-  ========================================================= */
+  /* =======================================================
+     CATEGORY LOOKUP
+  ======================================================= */
 
-  async function saveCategory(
-    event
-  ) {
-    event.preventDefault();
-
-    if (!isAdmin) {
-      setError(
-        "Only administrators can create categories. / 只有管理员可以创建分类。"
-      );
-
-      return;
-    }
-
-    if (!shopId) {
-      setError(
-        "No shop is assigned to this user. / 此用户未分配店铺。"
-      );
-
-      return;
-    }
-
-    const name =
-      categoryName.trim();
-
-    if (!name) {
-      setError(
-        "Category name is required. / 分类名称为必填项。"
-      );
-
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setError("");
-      setMessage("");
-
-      const {
-        error: categoryError,
-      } = await supabase
-        .from(
-          "inventory_categories"
-        )
-        .insert({
-          name,
-          shop_id: shopId,
-          active: true,
-        });
-
-      if (categoryError) {
-        throw categoryError;
-      }
-
-      setMessage(
-        "Category created successfully. / 分类创建成功。"
-      );
-
-      setCategoryName("");
-      setShowCategoryForm(false);
-
-      await loadCategories();
-    } catch (err) {
-      console.error(
-        "saveCategory error:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to create category. / 创建分类失败。"
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  /* =========================================================
-     FORMAT DATE
-  ========================================================= */
-
-  function formatDate(date) {
-    if (!date) return "-";
-
-    return new Date(
-      date
-    ).toLocaleString();
-  }
-
-  /* =========================================================
-     GET SELECTED PRODUCT CATEGORY
-  ========================================================= */
-
-  function getSelectedProductCategory() {
-    if (!selectedProduct) {
-      return null;
-    }
-
-    return categories.find(
-      (category) =>
-        category.id ===
-        selectedProduct.category_id
+  function getCategoryName(categoryId) {
+    const category = categories.find(
+      (cat) => cat.id === categoryId
     );
+
+    return category?.name || "Other";
   }
 
-  /* =========================================================
+  /* =======================================================
+     IMAGE FALLBACK
+  ======================================================= */
+
+  function handleImageError(event) {
+    event.currentTarget.style.display = "none";
+
+    const placeholder =
+      event.currentTarget.nextElementSibling;
+
+    if (placeholder) {
+      placeholder.style.display = "flex";
+    }
+  }
+
+  /* =======================================================
      RENDER
-  ========================================================= */
+  ======================================================= */
 
   return (
-    <div style={styles.page}>
+    <div className="inventory-page">
+      <style>{`
+        .inventory-page {
+          min-height: 100%;
+          padding: 24px;
+          background: #111;
+          color: #f5f5f5;
+          box-sizing: border-box;
+        }
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
+        .inventory-container {
+          max-width: 1600px;
+          margin: 0 auto;
+        }
 
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>
-            Inventory
-          </h1>
+        .inventory-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 20px;
+          margin-bottom: 24px;
+        }
 
-          <div style={styles.subtitle}>
-            库存管理
+        .inventory-title h1 {
+          margin: 0;
+          font-size: 30px;
+          font-weight: 700;
+        }
+
+        .inventory-title p {
+          margin: 7px 0 0;
+          color: #aaa;
+          font-size: 14px;
+        }
+
+        .header-actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        button {
+          font-family: inherit;
+        }
+
+        .btn {
+          border: 0;
+          border-radius: 8px;
+          padding: 10px 15px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: .2s ease;
+        }
+
+        .btn:disabled {
+          opacity: .55;
+          cursor: not-allowed;
+        }
+
+        .btn-primary {
+          background: #d6ad50;
+          color: #111;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background: #e4be67;
+        }
+
+        .btn-secondary {
+          background: #262626;
+          color: #eee;
+          border: 1px solid #3a3a3a;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background: #303030;
+        }
+
+        .btn-danger {
+          background: #7c2d2d;
+          color: #fff;
+        }
+
+        .btn-success {
+          background: #245b39;
+          color: #fff;
+        }
+
+        .alert {
+          border-radius: 8px;
+          padding: 12px 15px;
+          margin-bottom: 16px;
+          font-size: 14px;
+        }
+
+        .alert-error {
+          background: #3b1c1c;
+          border: 1px solid #713535;
+          color: #ffb6b6;
+        }
+
+        .alert-success {
+          background: #173a27;
+          border: 1px solid #2e6948;
+          color: #a8e4bd;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+
+        .stat-card {
+          background: #1b1b1b;
+          border: 1px solid #2d2d2d;
+          border-radius: 10px;
+          padding: 18px;
+        }
+
+        .stat-label {
+          color: #999;
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: .5px;
+        }
+
+        .stat-value {
+          margin-top: 8px;
+          font-size: 24px;
+          font-weight: 700;
+        }
+
+        .filters {
+          display: grid;
+          grid-template-columns: minmax(220px, 1fr) 220px 180px;
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+
+        .input,
+        .select,
+        textarea {
+          width: 100%;
+          box-sizing: border-box;
+          background: #191919;
+          color: #eee;
+          border: 1px solid #3a3a3a;
+          border-radius: 7px;
+          padding: 10px 12px;
+          outline: none;
+        }
+
+        .input:focus,
+        .select:focus,
+        textarea:focus {
+          border-color: #d6ad50;
+        }
+
+        textarea {
+          min-height: 90px;
+          resize: vertical;
+        }
+
+        .table-wrapper {
+          background: #181818;
+          border: 1px solid #2d2d2d;
+          border-radius: 10px;
+          overflow-x: auto;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 1050px;
+        }
+
+        th {
+          background: #202020;
+          color: #aaa;
+          text-align: left;
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: .4px;
+          padding: 13px 12px;
+          white-space: nowrap;
+        }
+
+        td {
+          padding: 12px;
+          border-top: 1px solid #2a2a2a;
+          vertical-align: middle;
+          font-size: 14px;
+        }
+
+        tr:hover td {
+          background: #1e1e1e;
+        }
+
+        .sku {
+          font-family: monospace;
+          color: #d6ad50;
+          font-weight: 600;
+        }
+
+        .product-name-en {
+          font-weight: 600;
+        }
+
+        .product-name-cn,
+        .category-cn {
+          color: #999;
+          font-size: 12px;
+          margin-top: 3px;
+        }
+
+        .category-name-wrapper {
+          line-height: 1.2;
+        }
+
+        .stock-value {
+          font-weight: 700;
+        }
+
+        .status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          border-radius: 20px;
+          padding: 5px 9px;
+          font-size: 11px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .status-in {
+          background: #193c28;
+          color: #8fe0aa;
+        }
+
+        .status-low {
+          background: #4a3818;
+          color: #f2ca6d;
+        }
+
+        .status-out {
+          background: #481e1e;
+          color: #ff9d9d;
+        }
+
+        .product-photo {
+          width: 55px;
+          height: 55px;
+          border-radius: 7px;
+          overflow: hidden;
+          border: 1px solid #3a3a3a;
+          background: #222;
+          cursor: pointer;
+          position: relative;
+        }
+
+        .product-photo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .photo-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #666;
+          font-size: 22px;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .action-btn {
+          border: 1px solid #3a3a3a;
+          background: #242424;
+          color: #ddd;
+          border-radius: 6px;
+          padding: 7px 9px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        .action-btn:hover {
+          background: #303030;
+        }
+
+        .empty-state {
+          padding: 60px 20px;
+          text-align: center;
+          color: #888;
+        }
+
+        .loading-state {
+          padding: 50px;
+          text-align: center;
+          color: #aaa;
+        }
+
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, .78);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          z-index: 1000;
+        }
+
+        .modal {
+          width: 100%;
+          max-width: 650px;
+          max-height: 92vh;
+          overflow-y: auto;
+          background: #181818;
+          border: 1px solid #3a3a3a;
+          border-radius: 12px;
+          box-shadow: 0 20px 70px rgba(0,0,0,.5);
+        }
+
+        .modal-large {
+          max-width: 900px;
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 18px 20px;
+          border-bottom: 1px solid #2d2d2d;
+        }
+
+        .modal-header h2 {
+          margin: 0;
+          font-size: 20px;
+        }
+
+        .modal-close {
+          border: 0;
+          background: transparent;
+          color: #aaa;
+          font-size: 24px;
+          cursor: pointer;
+        }
+
+        .modal-body {
+          padding: 20px;
+        }
+
+        .modal-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          padding: 15px 20px;
+          border-top: 1px solid #2d2d2d;
+        }
+
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .form-group.full {
+          grid-column: 1 / -1;
+        }
+
+        .form-label {
+          font-size: 12px;
+          color: #aaa;
+          font-weight: 600;
+        }
+
+        .image-upload {
+          border: 1px dashed #555;
+          border-radius: 9px;
+          padding: 14px;
+          background: #141414;
+        }
+
+        .image-preview-container {
+          display: flex;
+          gap: 15px;
+          align-items: center;
+        }
+
+        .image-preview {
+          width: 110px;
+          height: 110px;
+          object-fit: cover;
+          border-radius: 8px;
+          border: 1px solid #444;
+          background: #222;
+        }
+
+        .image-upload-info {
+          flex: 1;
+        }
+
+        .image-upload-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 10px;
+        }
+
+        .choose-photo-label {
+          display: inline-block;
+          background: #d6ad50;
+          color: #111;
+          border-radius: 6px;
+          padding: 8px 11px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .hidden-file-input {
+          display: none;
+        }
+
+        .image-note {
+          color: #777;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+
+        .movement-product {
+          background: #202020;
+          border: 1px solid #333;
+          border-radius: 8px;
+          padding: 13px;
+          margin-bottom: 16px;
+        }
+
+        .movement-product-name {
+          font-weight: 700;
+        }
+
+        .movement-product-stock {
+          color: #aaa;
+          font-size: 12px;
+          margin-top: 4px;
+        }
+
+        .movement-type-buttons {
+          display: flex;
+          gap: 8px;
+        }
+
+        .movement-type {
+          flex: 1;
+          border: 1px solid #444;
+          background: #222;
+          color: #ccc;
+          padding: 10px;
+          border-radius: 7px;
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        .movement-type.active {
+          background: #d6ad50;
+          color: #111;
+          border-color: #d6ad50;
+        }
+
+        .history-table {
+          width: 100%;
+          min-width: 600px;
+          border-collapse: collapse;
+        }
+
+        .history-wrapper {
+          overflow-x: auto;
+        }
+
+        .history-table td,
+        .history-table th {
+          padding: 10px;
+        }
+
+        .history-in {
+          color: #8fe0aa;
+          font-weight: 700;
+        }
+
+        .history-out {
+          color: #ff9d9d;
+          font-weight: 700;
+        }
+
+        .image-viewer {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .image-viewer img {
+          max-width: 90vw;
+          max-height: 85vh;
+          object-fit: contain;
+          border-radius: 8px;
+        }
+
+        .image-viewer-close {
+          position: fixed;
+          top: 20px;
+          right: 25px;
+          border: 0;
+          background: rgba(0,0,0,.65);
+          color: #fff;
+          font-size: 30px;
+          width: 45px;
+          height: 45px;
+          border-radius: 50%;
+          cursor: pointer;
+          z-index: 1002;
+        }
+
+        .image-viewer-title {
+          position: fixed;
+          left: 50%;
+          bottom: 25px;
+          transform: translateX(-50%);
+          background: rgba(0,0,0,.7);
+          color: #fff;
+          padding: 8px 15px;
+          border-radius: 20px;
+          font-size: 13px;
+        }
+
+        @media (max-width: 1100px) {
+          .stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+
+        @media (max-width: 750px) {
+          .inventory-page {
+            padding: 14px;
+          }
+
+          .inventory-header {
+            flex-direction: column;
+          }
+
+          .stats-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .filters {
+            grid-template-columns: 1fr;
+          }
+
+          .form-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .form-group.full {
+            grid-column: auto;
+          }
+        }
+      `}</style>
+
+      <div className="inventory-container">
+
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
+        <div className="inventory-header">
+          <div className="inventory-title">
+            <h1>
+              Inventory 库存
+            </h1>
+
+            <p>
+              Manage products, stock levels and inventory
+              movements.
+            </p>
           </div>
-        </div>
 
-        <div
-          style={styles.headerButtons}
-        >
-          {isAdmin && (
-            <>
+          <div className="header-actions">
+            {isAdmin && (
               <button
-                type="button"
-                style={
-                  styles.secondaryButton
-                }
-                onClick={() => {
-                  setCategoryName("");
-                  setError("");
-                  setMessage("");
-                  setShowCategoryForm(
-                    true
-                  );
-                }}
+                className="btn btn-secondary"
+                onClick={openAddCategory}
               >
-                + Category / 添加分类
+                + Category / 分类
               </button>
+            )}
 
+            {isAdmin && (
               <button
-                type="button"
-                style={
-                  styles.primaryButton
-                }
-                onClick={
-                  openAddProduct
-                }
+                className="btn btn-primary"
+                onClick={openAddProduct}
               >
                 + Add Product / 添加产品
               </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* =====================================================
-          MESSAGE / ERROR
-      ===================================================== */}
-
-      {error && (
-        <div style={styles.errorBox}>
-          {error}
-        </div>
-      )}
-
-      {message && (
-        <div
-          style={styles.messageBox}
-        >
-          {message}
-        </div>
-      )}
-
-      {/* =====================================================
-          STATS
-      ===================================================== */}
-
-      <div style={styles.statsGrid}>
-
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>
-            Total Products
-          </div>
-
-          <div style={styles.statValue}>
-            {stats.totalProducts}
-          </div>
-
-          <div style={styles.statChinese}>
-            产品总数
+            )}
           </div>
         </div>
 
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>
-            Total Units
-          </div>
+        {/* =================================================
+            ALERTS
+        ================================================= */}
 
-          <div style={styles.statValue}>
-            {stats.totalUnits}
-          </div>
-
-          <div style={styles.statChinese}>
-            总库存数量
-          </div>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>
-            Low Stock
-          </div>
-
-          <div
-            style={{
-              ...styles.statValue,
-              color: "#f59e0b",
-            }}
-          >
-            {stats.lowStock}
-          </div>
-
-          <div style={styles.statChinese}>
-            库存不足
-          </div>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>
-            Out of Stock
-          </div>
-
-          <div
-            style={{
-              ...styles.statValue,
-              color: "#ef4444",
-            }}
-          >
-            {stats.outOfStock}
-          </div>
-
-          <div style={styles.statChinese}>
-            缺货
-          </div>
-        </div>
-
-        {showCost && (
-          <div
-            style={styles.statCard}
-          >
-            <div style={styles.statLabel}>
-              Inventory Value
-            </div>
-
-            <div style={styles.statValue}>
-              QAR{" "}
-              {stats.inventoryValue.toLocaleString(
-                undefined,
-                {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }
-              )}
-            </div>
-
-            <div
-              style={styles.statChinese}
-            >
-              库存价值
-            </div>
+        {error && (
+          <div className="alert alert-error">
+            {error}
           </div>
         )}
-      </div>
 
-      {/* =====================================================
-          FILTERS
-      ===================================================== */}
+        {message && (
+          <div className="alert alert-success">
+            {message}
+          </div>
+        )}
 
-      <div style={styles.filterBar}>
+        {/* =================================================
+            STATS
+        ================================================= */}
 
-        <input
-          type="text"
-          placeholder="Search SKU, product, category... / 搜索 SKU、产品、分类..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          style={styles.searchInput}
-        />
+        <div className="stats-grid">
 
-        <select
-          value={categoryFilter}
-          onChange={(e) =>
-            setCategoryFilter(
-              e.target.value
-            )
-          }
-          style={styles.select}
-        >
-          <option value="">
-            All Categories / 所有分类
-          </option>
+          <div className="stat-card">
+            <div className="stat-label">
+              Products 产品
+            </div>
 
-          {categories.map(
-            (category) => (
+            <div className="stat-value">
+              {stats.totalProducts}
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-label">
+              Total Units 总数量
+            </div>
+
+            <div className="stat-value">
+              {stats.totalUnits.toLocaleString()}
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-label">
+              Low Stock 库存不足
+            </div>
+
+            <div className="stat-value">
+              {stats.lowStock}
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-label">
+              Out of Stock 缺货
+            </div>
+
+            <div className="stat-value">
+              {stats.outOfStock}
+            </div>
+          </div>
+
+          {showCost && (
+            <div className="stat-card">
+              <div className="stat-label">
+                Inventory Value 库存价值
+              </div>
+
+              <div className="stat-value">
+                {formatMoney(
+                  stats.inventoryValue
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* =================================================
+            FILTERS
+        ================================================= */}
+
+        <div className="filters">
+
+          <input
+            className="input"
+            type="text"
+            placeholder="Search SKU, product or category... 搜索..."
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+          />
+
+          <select
+            className="select"
+            value={categoryFilter}
+            onChange={(e) =>
+              setCategoryFilter(e.target.value)
+            }
+          >
+            <option value="all">
+              All Categories / 所有分类
+            </option>
+
+            {categories.map((category) => (
               <option
                 key={category.id}
                 value={category.id}
               >
                 {category.name}
-                {categoryChinese[
-                  category.name
-                ]
-                  ? ` / ${
-                      categoryChinese[
-                        category.name
-                      ]
-                    }`
+                {categoryChinese[category.name]
+                  ? ` — ${categoryChinese[category.name]}`
                   : ""}
               </option>
-            )
-          )}
-        </select>
+            ))}
+          </select>
 
-        <select
-          value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(
-              e.target.value
-            )
-          }
-          style={styles.select}
-        >
-          <option value="">
-            All Status / 所有状态
-          </option>
+          <select
+            className="select"
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value)
+            }
+          >
+            <option value="all">
+              All Status / 所有状态
+            </option>
 
-          <option value="in">
-            In Stock / 有库存
-          </option>
+            <option value="in">
+              In Stock / 库存充足
+            </option>
 
-          <option value="low">
-            Low Stock / 库存不足
-          </option>
+            <option value="low">
+              Low Stock / 库存不足
+            </option>
 
-          <option value="out">
-            Out of Stock / 缺货
-          </option>
-        </select>
-      </div>
+            <option value="out">
+              Out of Stock / 缺货
+            </option>
+          </select>
 
-      {/* =====================================================
-          TABLE
-      ===================================================== */}
+        </div>
 
-      <div
-        style={styles.tableContainer}
-      >
-        {loading ? (
-          <div style={styles.emptyState}>
-            Loading inventory... / 正在加载库存...
-          </div>
-        ) : filteredProducts.length ===
-          0 ? (
-          <div style={styles.emptyState}>
-            No products found. / 未找到产品。
-          </div>
-        ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr>
+        {/* =================================================
+            TABLE
+        ================================================= */}
 
-                <th
-                  style={{
-                    ...styles.th,
-                    width: 75,
-                  }}
-                >
-                  Photo / 图片
-                </th>
+        <div className="table-wrapper">
 
-                <th style={styles.th}>
-                  SKU
-                </th>
-
-                <th style={styles.th}>
-                  Product / 产品
-                </th>
-
-                <th style={styles.th}>
-                  Category / 分类
-                </th>
-
-                <th style={styles.th}>
-                  Stock / 库存
-                </th>
-
-                <th style={styles.th}>
-                  Min. / 最低
-                </th>
-
-                {showCost && (
-                  <th style={styles.th}>
-                    Cost / 成本
+          {loading ? (
+            <div className="loading-state">
+              Loading inventory... 正在加载库存...
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="empty-state">
+              No products found.
+              <br />
+              没有找到产品。
+            </div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    Photo 图片
                   </th>
-                )}
 
-                <th style={styles.th}>
-                  Status / 状态
-                </th>
+                  <th>
+                    SKU
+                  </th>
 
-                <th style={styles.th}>
-                  Actions / 操作
-                </th>
+                  <th>
+                    Product 产品
+                  </th>
 
-              </tr>
-            </thead>
+                  <th>
+                    Category 分类
+                  </th>
 
-            <tbody>
-              {filteredProducts.map(
-                (product) => {
-                  const category =
-                    categories.find(
-                      (item) =>
-                        item.id ===
+                  <th>
+                    Stock 库存
+                  </th>
+
+                  <th>
+                    Min 最低
+                  </th>
+
+                  {showCost && (
+                    <th>
+                      Cost 成本
+                    </th>
+                  )}
+
+                  <th>
+                    Status 状态
+                  </th>
+
+                  <th>
+                    Actions 操作
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredProducts.map(
+                  (product) => {
+                    const categoryName =
+                      getCategoryName(
                         product.category_id
-                    );
+                      );
 
-                  const status =
-                    getStatus(
-                      product
-                    );
+                    const status =
+                      getStatus(product);
 
-                  return (
-                    <tr
-                      key={
-                        product.id
-                      }
-                    >
-
-                      {/* PHOTO */}
-
-                      <td style={styles.td}>
-                        {product.image_url ? (
-                          <img
-                            src={
-                              product.image_url
-                            }
-                            alt={
-                              product.name
-                            }
-                            style={
-                              styles.tableImage
-                            }
-                            onError={(
-                              event
-                            ) => {
-                              event.currentTarget.style.display =
-                                "none";
-
-                              if (
-                                event
-                                  .currentTarget
-                                  .nextSibling
-                              ) {
-                                event.currentTarget.nextSibling.style.display =
-                                  "flex";
-                              }
-                            }}
-                          />
-                        ) : null}
-
-                        <div
-                          style={{
-                            ...styles.tableImagePlaceholder,
-                            display:
-                              product.image_url
-                                ? "none"
-                                : "flex",
-                          }}
-                        >
-                          📷
-                        </div>
-                      </td>
-
-                      {/* SKU */}
-
-                      <td style={styles.td}>
-                        <span
-                          style={
-                            styles.sku
-                          }
-                        >
-                          {product.sku}
-                        </span>
-                      </td>
-
-                      {/* PRODUCT */}
-
-                      <td style={styles.td}>
-                        {getProductDisplay(
-                          product.name,
-                          category?.name
-                        )}
-                      </td>
-
-                      {/* CATEGORY */}
-
-                      <td style={styles.td}>
-                        {category
-                          ? getCategoryDisplay(
-                              category.name
-                            )
-                          : "-"}
-                      </td>
-
-                      {/* STOCK */}
-
-                      <td
-                        style={{
-                          ...styles.td,
-                          fontWeight: 700,
-                        }}
+                    return (
+                      <tr
+                        key={product.id}
                       >
-                        {
-                          product.current_stock
-                        }{" "}
-                        {product.unit ||
-                          "pcs"}
-                      </td>
 
-                      {/* MINIMUM */}
+                        {/* PHOTO */}
+                        <td>
+                          <div
+                            className="product-photo"
+                            onClick={() =>
+                              product.image_url &&
+                              openImageViewer(
+                                product.image_url,
+                                product.name
+                              )
+                            }
+                          >
+                            {product.image_url ? (
+                              <>
+                                <img
+                                  src={
+                                    product.image_url
+                                  }
+                                  alt={
+                                    product.name ||
+                                    "Product"
+                                  }
+                                  onError={
+                                    handleImageError
+                                  }
+                                />
 
-                      <td style={styles.td}>
-                        {
-                          product.minimum_stock
-                        }
-                      </td>
+                                <div
+                                  className="photo-placeholder"
+                                  style={{
+                                    display: "none",
+                                  }}
+                                >
+                                  📷
+                                </div>
+                              </>
+                            ) : (
+                              <div className="photo-placeholder">
+                                📷
+                              </div>
+                            )}
+                          </div>
+                        </td>
 
-                      {/* COST */}
+                        {/* SKU */}
+                        <td>
+                          <div className="sku">
+                            {product.sku || "—"}
+                          </div>
+                        </td>
 
-                      {showCost && (
-                        <td
-                          style={
-                            styles.td
-                          }
-                        >
-                          QAR{" "}
-                          {Number(
-                            product.cost_price ||
-                              0
-                          ).toFixed(
-                            2
+                        {/* PRODUCT */}
+                        <td>
+                          {getProductDisplay(
+                            product.name,
+                            categoryName
                           )}
                         </td>
-                      )}
 
-                      {/* STATUS */}
+                        {/* CATEGORY */}
+                        <td>
+                          {getCategoryDisplay(
+                            categoryName
+                          )}
+                        </td>
 
-                      <td style={styles.td}>
-                        <span
-                          style={{
-                            ...styles.statusBadge,
-                            color:
-                              status.color,
-                            background:
-                              status.background,
-                          }}
-                        >
-                          {status.label}
-
-                          <small
+                        {/* STOCK */}
+                        <td>
+                          <span className="stock-value">
+                            {Number(
+                              product.current_stock ||
+                                0
+                            ).toLocaleString()}
+                          </span>{" "}
+                          <span
                             style={{
-                              display:
-                                "block",
-                              marginTop: 2,
-                              fontSize: 9,
+                              color: "#777",
+                              fontSize: "12px",
                             }}
                           >
-                            {
-                              status.chinese
-                            }
-                          </small>
-                        </span>
-                      </td>
+                            {product.unit ||
+                              "pcs"}
+                          </span>
+                        </td>
 
-                      {/* ACTIONS */}
+                        {/* MIN */}
+                        <td>
+                          {Number(
+                            product.minimum_stock ||
+                              0
+                          ).toLocaleString()}
+                        </td>
 
-                      <td style={styles.td}>
-                        <div
-                          style={
-                            styles.actionGroup
-                          }
-                        >
-                          {isAdmin && (
-                            <>
+                        {/* COST */}
+                        {showCost && (
+                          <td>
+                            {formatMoney(
+                              product.cost_price
+                            )}
+                          </td>
+                        )}
+
+                        {/* STATUS */}
+                        <td>
+                          <span
+                            className={`status-badge ${status.className}`}
+                          >
+                            {status.label}
+                            <span
+                              style={{
+                                opacity: 0.75,
+                              }}
+                            >
+                              /
+                            </span>
+                            {status.chinese}
+                          </span>
+                        </td>
+
+                        {/* ACTIONS */}
+                        <td>
+                          <div className="action-buttons">
+
+                            {isAdmin && (
                               <button
-                                type="button"
-                                style={
-                                  styles.smallButton
-                                }
-                                onClick={() =>
-                                  openMovement(
-                                    product,
-                                    "in"
-                                  )
-                                }
-                              >
-                                + Stock / 入库
-                              </button>
-
-                              <button
-                                type="button"
-                                style={
-                                  styles.smallDangerButton
-                                }
-                                onClick={() =>
-                                  openMovement(
-                                    product,
-                                    "out"
-                                  )
-                                }
-                              >
-                                - Stock / 出库
-                              </button>
-
-                              <button
-                                type="button"
-                                style={
-                                  styles.smallButton
-                                }
+                                className="action-btn"
                                 onClick={() =>
                                   openEditProduct(
                                     product
                                   )
                                 }
                               >
-                                Edit / 编辑
+                                Edit 编辑
                               </button>
-                            </>
-                          )}
+                            )}
 
-                          <button
-                            type="button"
-                            style={
-                              styles.smallDarkButton
-                            }
-                            onClick={() =>
-                              loadHistory(
-                                product
-                              )
-                            }
-                          >
-                            History / 记录
-                          </button>
-                        </div>
-                      </td>
+                            {canManageStock && (
+                              <>
+                                <button
+                                  className="action-btn"
+                                  onClick={() =>
+                                    openMovement(
+                                      product,
+                                      "in"
+                                    )
+                                  }
+                                >
+                                  + Stock 入库
+                                </button>
 
-                    </tr>
-                  );
-                }
-              )}
-            </tbody>
-          </table>
-        )}
+                                <button
+                                  className="action-btn"
+                                  onClick={() =>
+                                    openMovement(
+                                      product,
+                                      "out"
+                                    )
+                                  }
+                                >
+                                  − Stock 出库
+                                </button>
+                              </>
+                            )}
+
+                            <button
+                              className="action-btn"
+                              onClick={() =>
+                                loadHistory(
+                                  product
+                                )
+                              }
+                            >
+                              History 历史
+                            </button>
+
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  }
+                )}
+              </tbody>
+            </table>
+          )}
+
+        </div>
       </div>
 
       {/* =====================================================
@@ -1937,552 +2286,335 @@ export default function Inventory() {
       ===================================================== */}
 
       {showProductForm && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (
+              e.target === e.currentTarget &&
+              !saving
+            ) {
+              closeProductForm();
+            }
+          }}
+        >
+          <div className="modal">
 
-            <div
-              style={
-                styles.modalHeader
-              }
-            >
-              <div>
-                <h2
-                  style={
-                    styles.modalTitle
-                  }
-                >
-                  {editingProduct
-                    ? "Edit Product"
-                    : "Add Product"}
-                </h2>
-
-                <div
-                  style={
-                    styles.modalChinese
-                  }
-                >
-                  {editingProduct
-                    ? "编辑产品"
-                    : "添加产品"}
-                </div>
-              </div>
+            <div className="modal-header">
+              <h2>
+                {editingProduct
+                  ? "Edit Product / 编辑产品"
+                  : "Add Product / 添加产品"}
+              </h2>
 
               <button
-                type="button"
-                style={
-                  styles.closeButton
-                }
-                onClick={() => {
-                  setShowProductForm(
-                    false
-                  );
-                  setProductImage(null);
-                  setImagePreview("");
-                }}
+                className="modal-close"
+                onClick={closeProductForm}
+                disabled={saving}
               >
                 ×
               </button>
             </div>
 
-            <form
-              onSubmit={saveProduct}
-            >
+            <form onSubmit={saveProduct}>
 
-              {/* IMAGE */}
+              <div className="modal-body">
 
-              <div
-                style={
-                  styles.imageUploadSection
-                }
-              >
-                <div
-                  style={
-                    styles.imageUploadLabel
-                  }
-                >
-                  Product Photo / 产品图片
-                </div>
+                <div className="form-grid">
 
-                <div
-                  style={
-                    styles.imageUploadContent
-                  }
-                >
-
-                  {imagePreview ? (
-                    <div
-                      style={
-                        styles.imagePreviewWrapper
-                      }
-                    >
-                      <img
-                        src={
-                          imagePreview
-                        }
-                        alt="Product preview"
-                        style={
-                          styles.imagePreview
-                        }
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      style={
-                        styles.largeImagePlaceholder
-                      }
-                    >
-                      <div
-                        style={
-                          styles.placeholderIcon
-                        }
-                      >
-                        📷
-                      </div>
-
-                      <div
-                        style={
-                          styles.imagePlaceholderText
-                        }
-                      >
-                        No photo
-                      </div>
-
-                      <div
-                        style={
-                          styles.imagePlaceholderChinese
-                        }
-                      >
-                        没有图片
-                      </div>
-                    </div>
-                  )}
-
-                  <div
-                    style={
-                      styles.imageButtons
-                    }
-                  >
-
-                    <label
-                      htmlFor="product-image"
-                      style={
-                        styles.chooseImageButton
-                      }
-                    >
-                      {imagePreview
-                        ? "Change Photo / 更换图片"
-                        : "Choose Photo / 选择图片"}
+                  {/* IMAGE */}
+                  <div className="form-group full">
+                    <label className="form-label">
+                      Product Photo / 产品图片
                     </label>
 
-                    <input
-                      id="product-image"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={
-                        handleProductImageChange
-                      }
-                      style={{
-                        display:
-                          "none",
-                      }}
-                    />
+                    <div className="image-upload">
 
-                    {imagePreview && (
-                      <button
-                        type="button"
-                        style={
-                          styles.removeImageButton
-                        }
-                        onClick={
-                          removeProductImage
-                        }
-                      >
-                        Remove / 删除
-                      </button>
-                    )}
+                      <div className="image-preview-container">
 
-                    <div
-                      style={
-                        styles.imageHelpText
-                      }
-                    >
-                      JPG, PNG or WebP • Max 5 MB
-                      <br />
-                      JPG、PNG 或 WebP • 最大 5 MB
+                        {imagePreview ? (
+                          <img
+                            className="image-preview"
+                            src={imagePreview}
+                            alt="Product preview"
+                            onError={(e) => {
+                              e.currentTarget.style.display =
+                                "none";
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="image-preview"
+                            style={{
+                              display: "flex",
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "center",
+                              color: "#666",
+                              fontSize:
+                                "30px",
+                            }}
+                          >
+                            📷
+                          </div>
+                        )}
+
+                        <div className="image-upload-info">
+
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              marginBottom: 5,
+                            }}
+                          >
+                            {productImage
+                              ? productImage.name
+                              : imagePreview
+                              ? "Current product image"
+                              : "No image selected"}
+                          </div>
+
+                          <div className="image-note">
+                            JPG, PNG, WEBP or other
+                            image files.
+                            <br />
+                            Maximum size: 5 MB.
+                            <br />
+                            JPG、PNG、WEBP等图片，
+                            最大5MB。
+                          </div>
+
+                          <div className="image-upload-actions">
+
+                            <label className="choose-photo-label">
+                              Choose Photo /
+                              选择图片
+
+                              <input
+                                className="hidden-file-input"
+                                type="file"
+                                accept="image/*"
+                                onChange={
+                                  handleProductImageChange
+                                }
+                              />
+                            </label>
+
+                            {(imagePreview ||
+                              productImage) && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={
+                                  removeProductImage
+                                }
+                                disabled={
+                                  saving
+                                }
+                              >
+                                Remove / 删除
+                              </button>
+                            )}
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
                     </div>
-
                   </div>
-                </div>
-              </div>
 
-              {/* FORM GRID */}
-
-              <div
-                style={styles.formGrid}
-              >
-
-                {/* SKU */}
-
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    SKU *
-                  </label>
-
-                  <input
-                    type="text"
-                    value={
-                      productForm.sku
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        sku: e.target
-                          .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                    placeholder="e.g. PPF-001"
-                  />
-                </div>
-
-                {/* PRODUCT NAME */}
-
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Product Name * / 产品名称 *
-                  </label>
-
-                  <input
-                    type="text"
-                    value={
-                      productForm.name
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        name: e.target
-                          .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                    placeholder="Product name / 产品名称"
-                  />
-
-                  {getProductChinese(
-                    productForm.name,
-                    categories.find(
-                      (category) =>
-                        category.id ===
-                        productForm.category_id
-                    )?.name
-                  ) && (
-                    <div
-                      style={{
-                        marginTop: 5,
-                        fontSize: 11,
-                        color: "#71717a",
-                      }}
-                    >
-                      中文:
-                      {" "}
-                      {getProductChinese(
-                        productForm.name,
-                        categories.find(
-                          (category) =>
-                            category.id ===
-                            productForm.category_id
-                        )?.name
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* CATEGORY */}
-
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Category / 分类
-                  </label>
-
-                  <select
-                    value={
-                      productForm.category_id
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        category_id:
-                          e.target
-                            .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                  >
-                    <option value="">
-                      Select category / 选择分类
-                    </option>
-
-                    {categories.map(
-                      (category) => (
-                        <option
-                          key={
-                            category.id
-                          }
-                          value={
-                            category.id
-                          }
-                        >
-                          {category.name}
-                          {categoryChinese[
-                            category.name
-                          ]
-                            ? ` / ${
-                                categoryChinese[
-                                  category.name
-                                ]
-                              }`
-                            : ""}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                {/* UNIT */}
-
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Unit / 单位
-                  </label>
-
-                  <select
-                    value={
-                      productForm.unit
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        unit: e.target
-                          .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                  >
-                    <option value="pcs">
-                      Pieces / 件
-                    </option>
-
-                    <option value="roll">
-                      Roll / 卷
-                    </option>
-
-                    <option value="meter">
-                      Meter / 米
-                    </option>
-
-                    <option value="liter">
-                      Liter / 升
-                    </option>
-
-                    <option value="set">
-                      Set / 套
-                    </option>
-
-                    <option value="box">
-                      Box / 箱
-                    </option>
-                  </select>
-                </div>
-
-                {/* COST */}
-
-                {showCost && (
-                  <div
-                    style={
-                      styles.field
-                    }
-                  >
-                    <label
-                      style={
-                        styles.label
-                      }
-                    >
-                      Cost Price / 成本价格
+                  {/* SKU */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      SKU *
                     </label>
 
                     <input
+                      className="input"
+                      name="sku"
+                      value={productForm.sku}
+                      onChange={
+                        handleProductFormChange
+                      }
+                      placeholder="e.g. PPF-001"
+                      required
+                    />
+                  </div>
+
+                  {/* NAME */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      Product Name 产品名称 *
+                    </label>
+
+                    <input
+                      className="input"
+                      name="name"
+                      value={productForm.name}
+                      onChange={
+                        handleProductFormChange
+                      }
+                      placeholder="Product name"
+                      required
+                    />
+                  </div>
+
+                  {/* CATEGORY */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      Category 分类 *
+                    </label>
+
+                    <select
+                      className="select"
+                      name="category_id"
+                      value={
+                        productForm.category_id
+                      }
+                      onChange={
+                        handleProductFormChange
+                      }
+                      required
+                    >
+                      <option value="">
+                        Select Category / 选择分类
+                      </option>
+
+                      {categories.map(
+                        (category) => (
+                          <option
+                            key={category.id}
+                            value={category.id}
+                          >
+                            {category.name}
+                            {categoryChinese[
+                              category.name
+                            ]
+                              ? ` — ${
+                                  categoryChinese[
+                                    category.name
+                                  ]
+                                }`
+                              : ""}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+
+                  {/* UNIT */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      Unit 单位
+                    </label>
+
+                    <input
+                      className="input"
+                      name="unit"
+                      value={productForm.unit}
+                      onChange={
+                        handleProductFormChange
+                      }
+                      placeholder="pcs"
+                    />
+                  </div>
+
+                  {/* COST */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      Cost Price 成本价
+                    </label>
+
+                    <input
+                      className="input"
                       type="number"
                       min="0"
                       step="0.01"
+                      name="cost_price"
                       value={
                         productForm.cost_price
                       }
-                      onChange={(e) =>
-                        setProductForm({
-                          ...productForm,
-                          cost_price:
-                            e.target
-                              .value,
-                        })
-                      }
-                      style={
-                        styles.input
+                      onChange={
+                        handleProductFormChange
                       }
                       placeholder="0.00"
                     />
                   </div>
-                )}
 
-                {/* CURRENT STOCK */}
+                  {/* STOCK */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      Current Stock 当前库存
+                    </label>
 
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Opening / Current Stock
-                    <br />
-                    初始 / 当前库存
-                  </label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      name="current_stock"
+                      value={
+                        productForm.current_stock
+                      }
+                      onChange={
+                        handleProductFormChange
+                      }
+                      placeholder="0"
+                    />
+                  </div>
 
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={
-                      productForm.current_stock
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        current_stock:
-                          e.target
-                            .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                  />
-                </div>
+                  {/* MIN */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      Minimum Stock 最低库存
+                    </label>
 
-                {/* MINIMUM STOCK */}
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      name="minimum_stock"
+                      value={
+                        productForm.minimum_stock
+                      }
+                      onChange={
+                        handleProductFormChange
+                      }
+                      placeholder="0"
+                    />
+                  </div>
 
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Minimum Stock / 最低库存
-                  </label>
+                  {/* DESCRIPTION */}
+                  <div className="form-group full">
+                    <label className="form-label">
+                      Description 描述
+                    </label>
 
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={
-                      productForm.minimum_stock
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        minimum_stock:
-                          e.target
-                            .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                  />
-                </div>
+                    <textarea
+                      name="description"
+                      value={
+                        productForm.description
+                      }
+                      onChange={
+                        handleProductFormChange
+                      }
+                      placeholder="Optional product description..."
+                    />
+                  </div>
 
-                {/* DESCRIPTION */}
-
-                <div
-                  style={{
-                    ...styles.field,
-                    gridColumn:
-                      "1 / -1",
-                  }}
-                >
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Description / 描述
-                  </label>
-
-                  <textarea
-                    value={
-                      productForm.description
-                    }
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        description:
-                          e.target
-                            .value,
-                      })
-                    }
-                    style={{
-                      ...styles.input,
-                      minHeight: 90,
-                      resize:
-                        "vertical",
-                    }}
-                    placeholder="Optional description / 可选描述"
-                  />
                 </div>
 
               </div>
 
-              {/* BUTTONS */}
+              <div className="modal-footer">
 
-              <div
-                style={
-                  styles.modalFooter
-                }
-              >
                 <button
                   type="button"
-                  style={
-                    styles.cancelButton
-                  }
-                  onClick={() => {
-                    setShowProductForm(
-                      false
-                    );
-                    setProductImage(null);
-                    setImagePreview("");
-                  }}
+                  className="btn btn-secondary"
+                  onClick={closeProductForm}
                   disabled={saving}
                 >
                   Cancel / 取消
@@ -2490,25 +2622,25 @@ export default function Inventory() {
 
                 <button
                   type="submit"
-                  style={
-                    styles.primaryButton
-                  }
+                  className="btn btn-primary"
                   disabled={
                     saving ||
                     uploadingImage
                   }
                 >
-                  {uploadingImage
-                    ? "Uploading Photo... / 正在上传图片..."
-                    : saving
-                    ? "Saving... / 正在保存..."
+                  {saving
+                    ? "Saving..."
+                    : uploadingImage
+                    ? "Uploading..."
                     : editingProduct
-                    ? "Save Changes / 保存更改"
-                    : "Add Product / 添加产品"}
+                    ? "Save Changes / 保存"
+                    : "Save Product / 保存产品"}
                 </button>
+
               </div>
 
             </form>
+
           </div>
         </div>
       )}
@@ -2517,307 +2649,227 @@ export default function Inventory() {
           STOCK MOVEMENT MODAL
       ===================================================== */}
 
-      {showMovementForm &&
-        selectedProduct && (
-          <div
-            style={styles.overlay}
-          >
-            <div
-              style={
-                styles.modalSmall
-              }
-            >
+      {showMovementForm && (
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (
+              e.target === e.currentTarget &&
+              !saving
+            ) {
+              closeMovementForm();
+            }
+          }}
+        >
+          <div className="modal">
 
-              <div
-                style={
-                  styles.modalHeader
-                }
+            <div className="modal-header">
+              <h2>
+                Stock Movement / 库存变动
+              </h2>
+
+              <button
+                className="modal-close"
+                onClick={closeMovementForm}
+                disabled={saving}
               >
-                <div>
-                  <h2
-                    style={
-                      styles.modalTitle
-                    }
-                  >
-                    {movementType ===
-                    "in"
-                      ? "Add Stock"
-                      : "Remove Stock"}
-                  </h2>
+                ×
+              </button>
+            </div>
 
-                  <div
-                    style={
-                      styles.modalChinese
-                    }
-                  >
-                    {movementType ===
-                    "in"
-                      ? "入库"
-                      : "出库"}
-                  </div>
-                </div>
+            <form onSubmit={saveMovement}>
 
-                <button
-                  type="button"
-                  style={
-                    styles.closeButton
-                  }
-                  onClick={() => {
-                    setShowMovementForm(
-                      false
-                    );
-                    setSelectedProduct(
-                      null
-                    );
-                  }}
-                >
-                  ×
-                </button>
-              </div>
+              <div className="modal-body">
 
-              <div
-                style={
-                  styles.selectedProductBox
-                }
-              >
+                {selectedProduct && (
+                  <div className="movement-product">
 
-                {selectedProduct.image_url ? (
-                  <img
-                    src={
-                      selectedProduct.image_url
-                    }
-                    alt={
-                      selectedProduct.name
-                    }
-                    style={
-                      styles.movementProductImage
-                    }
-                  />
-                ) : (
-                  <div
-                    style={
-                      styles.movementImagePlaceholder
-                    }
-                  >
-                    📷
+                    <div className="movement-product-name">
+                      {selectedProduct.name}
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#d6ad50",
+                        fontSize: "12px",
+                        marginTop: 3,
+                      }}
+                    >
+                      SKU:{" "}
+                      {selectedProduct.sku}
+                    </div>
+
+                    <div className="movement-product-stock">
+                      Current Stock / 当前库存:{" "}
+                      <strong>
+                        {Number(
+                          selectedProduct.current_stock ||
+                            0
+                        ).toLocaleString()}
+                      </strong>{" "}
+                      {selectedProduct.unit ||
+                        "pcs"}
+                    </div>
+
                   </div>
                 )}
 
-                <div>
+                <div className="form-grid">
 
-                  {getProductDisplay(
-                    selectedProduct.name,
-                    getSelectedProductCategory()
-                      ?.name
-                  )}
+                  <div className="form-group full">
+                    <label className="form-label">
+                      Movement Type / 变动类型
+                    </label>
 
-                  <div
-                    style={{
-                      color:
-                        "#9ca3af",
-                      fontSize: 12,
-                      marginTop: 5,
-                    }}
-                  >
-                    SKU:{" "}
-                    {
-                      selectedProduct.sku
-                    }
+                    <div className="movement-type-buttons">
+
+                      <button
+                        type="button"
+                        className={`movement-type ${
+                          movementType === "in"
+                            ? "active"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setMovementType("in")
+                        }
+                      >
+                        + Stock In / 入库
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`movement-type ${
+                          movementType === "out"
+                            ? "active"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setMovementType("out")
+                        }
+                      >
+                        − Stock Out / 出库
+                      </button>
+
+                    </div>
                   </div>
 
-                  <div
-                    style={{
-                      color:
-                        "#d4af37",
-                      fontSize: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    Current Stock / 当前库存:{" "}
-                    {
-                      selectedProduct.current_stock
-                    }
-                  </div>
-
-                </div>
-              </div>
-
-              <form
-                onSubmit={
-                  saveMovement
-                }
-              >
-
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Quantity * / 数量 *
-                  </label>
-
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={
-                      movementForm.quantity
-                    }
-                    onChange={(e) =>
-                      setMovementForm({
-                        ...movementForm,
-                        quantity:
-                          e.target
-                            .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                    placeholder="Enter quantity / 输入数量"
-                  />
-                </div>
-
-                {showCost && (
-                  <div
-                    style={
-                      styles.field
-                    }
-                  >
-                    <label
-                      style={
-                        styles.label
-                      }
-                    >
-                      Unit Cost / 单位成本
+                  <div className="form-group">
+                    <label className="form-label">
+                      Quantity 数量 *
                     </label>
 
                     <input
+                      className="input"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      name="quantity"
+                      value={
+                        movementForm.quantity
+                      }
+                      onChange={
+                        handleMovementFormChange
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">
+                      Unit Cost 单位成本
+                    </label>
+
+                    <input
+                      className="input"
                       type="number"
                       min="0"
                       step="0.01"
+                      name="unit_cost"
                       value={
                         movementForm.unit_cost
                       }
-                      onChange={(e) =>
-                        setMovementForm({
-                          ...movementForm,
-                          unit_cost:
-                            e.target
-                              .value,
-                        })
-                      }
-                      style={
-                        styles.input
+                      onChange={
+                        handleMovementFormChange
                       }
                     />
                   </div>
-                )}
 
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Reference / 参考编号
-                  </label>
+                  <div className="form-group full">
+                    <label className="form-label">
+                      Reference 参考
+                    </label>
 
-                  <input
-                    type="text"
-                    value={
-                      movementForm.reference
-                    }
-                    onChange={(e) =>
-                      setMovementForm({
-                        ...movementForm,
-                        reference:
-                          e.target
-                            .value,
-                      })
-                    }
-                    style={
-                      styles.input
-                    }
-                    placeholder="Invoice, PO, job number... / 发票、采购单、工作编号..."
-                  />
+                    <input
+                      className="input"
+                      name="reference"
+                      value={
+                        movementForm.reference
+                      }
+                      onChange={
+                        handleMovementFormChange
+                      }
+                      placeholder="Invoice, PO, supplier, etc."
+                    />
+                  </div>
+
+                  <div className="form-group full">
+                    <label className="form-label">
+                      Notes 备注
+                    </label>
+
+                    <textarea
+                      name="notes"
+                      value={
+                        movementForm.notes
+                      }
+                      onChange={
+                        handleMovementFormChange
+                      }
+                      placeholder="Optional notes..."
+                    />
+                  </div>
+
                 </div>
 
-                <div style={styles.field}>
-                  <label
-                    style={
-                      styles.label
-                    }
-                  >
-                    Notes / 备注
-                  </label>
+              </div>
 
-                  <textarea
-                    value={
-                      movementForm.notes
-                    }
-                    onChange={(e) =>
-                      setMovementForm({
-                        ...movementForm,
-                        notes: e.target
-                          .value,
-                      })
-                    }
-                    style={{
-                      ...styles.input,
-                      minHeight: 80,
-                      resize:
-                        "vertical",
-                    }}
-                  />
-                </div>
+              <div className="modal-footer">
 
-                <div
-                  style={
-                    styles.modalFooter
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={
+                    closeMovementForm
                   }
+                  disabled={saving}
                 >
-                  <button
-                    type="button"
-                    style={
-                      styles.cancelButton
-                    }
-                    onClick={() => {
-                      setShowMovementForm(
-                        false
-                      );
-                      setSelectedProduct(
-                        null
-                      );
-                    }}
-                  >
-                    Cancel / 取消
-                  </button>
+                  Cancel / 取消
+                </button>
 
-                  <button
-                    type="submit"
-                    style={
-                      movementType ===
-                      "in"
-                        ? styles.primaryButton
-                        : styles.dangerButton
-                    }
-                    disabled={saving}
-                  >
-                    {saving
-                      ? "Saving... / 正在保存..."
-                      : movementType ===
-                        "in"
-                      ? "Add Stock / 入库"
-                      : "Remove Stock / 出库"}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  className={`btn ${
+                    movementType === "in"
+                      ? "btn-success"
+                      : "btn-danger"
+                  }`}
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : movementType === "in"
+                    ? "Add Stock / 入库"
+                    : "Remove Stock / 出库"}
+                </button>
 
-              </form>
-            </div>
+              </div>
+
+            </form>
+
           </div>
-        )}
+        </div>
+      )}
 
       {/* =====================================================
           CATEGORY MODAL
@@ -2825,137 +2877,88 @@ export default function Inventory() {
 
       {showCategoryForm && (
         <div
-          style={styles.overlay}
-        >
-          <div
-            style={
-              styles.modalSmall
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (
+              e.target === e.currentTarget &&
+              !saving
+            ) {
+              closeCategoryForm();
             }
-          >
+          }}
+        >
+          <div className="modal">
 
-            <div
-              style={
-                styles.modalHeader
-              }
-            >
-              <div>
-                <h2
-                  style={
-                    styles.modalTitle
-                  }
-                >
-                  Add Category
-                </h2>
-
-                <div
-                  style={
-                    styles.modalChinese
-                  }
-                >
-                  添加分类
-                </div>
-              </div>
+            <div className="modal-header">
+              <h2>
+                Add Category / 添加分类
+              </h2>
 
               <button
-                type="button"
-                style={
-                  styles.closeButton
+                className="modal-close"
+                onClick={
+                  closeCategoryForm
                 }
-                onClick={() =>
-                  setShowCategoryForm(
-                    false
-                  )
-                }
+                disabled={saving}
               >
                 ×
               </button>
             </div>
 
-            <form
-              onSubmit={saveCategory}
-            >
+            <form onSubmit={saveCategory}>
 
-              <div style={styles.field}>
-                <label
-                  style={
-                    styles.label
-                  }
-                >
-                  Category Name * / 分类名称 *
-                </label>
+              <div className="modal-body">
 
-                <input
-                  type="text"
-                  value={
-                    categoryName
-                  }
-                  onChange={(e) =>
-                    setCategoryName(
-                      e.target.value
-                    )
-                  }
-                  style={
-                    styles.input
-                  }
-                  placeholder="e.g. Window Tinting Materials / 例如：Window Tinting Materials"
-                  autoFocus
-                />
+                <div className="form-group">
 
-                {categoryChinese[
-                  categoryName.trim()
-                ] && (
-                  <div
-                    style={{
-                      marginTop: 6,
-                      color:
-                        "#71717a",
-                      fontSize: 11,
-                    }}
-                  >
-                    中文:
-                    {" "}
-                    {
-                      categoryChinese[
-                        categoryName.trim()
-                      ]
+                  <label className="form-label">
+                    Category Name 分类名称 *
+                  </label>
+
+                  <input
+                    className="input"
+                    value={categoryName}
+                    onChange={(e) =>
+                      setCategoryName(
+                        e.target.value
+                      )
                     }
-                  </div>
-                )}
+                    placeholder="e.g. PPF"
+                    required
+                    autoFocus
+                  />
+
+                </div>
+
               </div>
 
-              <div
-                style={
-                  styles.modalFooter
-                }
-              >
+              <div className="modal-footer">
+
                 <button
                   type="button"
-                  style={
-                    styles.cancelButton
+                  className="btn btn-secondary"
+                  onClick={
+                    closeCategoryForm
                   }
-                  onClick={() =>
-                    setShowCategoryForm(
-                      false
-                    )
-                  }
+                  disabled={saving}
                 >
                   Cancel / 取消
                 </button>
 
                 <button
                   type="submit"
-                  style={
-                    styles.primaryButton
-                  }
+                  className="btn btn-primary"
                   disabled={saving}
                 >
                   {saving
-                    ? "Saving... / 正在保存..."
+                    ? "Saving..."
                     : "Add Category / 添加分类"}
                 </button>
+
               </div>
 
             </form>
+
           </div>
         </div>
       )}
@@ -2964,905 +2967,227 @@ export default function Inventory() {
           HISTORY MODAL
       ===================================================== */}
 
-      {showHistoryModal &&
-        selectedProduct && (
-          <div
-            style={styles.overlay}
-          >
-            <div
-              style={
-                styles.historyModal
-              }
-            >
+      {showHistoryModal && (
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (
+              e.target === e.currentTarget
+            ) {
+              closeHistoryModal();
+            }
+          }}
+        >
+          <div className="modal modal-large">
 
-              <div
-                style={
-                  styles.modalHeader
+            <div className="modal-header">
+
+              <h2>
+                Inventory History / 库存历史
+                {selectedProduct
+                  ? ` — ${selectedProduct.name}`
+                  : ""}
+              </h2>
+
+              <button
+                className="modal-close"
+                onClick={
+                  closeHistoryModal
                 }
               >
-                <div>
-                  <h2
-                    style={
-                      styles.modalTitle
-                    }
-                  >
-                    Inventory History
-                  </h2>
+                ×
+              </button>
 
-                  <div
-                    style={
-                      styles.modalChinese
-                    }
-                  >
-                    库存记录
-                  </div>
-                </div>
+            </div>
 
-                <button
-                  type="button"
-                  style={
-                    styles.closeButton
-                  }
-                  onClick={
-                    closeHistory
-                  }
-                >
-                  ×
-                </button>
-              </div>
-
-              <div
-                style={
-                  styles.historyProduct
-                }
-              >
-
-                {selectedProduct.image_url ? (
-                  <img
-                    src={
-                      selectedProduct.image_url
-                    }
-                    alt={
-                      selectedProduct.name
-                    }
-                    style={
-                      styles.historyProductImage
-                    }
-                  />
-                ) : (
-                  <div
-                    style={
-                      styles.historyPlaceholder
-                    }
-                  >
-                    📷
-                  </div>
-                )}
-
-                <div>
-
-                  {getProductDisplay(
-                    selectedProduct.name,
-                    getSelectedProductCategory()
-                      ?.name
-                  )}
-
-                  <div
-                    style={{
-                      color:
-                        "#9ca3af",
-                      fontSize: 12,
-                      marginTop: 5,
-                    }}
-                  >
-                    SKU:{" "}
-                    {
-                      selectedProduct.sku
-                    }
-                  </div>
-
-                  <div
-                    style={{
-                      color:
-                        "#d4af37",
-                      fontSize: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    Current Stock / 当前库存:{" "}
-                    {
-                      selectedProduct.current_stock
-                    }
-                  </div>
-
-                </div>
-              </div>
+            <div className="modal-body">
 
               {historyLoading ? (
-                <div
-                  style={
-                    styles.emptyState
-                  }
-                >
-                  Loading history... / 正在加载记录...
+                <div className="loading-state">
+                  Loading history...
+                  <br />
+                  正在加载历史记录...
                 </div>
-              ) : history.length ===
-                0 ? (
-                <div
-                  style={
-                    styles.emptyState
-                  }
-                >
+              ) : history.length === 0 ? (
+                <div className="empty-state">
                   No inventory movements found.
                   <br />
-                  未找到库存变动记录。
+                  没有库存变动记录。
                 </div>
               ) : (
-                <div
-                  style={
-                    styles.historyList
-                  }
-                >
-                  {history.map(
-                    (item) => {
-                      const isIn =
-                        item.movement_type ===
-                        "in";
+                <div className="history-wrapper">
 
-                      return (
-                        <div
-                          key={
-                            item.id
-                          }
-                          style={
-                            styles.historyItem
-                          }
-                        >
+                  <table className="history-table">
 
-                          <div>
+                    <thead>
+                      <tr>
+                        <th>
+                          Date 日期
+                        </th>
 
-                            <div
-                              style={{
-                                fontWeight: 700,
-                                color:
-                                  isIn
-                                    ? "#22c55e"
-                                    : "#ef4444",
-                              }}
-                            >
-                              {isIn
-                                ? "STOCK IN / 入库"
-                                : "STOCK OUT / 出库"}
-                            </div>
+                        <th>
+                          Type 类型
+                        </th>
 
-                            <div
-                              style={{
-                                color:
-                                  "#d1d5db",
-                                marginTop: 4,
-                              }}
-                            >
-                              Quantity / 数量:{" "}
-                              {
-                                item.quantity
+                        <th>
+                          Quantity 数量
+                        </th>
+
+                        <th>
+                          Unit Cost 单位成本
+                        </th>
+
+                        <th>
+                          Reference 参考
+                        </th>
+
+                        <th>
+                          Notes 备注
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {history.map(
+                        (movement) => {
+
+                          const type =
+                            String(
+                              movement.movement_type ||
+                                movement.type ||
+                                ""
+                            ).toLowerCase();
+
+                          const isIn =
+                            type === "in" ||
+                            type === "stock_in" ||
+                            type === "purchase" ||
+                            type === "receive";
+
+                          return (
+                            <tr
+                              key={
+                                movement.id
                               }
-                            </div>
+                            >
 
-                            {item.reference && (
-                              <div
-                                style={{
-                                  color:
-                                    "#9ca3af",
-                                  fontSize: 12,
-                                  marginTop: 4,
-                                }}
-                              >
-                                Ref / 参考:{" "}
-                                {
-                                  item.reference
-                                }
-                              </div>
-                            )}
+                              <td>
+                                {movement.created_at
+                                  ? new Date(
+                                      movement.created_at
+                                    ).toLocaleString(
+                                      "en-QA"
+                                    )
+                                  : "—"}
+                              </td>
 
-                            {item.notes && (
-                              <div
-                                style={{
-                                  color:
-                                    "#9ca3af",
-                                  fontSize: 12,
-                                  marginTop: 4,
-                                }}
-                              >
-                                Notes / 备注:{" "}
-                                {
-                                  item.notes
-                                }
-                              </div>
-                            )}
-
-                            {showCost &&
-                              item.unit_cost !==
-                                null &&
-                              item.unit_cost !==
-                                undefined && (
-                                <div
-                                  style={{
-                                    color:
-                                      "#9ca3af",
-                                    fontSize: 12,
-                                    marginTop: 4,
-                                  }}
+                              <td>
+                                <span
+                                  className={
+                                    isIn
+                                      ? "history-in"
+                                      : "history-out"
+                                  }
                                 >
-                                  Unit Cost / 单位成本:
-                                  {" "}
-                                  QAR{" "}
-                                  {Number(
-                                    item.unit_cost ||
-                                      0
-                                  ).toFixed(
-                                    2
-                                  )}
-                                </div>
-                              )}
+                                  {isIn
+                                    ? "+ IN / 入库"
+                                    : "- OUT / 出库"}
+                                </span>
+                              </td>
 
-                          </div>
+                              <td>
+                                {Number(
+                                  movement.quantity ||
+                                    0
+                                ).toLocaleString()}
+                              </td>
 
-                          <div
-                            style={{
-                              textAlign:
-                                "right",
-                              color:
-                                "#9ca3af",
-                              fontSize: 12,
-                              whiteSpace:
-                                "nowrap",
-                            }}
-                          >
-                            {formatDate(
-                              item.created_at
-                            )}
-                          </div>
+                              <td>
+                                {showCost
+                                  ? formatMoney(
+                                      movement.unit_cost
+                                    )
+                                  : "—"}
+                              </td>
 
-                        </div>
-                      );
-                    }
-                  )}
+                              <td>
+                                {movement.reference ||
+                                  "—"}
+                              </td>
+
+                              <td>
+                                {movement.notes ||
+                                  "—"}
+                              </td>
+
+                            </tr>
+                          );
+                        }
+                      )}
+                    </tbody>
+
+                  </table>
+
                 </div>
               )}
 
             </div>
+
+            <div className="modal-footer">
+
+              <button
+                className="btn btn-secondary"
+                onClick={
+                  closeHistoryModal
+                }
+              >
+                Close / 关闭
+              </button>
+
+            </div>
+
           </div>
-        )}
+        </div>
+      )}
+
+      {/* =====================================================
+          LARGE IMAGE VIEWER
+      ===================================================== */}
+
+      {selectedImage && (
+        <div
+          className="modal-overlay"
+          onClick={closeImageViewer}
+        >
+
+          <button
+            className="image-viewer-close"
+            onClick={closeImageViewer}
+          >
+            ×
+          </button>
+
+          <div
+            className="image-viewer"
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
+
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.name}
+            />
+
+            <div className="image-viewer-title">
+              {selectedImage.name}
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 }
-
-/* =========================================================
-   STYLES
-========================================================= */
-
-const styles = {
-  page: {
-    minHeight: "100%",
-    background: "#0b0b0b",
-    color: "#f5f5f5",
-    padding: 24,
-    boxSizing: "border-box",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 20,
-    marginBottom: 24,
-  },
-
-  title: {
-    margin: 0,
-    fontSize: 28,
-    fontWeight: 800,
-    letterSpacing: "-0.5px",
-  },
-
-  subtitle: {
-    color: "#9ca3af",
-    fontSize: 13,
-    marginTop: 4,
-  },
-
-  headerButtons: {
-    display: "flex",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-
-  primaryButton: {
-    border: "1px solid #d4af37",
-    background: "#d4af37",
-    color: "#080808",
-    padding: "11px 16px",
-    borderRadius: 8,
-    fontWeight: 800,
-    cursor: "pointer",
-  },
-
-  secondaryButton: {
-    border: "1px solid #3f3f46",
-    background: "#171717",
-    color: "#f5f5f5",
-    padding: "11px 16px",
-    borderRadius: 8,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  dangerButton: {
-    border: "1px solid #ef4444",
-    background: "#ef4444",
-    color: "#fff",
-    padding: "11px 16px",
-    borderRadius: 8,
-    fontWeight: 800,
-    cursor: "pointer",
-  },
-
-  cancelButton: {
-    border: "1px solid #3f3f46",
-    background: "#18181b",
-    color: "#f5f5f5",
-    padding: "11px 16px",
-    borderRadius: 8,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  errorBox: {
-    background:
-      "rgba(239,68,68,0.12)",
-    border:
-      "1px solid rgba(239,68,68,0.35)",
-    color: "#fca5a5",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-
-  messageBox: {
-    background:
-      "rgba(34,197,94,0.12)",
-    border:
-      "1px solid rgba(34,197,94,0.3)",
-    color: "#86efac",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(160px, 1fr))",
-    gap: 12,
-    marginBottom: 18,
-  },
-
-  statCard: {
-    background: "#111111",
-    border: "1px solid #27272a",
-    borderRadius: 12,
-    padding: 16,
-  },
-
-  statLabel: {
-    color: "#9ca3af",
-    fontSize: 12,
-    fontWeight: 600,
-  },
-
-  statValue: {
-    fontSize: 24,
-    fontWeight: 800,
-    marginTop: 6,
-  },
-
-  statChinese: {
-    color: "#71717a",
-    fontSize: 10,
-    marginTop: 3,
-  },
-
-  filterBar: {
-    display: "flex",
-    gap: 10,
-    flexWrap: "wrap",
-    marginBottom: 16,
-  },
-
-  searchInput: {
-    flex: 1,
-    minWidth: 240,
-    background: "#111111",
-    border: "1px solid #27272a",
-    color: "#f5f5f5",
-    borderRadius: 8,
-    padding: "11px 13px",
-    outline: "none",
-  },
-
-  select: {
-    minWidth: 180,
-    background: "#111111",
-    border: "1px solid #27272a",
-    color: "#f5f5f5",
-    borderRadius: 8,
-    padding: "11px 13px",
-    outline: "none",
-  },
-
-  tableContainer: {
-    background: "#111111",
-    border: "1px solid #27272a",
-    borderRadius: 12,
-    overflowX: "auto",
-    overflowY: "hidden",
-  },
-
-  table: {
-    width: "100%",
-    minWidth: 1050,
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "13px 12px",
-    borderBottom:
-      "1px solid #27272a",
-    color: "#a1a1aa",
-    fontSize: 11,
-    fontWeight: 800,
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    whiteSpace: "nowrap",
-  },
-
-  td: {
-    padding: "13px 12px",
-    borderBottom:
-      "1px solid #1f1f22",
-    fontSize: 13,
-    verticalAlign: "middle",
-  },
-
-  sku: {
-    color: "#d4af37",
-    fontWeight: 700,
-    fontFamily: "monospace",
-  },
-
-  tableImage: {
-    width: 52,
-    height: 52,
-    objectFit: "cover",
-    borderRadius: 8,
-    border: "1px solid #3f3f46",
-    display: "block",
-  },
-
-  tableImagePlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
-    border:
-      "1px dashed #3f3f46",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#71717a",
-    fontSize: 20,
-    background: "#18181b",
-  },
-
-  statusBadge: {
-    display: "inline-block",
-    padding: "5px 9px",
-    borderRadius: 6,
-    fontSize: 10,
-    fontWeight: 800,
-    whiteSpace: "nowrap",
-  },
-
-  actionGroup: {
-    display: "flex",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-
-  smallButton: {
-    background: "#18181b",
-    border: "1px solid #3f3f46",
-    color: "#f5f5f5",
-    padding: "6px 8px",
-    borderRadius: 6,
-    cursor: "pointer",
-    fontSize: 11,
-    fontWeight: 700,
-  },
-
-  smallDangerButton: {
-    background:
-      "rgba(239,68,68,0.08)",
-    border:
-      "1px solid rgba(239,68,68,0.35)",
-    color: "#fca5a5",
-    padding: "6px 8px",
-    borderRadius: 6,
-    cursor: "pointer",
-    fontSize: 11,
-    fontWeight: 700,
-  },
-
-  smallDarkButton: {
-    background: "#0b0b0b",
-    border: "1px solid #27272a",
-    color: "#a1a1aa",
-    padding: "6px 8px",
-    borderRadius: 6,
-    cursor: "pointer",
-    fontSize: 11,
-    fontWeight: 700,
-  },
-
-  emptyState: {
-    padding: 50,
-    textAlign: "center",
-    color: "#71717a",
-  },
-
-  /* =======================================================
-     MODAL
-  ======================================================= */
-
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background:
-      "rgba(0,0,0,0.75)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    zIndex: 1000,
-    overflowY: "auto",
-  },
-
-  modal: {
-    width: "min(760px, 100%)",
-    maxHeight: "90vh",
-    overflowY: "auto",
-    background: "#111111",
-    border: "1px solid #2f2f33",
-    borderRadius: 14,
-    boxShadow:
-      "0 25px 80px rgba(0,0,0,0.55)",
-    padding: 22,
-  },
-
-  modalSmall: {
-    width: "min(500px, 100%)",
-    background: "#111111",
-    border: "1px solid #2f2f33",
-    borderRadius: 14,
-    boxShadow:
-      "0 25px 80px rgba(0,0,0,0.55)",
-    padding: 22,
-  },
-
-  historyModal: {
-    width: "min(850px, 100%)",
-    maxHeight: "90vh",
-    overflowY: "auto",
-    background: "#111111",
-    border: "1px solid #2f2f33",
-    borderRadius: 14,
-    boxShadow:
-      "0 25px 80px rgba(0,0,0,0.55)",
-    padding: 22,
-  },
-
-  modalHeader: {
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "flex-start",
-    gap: 20,
-    marginBottom: 20,
-  },
-
-  modalTitle: {
-    margin: 0,
-    fontSize: 20,
-    fontWeight: 800,
-  },
-
-  modalChinese: {
-    color: "#71717a",
-    fontSize: 11,
-    marginTop: 3,
-  },
-
-  closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 7,
-    border:
-      "1px solid #3f3f46",
-    background: "#18181b",
-    color: "#d4d4d8",
-    fontSize: 22,
-    lineHeight: 1,
-    cursor: "pointer",
-  },
-
-  /* =======================================================
-     IMAGE UPLOAD
-  ======================================================= */
-
-  imageUploadSection: {
-    background: "#0c0c0c",
-    border:
-      "1px solid #27272a",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 18,
-  },
-
-  imageUploadLabel: {
-    fontSize: 12,
-    fontWeight: 800,
-    color: "#d4d4d8",
-    marginBottom: 12,
-  },
-
-  imageUploadContent: {
-    display: "flex",
-    alignItems: "center",
-    gap: 18,
-    flexWrap: "wrap",
-  },
-
-  imagePreviewWrapper: {
-    width: 130,
-    height: 100,
-    borderRadius: 10,
-    overflow: "hidden",
-    border:
-      "1px solid #3f3f46",
-    background: "#18181b",
-    flexShrink: 0,
-  },
-
-  imagePreview: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-    display: "block",
-  },
-
-  largeImagePlaceholder: {
-    width: 130,
-    height: 100,
-    borderRadius: 10,
-    border:
-      "1px dashed #3f3f46",
-    background: "#18181b",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-
-  placeholderIcon: {
-    fontSize: 30,
-    opacity: 0.7,
-  },
-
-  imagePlaceholderText: {
-    fontSize: 11,
-    color: "#a1a1aa",
-    marginTop: 3,
-  },
-
-  imagePlaceholderChinese: {
-    fontSize: 9,
-    color: "#52525b",
-    marginTop: 2,
-  },
-
-  imageButtons: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-
-  chooseImageButton: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#d4af37",
-    color: "#090909",
-    borderRadius: 7,
-    padding: "9px 12px",
-    fontSize: 11,
-    fontWeight: 800,
-    cursor: "pointer",
-  },
-
-  removeImageButton: {
-    background:
-      "rgba(239,68,68,0.08)",
-    border:
-      "1px solid rgba(239,68,68,0.35)",
-    color: "#fca5a5",
-    borderRadius: 7,
-    padding: "8px 11px",
-    fontSize: 11,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  imageHelpText: {
-    width: "100%",
-    color: "#71717a",
-    fontSize: 10,
-    lineHeight: 1.5,
-  },
-
-  /* =======================================================
-     FORM
-  ======================================================= */
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(2, minmax(0, 1fr))",
-    gap: 15,
-  },
-
-  field: {
-    marginBottom: 14,
-  },
-
-  label: {
-    display: "block",
-    color: "#a1a1aa",
-    fontSize: 11,
-    fontWeight: 700,
-    marginBottom: 6,
-    lineHeight: 1.5,
-  },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    background: "#0b0b0b",
-    border:
-      "1px solid #3f3f46",
-    color: "#f5f5f5",
-    borderRadius: 7,
-    padding: "10px 11px",
-    outline: "none",
-    fontSize: 13,
-  },
-
-  modalFooter: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: 9,
-    marginTop: 18,
-    paddingTop: 16,
-    borderTop:
-      "1px solid #27272a",
-  },
-
-  /* =======================================================
-     SELECTED PRODUCT
-  ======================================================= */
-
-  selectedProductBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "#0b0b0b",
-    border:
-      "1px solid #27272a",
-    borderRadius: 9,
-    padding: 12,
-    marginBottom: 18,
-  },
-
-  movementProductImage: {
-    width: 55,
-    height: 55,
-    objectFit: "cover",
-    borderRadius: 7,
-    border:
-      "1px solid #3f3f46",
-    flexShrink: 0,
-  },
-
-  movementImagePlaceholder: {
-    width: 55,
-    height: 55,
-    borderRadius: 7,
-    border:
-      "1px dashed #3f3f46",
-    background: "#18181b",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 20,
-    flexShrink: 0,
-  },
-
-  /* =======================================================
-     HISTORY
-  ======================================================= */
-
-  historyProduct: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "#0b0b0b",
-    border:
-      "1px solid #27272a",
-    borderRadius: 9,
-    padding: 12,
-    marginBottom: 15,
-  },
-
-  historyProductImage: {
-    width: 60,
-    height: 60,
-    objectFit: "cover",
-    borderRadius: 8,
-    border:
-      "1px solid #3f3f46",
-    flexShrink: 0,
-  },
-
-  historyPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    border:
-      "1px dashed #3f3f46",
-    background: "#18181b",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 24,
-    flexShrink: 0,
-  },
-
-  historyList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-
-  historyItem: {
-    display: "flex",
-    justifyContent:
-      "space-between",
-    gap: 20,
-    background: "#0b0b0b",
-    border:
-      "1px solid #27272a",
-    borderRadius: 9,
-    padding: 13,
-  },
-};
