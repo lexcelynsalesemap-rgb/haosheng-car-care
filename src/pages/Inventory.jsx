@@ -3210,12 +3210,9 @@ export default function Inventory() {
            PRINT REPORT
         ===================================================== */
 
-      .inventory-print-area {
-  display: none;
-}
-
-/* LOGO + REPORT TITLE */
-.print-report-brand {
+        .inventory-print-area {
+          display: none;
+          .print-report-brand {
   display: flex;
   align-items: center;
   gap: 15px;
@@ -3229,29 +3226,29 @@ export default function Inventory() {
   display: block;
   flex-shrink: 0;
 }
+        }
 
-/* REPORT HEADER */
-.print-report-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #222;
-}
+        .print-report-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 20px;
+          margin-bottom: 18px;
+          padding-bottom: 12px;
+          border-bottom: 2px solid #222;
+        }
 
-.print-report-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #111;
-}
+        .print-report-title {
+          font-size: 24px;
+          font-weight: 700;
+          color: #111;
+        }
 
-.print-report-subtitle {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #555;
-}
+        .print-report-subtitle {
+          margin-top: 4px;
+          font-size: 12px;
+          color: #555;
+        }
 
         .print-report-meta {
           text-align: right;
