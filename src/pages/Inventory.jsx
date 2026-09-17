@@ -8,28 +8,58 @@ import { canSeeInventoryCost } from "../utils/permissions";
 
 const categoryChinese = {
   PPF: "漆面保护膜",
-  "Window Film": "车窗膜",
+  "Color PPF / PET": "彩色PPF / PET",
   "Window Tinting": "车窗贴膜",
-  "Window Tinting Material": "车窗贴膜材料",
-  "Window Tinting Materials": "车窗贴膜材料",
-  "Ceramic Coating": "陶瓷涂层",
-  Accessories: "汽车配件",
-  Maintenance: "保养",
-  Parts: "零配件",
-  Other: "其他",
+  Tools: "工具",
+  "Carwash Tools": "洗车工具",
+  Chemicals: "化学品",
 };
-
+const ALLOWED_CATEGORIES = [
+  {
+    name: "PPF",
+    chinese: "漆面保护膜",
+  },
+  {
+    name: "Color PPF / PET",
+    chinese: "彩色PPF / PET",
+  },
+  {
+    name: "Window Tinting",
+    chinese: "车窗贴膜",
+  },
+  {
+    name: "Tools",
+    chinese: "工具",
+  },
+  {
+    name: "Carwash Tools",
+    chinese: "洗车工具",
+  },
+  {
+    name: "Chemicals",
+    chinese: "化学品",
+  },
+];
 const productChinese = {
   "Paint Protection Film": "漆面保护膜",
   "Full Body PPF": "全车漆面保护膜",
   "Front PPF": "前部漆面保护膜",
   "Matte PPF": "哑光漆面保护膜",
   "Glossy PPF": "高光漆面保护膜",
+
+  "Color PPF": "彩色漆面保护膜",
+  "Color PPF / PET": "彩色PPF / PET",
+  PET: "PET膜",
+
   "Window Film": "车窗膜",
   "Window Tinting": "车窗贴膜",
-  "Window Tinting Material": "车窗贴膜材料",
-  "Window Tinting Materials": "车窗贴膜材料",
+
   "Ceramic Coating": "陶瓷涂层",
+
+  Tools: "工具",
+  "Carwash Tools": "洗车工具",
+  Chemicals: "化学品",
+
   "Car Wash": "洗车",
   "Oil Change": "更换机油",
   "Engine Oil": "发动机油",
@@ -39,7 +69,6 @@ const productChinese = {
   Wiper: "雨刷",
   "Car Accessories": "汽车配件",
 };
-
 function getProductChinese(name = "", categoryName = "") {
   const exact = productChinese[name];
 
@@ -257,7 +286,8 @@ const [stockFilter, setStockFilter] = useState("all");
   ======================================================= */
 
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [movementType, setMovementType] = useState("in");
+  const [movementType, setMovementType] =
+  useState("IN");
 
   const [movementForm, setMovementForm] = useState({
     quantity: "",
@@ -359,27 +389,63 @@ const [stockFilter, setStockFilter] = useState("all");
   ======================================================= */
 
   async function loadCategories() {
-    if (!shopId) return;
+  if (!shopId) return;
 
-    try {
-      const { data, error: queryError } = await supabase
-        .from("inventory_categories")
-        .select("*")
-        .eq("shop_id", shopId)
-        .eq("active", true)
-        .order("name", { ascending: true });
+  try {
+    const { data, error: queryError } = await supabase
+      .from("inventory_categories")
+      .select("*")
+      .eq("shop_id", shopId)
+      .eq("active", true)
+      .order("name", { ascending: true });
 
-      if (queryError) {
-        throw queryError;
-      }
-
-      setCategories(data || []);
-    } catch (err) {
-      console.error("loadCategories error:", err);
-      setError(err.message || "Failed to load categories.");
+    if (queryError) {
+      throw queryError;
     }
-  }
 
+    /*
+     * ONLY SHOW THE SIX APPROVED CATEGORIES
+     */
+    const allowedNames = ALLOWED_CATEGORIES.map(
+      (category) => category.name.toLowerCase()
+    );
+
+    const filteredCategories = (data || []).filter(
+      (category) =>
+        allowedNames.includes(
+          String(category.name || "")
+            .trim()
+            .toLowerCase()
+        )
+    );
+
+    /*
+     * Sort according to our preferred order
+     */
+    filteredCategories.sort((a, b) => {
+      const aIndex = ALLOWED_CATEGORIES.findIndex(
+        (item) =>
+          item.name.toLowerCase() ===
+          String(a.name || "").trim().toLowerCase()
+      );
+
+      const bIndex = ALLOWED_CATEGORIES.findIndex(
+        (item) =>
+          item.name.toLowerCase() ===
+          String(b.name || "").trim().toLowerCase()
+      );
+
+      return aIndex - bIndex;
+    });
+
+    setCategories(filteredCategories);
+  } catch (err) {
+    console.error("loadCategories error:", err);
+    setError(
+      err.message || "Failed to load categories."
+    );
+  }
+}
   /* =========================================================
    FILTERED PRODUCTS
 ========================================================= */
@@ -437,24 +503,31 @@ const filteredProducts = useMemo(() => {
         stockValue <= minimumStock) ||
       (stockFilter === "out-of-stock" &&
         stockValue <= 0);
+const productStatus =
+  getStatus(product).key;
 
+const matchesStatus =
+  statusFilter === "all" ||
+  productStatus === statusFilter;
     /*
     ============================================================
     FINAL RESULT
     ============================================================
     */
 
-    return (
-      matchesCategory &&
-      matchesSearch &&
-      matchesStock
-    );
+   return (
+  matchesCategory &&
+  matchesSearch &&
+  matchesStock &&
+  matchesStatus
+);
   });
 }, [
   products,
   categoryFilter,
   search,
   stockFilter,
+  statusFilter,
 ]);
   /* =======================================================
      STATS
@@ -1255,65 +1328,152 @@ const filteredProducts = useMemo(() => {
   }
 }
 
-  /* =======================================================
-     CATEGORY
-  ======================================================= */
+ /* =======================================================
+   CATEGORY MANAGEMENT
+======================================================= */
 
-  function openAddCategory() {
-    setCategoryName("");
-    setError("");
-    setMessage("");
-    setShowCategoryForm(true);
-  }
+function openAddCategory() {
+  setCategoryName("");
+  setError("");
+  setMessage("");
+  setShowCategoryForm(true);
+}
 
-  function closeCategoryForm() {
-    setCategoryName("");
-    setShowCategoryForm(false);
-  }
+function closeCategoryForm() {
+  setCategoryName("");
+  setShowCategoryForm(false);
+}
 
-  async function saveCategory(event) {
-    event.preventDefault();
-
-    if (!isAdmin) {
-      setError(
-        "Only administrators can create categories."
-      );
-      return;
-    }
-
-    if (!shopId) {
-      setError("No shop is assigned to your account.");
-      return;
-    }
-
-    const name = categoryName.trim();
-
-    if (!name) {
-      setError("Category name is required.");
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const duplicate = categories.some(
+/*
+ * Categories that are not currently active
+ */
+const availableCategoriesToAdd =
+  ALLOWED_CATEGORIES.filter(
+    (allowedCategory) =>
+      !categories.some(
         (category) =>
-          category.name?.trim().toLowerCase() ===
-          name.toLowerCase()
-      );
+          String(category.name || "")
+            .trim()
+            .toLowerCase() ===
+          allowedCategory.name.toLowerCase()
+      )
+  );
 
-      if (duplicate) {
-        throw new Error(
-          "This category already exists."
+/*
+ * ADD CATEGORY
+ */
+async function saveCategory(event) {
+  event.preventDefault();
+
+  if (!isAdmin) {
+    setError(
+      "Only administrators can manage categories."
+    );
+    return;
+  }
+
+  if (!shopId) {
+    setError(
+      "No shop is assigned to your account."
+    );
+    return;
+  }
+
+  const name = String(categoryName || "").trim();
+
+  if (!name) {
+    setError("Please select a category.");
+    return;
+  }
+
+  const allowedCategory =
+    ALLOWED_CATEGORIES.find(
+      (category) =>
+        category.name.toLowerCase() ===
+        name.toLowerCase()
+    );
+
+  if (!allowedCategory) {
+    setError(
+      "This category is not available."
+    );
+    return;
+  }
+
+  const alreadyExists = categories.some(
+    (category) =>
+      String(category.name || "")
+        .trim()
+        .toLowerCase() ===
+      allowedCategory.name.toLowerCase()
+  );
+
+  if (alreadyExists) {
+    setError(
+      "This category is already active."
+    );
+    return;
+  }
+
+  setSaving(true);
+  setError("");
+  setMessage("");
+
+  try {
+    /*
+     * Check whether an old inactive row already exists.
+     */
+    const {
+      data: existingRows,
+      error: existingError,
+    } = await supabase
+      .from("inventory_categories")
+      .select("id, name, active")
+      .eq("shop_id", shopId)
+      .ilike("name", allowedCategory.name)
+      .limit(1);
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    const existing =
+      existingRows?.[0] || null;
+
+    /*
+     * REACTIVATE OLD CATEGORY
+     */
+    if (existing?.id) {
+      const {
+        error: updateError,
+      } = await supabase
+        .from("inventory_categories")
+        .update({
+          active: true,
+        })
+        .eq("id", existing.id)
+        .eq("shop_id", shopId);
+
+      if (updateError) {
+        console.error(
+          "Category reactivation error:",
+          updateError
         );
-      }
 
-      const { error: insertError } = await supabase
+        throw updateError;
+      }
+    }
+
+    /*
+     * CREATE NEW CATEGORY
+     */
+    else {
+      const {
+        error: insertError,
+      } = await supabase
         .from("inventory_categories")
         .insert({
-          name,
+          name: allowedCategory.name,
           shop_id: shopId,
           active: true,
         });
@@ -1336,36 +1496,203 @@ const filteredProducts = useMemo(() => {
 
         throw insertError;
       }
-
-      await loadCategories();
-
-      closeCategoryForm();
-
-      setMessage(
-        "Category added successfully. 分类添加成功。"
-      );
-    } catch (err) {
-      console.error(
-        "saveCategory error:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to create category."
-      );
-    } finally {
-      setSaving(false);
     }
+
+    await loadCategories();
+
+    closeCategoryForm();
+
+    setMessage(
+      `${allowedCategory.name} added successfully. ${allowedCategory.chinese} 分类添加成功。`
+    );
+  } catch (err) {
+    console.error(
+      "saveCategory error:",
+      err
+    );
+
+    setError(
+      err.message ||
+        "Failed to add category."
+    );
+  } finally {
+    setSaving(false);
+  }
+}
+
+/*
+ * REMOVE CATEGORY
+ */
+async function removeCategory(category) {
+  if (!isAdmin) {
+    setError(
+      "Only administrators can remove categories."
+    );
+    return;
   }
 
+  if (!category?.id || !shopId) {
+    setError(
+      "Category or shop information is missing."
+    );
+    return;
+  }
+
+  /*
+   * Check if products are using this category.
+   */
+  const {
+    data: productsUsingCategory,
+    error: productCheckError,
+  } = await supabase
+    .from("inventory_products")
+    .select("id, name, sku")
+    .eq("shop_id", shopId)
+    .eq("category_id", category.id)
+    .eq("active", true)
+    .limit(10);
+
+  if (productCheckError) {
+    console.error(
+      "Category product check error:",
+      productCheckError
+    );
+
+    setError(
+      productCheckError.message ||
+        "Could not check products using this category."
+    );
+
+    return;
+  }
+
+  if (
+    productsUsingCategory &&
+    productsUsingCategory.length > 0
+  ) {
+    const productNames =
+      productsUsingCategory
+        .slice(0, 5)
+        .map(
+          (product) =>
+            `${product.name || "Unnamed"} (${product.sku || "No SKU"})`
+        )
+        .join("\n");
+
+    const more =
+      productsUsingCategory.length > 5
+        ? `\n...and ${
+            productsUsingCategory.length - 5
+          } more.`
+        : "";
+
+    setError(
+      `Cannot remove "${category.name}" because products are still assigned to it.\n\n${productNames}${more}\n\nPlease move these products to another category first.`
+    );
+
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Remove "${category.name}" / ${
+      categoryChinese[category.name] || ""
+    }?\n\nThe category will be hidden from the active category list.`
+  );
+
+  if (!confirmed) return;
+
+  setSaving(true);
+  setError("");
+  setMessage("");
+
+  try {
+    const {
+      error: updateError,
+    } = await supabase
+      .from("inventory_categories")
+      .update({
+        active: false,
+      })
+      .eq("id", category.id)
+      .eq("shop_id", shopId);
+
+    if (updateError) {
+      console.error(
+        "REMOVE CATEGORY ERROR:",
+        updateError
+      );
+
+      if (
+        updateError.message
+          ?.toLowerCase()
+          .includes("row-level security")
+      ) {
+        throw new Error(
+          "Category removal was blocked by Supabase RLS. Check the UPDATE policy for inventory_categories."
+        );
+      }
+
+      throw updateError;
+    }
+
+    await loadCategories();
+
+    /*
+     * If the removed category was selected in the filter,
+     * reset the filter.
+     */
+    if (
+      String(categoryFilter) ===
+      String(category.id)
+    ) {
+      setCategoryFilter("all");
+    }
+
+    /*
+     * If it was selected in the product form,
+     * select the first remaining category.
+     */
+    if (
+      String(productForm.category_id) ===
+      String(category.id)
+    ) {
+      setProductForm((prev) => ({
+        ...prev,
+        category_id:
+          categories.find(
+            (item) =>
+              String(item.id) !==
+              String(category.id)
+          )?.id || "",
+      }));
+    }
+
+    setMessage(
+      `"${category.name}" removed successfully. 分类已删除。`
+    );
+  } catch (err) {
+    console.error(
+      "removeCategory error:",
+      err
+    );
+
+    setError(
+      err.message ||
+        "Failed to remove category."
+    );
+  } finally {
+    setSaving(false);
+  }
+}
   /* =======================================================
      MOVEMENT
   ======================================================= */
 
-  function openMovement(product, type = "") {
-    setSelectedProduct(product);
-    setMovementType(type);
+function openMovement(product, type = "IN") {
+  setSelectedProduct(product);
+  setMovementType(
+    String(type).toUpperCase()
+  );
 
     setMovementForm({
       quantity: "",
@@ -2286,14 +2613,14 @@ const filteredProducts = useMemo(() => {
           </div>
 
           <div className="header-actions">
-            {isAdmin && (
-              <button
-                className="btn btn-secondary"
-                onClick={openAddCategory}
-              >
-                + Category / 分类
-              </button>
-            )}
+           {isAdmin && (
+  <button
+    className="btn btn-secondary"
+    onClick={openAddCategory}
+  >
+    Manage Categories / 管理分类
+  </button>
+)}
 
             {isAdmin && (
               <button
@@ -2652,18 +2979,32 @@ const filteredProducts = useMemo(() => {
                             {canManageStock && (
   <>
     <button
-      className="action-btn"
-      onClick={() => openMovement(product, "IN")}
-    >
-      + Stock 入库
-    </button>
+  type="button"
+  className={`movement-type ${
+    movementType === "IN"
+      ? "active"
+      : ""
+  }`}
+  onClick={() =>
+    setMovementType("IN")
+  }
+>
+  + Stock In / 入库
+</button>
 
-    <button
-      className="action-btn"
-      onClick={() => openMovement(product, "OUT")}
-    >
-      − Stock 出库
-    </button>
+<button
+  type="button"
+  className={`movement-type ${
+    movementType === "OUT"
+      ? "active"
+      : ""
+  }`}
+  onClick={() =>
+    setMovementType("OUT")
+  }
+>
+  − Stock Out / 出库
+</button>
   </>
 )}
 
@@ -3045,21 +3386,20 @@ const filteredProducts = useMemo(() => {
                 </button>
 
                 <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={
-                    saving ||
-                    uploadingImage
-                  }
-                >
-                  {saving
-                    ? "Saving..."
-                    : uploadingImage
-                    ? "Uploading..."
-                    : editingProduct
-                    ? "Save Changes / 保存"
-                    : "Save Product / 保存产品"}
-                </button>
+  type="submit"
+  className={`btn ${
+    movementType === "IN"
+      ? "btn-success"
+      : "btn-danger"
+  }`}
+  disabled={saving}
+>
+  {saving
+    ? "Saving..."
+    : movementType === "IN"
+    ? "Add Stock / 入库"
+    : "Remove Stock / 出库"}
+</button>
 
               </div>
 
@@ -3299,92 +3639,245 @@ const filteredProducts = useMemo(() => {
       ===================================================== */}
 
       {showCategoryForm && (
+  <div
+    className="modal-overlay"
+    onMouseDown={(e) => {
+      if (
+        e.target === e.currentTarget &&
+        !saving
+      ) {
+        closeCategoryForm();
+      }
+    }}
+  >
+    <div className="modal">
+
+      <div className="modal-header">
+        <h2>
+          Categories / 分类
+        </h2>
+
+        <button
+          className="modal-close"
+          onClick={closeCategoryForm}
+          disabled={saving}
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="modal-body">
+
+        {/* ACTIVE CATEGORIES */}
         <div
-          className="modal-overlay"
-          onMouseDown={(e) => {
-            if (
-              e.target === e.currentTarget &&
-              !saving
-            ) {
-              closeCategoryForm();
-            }
+          style={{
+            marginBottom: "22px",
           }}
         >
-          <div className="modal">
+          <div
+            className="form-label"
+            style={{
+              marginBottom: "10px",
+              fontSize: "14px",
+            }}
+          >
+            Active Categories / 当前分类
+          </div>
 
-            <div className="modal-header">
-              <h2>
-                Add Category / 添加分类
-              </h2>
-
-              <button
-                className="modal-close"
-                onClick={
-                  closeCategoryForm
-                }
-                disabled={saving}
-              >
-                ×
-              </button>
+          {categories.length === 0 ? (
+            <div
+              style={{
+                padding: "15px",
+                border: "1px solid #333",
+                borderRadius: "8px",
+                color: "#888",
+              }}
+            >
+              No active categories.
+              <br />
+              没有活动分类。
             </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              {categories.map((category) => (
+                <div
+                  key={category.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    padding: "12px",
+                    background: "#202020",
+                    border: "1px solid #333",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                      }}
+                    >
+                      {category.name}
+                    </div>
 
-            <form onSubmit={saveCategory}>
+                    <div
+                      style={{
+                        color: "#999",
+                        fontSize: "12px",
+                        marginTop: "3px",
+                      }}
+                    >
+                      {categoryChinese[
+                        category.name
+                      ] || "—"}
+                    </div>
+                  </div>
 
-              <div className="modal-body">
-
-                <div className="form-group">
-
-                  <label className="form-label">
-                    Category Name 分类名称 *
-                  </label>
-
-                  <input
-                    className="input"
-                    value={categoryName}
-                    onChange={(e) =>
-                      setCategoryName(
-                        e.target.value
-                      )
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={() =>
+                      removeCategory(category)
                     }
-                    placeholder="e.g. PPF"
-                    required
-                    autoFocus
-                  />
-
+                    disabled={saving}
+                    style={{
+                      padding:
+                        "7px 11px",
+                      fontSize: "12px",
+                    }}
+                  >
+                    Remove / 删除
+                  </button>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ADD CATEGORY */}
+        <div
+          style={{
+            borderTop:
+              "1px solid #333",
+            paddingTop: "20px",
+          }}
+        >
+          <div
+            className="form-label"
+            style={{
+              marginBottom: "10px",
+              fontSize: "14px",
+            }}
+          >
+            Add Category / 添加分类
+          </div>
+
+          {availableCategoriesToAdd.length ===
+          0 ? (
+            <div
+              style={{
+                padding: "12px",
+                background: "#173a27",
+                border:
+                  "1px solid #2e6948",
+                borderRadius: "8px",
+                color: "#a8e4bd",
+                fontSize: "13px",
+              }}
+            >
+              All six categories are active.
+              <br />
+              六个分类都已启用。
+            </div>
+          ) : (
+            <form onSubmit={saveCategory}>
+              <div className="form-group">
+
+                <label className="form-label">
+                  Category 分类
+                </label>
+
+                <select
+                  className="select"
+                  value={categoryName}
+                  onChange={(e) =>
+                    setCategoryName(
+                      e.target.value
+                    )
+                  }
+                  required
+                >
+                  <option value="">
+                    Select Category / 选择分类
+                  </option>
+
+                  {availableCategoriesToAdd.map(
+                    (category) => (
+                      <option
+                        key={category.name}
+                        value={category.name}
+                      >
+                        {category.name} —{" "}
+                        {category.chinese}
+                      </option>
+                    )
+                  )}
+                </select>
 
               </div>
 
-              <div className="modal-footer">
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={
-                    closeCategoryForm
-                  }
-                  disabled={saving}
-                >
-                  Cancel / 取消
-                </button>
-
+              <div
+                style={{
+                  marginTop: "15px",
+                  display: "flex",
+                  justifyContent:
+                    "flex-end",
+                }}
+              >
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={saving}
+                  disabled={
+                    saving ||
+                    !categoryName
+                  }
                 >
                   {saving
                     ? "Saving..."
                     : "Add Category / 添加分类"}
                 </button>
-
               </div>
-
             </form>
+          )}
 
-          </div>
         </div>
-      )}
+
+      </div>
+
+      <div className="modal-footer">
+
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={closeCategoryForm}
+          disabled={saving}
+        >
+          Close / 关闭
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+)}
 
       {/* =====================================================
           HISTORY MODAL
