@@ -3396,7 +3396,95 @@ export default function Inventory() {
           }
         }
 
+        /* =====================================================
+           PRINT MEDIA
+        ===================================================== */
+
         @media print {
+  .inventory-print-area {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-report-header,
+  .print-filter-summary,
+  .print-report-table {
+    margin-top: 0 !important;
+  }
+
+  .print-report-table {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+}
+
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+
+          html,
+          body {
+            background: #fff !important;
+            color: #111 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          .inventory-print-area,
+          .inventory-print-area * {
+            visibility: visible !important;
+          }
+
+          .inventory-print-area {
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: #fff !important;
+            color: #111 !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-report-table {
+            page-break-inside: auto;
+          }
+
+          .print-report-table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
+
+          .print-report-table thead {
+            display: table-header-group;
+          }
+
+          .print-report-table tfoot {
+            display: table-footer-group;
+          }
+
+          .print-product-photo {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          .print-report-table th {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          .print-filter-summary {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+        }
 
       `}</style>
 
