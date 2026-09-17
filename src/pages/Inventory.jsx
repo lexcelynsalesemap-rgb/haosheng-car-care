@@ -463,9 +463,6 @@ export default function Inventory() {
 
       setProducts(data || []);
 
-      /*
-       * Remove selections for products that no longer exist.
-       */
       const existingIds = new Set(
         (data || []).map(
           (product) => String(product.id)
@@ -516,10 +513,6 @@ export default function Inventory() {
         throw queryError;
       }
 
-      /*
-       * ONLY SHOW THE APPROVED CATEGORIES
-       */
-
       const allowedNames =
         ALLOWED_CATEGORIES.map(
           (category) =>
@@ -535,10 +528,6 @@ export default function Inventory() {
                 .toLowerCase()
             )
         );
-
-      /*
-       * Sort according to preferred order.
-       */
 
       filteredCategories.sort((a, b) => {
         const aIndex =
@@ -598,6 +587,11 @@ export default function Inventory() {
           .trim()
           .toLowerCase();
 
+      const categoryName =
+        getCategoryNameForFilter(
+          product.category_id
+        );
+
       const matchesSearch =
         !searchValue ||
         String(product.sku || "")
@@ -608,6 +602,15 @@ export default function Inventory() {
           .includes(searchValue) ||
         String(
           product.description || ""
+        )
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(categoryName || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(
+          categoryChinese[categoryName] ||
+            ""
         )
           .toLowerCase()
           .includes(searchValue);
@@ -646,11 +649,29 @@ export default function Inventory() {
     });
   }, [
     products,
+    categories,
     categoryFilter,
     search,
     stockFilter,
     statusFilter,
   ]);
+
+  /* =======================================================
+     CATEGORY LOOKUP FOR FILTER
+  ======================================================= */
+
+  function getCategoryNameForFilter(
+    categoryId
+  ) {
+    const category =
+      categories.find(
+        (cat) =>
+          String(cat.id) ===
+          String(categoryId)
+      );
+
+    return category?.name || "Other";
+  }
 
   /* =======================================================
      BULK SELECTION
@@ -837,11 +858,6 @@ export default function Inventory() {
     setMessage("");
 
     try {
-      /*
-       * Update only products belonging
-       * to the current shop.
-       */
-
       const {
         error: updateError,
       } = await supabase
@@ -980,6 +996,31 @@ export default function Inventory() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
+  }
+
+  /* =======================================================
+     PRINT INVENTORY
+  ======================================================= */
+
+  function printInventory() {
+    if (filteredProducts.length === 0) {
+      setError(
+        "There are no products to print."
+      );
+      return;
+    }
+
+    setError("");
+    setMessage("");
+
+    /*
+     * Small delay allows the browser to finish
+     * rendering the print area before opening
+     * the print dialog.
+     */
+    setTimeout(() => {
+      window.print();
+    }, 100);
   }
 
   /* =======================================================
@@ -1548,10 +1589,6 @@ export default function Inventory() {
         active: true,
       };
 
-      /*
-       * UPDATE
-       */
-
       if (
         editingProduct?.id
       ) {
@@ -1591,13 +1628,7 @@ export default function Inventory() {
             ? "Product updated successfully with image."
             : "Product updated successfully."
         );
-      }
-
-      /*
-       * INSERT
-       */
-
-      else {
+      } else {
         const {
           error: insertError,
         } = await supabase
@@ -1613,11 +1644,6 @@ export default function Inventory() {
             `Could not create product: ${insertError.message}`
           );
         }
-
-        /*
-         * Find inserted product
-         * without .single()
-         */
 
         const {
           data: insertedRows,
@@ -2465,10 +2491,6 @@ export default function Inventory() {
         );
       }
 
-      /*
-       * Also remove it from bulk selection.
-       */
-
       setSelectedProductIds(
         (previous) =>
           previous.filter(
@@ -2548,7 +2570,13 @@ export default function Inventory() {
 
   return (
     <div className="inventory-page">
+
       <style>{`
+
+        /* =====================================================
+           NORMAL SCREEN STYLES
+        ===================================================== */
+
         .inventory-page {
           min-height: 100%;
           padding: 24px;
@@ -2634,6 +2662,16 @@ export default function Inventory() {
         .btn-success {
           background: #245b39;
           color: #fff;
+        }
+
+        .print-button {
+          background: #f5f5f5;
+          color: #111;
+          border: 1px solid #aaa;
+        }
+
+        .print-button:hover {
+          background: #ddd;
         }
 
         .bulk-toolbar {
@@ -3168,6 +3206,147 @@ export default function Inventory() {
           font-size: 12px;
         }
 
+        /* =====================================================
+           PRINT REPORT
+        ===================================================== */
+
+        .inventory-print-area {
+          display: none;
+        }
+
+        .print-report-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 20px;
+          margin-bottom: 18px;
+          padding-bottom: 12px;
+          border-bottom: 2px solid #222;
+        }
+
+        .print-report-title {
+          font-size: 24px;
+          font-weight: 700;
+          color: #111;
+        }
+
+        .print-report-subtitle {
+          margin-top: 4px;
+          font-size: 12px;
+          color: #555;
+        }
+
+        .print-report-meta {
+          text-align: right;
+          font-size: 11px;
+          color: #555;
+          line-height: 1.6;
+        }
+
+        .print-filter-summary {
+          margin-bottom: 14px;
+          padding: 8px 10px;
+          background: #f2f2f2;
+          border: 1px solid #ddd;
+          border-radius: 5px;
+          font-size: 11px;
+          color: #444;
+        }
+
+        .print-report-table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 0;
+          color: #111;
+        }
+
+        .print-report-table th {
+          background: #e9e9e9;
+          color: #111;
+          border: 1px solid #bbb;
+          padding: 7px 6px;
+          font-size: 10px;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+
+        .print-report-table td {
+          border: 1px solid #ccc;
+          padding: 6px;
+          font-size: 10px;
+          color: #111;
+        }
+
+        .print-product-photo {
+          width: 48px;
+          height: 48px;
+          object-fit: cover;
+          border: 1px solid #bbb;
+          border-radius: 4px;
+          display: block;
+        }
+
+        .print-photo-placeholder {
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #bbb;
+          border-radius: 4px;
+          color: #888;
+          font-size: 18px;
+        }
+
+        .print-product-name-en {
+          font-weight: 700;
+          color: #111;
+        }
+
+        .print-product-name-cn {
+          color: #555;
+          margin-top: 2px;
+          font-size: 9px;
+        }
+
+        .print-category-en {
+          font-weight: 600;
+          color: #111;
+        }
+
+        .print-category-cn {
+          color: #555;
+          margin-top: 2px;
+          font-size: 9px;
+        }
+
+        .print-status {
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .print-status-in {
+          color: #176b37;
+        }
+
+        .print-status-low {
+          color: #966b00;
+        }
+
+        .print-status-out {
+          color: #a52222;
+        }
+
+        .print-report-footer {
+          margin-top: 16px;
+          padding-top: 8px;
+          border-top: 1px solid #bbb;
+          display: flex;
+          justify-content: space-between;
+          font-size: 10px;
+          color: #555;
+        }
+
         @media (max-width: 1100px) {
           .stats-grid {
             grid-template-columns: repeat(3, 1fr);
@@ -3199,6 +3378,79 @@ export default function Inventory() {
             grid-column: auto;
           }
         }
+
+        /* =====================================================
+           PRINT MEDIA
+        ===================================================== */
+
+        @media print {
+
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+
+          html,
+          body {
+            background: #fff !important;
+            color: #111 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          .inventory-print-area,
+          .inventory-print-area * {
+            visibility: visible !important;
+          }
+
+          .inventory-print-area {
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: #fff !important;
+            color: #111 !important;
+            box-sizing: border-box !important;
+          }
+
+          .print-report-table {
+            page-break-inside: auto;
+          }
+
+          .print-report-table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+          }
+
+          .print-report-table thead {
+            display: table-header-group;
+          }
+
+          .print-report-table tfoot {
+            display: table-footer-group;
+          }
+
+          .print-product-photo {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          .print-report-table th {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          .print-filter-summary {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+        }
+
       `}</style>
 
       <div className="inventory-container">
@@ -3223,6 +3475,21 @@ export default function Inventory() {
           </div>
 
           <div className="header-actions">
+
+            {/* PRINT BUTTON */}
+
+            <button
+              type="button"
+              className="btn print-button"
+              onClick={printInventory}
+              disabled={
+                loading ||
+                filteredProducts.length === 0
+              }
+            >
+              🖨 Print Inventory /
+              打印库存
+            </button>
 
             {isAdmin && (
               <button
@@ -3616,7 +3883,6 @@ export default function Inventory() {
                         }
                       >
 
-                        {/* SELECT */}
                         {isAdmin && (
                           <td>
                             <input
@@ -3637,7 +3903,6 @@ export default function Inventory() {
                           </td>
                         )}
 
-                        {/* PHOTO */}
                         <td>
 
                           <div
@@ -3686,7 +3951,6 @@ export default function Inventory() {
 
                         </td>
 
-                        {/* SKU */}
                         <td>
 
                           <div className="sku">
@@ -3696,7 +3960,6 @@ export default function Inventory() {
 
                         </td>
 
-                        {/* PRODUCT */}
                         <td>
 
                           {getProductDisplay(
@@ -3706,7 +3969,6 @@ export default function Inventory() {
 
                         </td>
 
-                        {/* CATEGORY */}
                         <td>
 
                           {getCategoryDisplay(
@@ -3715,7 +3977,6 @@ export default function Inventory() {
 
                         </td>
 
-                        {/* STOCK */}
                         <td>
 
                           <span className="stock-value">
@@ -3739,7 +4000,6 @@ export default function Inventory() {
 
                         </td>
 
-                        {/* MIN */}
                         <td>
 
                           {Number(
@@ -3749,7 +4009,6 @@ export default function Inventory() {
 
                         </td>
 
-                        {/* COST */}
                         {showCost && (
                           <td>
                             {formatMoney(
@@ -3758,7 +4017,6 @@ export default function Inventory() {
                           </td>
                         )}
 
-                        {/* STATUS */}
                         <td>
 
                           <span
@@ -3782,7 +4040,6 @@ export default function Inventory() {
 
                         </td>
 
-                        {/* ACTIONS */}
                         <td>
 
                           <div className="action-buttons">
@@ -3906,6 +4163,350 @@ export default function Inventory() {
           )}
 
         </div>
+
+      </div>
+
+      {/* =====================================================
+          PRINT REPORT
+      ===================================================== */}
+
+      <div className="inventory-print-area">
+
+        <div className="print-report-header">
+
+          <div>
+
+            <div className="print-report-title">
+              Inventory Stock Report /
+              库存报告
+            </div>
+
+            <div className="print-report-subtitle">
+              Product inventory and current stock levels /
+              产品库存及当前库存水平
+            </div>
+
+          </div>
+
+          <div className="print-report-meta">
+
+            <div>
+              Printed:
+              {" "}
+              {new Date().toLocaleString(
+                "en-QA"
+              )}
+            </div>
+
+            <div>
+              Products:
+              {" "}
+              {filteredProducts.length}
+            </div>
+
+            <div>
+              Shop:
+              {" "}
+              {loggedInUser?.shop_name ||
+                loggedInUser?.shop?.name ||
+                shopId ||
+                "—"}
+            </div>
+
+          </div>
+
+        </div>
+
+        <div className="print-filter-summary">
+
+          <strong>
+            Filters / 筛选:
+          </strong>
+
+          {" "}
+
+          Search:
+          {" "}
+          {search.trim() || "All / 全部"}
+
+          {" | "}
+
+          Category:
+          {" "}
+          {categoryFilter ===
+          "all"
+            ? "All / 全部"
+            : (() => {
+                const category =
+                  categories.find(
+                    (item) =>
+                      String(
+                        item.id
+                      ) ===
+                      String(
+                        categoryFilter
+                      )
+                  );
+
+                return category
+                  ? `${category.name} — ${
+                      categoryChinese[
+                        category.name
+                      ] || ""
+                    }`
+                  : "All / 全部";
+              })()}
+
+          {" | "}
+
+          Status:
+          {" "}
+          {statusFilter ===
+          "all"
+            ? "All / 全部"
+            : statusFilter ===
+              "in"
+            ? "In Stock / 库存充足"
+            : statusFilter ===
+              "low"
+            ? "Low Stock / 库存不足"
+            : "Out of Stock / 缺货"}
+
+        </div>
+
+        <table className="print-report-table">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                #
+              </th>
+
+              <th>
+                Photo
+                <br />
+                图片
+              </th>
+
+              <th>
+                SKU
+              </th>
+
+              <th>
+                Product
+                <br />
+                产品
+              </th>
+
+              <th>
+                Category
+                <br />
+                分类
+              </th>
+
+              <th>
+                Stock
+                <br />
+                库存
+              </th>
+
+              <th>
+                Minimum
+                <br />
+                最低库存
+              </th>
+
+              <th>
+                Unit
+                <br />
+                单位
+              </th>
+
+              {showCost && (
+                <th>
+                  Cost
+                  <br />
+                  成本
+                </th>
+              )}
+
+              <th>
+                Status
+                <br />
+                状态
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {filteredProducts.map(
+              (product, index) => {
+
+                const categoryName =
+                  getCategoryName(
+                    product.category_id
+                  );
+
+                const categoryCN =
+                  categoryChinese[
+                    categoryName
+                  ] || "其他";
+
+                const productCN =
+                  getProductChinese(
+                    product.name,
+                    categoryName
+                  );
+
+                const status =
+                  getStatus(
+                    product
+                  );
+
+                return (
+                  <tr
+                    key={
+                      `print-${product.id}`
+                    }
+                  >
+
+                    <td>
+                      {index + 1}
+                    </td>
+
+                    <td>
+
+                      {product.image_url ? (
+                        <img
+                          className="print-product-photo"
+                          src={
+                            product.image_url
+                          }
+                          alt={
+                            product.name ||
+                            "Product"
+                          }
+                        />
+                      ) : (
+                        <div className="print-photo-placeholder">
+                          📷
+                        </div>
+                      )}
+
+                    </td>
+
+                    <td>
+                      <strong>
+                        {product.sku ||
+                          "—"}
+                      </strong>
+                    </td>
+
+                    <td>
+
+                      <div className="print-product-name-en">
+                        {product.name ||
+                          "—"}
+                      </div>
+
+                      <div className="print-product-name-cn">
+                        {productCN}
+                      </div>
+
+                    </td>
+
+                    <td>
+
+                      <div className="print-category-en">
+                        {categoryName}
+                      </div>
+
+                      <div className="print-category-cn">
+                        {categoryCN}
+                      </div>
+
+                    </td>
+
+                    <td>
+                      <strong>
+                        {Number(
+                          product.current_stock ||
+                            0
+                        ).toLocaleString()}
+                      </strong>
+                    </td>
+
+                    <td>
+                      {Number(
+                        product.minimum_stock ||
+                          0
+                      ).toLocaleString()}
+                    </td>
+
+                    <td>
+                      {product.unit ||
+                        "pcs"}
+                    </td>
+
+                    {showCost && (
+                      <td>
+                        {formatMoney(
+                          product.cost_price
+                        )}
+                      </td>
+                    )}
+
+                    <td>
+
+                      <span
+                        className={`print-status ${
+                          status.key ===
+                          "in"
+                            ? "print-status-in"
+                            : status.key ===
+                              "low"
+                            ? "print-status-low"
+                            : "print-status-out"
+                        }`}
+                      >
+                        {status.label}
+                        {" / "}
+                        {status.chinese}
+                      </span>
+
+                    </td>
+
+                  </tr>
+                );
+              }
+            )}
+
+          </tbody>
+
+        </table>
+
+        <div className="print-report-footer">
+
+          <div>
+            Inventory Report /
+            库存报告
+          </div>
+
+          <div>
+            Total displayed:
+            {" "}
+            {filteredProducts.length}
+            {" "}
+            products
+          </div>
+
+        </div>
+
       </div>
 
       {/* =====================================================
@@ -4147,7 +4748,6 @@ export default function Inventory() {
 
                 <div className="form-grid">
 
-                  {/* IMAGE */}
                   <div className="form-group full">
 
                     <label className="form-label">
@@ -4264,7 +4864,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* SKU */}
                   <div className="form-group">
 
                     <label className="form-label">
@@ -4286,7 +4885,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* NAME */}
                   <div className="form-group">
 
                     <label className="form-label">
@@ -4309,7 +4907,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* CATEGORY */}
                   <div className="form-group">
 
                     <label className="form-label">
@@ -4364,7 +4961,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* UNIT */}
                   <div className="form-group">
 
                     <label className="form-label">
@@ -4385,7 +4981,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* COST */}
                   <div className="form-group">
 
                     <label className="form-label">
@@ -4410,7 +5005,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* STOCK */}
                   <div className="form-group">
 
                     <label className="form-label">
@@ -4435,7 +5029,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* MIN */}
                   <div className="form-group">
 
                     <label className="form-label">
@@ -4460,7 +5053,6 @@ export default function Inventory() {
 
                   </div>
 
-                  {/* DESCRIPTION */}
                   <div className="form-group full">
 
                     <label className="form-label">
@@ -4847,8 +5439,6 @@ export default function Inventory() {
 
             <div className="modal-body">
 
-              {/* ACTIVE CATEGORIES */}
-
               <div
                 style={{
                   marginBottom:
@@ -4987,8 +5577,6 @@ export default function Inventory() {
                 )}
 
               </div>
-
-              {/* ADD CATEGORY */}
 
               <div
                 style={{
