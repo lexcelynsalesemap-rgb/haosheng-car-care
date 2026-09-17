@@ -1398,105 +1398,149 @@ const filteredProducts = useMemo(() => {
   }
 
   async function saveMovement(event) {
-    event.preventDefault();
+  event.preventDefault();
 
-    if (!canManageStock) {
-      setError(
-        "You do not have permission to manage stock."
-      );
-      return;
-    }
+  if (!canManageStock) {
+    setError("You do not have permission to manage stock.");
+    return;
+  }
 
-    if (!shopId) {
-      setError("No shop is assigned to your account.");
-      return;
-    }
+  if (!shopId) {
+    setError("No shop is assigned to your account.");
+    return;
+  }
 
-    if (!selectedProduct?.id) {
-      setError("No product selected.");
-      return;
-    }
+  if (!selectedProduct?.id) {
+    setError("No product selected.");
+    return;
+  }
 
-    const quantity = Number(
-      movementForm.quantity
+  const quantity = Number(movementForm.quantity);
+
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    setError("Quantity must be greater than zero.");
+    return;
+  }
+
+  const unitCost =
+    movementForm.unit_cost === ""
+      ? 0
+      : Number(movementForm.unit_cost);
+
+  if (!Number.isFinite(unitCost) || unitCost < 0) {
+    setError("Unit cost must be a valid number.");
+    return;
+  }
+
+  const movement =
+    String(movementType || "").trim().toUpperCase();
+
+  if (!["IN", "OUT", "ADJUSTMENT"].includes(movement)) {
+    setError(`Invalid movement type: ${movement}`);
+    return;
+  }
+
+  setSaving(true);
+  setError("");
+  setMessage("");
+
+  try {
+    console.log("=== SAVING INVENTORY MOVEMENT ===");
+    console.log("Product ID:", selectedProduct.id);
+    console.log("Movement:", movement);
+    console.log("Quantity:", quantity);
+    console.log("Unit Cost:", unitCost);
+    console.log("Shop ID:", shopId);
+
+    const rpcParams = {
+      p_product_id: selectedProduct.id,
+      p_movement_type: movement,
+      p_quantity: quantity,
+      p_unit_cost: unitCost,
+      p_supplier_id: null,
+      p_job_id: null,
+      p_user_id: null,
+      p_reference:
+        movementForm.reference?.trim() || null,
+      p_notes:
+        movementForm.notes?.trim() || null,
+    };
+
+    console.log(
+      "RPC PARAMETERS:",
+      rpcParams
     );
 
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      setError(
-        "Quantity must be greater than zero."
+    const { data, error: rpcError } =
+      await supabase.rpc(
+        "record_inventory_movement",
+        rpcParams
       );
-      return;
-    }
 
-    const unitCost =
-      movementForm.unit_cost === ""
-        ? 0
-        : Number(movementForm.unit_cost);
-
-    if (
-      !Number.isFinite(unitCost) ||
-      unitCost < 0
-    ) {
-      setError(
-        "Unit cost must be a valid number."
-      );
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const { error: rpcError } =
-        await supabase.rpc(
-          "record_inventory_movement",
-          {
-            p_product_id: selectedProduct.id,
-            p_movement_type: movementType,
-            p_quantity: quantity,
-            p_unit_cost: unitCost,
-            p_reference:
-              movementForm.reference.trim() ||
-              null,
-            p_notes:
-              movementForm.notes.trim() ||
-              null,
-          }
-        );
-
-      if (rpcError) {
-        console.error(
-          "record_inventory_movement error:",
-          rpcError
-        );
-
-        throw rpcError;
-      }
-
-      await loadProducts();
-
-      closeMovementForm();
-
-     setMessage(
-  movementType === "IN"
-    ? "Stock added successfully. 库存增加成功。"
-    : "Stock removed successfully. 库存减少成功。"
-);
-    } catch (err) {
+    if (rpcError) {
       console.error(
-        "saveMovement error:",
-        err
+        "record_inventory_movement FULL ERROR:",
+        rpcError
       );
 
-      setError(
-        err.message ||
+      console.error(
+        "RPC message:",
+        rpcError.message
+      );
+
+      console.error(
+        "RPC details:",
+        rpcError.details
+      );
+
+      console.error(
+        "RPC hint:",
+        rpcError.hint
+      );
+
+      console.error(
+        "RPC code:",
+        rpcError.code
+      );
+
+      throw new Error(
+        rpcError.message ||
+          rpcError.details ||
           "Failed to record stock movement."
       );
-    } finally {
-      setSaving(false);
     }
+
+    console.log(
+      "Movement successfully recorded:",
+      data
+    );
+
+    await loadProducts();
+
+    closeMovementForm();
+
+    setMessage(
+      movement === "IN"
+        ? "Stock added successfully. 库存增加成功。"
+        : movement === "OUT"
+        ? "Stock removed successfully. 库存减少成功。"
+        : "Stock adjusted successfully. 库存调整成功。"
+    );
+  } catch (err) {
+    console.error(
+      "saveMovement FULL ERROR:",
+      err
+    );
+
+    setError(
+      err?.message ||
+        err?.details ||
+        "Failed to record stock movement."
+    );
+  } finally {
+    setSaving(false);
   }
+}
 
   /* =======================================================
      HISTORY
