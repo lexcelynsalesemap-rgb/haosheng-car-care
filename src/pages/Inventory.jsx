@@ -3212,20 +3212,6 @@ export default function Inventory() {
 
         .inventory-print-area {
           display: none;
-          .print-report-brand {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.print-report-logo {
-  width: 45mm;
-  height: 20mm;
-  object-fit: contain;
-  object-position: left center;
-  display: block;
-  flex-shrink: 0;
-}
         }
 
         .print-report-header {
@@ -4186,60 +4172,51 @@ export default function Inventory() {
 
       <div className="inventory-print-area">
 
-  <div className="print-report-header">
+        <div className="print-report-header">
 
-    {/* LOGO + TITLE */}
-    <div className="print-report-brand">
+          <div>
 
-      <img
-        src="/ga-logo.png"
-        alt="GA Logo"
-        className="print-report-logo"
-      />
+            <div className="print-report-title">
+              Inventory Stock Report /
+              库存报告
+            </div>
 
-      <div>
-        <div className="print-report-title">
-          Inventory Stock Report /
-          库存报告
+            <div className="print-report-subtitle">
+              Product inventory and current stock levels /
+              产品库存及当前库存水平
+            </div>
+
+          </div>
+
+          <div className="print-report-meta">
+
+            <div>
+              Printed:
+              {" "}
+              {new Date().toLocaleString(
+                "en-QA"
+              )}
+            </div>
+
+            <div>
+              Products:
+              {" "}
+              {filteredProducts.length}
+            </div>
+
+            <div>
+              Shop:
+              {" "}
+              {loggedInUser?.shop_name ||
+                loggedInUser?.shop?.name ||
+                shopId ||
+                "—"}
+            </div>
+
+          </div>
+
         </div>
 
-        <div className="print-report-subtitle">
-          Product inventory and current stock levels /
-          产品库存及当前库存水平
-        </div>
-      </div>
-
-    </div>
-
-    {/* REPORT INFORMATION */}
-    <div className="print-report-meta">
-
-      <div>
-        Printed:
-        {" "}
-        {new Date().toLocaleString(
-          "en-QA"
-        )}
-      </div>
-
-      <div>
-        Products:
-        {" "}
-        {filteredProducts.length}
-      </div>
-
-      <div>
-        Shop:
-        {" "}
-        {loggedInUser?.shop_name ||
-          loggedInUser?.shop?.name ||
-          shopId ||
-          "—"}
-      </div>
-
-    </div>
-
-  </div>
         <div className="print-filter-summary">
 
           <strong>
