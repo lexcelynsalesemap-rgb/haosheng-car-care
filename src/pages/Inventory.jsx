@@ -188,10 +188,10 @@ export default function Inventory() {
      FILTERS
   ======================================================= */
 
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-
+const [search, setSearch] = useState("");
+const [categoryFilter, setCategoryFilter] = useState("all");
+const [statusFilter, setStatusFilter] = useState("all");
+const [stockFilter, setStockFilter] = useState("all");
   /* =======================================================
      MODALS
   ======================================================= */
@@ -373,11 +373,11 @@ export default function Inventory() {
     }
   }
 
-  /* =======================================================
-     FILTERED PRODUCTS
-  ======================================================= */
+  /* =========================================================
+   FILTERED PRODUCTS
+========================================================= */
 
-  const filteredProducts = useMemo(() => {
+const filteredProducts = useMemo(() => {
   return products.filter((product) => {
     /*
     ============================================================
@@ -386,9 +386,9 @@ export default function Inventory() {
     */
 
     const matchesCategory =
-      selectedCategory === "all" ||
+      categoryFilter === "all" ||
       String(product.category_id || "") ===
-        String(selectedCategory || "");
+        String(categoryFilter || "");
 
     /*
     ============================================================
@@ -396,21 +396,21 @@ export default function Inventory() {
     ============================================================
     */
 
-    const search = String(searchTerm || "")
+    const searchValue = String(search || "")
       .trim()
       .toLowerCase();
 
     const matchesSearch =
-      !search ||
+      !searchValue ||
       String(product.sku || "")
         .toLowerCase()
-        .includes(search) ||
+        .includes(searchValue) ||
       String(product.name || "")
         .toLowerCase()
-        .includes(search) ||
+        .includes(searchValue) ||
       String(product.description || "")
         .toLowerCase()
-        .includes(search);
+        .includes(searchValue);
 
     /*
     ============================================================
@@ -423,12 +423,19 @@ export default function Inventory() {
 
     const matchesStock =
       stockFilter === "all" ||
-      (stockFilter === "in-stock" && stockValue > minimumStock) ||
+      (stockFilter === "in-stock" &&
+        stockValue > minimumStock) ||
       (stockFilter === "low-stock" &&
         stockValue > 0 &&
         stockValue <= minimumStock) ||
       (stockFilter === "out-of-stock" &&
         stockValue <= 0);
+
+    /*
+    ============================================================
+    FINAL RESULT
+    ============================================================
+    */
 
     return (
       matchesCategory &&
@@ -438,8 +445,8 @@ export default function Inventory() {
   });
 }, [
   products,
-  selectedCategory,
-  searchTerm,
+  categoryFilter,
+  search,
   stockFilter,
 ]);
   /* =======================================================
