@@ -13,7 +13,9 @@ const categoryChinese = {
   Tools: "工具",
   "Carwash Tools": "洗车工具",
   Chemicals: "化学品",
+  "Compounds & Chemicals": "化合物和化学品",
 };
+
 const ALLOWED_CATEGORIES = [
   {
     name: "PPF",
@@ -38,6 +40,10 @@ const ALLOWED_CATEGORIES = [
   {
     name: "Chemicals",
     chinese: "化学品",
+  },
+  {
+    name: "Compounds & Chemicals",
+    chinese: "化合物和化学品",
   },
 ];
 const productChinese = {
@@ -403,9 +409,9 @@ const [stockFilter, setStockFilter] = useState("all");
       throw queryError;
     }
 
-    /*
-     * ONLY SHOW THE SIX APPROVED CATEGORIES
-     */
+   /*
+ * ONLY SHOW THE APPROVED CATEGORIES
+ */
     const allowedNames = ALLOWED_CATEGORIES.map(
       (category) => category.name.toLowerCase()
     );
@@ -2979,32 +2985,26 @@ function openMovement(product, type = "IN") {
                             {canManageStock && (
   <>
     <button
-  type="button"
-  className={`movement-type ${
-    movementType === "IN"
-      ? "active"
-      : ""
-  }`}
-  onClick={() =>
-    setMovementType("IN")
-  }
->
-  + Stock In / 入库
-</button>
+      type="button"
+      className="action-btn"
+      onClick={() =>
+        openMovement(product, "IN")
+      }
+      disabled={saving}
+    >
+      + Stock In / 入库
+    </button>
 
-<button
-  type="button"
-  className={`movement-type ${
-    movementType === "OUT"
-      ? "active"
-      : ""
-  }`}
-  onClick={() =>
-    setMovementType("OUT")
-  }
->
-  − Stock Out / 出库
-</button>
+    <button
+      type="button"
+      className="action-btn"
+      onClick={() =>
+        openMovement(product, "OUT")
+      }
+      disabled={saving}
+    >
+      − Stock Out / 出库
+    </button>
   </>
 )}
 
@@ -3018,22 +3018,24 @@ function openMovement(product, type = "IN") {
                             >
                               History 历史
                             </button>
-<button
-  type="button"
-  onClick={() => removeProduct(product)}
-  disabled={saving}
-  style={{
-    padding: "6px 10px",
-    borderRadius: "6px",
-    border: "1px solid #dc2626",
-    background: "#fff",
-    color: "#dc2626",
-    cursor: saving ? "not-allowed" : "pointer",
-    fontWeight: 600,
-  }}
->
-  Remove
-</button>
+{isAdmin && (
+  <button
+    type="button"
+    onClick={() => removeProduct(product)}
+    disabled={saving}
+    style={{
+      padding: "6px 10px",
+      borderRadius: "6px",
+      border: "1px solid #dc2626",
+      background: "#fff",
+      color: "#dc2626",
+      cursor: saving ? "not-allowed" : "pointer",
+      fontWeight: 600,
+    }}
+  >
+    Remove 删除
+  </button>
+)}
                           </div>
                         </td>
 
@@ -3479,44 +3481,42 @@ function openMovement(product, type = "IN") {
                 <div className="form-grid">
 
                   <div className="form-group full">
+  <label className="form-label">
+    Movement Type / 变动类型
+  </label>
 
-                    <label className="form-label">
-                      Movement Type / 变动类型
-                    </label>
+  <div className="movement-type-buttons">
 
-                    <div className="movement-type-buttons">
+    <button
+      type="button"
+      className={`movement-type ${
+        movementType === "IN"
+          ? "active"
+          : ""
+      }`}
+      onClick={() =>
+        setMovementType("IN")
+      }
+    >
+      + Stock In / 入库
+    </button>
 
-                      <button
-                        type="button"
-                        className={`movement-type ${
-                          movementType === "in"
-                            ? "active"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setMovementType("in")
-                        }
-                      >
-                        + Stock In / 入库
-                      </button>
+    <button
+      type="button"
+      className={`movement-type ${
+        movementType === "OUT"
+          ? "active"
+          : ""
+      }`}
+      onClick={() =>
+        setMovementType("OUT")
+      }
+    >
+      − Stock Out / 出库
+    </button>
 
-                      <button
-                        type="button"
-                        className={`movement-type ${
-                          movementType === "out"
-                            ? "active"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setMovementType("out")
-                        }
-                      >
-                        − Stock Out / 出库
-                      </button>
-
-                    </div>
-                  </div>
-
+  </div>
+</div>
                   <div className="form-group">
                     <label className="form-label">
                       Quantity 数量 *
