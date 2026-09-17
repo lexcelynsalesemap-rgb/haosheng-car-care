@@ -1363,7 +1363,7 @@ const filteredProducts = useMemo(() => {
      MOVEMENT
   ======================================================= */
 
-  function openMovement(product, type = "in") {
+  function openMovement(product, type = "") {
     setSelectedProduct(product);
     setMovementType(type);
 
@@ -1478,11 +1478,11 @@ const filteredProducts = useMemo(() => {
 
       closeMovementForm();
 
-      setMessage(
-        movementType === "in"
-          ? "Stock added successfully. 库存增加成功。"
-          : "Stock removed successfully. 库存减少成功。"
-      );
+     setMessage(
+  movementType === "IN"
+    ? "Stock added successfully. 库存增加成功。"
+    : "Stock removed successfully. 库存减少成功。"
+);
     } catch (err) {
       console.error(
         "saveMovement error:",
@@ -2609,14 +2609,14 @@ const filteredProducts = useMemo(() => {
   <>
     <button
       className="action-btn"
-      onClick={() => openMovement(product, "in")}
+      onClick={() => openMovement(product, "IN")}
     >
       + Stock 入库
     </button>
 
     <button
       className="action-btn"
-      onClick={() => openMovement(product, "out")}
+      onClick={() => openMovement(product, "OUT")}
     >
       − Stock 出库
     </button>
