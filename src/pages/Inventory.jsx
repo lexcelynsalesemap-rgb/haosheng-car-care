@@ -3401,24 +3401,6 @@ export default function Inventory() {
         ===================================================== */
 
         @media print {
-  .inventory-print-area {
-    position: static !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .print-report-header,
-  .print-filter-summary,
-  .print-report-table {
-    margin-top: 0 !important;
-  }
-
-  .print-report-table {
-    break-before: auto !important;
-    page-break-before: auto !important;
-  }
-}
 
           @page {
             size: A4 landscape;
