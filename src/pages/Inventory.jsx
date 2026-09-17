@@ -378,46 +378,70 @@ export default function Inventory() {
   ======================================================= */
 
   const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
+  return products.filter((product) => {
+    /*
+    ============================================================
+    CATEGORY FILTER
+    ============================================================
+    */
 
-    return products.filter((product) => {
-      const category = categories.find(
-        (cat) => cat.id === product.category_id
-      );
+    const matchesCategory =
+      selectedCategory === "all" ||
+      String(product.category_id || "") ===
+        String(selectedCategory || "");
 
-      const categoryNameValue = category?.name || "";
+    /*
+    ============================================================
+    SEARCH FILTER
+    ============================================================
+    */
 
-      const matchesSearch =
-        !term ||
-        product.name?.toLowerCase().includes(term) ||
-        product.sku?.toLowerCase().includes(term) ||
-        categoryNameValue.toLowerCase().includes(term) ||
-        product.description?.toLowerCase().includes(term);
+    const search = String(searchTerm || "")
+      .trim()
+      .toLowerCase();
 
-      const matchesCategory =
-        categoryFilter === "all" ||
-        product.category_id === categoryFilter;
+    const matchesSearch =
+      !search ||
+      String(product.sku || "")
+        .toLowerCase()
+        .includes(search) ||
+      String(product.name || "")
+        .toLowerCase()
+        .includes(search) ||
+      String(product.description || "")
+        .toLowerCase()
+        .includes(search);
 
-      const status = getStatus(product);
+    /*
+    ============================================================
+    STOCK FILTER
+    ============================================================
+    */
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        status.key === statusFilter;
+    const stockValue = Number(product.current_stock || 0);
+    const minimumStock = Number(product.minimum_stock || 0);
 
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesStatus
-      );
-    });
-  }, [
-    products,
-    categories,
-    search,
-    categoryFilter,
-    statusFilter,
-  ]);
+    const matchesStock =
+      stockFilter === "all" ||
+      (stockFilter === "in-stock" && stockValue > minimumStock) ||
+      (stockFilter === "low-stock" &&
+        stockValue > 0 &&
+        stockValue <= minimumStock) ||
+      (stockFilter === "out-of-stock" &&
+        stockValue <= 0);
 
+    return (
+      matchesCategory &&
+      matchesSearch &&
+      matchesStock
+    );
+  });
+}, [
+  products,
+  selectedCategory,
+  searchTerm,
+  stockFilter,
+]);
   /* =======================================================
      STATS
   ======================================================= */
@@ -1509,6 +1533,60 @@ export default function Inventory() {
     setHistory([]);
   }
 
+  async function removeProduct(product) {
+  if (!isAdmin) {
+    setError("You do not have permission to remove products.");
+    return;
+  }
+
+  if (!product?.id || !shopId) {
+    setError("Product or shop information is missing.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Remove "${product.name}" (${product.sku}) from inventory?\n\nThe product will be hidden from the active inventory, but its records will remain in the database.`
+  );
+
+  if (!confirmed) return;
+
+  setSaving(true);
+  setError("");
+  setMessage("");
+
+  try {
+    const { error } = await supabase
+      .from("inventory_products")
+      .update({
+        active: false,
+      })
+      .eq("id", product.id)
+      .eq("shop_id", shopId);
+
+    if (error) {
+      console.error("REMOVE PRODUCT ERROR:", error);
+
+      throw new Error(
+        `Could not remove product: ${error.message}`
+      );
+    }
+
+    setMessage(
+      `"${product.name}" has been removed from active inventory.`
+    );
+
+    await loadProducts();
+  } catch (err) {
+    console.error("REMOVE PRODUCT FINAL ERROR:", err);
+
+    setError(
+      err?.message ||
+        "Something went wrong while removing the product."
+    );
+  } finally {
+    setSaving(false);
+  }
+}
   /* =======================================================
      CATEGORY LOOKUP
   ======================================================= */
@@ -2551,7 +2629,22 @@ export default function Inventory() {
                             >
                               History 历史
                             </button>
-
+<button
+  type="button"
+  onClick={() => removeProduct(product)}
+  disabled={saving}
+  style={{
+    padding: "6px 10px",
+    borderRadius: "6px",
+    border: "1px solid #dc2626",
+    background: "#fff",
+    color: "#dc2626",
+    cursor: saving ? "not-allowed" : "pointer",
+    fontWeight: 600,
+  }}
+>
+  Remove
+</button>
                           </div>
                         </td>
 
