@@ -43,9 +43,7 @@ const productChinese = {
 function getProductChinese(name = "", categoryName = "") {
   const exact = productChinese[name];
 
-  if (exact) {
-    return exact;
-  }
+  if (exact) return exact;
 
   const lower = name.toLowerCase();
 
@@ -54,8 +52,10 @@ function getProductChinese(name = "", categoryName = "") {
   if (lower.includes("air filter")) return "空气滤清器";
   if (lower.includes("cabin filter")) return "空调滤芯";
   if (lower.includes("wiper")) return "雨刷";
-  if (lower.includes("matte") && lower.includes("ppf")) return "哑光漆面保护膜";
-  if (lower.includes("gloss") && lower.includes("ppf")) return "高光漆面保护膜";
+  if (lower.includes("matte") && lower.includes("ppf"))
+    return "哑光漆面保护膜";
+  if (lower.includes("gloss") && lower.includes("ppf"))
+    return "高光漆面保护膜";
   if (lower.includes("ppf")) return "漆面保护膜";
   if (lower.includes("window film")) return "车窗膜";
   if (lower.includes("window tint")) return "车窗贴膜";
@@ -538,7 +538,6 @@ export default function Inventory() {
     }
 
     setImagePreview(product.image_url || "");
-
     setShowProductForm(true);
   }
 
@@ -590,8 +589,10 @@ export default function Inventory() {
       URL.revokeObjectURL(imagePreview);
     }
 
+    const previewUrl = URL.createObjectURL(file);
+
     setProductImage(file);
-    setImagePreview(URL.createObjectURL(file));
+    setImagePreview(previewUrl);
 
     event.target.value = "";
   }
@@ -631,10 +632,8 @@ export default function Inventory() {
       const originalExtension =
         file.name.split(".").pop()?.toLowerCase() || "jpg";
 
-      const extension = originalExtension.replace(
-        /[^a-z0-9]/g,
-        ""
-      ) || "jpg";
+      const extension =
+        originalExtension.replace(/[^a-z0-9]/g, "") || "jpg";
 
       const safeSku =
         String(sku || "product")
@@ -646,13 +645,21 @@ export default function Inventory() {
       const filePath =
         `${shopId}/${safeSku}-${Date.now()}.${extension}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("inventory-images")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: file.type,
-        });
+      console.log("Uploading product image:", {
+        bucket: "inventory-images",
+        filePath,
+        sku,
+        shopId,
+      });
+
+      const { error: uploadError } =
+        await supabase.storage
+          .from("inventory-images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+          });
 
       if (uploadError) {
         console.error(
@@ -666,7 +673,7 @@ export default function Inventory() {
             .includes("row-level security")
         ) {
           throw new Error(
-            "Image upload was blocked by Supabase Storage RLS. The inventory-images bucket needs an INSERT policy for your users."
+            "Image upload was blocked by Supabase Storage RLS. The inventory-images bucket needs an INSERT policy."
           );
         }
 
@@ -680,13 +687,24 @@ export default function Inventory() {
         .getPublicUrl(filePath);
 
       const publicUrl =
-        publicUrlData?.publicUrl || "";
+        publicUrlData?.publicUrl?.trim() || "";
+
+      console.log("Generated image public URL:", publicUrl);
 
       if (!publicUrl) {
         throw new Error(
           "Image uploaded, but no public URL was generated."
         );
       }
+
+      /*
+       * IMPORTANT:
+       * Keep the URL in React state too.
+       */
+      setProductForm((prev) => ({
+        ...prev,
+        image_url: publicUrl,
+      }));
 
       return publicUrl;
     } finally {
@@ -695,234 +713,509 @@ export default function Inventory() {
   }
 
   /* =======================================================
-     SAVE PRODUCT
-     
-     IMPORTANT:
-     Do NOT use .select().single() here.
-     
-     Under Supabase RLS, the write can succeed while
-     PostgREST cannot return the inserted/updated row.
+     FIND INSERTED PRODUCT WITHOUT .SINGLE()
   ======================================================= */
 
-  async function saveProduct(event) {
-    event.preventDefault();
+  async function findProductBySku(sku) {
+    const { data, error: findError } = await supabase
+      .from("inventory_products")
+      .select("id, sku, shop_id, image_url")
+      .eq("shop_id", shopId)
+      .eq("sku", sku)
+      .order("created_at", { ascending: false })
+      .limit(1);
 
-    if (!isAdmin) {
-      setError(
-        "Only administrators can add or edit inventory products."
+    if (findError) {
+      throw findError;
+    }
+
+    return data?.[0] || null;
+  }
+
+  /* =======================================================
+     EXPLICITLY SAVE IMAGE URL
+     
+     This is the important fix.
+  ======================================================= */
+
+  async function saveImageUrlToProduct(productId, imageUrl) {
+    if (!productId) {
+      throw new Error(
+        "Product was created, but its database ID could not be found."
       );
+    }
+
+    if (!imageUrl) {
       return;
     }
 
-    if (!shopId) {
-      setError("No shop is assigned to your account.");
-      return;
-    }
+    console.log("Saving image_url to product:", {
+      productId,
+      imageUrl,
+    });
 
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const sku = productForm.sku.trim();
-      const name = productForm.name.trim();
-
-      const categoryId = productForm.category_id;
-
-      const unit =
-        productForm.unit.trim() || "pcs";
-
-      const costPrice =
-        productForm.cost_price === ""
-          ? 0
-          : Number(productForm.cost_price);
-
-      const currentStock =
-        productForm.current_stock === ""
-          ? 0
-          : Number(productForm.current_stock);
-
-      const minimumStock =
-        productForm.minimum_stock === ""
-          ? 0
-          : Number(productForm.minimum_stock);
-
-      if (!sku) {
-        throw new Error("SKU is required.");
-      }
-
-      if (!name) {
-        throw new Error("Product name is required.");
-      }
-
-      if (!categoryId) {
-        throw new Error("Please select a category.");
-      }
-
-      if (!Number.isFinite(costPrice) || costPrice < 0) {
-        throw new Error(
-          "Cost price must be a valid number."
-        );
-      }
-
-      if (
-        !Number.isFinite(currentStock) ||
-        currentStock < 0
-      ) {
-        throw new Error(
-          "Current stock must be a valid number."
-        );
-      }
-
-      if (
-        !Number.isFinite(minimumStock) ||
-        minimumStock < 0
-      ) {
-        throw new Error(
-          "Minimum stock must be a valid number."
-        );
-      }
-
-      const categoryExists = categories.some(
-        (category) =>
-          String(category.id) === String(categoryId)
-      );
-
-      if (!categoryExists) {
-        throw new Error(
-          "The selected category could not be found."
-        );
-      }
-
-      /* -----------------------------------------------
-         IMAGE
-      ------------------------------------------------ */
-
-      let imageUrl = productForm.image_url || null;
-
-      if (productImage) {
-        imageUrl = await uploadProductImage(
-          productImage,
-          sku
-        );
-      }
-
-      /* -----------------------------------------------
-         DATABASE DATA
-      ------------------------------------------------ */
-
-      const productData = {
-        sku,
-        name,
-        category_id: categoryId,
-        unit,
-        cost_price: costPrice,
-        current_stock: currentStock,
-        minimum_stock: minimumStock,
-        description:
-          productForm.description.trim() || null,
+    const { error: imageUpdateError } = await supabase
+      .from("inventory_products")
+      .update({
         image_url: imageUrl,
-        active: true,
-        shop_id: shopId,
-      };
+      })
+      .eq("id", productId)
+      .eq("shop_id", shopId);
 
-      /* -----------------------------------------------
-         UPDATE
-      ------------------------------------------------ */
-
-      if (editingProduct?.id) {
-        const { error: updateError } = await supabase
-          .from("inventory_products")
-          .update(productData)
-          .eq("id", editingProduct.id)
-          .eq("shop_id", shopId);
-
-        if (updateError) {
-          console.error(
-            "Product update error:",
-            updateError
-          );
-
-          if (
-            updateError.message
-              ?.toLowerCase()
-              .includes("row-level security")
-          ) {
-            throw new Error(
-              "Product update was blocked by Supabase RLS. Check the UPDATE policy for inventory_products."
-            );
-          }
-
-          throw updateError;
-        }
-
-        setMessage(
-          "Product updated successfully. 产品更新成功。"
-        );
-      }
-
-      /* -----------------------------------------------
-         INSERT
-      ------------------------------------------------ */
-
-      else {
-        const { error: insertError } = await supabase
-          .from("inventory_products")
-          .insert(productData);
-
-        if (insertError) {
-          console.error(
-            "Product insert error:",
-            insertError
-          );
-
-          if (
-            insertError.message
-              ?.toLowerCase()
-              .includes("row-level security")
-          ) {
-            throw new Error(
-              "Product creation was blocked by Supabase RLS. Check the INSERT policy for inventory_products."
-            );
-          }
-
-          if (
-            insertError.message
-              ?.toLowerCase()
-              .includes("duplicate")
-          ) {
-            throw new Error(
-              "A product with this SKU already exists."
-            );
-          }
-
-          throw insertError;
-        }
-
-        setMessage(
-          "Product added successfully. 产品添加成功。"
-        );
-      }
-
-      /* -----------------------------------------------
-         RELOAD
-      ------------------------------------------------ */
-
-      await loadProducts();
-
-      closeProductForm();
-    } catch (err) {
-      console.error("saveProduct error:", err);
-
-      setError(
-        err.message ||
-          "Failed to save product."
+    if (imageUpdateError) {
+      console.error(
+        "image_url database update error:",
+        imageUpdateError
       );
-    } finally {
-      setSaving(false);
-      setUploadingImage(false);
+
+      if (
+        imageUpdateError.message
+          ?.toLowerCase()
+          .includes("row-level security")
+      ) {
+        throw new Error(
+          "The image uploaded successfully, but Supabase blocked saving image_url. Check the UPDATE policy for inventory_products."
+        );
+      }
+
+      throw imageUpdateError;
+    }
+
+    /*
+     * Verify that the URL actually exists in the database.
+     */
+    const { data: verifyData, error: verifyError } =
+      await supabase
+        .from("inventory_products")
+        .select("id, image_url")
+        .eq("id", productId)
+        .eq("shop_id", shopId)
+        .limit(1);
+
+    if (verifyError) {
+      console.warn(
+        "Could not verify image_url:",
+        verifyError
+      );
+      return;
+    }
+
+    const savedUrl = verifyData?.[0]?.image_url || "";
+
+    console.log("Verified image_url:", savedUrl);
+
+    if (!savedUrl) {
+      throw new Error(
+        "The image uploaded successfully, but image_url is still empty in inventory_products."
+      );
     }
   }
+
+  /* =======================================================
+     SAVE PRODUCT
+  ======================================================= */
+
+  async function saveProduct(e) {
+  e.preventDefault();
+
+  if (!isAdmin) {
+    setError("You do not have permission to save products.");
+    return;
+  }
+
+  if (!shopId) {
+    setError("No shop ID was found.");
+    return;
+  }
+
+  const sku = String(productForm.sku || "").trim();
+  const name = String(productForm.name || "").trim();
+
+  if (!sku) {
+    setError("Please enter the SKU.");
+    return;
+  }
+
+  if (!name) {
+    setError("Please enter the product name.");
+    return;
+  }
+
+  if (!productForm.category_id) {
+    setError("Please select a category.");
+    return;
+  }
+
+  const costPrice = Number(productForm.cost_price || 0);
+  const currentStock = Number(productForm.current_stock || 0);
+  const minimumStock = Number(productForm.minimum_stock || 0);
+
+  if (Number.isNaN(costPrice) || costPrice < 0) {
+    setError("Please enter a valid cost price.");
+    return;
+  }
+
+  if (Number.isNaN(currentStock) || currentStock < 0) {
+    setError("Please enter a valid current stock.");
+    return;
+  }
+
+  if (Number.isNaN(minimumStock) || minimumStock < 0) {
+    setError("Please enter a valid minimum stock.");
+    return;
+  }
+
+  setSaving(true);
+  setError("");
+  setMessage("");
+
+  try {
+    /*
+    ============================================================
+    1. START WITH EXISTING IMAGE URL
+    ============================================================
+    */
+
+    let imageUrl =
+      String(productForm.image_url || "").trim() || null;
+
+    /*
+    ============================================================
+    2. IF USER SELECTED A NEW IMAGE, UPLOAD IT FIRST
+    ============================================================
+    */
+
+    if (productImage) {
+      imageUrl = await uploadProductImage(productImage, sku);
+
+      if (!imageUrl) {
+        throw new Error(
+          "The image uploaded, but no public image URL was returned."
+        );
+      }
+
+      console.log(
+        "IMAGE UPLOAD SUCCESS - PUBLIC URL:",
+        imageUrl
+      );
+
+      // Keep the URL in React state too.
+      setProductForm((prev) => ({
+        ...prev,
+        image_url: imageUrl,
+      }));
+    }
+
+    /*
+    ============================================================
+    3. PRODUCT DATA
+    ============================================================
+    */
+
+    const productData = {
+      shop_id: shopId,
+      sku,
+      name,
+      category_id: productForm.category_id,
+      unit: productForm.unit || "pcs",
+      cost_price: costPrice,
+      current_stock: currentStock,
+      minimum_stock: minimumStock,
+      description:
+        String(productForm.description || "").trim() || null,
+      image_url: imageUrl,
+      active: true,
+    };
+
+    console.log(
+      "PRODUCT DATA BEING SAVED:",
+      productData
+    );
+
+    /*
+    ============================================================
+    4. UPDATE EXISTING PRODUCT
+    ============================================================
+    */
+
+    if (editingProduct?.id) {
+      const { error: updateError } = await supabase
+        .from("inventory_products")
+        .update(productData)
+        .eq("id", editingProduct.id)
+        .eq("shop_id", shopId);
+
+      if (updateError) {
+        console.error(
+          "PRODUCT UPDATE ERROR:",
+          updateError
+        );
+
+        throw new Error(
+          `Could not update product: ${updateError.message}`
+        );
+      }
+
+      /*
+      ==========================================================
+      EXPLICITLY SAVE IMAGE URL AGAIN
+      ==========================================================
+      */
+
+      if (imageUrl) {
+        const { error: imageUpdateError } =
+          await supabase
+            .from("inventory_products")
+            .update({
+              image_url: imageUrl,
+            })
+            .eq("id", editingProduct.id)
+            .eq("shop_id", shopId);
+
+        if (imageUpdateError) {
+          console.error(
+            "IMAGE URL UPDATE ERROR:",
+            imageUpdateError
+          );
+
+          throw new Error(
+            `Product saved, but image_url could not be saved: ${imageUpdateError.message}`
+          );
+        }
+      }
+
+      /*
+      ==========================================================
+      VERIFY THE DATABASE VALUE
+      ==========================================================
+      */
+
+      const {
+        data: verifyRows,
+        error: verifyError,
+      } = await supabase
+        .from("inventory_products")
+        .select("id, sku, image_url")
+        .eq("id", editingProduct.id)
+        .eq("shop_id", shopId)
+        .limit(1);
+
+      if (verifyError) {
+        console.error(
+          "IMAGE URL VERIFY ERROR:",
+          verifyError
+        );
+
+        throw new Error(
+          `Product saved, but verification failed: ${verifyError.message}`
+        );
+      }
+
+      const savedProduct = verifyRows?.[0];
+
+      console.log(
+        "DATABASE PRODUCT AFTER SAVE:",
+        savedProduct
+      );
+
+      if (
+        imageUrl &&
+        savedProduct?.image_url !== imageUrl
+      ) {
+        throw new Error(
+          "The image uploaded successfully, but Supabase did not retain image_url in inventory_products. Please check the UPDATE RLS policy or a database trigger on inventory_products."
+        );
+      }
+
+      setMessage(
+        imageUrl
+          ? "Product updated successfully with image."
+          : "Product updated successfully."
+      );
+    }
+
+    /*
+    ============================================================
+    5. INSERT NEW PRODUCT
+    ============================================================
+    */
+
+    else {
+      const { error: insertError } = await supabase
+        .from("inventory_products")
+        .insert(productData);
+
+      if (insertError) {
+        console.error(
+          "PRODUCT INSERT ERROR:",
+          insertError
+        );
+
+        throw new Error(
+          `Could not create product: ${insertError.message}`
+        );
+      }
+
+      /*
+      ==========================================================
+      FIND THE NEWLY CREATED PRODUCT
+      ==========================================================
+      
+      We intentionally DO NOT use .single().
+      This avoids the previous:
+      
+      "Cannot coerce the result to a single JSON object"
+      ==========================================================
+      */
+
+      const {
+        data: insertedRows,
+        error: findInsertedError,
+      } = await supabase
+        .from("inventory_products")
+        .select("id, sku, image_url, created_at")
+        .eq("shop_id", shopId)
+        .eq("sku", sku)
+        .order("created_at", {
+          ascending: false,
+        })
+        .limit(1);
+
+      if (findInsertedError) {
+        console.error(
+          "FIND INSERTED PRODUCT ERROR:",
+          findInsertedError
+        );
+
+        throw new Error(
+          `Product was created, but could not be found afterward: ${findInsertedError.message}`
+        );
+      }
+
+      const insertedProduct =
+        insertedRows?.[0];
+
+      if (!insertedProduct?.id) {
+        throw new Error(
+          "Product was created, but I could not find its database row afterward."
+        );
+      }
+
+      console.log(
+        "INSERTED PRODUCT:",
+        insertedProduct
+      );
+
+      /*
+      ==========================================================
+      6. EXPLICIT IMAGE URL UPDATE FOR NEW PRODUCT
+      ==========================================================
+      */
+
+      if (imageUrl) {
+        const {
+          error: imageUpdateError,
+        } = await supabase
+          .from("inventory_products")
+          .update({
+            image_url: imageUrl,
+          })
+          .eq("id", insertedProduct.id)
+          .eq("shop_id", shopId);
+
+        if (imageUpdateError) {
+          console.error(
+            "NEW PRODUCT IMAGE UPDATE ERROR:",
+            imageUpdateError
+          );
+
+          throw new Error(
+            `Product was created and image uploaded, but image_url could not be saved: ${imageUpdateError.message}`
+          );
+        }
+
+        /*
+        ========================================================
+        7. VERIFY IMAGE URL AFTER EXPLICIT UPDATE
+        ========================================================
+        */
+
+        const {
+          data: verifyRows,
+          error: verifyError,
+        } = await supabase
+          .from("inventory_products")
+          .select("id, sku, image_url")
+          .eq("id", insertedProduct.id)
+          .eq("shop_id", shopId)
+          .limit(1);
+
+        if (verifyError) {
+          console.error(
+            "NEW PRODUCT VERIFY ERROR:",
+            verifyError
+          );
+
+          throw new Error(
+            `Product was created, but image verification failed: ${verifyError.message}`
+          );
+        }
+
+        const verifiedProduct =
+          verifyRows?.[0];
+
+        console.log(
+          "VERIFIED PRODUCT:",
+          verifiedProduct
+        );
+
+        if (
+          verifiedProduct?.image_url !== imageUrl
+        ) {
+          throw new Error(
+            "The image uploaded successfully, but inventory_products.image_url is still empty after the database update. This strongly indicates an UPDATE RLS policy or database trigger is preventing the value from being retained."
+          );
+        }
+      }
+
+      setMessage(
+        imageUrl
+          ? "Product created successfully with image."
+          : "Product created successfully."
+      );
+    }
+
+    /*
+    ============================================================
+    8. REFRESH PRODUCTS
+    ============================================================
+    */
+
+    await loadProducts();
+
+    /*
+    ============================================================
+    9. CLOSE FORM
+    ============================================================
+    */
+
+    closeProductForm();
+
+  } catch (err) {
+    console.error(
+      "SAVE PRODUCT FINAL ERROR:",
+      err
+    );
+
+    setError(
+      err?.message ||
+        "Something went wrong while saving the product."
+    );
+  } finally {
+    setSaving(false);
+    setUploadingImage(false);
+  }
+}
 
   /* =======================================================
      CATEGORY
@@ -1014,7 +1307,10 @@ export default function Inventory() {
         "Category added successfully. 分类添加成功。"
       );
     } catch (err) {
-      console.error("saveCategory error:", err);
+      console.error(
+        "saveCategory error:",
+        err
+      );
 
       setError(
         err.message ||
@@ -1230,6 +1526,11 @@ export default function Inventory() {
   ======================================================= */
 
   function handleImageError(event) {
+    console.error(
+      "Product image failed to load:",
+      event.currentTarget.src
+    );
+
     event.currentTarget.style.display = "none";
 
     const placeholder =
@@ -1835,10 +2136,7 @@ export default function Inventory() {
 
       <div className="inventory-container">
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
+        {/* HEADER */}
         <div className="inventory-header">
           <div className="inventory-title">
             <h1>
@@ -1872,10 +2170,7 @@ export default function Inventory() {
           </div>
         </div>
 
-        {/* =================================================
-            ALERTS
-        ================================================= */}
-
+        {/* ALERTS */}
         {error && (
           <div className="alert alert-error">
             {error}
@@ -1888,10 +2183,7 @@ export default function Inventory() {
           </div>
         )}
 
-        {/* =================================================
-            STATS
-        ================================================= */}
-
+        {/* STATS */}
         <div className="stats-grid">
 
           <div className="stat-card">
@@ -1950,10 +2242,7 @@ export default function Inventory() {
 
         </div>
 
-        {/* =================================================
-            FILTERS
-        ================================================= */}
-
+        {/* FILTERS */}
         <div className="filters">
 
           <input
@@ -2016,10 +2305,7 @@ export default function Inventory() {
 
         </div>
 
-        {/* =================================================
-            TABLE
-        ================================================= */}
-
+        {/* TABLE */}
         <div className="table-wrapper">
 
           {loading ? (
@@ -2107,9 +2393,7 @@ export default function Inventory() {
                             {product.image_url ? (
                               <>
                                 <img
-                                  src={
-                                    product.image_url
-                                  }
+                                  src={product.image_url}
                                   alt={
                                     product.name ||
                                     "Product"
@@ -2172,8 +2456,7 @@ export default function Inventory() {
                               fontSize: "12px",
                             }}
                           >
-                            {product.unit ||
-                              "pcs"}
+                            {product.unit || "pcs"}
                           </span>
                         </td>
 
@@ -2200,6 +2483,7 @@ export default function Inventory() {
                             className={`status-badge ${status.className}`}
                           >
                             {status.label}
+
                             <span
                               style={{
                                 opacity: 0.75,
@@ -2207,6 +2491,7 @@ export default function Inventory() {
                             >
                               /
                             </span>
+
                             {status.chinese}
                           </span>
                         </td>
@@ -2323,6 +2608,7 @@ export default function Inventory() {
 
                   {/* IMAGE */}
                   <div className="form-group full">
+
                     <label className="form-label">
                       Product Photo / 产品图片
                     </label>
@@ -2351,8 +2637,7 @@ export default function Inventory() {
                               justifyContent:
                                 "center",
                               color: "#666",
-                              fontSize:
-                                "30px",
+                              fontSize: "30px",
                             }}
                           >
                             📷
@@ -2408,9 +2693,7 @@ export default function Inventory() {
                                 onClick={
                                   removeProductImage
                                 }
-                                disabled={
-                                  saving
-                                }
+                                disabled={saving}
                               >
                                 Remove / 删除
                               </button>
@@ -2695,8 +2978,7 @@ export default function Inventory() {
                         marginTop: 3,
                       }}
                     >
-                      SKU:{" "}
-                      {selectedProduct.sku}
+                      SKU: {selectedProduct.sku}
                     </div>
 
                     <div className="movement-product-stock">
@@ -2707,8 +2989,7 @@ export default function Inventory() {
                             0
                         ).toLocaleString()}
                       </strong>{" "}
-                      {selectedProduct.unit ||
-                        "pcs"}
+                      {selectedProduct.unit || "pcs"}
                     </div>
 
                   </div>
@@ -2717,6 +2998,7 @@ export default function Inventory() {
                 <div className="form-grid">
 
                   <div className="form-group full">
+
                     <label className="form-label">
                       Movement Type / 变动类型
                     </label>
