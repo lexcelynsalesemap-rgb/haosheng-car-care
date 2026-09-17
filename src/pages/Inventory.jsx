@@ -46,6 +46,7 @@ const ALLOWED_CATEGORIES = [
     chinese: "化合物和化学品",
   },
 ];
+
 const productChinese = {
   "Paint Protection Film": "漆面保护膜",
   "Full Body PPF": "全车漆面保护膜",
@@ -75,6 +76,7 @@ const productChinese = {
   Wiper: "雨刷",
   "Car Accessories": "汽车配件",
 };
+
 function getProductChinese(name = "", categoryName = "") {
   const exact = productChinese[name];
 
@@ -87,10 +89,13 @@ function getProductChinese(name = "", categoryName = "") {
   if (lower.includes("air filter")) return "空气滤清器";
   if (lower.includes("cabin filter")) return "空调滤芯";
   if (lower.includes("wiper")) return "雨刷";
+
   if (lower.includes("matte") && lower.includes("ppf"))
     return "哑光漆面保护膜";
+
   if (lower.includes("gloss") && lower.includes("ppf"))
     return "高光漆面保护膜";
+
   if (lower.includes("ppf")) return "漆面保护膜";
   if (lower.includes("window film")) return "车窗膜";
   if (lower.includes("window tint")) return "车窗贴膜";
@@ -108,20 +113,27 @@ function getProductDisplay(name = "", categoryName = "") {
   return (
     <div className="product-name-wrapper">
       <div className="product-name-en">{name || "—"}</div>
+
       {chinese && (
-        <div className="product-name-cn">{chinese}</div>
+        <div className="product-name-cn">
+          {chinese}
+        </div>
       )}
     </div>
   );
 }
 
 function getCategoryDisplay(name = "") {
-  const chinese = categoryChinese[name] || "其他";
+  const chinese =
+    categoryChinese[name] || "其他";
 
   return (
     <div className="category-name-wrapper">
       <div>{name || "—"}</div>
-      <div className="category-cn">{chinese}</div>
+
+      <div className="category-cn">
+        {chinese}
+      </div>
     </div>
   );
 }
@@ -131,8 +143,13 @@ function getCategoryDisplay(name = "") {
 ========================================================= */
 
 function getStatus(product) {
-  const stock = Number(product.current_stock || 0);
-  const minimum = Number(product.minimum_stock || 0);
+  const stock = Number(
+    product.current_stock || 0
+  );
+
+  const minimum = Number(
+    product.minimum_stock || 0
+  );
 
   if (stock <= 0) {
     return {
@@ -175,7 +192,9 @@ export default function Inventory() {
         localStorage.getItem("loggedInUser") ||
         localStorage.getItem("user");
 
-      return stored ? JSON.parse(stored) : null;
+      return stored
+        ? JSON.parse(stored)
+        : null;
     } catch {
       return null;
     }
@@ -187,24 +206,25 @@ export default function Inventory() {
     loggedInUser?.is_admin === true ||
     loggedInUser?.isAdmin === true;
 
- const userName =
-  loggedInUser?.name ||
-  loggedInUser?.full_name ||
-  loggedInUser?.username ||
-  loggedInUser?.user_name ||
-  "";
+  const userName =
+    loggedInUser?.name ||
+    loggedInUser?.full_name ||
+    loggedInUser?.username ||
+    loggedInUser?.user_name ||
+    "";
 
+  const normalizedUserName =
+    String(userName || "")
+      .trim()
+      .toLowerCase();
 
-const normalizedUserName = String(userName || "")
-  .trim()
-  .toLowerCase();
+  const canManageStock =
+    isAdmin ||
+    normalizedUserName.includes("daniel") ||
+    normalizedUserName === "shop 1 staff";
 
-const canManageStock =
-  isAdmin ||
-  normalizedUserName.includes("daniel") ||
-  normalizedUserName === "shop 1 staff";
-
-  const showCost = canSeeInventoryCost(loggedInUser);
+  const showCost =
+    canSeeInventoryCost(loggedInUser);
 
   const shopId =
     loggedInUser?.shop_id ||
@@ -217,62 +237,105 @@ const canManageStock =
   ======================================================= */
 
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] =
+    useState([]);
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [saving, setSaving] =
+    useState(false);
+
+  const [uploadingImage, setUploadingImage] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
 
   /* =======================================================
      FILTERS
   ======================================================= */
 
-const [search, setSearch] = useState("");
-const [categoryFilter, setCategoryFilter] = useState("all");
-const [statusFilter, setStatusFilter] = useState("all");
-const [stockFilter, setStockFilter] = useState("all");
+  const [search, setSearch] =
+    useState("");
+
+  const [categoryFilter, setCategoryFilter] =
+    useState("all");
+
+  const [statusFilter, setStatusFilter] =
+    useState("all");
+
+  const [stockFilter, setStockFilter] =
+    useState("all");
+
+  /* =======================================================
+     BULK CATEGORY CHANGE
+  ======================================================= */
+
+  const [selectedProductIds, setSelectedProductIds] =
+    useState([]);
+
+  const [showBulkCategoryModal, setShowBulkCategoryModal] =
+    useState(false);
+
+  const [bulkCategoryId, setBulkCategoryId] =
+    useState("");
+
   /* =======================================================
      MODALS
   ======================================================= */
 
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [showMovementForm, setShowMovementForm] = useState(false);
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showProductForm, setShowProductForm] =
+    useState(false);
+
+  const [showMovementForm, setShowMovementForm] =
+    useState(false);
+
+  const [showCategoryForm, setShowCategoryForm] =
+    useState(false);
+
+  const [showHistoryModal, setShowHistoryModal] =
+    useState(false);
 
   /* =======================================================
      PRODUCT
   ======================================================= */
 
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [editingProduct, setEditingProduct] =
+    useState(null);
 
-  const [productForm, setProductForm] = useState({
-    sku: "",
-    name: "",
-    category_id: "",
-    unit: "pcs",
-    cost_price: "",
-    current_stock: "",
-    minimum_stock: "",
-    description: "",
-    image_url: "",
-  });
+  const [productForm, setProductForm] =
+    useState({
+      sku: "",
+      name: "",
+      category_id: "",
+      unit: "pcs",
+      cost_price: "",
+      current_stock: "",
+      minimum_stock: "",
+      description: "",
+      image_url: "",
+    });
 
   /* =======================================================
      IMAGE
   ======================================================= */
 
-  const [productImage, setProductImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
+  const [productImage, setProductImage] =
+    useState(null);
+
+  const [imagePreview, setImagePreview] =
+    useState("");
 
   /* =======================================================
      LARGE IMAGE VIEWER
   ======================================================= */
 
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImage, setSelectedImage] =
+    useState(null);
 
   function openImageViewer(url, name) {
     if (!url) return;
@@ -291,29 +354,36 @@ const [stockFilter, setStockFilter] = useState("all");
      MOVEMENT
   ======================================================= */
 
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [movementType, setMovementType] =
-  useState("IN");
+  const [selectedProduct, setSelectedProduct] =
+    useState(null);
 
-  const [movementForm, setMovementForm] = useState({
-    quantity: "",
-    unit_cost: "",
-    reference: "",
-    notes: "",
-  });
+  const [movementType, setMovementType] =
+    useState("IN");
+
+  const [movementForm, setMovementForm] =
+    useState({
+      quantity: "",
+      unit_cost: "",
+      reference: "",
+      notes: "",
+    });
 
   /* =======================================================
      HISTORY
   ======================================================= */
 
-  const [history, setHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [history, setHistory] =
+    useState([]);
+
+  const [historyLoading, setHistoryLoading] =
+    useState(false);
 
   /* =======================================================
      CATEGORY
   ======================================================= */
 
-  const [categoryName, setCategoryName] = useState("");
+  const [categoryName, setCategoryName] =
+    useState("");
 
   /* =======================================================
      CLEANUP IMAGE PREVIEW
@@ -321,7 +391,10 @@ const [stockFilter, setStockFilter] = useState("all");
 
   useEffect(() => {
     return () => {
-      if (imagePreview && imagePreview.startsWith("blob:")) {
+      if (
+        imagePreview &&
+        imagePreview.startsWith("blob:")
+      ) {
         URL.revokeObjectURL(imagePreview);
       }
     };
@@ -334,7 +407,9 @@ const [stockFilter, setStockFilter] = useState("all");
   useEffect(() => {
     if (!shopId) {
       setLoading(false);
-      setError("No shop is assigned to your account.");
+      setError(
+        "No shop is assigned to your account."
+      );
       return;
     }
 
@@ -353,7 +428,10 @@ const [stockFilter, setStockFilter] = useState("all");
       setLoading(true);
       setError("");
 
-      const { data, error: queryError } = await supabase
+      const {
+        data,
+        error: queryError,
+      } = await supabase
         .from("inventory_products")
         .select(`
           id,
@@ -375,16 +453,40 @@ const [stockFilter, setStockFilter] = useState("all");
         `)
         .eq("shop_id", shopId)
         .eq("active", true)
-        .order("name", { ascending: true });
+        .order("name", {
+          ascending: true,
+        });
 
       if (queryError) {
         throw queryError;
       }
 
       setProducts(data || []);
+
+      /*
+       * Remove selections for products that no longer exist.
+       */
+      const existingIds = new Set(
+        (data || []).map(
+          (product) => String(product.id)
+        )
+      );
+
+      setSelectedProductIds((previous) =>
+        previous.filter((id) =>
+          existingIds.has(String(id))
+        )
+      );
     } catch (err) {
-      console.error("loadProducts error:", err);
-      setError(err.message || "Failed to load inventory.");
+      console.error(
+        "loadProducts error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to load inventory."
+      );
     } finally {
       setLoading(false);
     }
@@ -395,174 +497,468 @@ const [stockFilter, setStockFilter] = useState("all");
   ======================================================= */
 
   async function loadCategories() {
-  if (!shopId) return;
+    if (!shopId) return;
 
-  try {
-    const { data, error: queryError } = await supabase
-      .from("inventory_categories")
-      .select("*")
-      .eq("shop_id", shopId)
-      .eq("active", true)
-      .order("name", { ascending: true });
+    try {
+      const {
+        data,
+        error: queryError,
+      } = await supabase
+        .from("inventory_categories")
+        .select("*")
+        .eq("shop_id", shopId)
+        .eq("active", true)
+        .order("name", {
+          ascending: true,
+        });
 
-    if (queryError) {
-      throw queryError;
+      if (queryError) {
+        throw queryError;
+      }
+
+      /*
+       * ONLY SHOW THE APPROVED CATEGORIES
+       */
+
+      const allowedNames =
+        ALLOWED_CATEGORIES.map(
+          (category) =>
+            category.name.toLowerCase()
+        );
+
+      const filteredCategories =
+        (data || []).filter(
+          (category) =>
+            allowedNames.includes(
+              String(category.name || "")
+                .trim()
+                .toLowerCase()
+            )
+        );
+
+      /*
+       * Sort according to preferred order.
+       */
+
+      filteredCategories.sort((a, b) => {
+        const aIndex =
+          ALLOWED_CATEGORIES.findIndex(
+            (item) =>
+              item.name.toLowerCase() ===
+              String(a.name || "")
+                .trim()
+                .toLowerCase()
+          );
+
+        const bIndex =
+          ALLOWED_CATEGORIES.findIndex(
+            (item) =>
+              item.name.toLowerCase() ===
+              String(b.name || "")
+                .trim()
+                .toLowerCase()
+          );
+
+        return aIndex - bIndex;
+      });
+
+      setCategories(
+        filteredCategories
+      );
+    } catch (err) {
+      console.error(
+        "loadCategories error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to load categories."
+      );
     }
+  }
 
-   /*
- * ONLY SHOW THE APPROVED CATEGORIES
- */
-    const allowedNames = ALLOWED_CATEGORIES.map(
-      (category) => category.name.toLowerCase()
-    );
+  /* =======================================================
+     FILTERED PRODUCTS
+  ======================================================= */
 
-    const filteredCategories = (data || []).filter(
-      (category) =>
-        allowedNames.includes(
-          String(category.name || "")
-            .trim()
-            .toLowerCase()
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesCategory =
+        categoryFilter === "all" ||
+        String(
+          product.category_id || ""
+        ) ===
+          String(
+            categoryFilter || ""
+          );
+
+      const searchValue =
+        String(search || "")
+          .trim()
+          .toLowerCase();
+
+      const matchesSearch =
+        !searchValue ||
+        String(product.sku || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(product.name || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(
+          product.description || ""
         )
+          .toLowerCase()
+          .includes(searchValue);
+
+      const stockValue = Number(
+        product.current_stock || 0
+      );
+
+      const minimumStock = Number(
+        product.minimum_stock || 0
+      );
+
+      const matchesStock =
+        stockFilter === "all" ||
+        (stockFilter === "in-stock" &&
+          stockValue > minimumStock) ||
+        (stockFilter === "low-stock" &&
+          stockValue > 0 &&
+          stockValue <= minimumStock) ||
+        (stockFilter === "out-of-stock" &&
+          stockValue <= 0);
+
+      const productStatus =
+        getStatus(product).key;
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        productStatus === statusFilter;
+
+      return (
+        matchesCategory &&
+        matchesSearch &&
+        matchesStock &&
+        matchesStatus
+      );
+    });
+  }, [
+    products,
+    categoryFilter,
+    search,
+    stockFilter,
+    statusFilter,
+  ]);
+
+  /* =======================================================
+     BULK SELECTION
+  ======================================================= */
+
+  const allVisibleProductsSelected =
+    filteredProducts.length > 0 &&
+    filteredProducts.every((product) =>
+      selectedProductIds.includes(
+        product.id
+      )
     );
 
-    /*
-     * Sort according to our preferred order
-     */
-    filteredCategories.sort((a, b) => {
-      const aIndex = ALLOWED_CATEGORIES.findIndex(
-        (item) =>
-          item.name.toLowerCase() ===
-          String(a.name || "").trim().toLowerCase()
-      );
+  function toggleProductSelection(
+    productId
+  ) {
+    setSelectedProductIds(
+      (previous) => {
+        const exists =
+          previous.includes(productId);
 
-      const bIndex = ALLOWED_CATEGORIES.findIndex(
-        (item) =>
-          item.name.toLowerCase() ===
-          String(b.name || "").trim().toLowerCase()
-      );
+        if (exists) {
+          return previous.filter(
+            (id) => id !== productId
+          );
+        }
 
-      return aIndex - bIndex;
-    });
-
-    setCategories(filteredCategories);
-  } catch (err) {
-    console.error("loadCategories error:", err);
-    setError(
-      err.message || "Failed to load categories."
+        return [
+          ...previous,
+          productId,
+        ];
+      }
     );
   }
-}
-  /* =========================================================
-   FILTERED PRODUCTS
-========================================================= */
 
-const filteredProducts = useMemo(() => {
-  return products.filter((product) => {
-    /*
-    ============================================================
-    CATEGORY FILTER
-    ============================================================
-    */
+  function toggleSelectAllVisible() {
+    const visibleIds =
+      filteredProducts.map(
+        (product) => product.id
+      );
 
-    const matchesCategory =
-      categoryFilter === "all" ||
-      String(product.category_id || "") ===
-        String(categoryFilter || "");
+    if (
+      visibleIds.length === 0
+    ) {
+      return;
+    }
 
-    /*
-    ============================================================
-    SEARCH FILTER
-    ============================================================
-    */
+    if (allVisibleProductsSelected) {
+      setSelectedProductIds(
+        (previous) =>
+          previous.filter(
+            (id) =>
+              !visibleIds.includes(id)
+          )
+      );
+    } else {
+      setSelectedProductIds(
+        (previous) => {
+          const combined = [
+            ...previous,
+            ...visibleIds,
+          ];
 
-    const searchValue = String(search || "")
-      .trim()
-      .toLowerCase();
+          return Array.from(
+            new Set(combined)
+          );
+        }
+      );
+    }
+  }
 
-    const matchesSearch =
-      !searchValue ||
-      String(product.sku || "")
-        .toLowerCase()
-        .includes(searchValue) ||
-      String(product.name || "")
-        .toLowerCase()
-        .includes(searchValue) ||
-      String(product.description || "")
-        .toLowerCase()
-        .includes(searchValue);
+  function clearProductSelection() {
+    setSelectedProductIds([]);
+  }
 
-    /*
-    ============================================================
-    STOCK FILTER
-    ============================================================
-    */
+  function openBulkCategoryModal() {
+    if (!isAdmin) {
+      setError(
+        "Only administrators can change product categories."
+      );
+      return;
+    }
 
-    const stockValue = Number(product.current_stock || 0);
-    const minimumStock = Number(product.minimum_stock || 0);
+    if (
+      selectedProductIds.length === 0
+    ) {
+      setError(
+        "Please select at least one product first."
+      );
+      return;
+    }
 
-    const matchesStock =
-      stockFilter === "all" ||
-      (stockFilter === "in-stock" &&
-        stockValue > minimumStock) ||
-      (stockFilter === "low-stock" &&
-        stockValue > 0 &&
-        stockValue <= minimumStock) ||
-      (stockFilter === "out-of-stock" &&
-        stockValue <= 0);
-const productStatus =
-  getStatus(product).key;
+    setBulkCategoryId(
+      categoryFilter !== "all"
+        ? String(categoryFilter)
+        : ""
+    );
 
-const matchesStatus =
-  statusFilter === "all" ||
-  productStatus === statusFilter;
-    /*
-    ============================================================
-    FINAL RESULT
-    ============================================================
-    */
+    setError("");
+    setMessage("");
+    setShowBulkCategoryModal(true);
+  }
 
-   return (
-  matchesCategory &&
-  matchesSearch &&
-  matchesStock &&
-  matchesStatus
-);
-  });
-}, [
-  products,
-  categoryFilter,
-  search,
-  stockFilter,
-  statusFilter,
-]);
+  function closeBulkCategoryModal() {
+    if (saving) return;
+
+    setShowBulkCategoryModal(false);
+    setBulkCategoryId("");
+  }
+
+  /* =======================================================
+     BULK CATEGORY UPDATE
+  ======================================================= */
+
+  async function saveBulkCategoryChange(
+    event
+  ) {
+    event.preventDefault();
+
+    if (!isAdmin) {
+      setError(
+        "Only administrators can change product categories."
+      );
+      return;
+    }
+
+    if (!shopId) {
+      setError(
+        "No shop is assigned to your account."
+      );
+      return;
+    }
+
+    if (
+      selectedProductIds.length === 0
+    ) {
+      setError(
+        "Please select at least one product."
+      );
+      return;
+    }
+
+    if (!bulkCategoryId) {
+      setError(
+        "Please select a category."
+      );
+      return;
+    }
+
+    const selectedCategory =
+      categories.find(
+        (category) =>
+          String(category.id) ===
+          String(bulkCategoryId)
+      );
+
+    if (!selectedCategory) {
+      setError(
+        "Selected category could not be found."
+      );
+      return;
+    }
+
+    const selectedCount =
+      selectedProductIds.length;
+
+    const confirmed =
+      window.confirm(
+        `Change the category of ${selectedCount} selected product${
+          selectedCount === 1
+            ? ""
+            : "s"
+        } to "${selectedCategory.name}" / ${
+          categoryChinese[
+            selectedCategory.name
+          ] || ""
+        }?\n\nThis will update all selected products.`
+      );
+
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      /*
+       * Update only products belonging
+       * to the current shop.
+       */
+
+      const {
+        error: updateError,
+      } = await supabase
+        .from("inventory_products")
+        .update({
+          category_id:
+            selectedCategory.id,
+        })
+        .eq("shop_id", shopId)
+        .in(
+          "id",
+          selectedProductIds
+        );
+
+      if (updateError) {
+        console.error(
+          "BULK CATEGORY UPDATE ERROR:",
+          updateError
+        );
+
+        if (
+          updateError.message
+            ?.toLowerCase()
+            .includes(
+              "row-level security"
+            )
+        ) {
+          throw new Error(
+            "Bulk category change was blocked by Supabase RLS. Check the UPDATE policy for inventory_products."
+          );
+        }
+
+        throw new Error(
+          `Could not change product categories: ${updateError.message}`
+        );
+      }
+
+      await loadProducts();
+
+      clearProductSelection();
+
+      setShowBulkCategoryModal(
+        false
+      );
+
+      setBulkCategoryId("");
+
+      setMessage(
+        `${selectedCount} product${
+          selectedCount === 1
+            ? ""
+            : "s"
+        } moved to "${selectedCategory.name}" / ${
+          categoryChinese[
+            selectedCategory.name
+          ] || ""
+        } successfully.`
+      );
+    } catch (err) {
+      console.error(
+        "saveBulkCategoryChange error:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Failed to change product categories."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   /* =======================================================
      STATS
   ======================================================= */
 
   const stats = useMemo(() => {
-    const totalProducts = products.length;
+    const totalProducts =
+      products.length;
 
-    const totalUnits = products.reduce(
-      (sum, product) =>
-        sum + Number(product.current_stock || 0),
-      0
-    );
+    const totalUnits =
+      products.reduce(
+        (sum, product) =>
+          sum +
+          Number(
+            product.current_stock || 0
+          ),
+        0
+      );
 
-    const lowStock = products.filter(
-      (product) => getStatus(product).key === "low"
-    ).length;
+    const lowStock =
+      products.filter(
+        (product) =>
+          getStatus(product).key ===
+          "low"
+      ).length;
 
-    const outOfStock = products.filter(
-      (product) => getStatus(product).key === "out"
-    ).length;
+    const outOfStock =
+      products.filter(
+        (product) =>
+          getStatus(product).key ===
+          "out"
+      ).length;
 
-    const inventoryValue = products.reduce(
-      (sum, product) =>
-        sum +
-        Number(product.current_stock || 0) *
-          Number(product.cost_price || 0),
-      0
-    );
+    const inventoryValue =
+      products.reduce(
+        (sum, product) =>
+          sum +
+          Number(
+            product.current_stock || 0
+          ) *
+            Number(
+              product.cost_price || 0
+            ),
+        0
+      );
 
     return {
       totalProducts,
@@ -578,13 +974,12 @@ const matchesStatus =
   ======================================================= */
 
   function formatMoney(value) {
-    return `QAR ${Number(value || 0).toLocaleString(
-      "en-QA",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }
-    )}`;
+    return `QAR ${Number(
+      value || 0
+    ).toLocaleString("en-QA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   }
 
   /* =======================================================
@@ -599,7 +994,8 @@ const matchesStatus =
     setProductForm({
       sku: "",
       name: "",
-      category_id: categories[0]?.id || "",
+      category_id:
+        categories[0]?.id || "",
       unit: "pcs",
       cost_price: "",
       current_stock: "",
@@ -610,8 +1006,14 @@ const matchesStatus =
 
     setProductImage(null);
 
-    if (imagePreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
+    if (
+      imagePreview?.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        imagePreview
+      );
     }
 
     setImagePreview("");
@@ -627,40 +1029,63 @@ const matchesStatus =
     setProductForm({
       sku: product.sku || "",
       name: product.name || "",
-      category_id: product.category_id || "",
+      category_id:
+        product.category_id || "",
       unit: product.unit || "pcs",
       cost_price:
         product.cost_price !== null &&
-        product.cost_price !== undefined
+        product.cost_price !==
+          undefined
           ? product.cost_price
           : "",
       current_stock:
-        product.current_stock !== null &&
-        product.current_stock !== undefined
+        product.current_stock !==
+          null &&
+        product.current_stock !==
+          undefined
           ? product.current_stock
           : "",
       minimum_stock:
-        product.minimum_stock !== null &&
-        product.minimum_stock !== undefined
+        product.minimum_stock !==
+          null &&
+        product.minimum_stock !==
+          undefined
           ? product.minimum_stock
           : "",
-      description: product.description || "",
-      image_url: product.image_url || "",
+      description:
+        product.description || "",
+      image_url:
+        product.image_url || "",
     });
 
     setProductImage(null);
 
-    if (imagePreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
+    if (
+      imagePreview?.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        imagePreview
+      );
     }
 
-    setImagePreview(product.image_url || "");
+    setImagePreview(
+      product.image_url || ""
+    );
+
     setShowProductForm(true);
   }
 
   function closeProductForm() {
-    if (imagePreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
+    if (
+      imagePreview?.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        imagePreview
+      );
     }
 
     setImagePreview("");
@@ -669,8 +1094,13 @@ const matchesStatus =
     setShowProductForm(false);
   }
 
-  function handleProductFormChange(event) {
-    const { name, value } = event.target;
+  function handleProductFormChange(
+    event
+  ) {
+    const {
+      name,
+      value,
+    } = event.target;
 
     setProductForm((prev) => ({
       ...prev,
@@ -682,31 +1112,54 @@ const matchesStatus =
      IMAGE SELECTION
   ======================================================= */
 
-  function handleProductImageChange(event) {
-    const file = event.target.files?.[0];
+  function handleProductImageChange(
+    event
+  ) {
+    const file =
+      event.target.files?.[0];
 
     if (!file) return;
 
     setError("");
     setMessage("");
 
-    if (!file.type.startsWith("image/")) {
-      setError("Please choose an image file.");
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+      setError(
+        "Please choose an image file."
+      );
+
       event.target.value = "";
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be smaller than 5 MB.");
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      setError(
+        "Image must be smaller than 5 MB."
+      );
+
       event.target.value = "";
       return;
     }
 
-    if (imagePreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
+    if (
+      imagePreview?.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        imagePreview
+      );
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl =
+      URL.createObjectURL(file);
 
     setProductImage(file);
     setImagePreview(previewUrl);
@@ -715,8 +1168,14 @@ const matchesStatus =
   }
 
   function removeProductImage() {
-    if (imagePreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
+    if (
+      imagePreview?.startsWith(
+        "blob:"
+      )
+    ) {
+      URL.revokeObjectURL(
+        imagePreview
+      );
     }
 
     setProductImage(null);
@@ -732,9 +1191,15 @@ const matchesStatus =
      UPLOAD PRODUCT IMAGE
   ======================================================= */
 
-  async function uploadProductImage(file, sku) {
+  async function uploadProductImage(
+    file,
+    sku
+  ) {
     if (!file) {
-      return productForm.image_url || null;
+      return (
+        productForm.image_url ||
+        null
+      );
     }
 
     if (!shopId) {
@@ -747,36 +1212,63 @@ const matchesStatus =
 
     try {
       const originalExtension =
-        file.name.split(".").pop()?.toLowerCase() || "jpg";
+        file.name
+          .split(".")
+          .pop()
+          ?.toLowerCase() ||
+        "jpg";
 
       const extension =
-        originalExtension.replace(/[^a-z0-9]/g, "") || "jpg";
+        originalExtension.replace(
+          /[^a-z0-9]/g,
+          ""
+        ) || "jpg";
 
       const safeSku =
         String(sku || "product")
           .trim()
-          .replace(/[^a-zA-Z0-9_-]/g, "-")
-          .replace(/-+/g, "-")
-          .slice(0, 80) || "product";
+          .replace(
+            /[^a-zA-Z0-9_-]/g,
+            "-"
+          )
+          .replace(
+            /-+/g,
+            "-"
+          )
+          .slice(0, 80) ||
+        "product";
 
       const filePath =
         `${shopId}/${safeSku}-${Date.now()}.${extension}`;
 
-      console.log("Uploading product image:", {
-        bucket: "inventory-images",
-        filePath,
-        sku,
-        shopId,
-      });
+      console.log(
+        "Uploading product image:",
+        {
+          bucket:
+            "inventory-images",
+          filePath,
+          sku,
+          shopId,
+        }
+      );
 
-      const { error: uploadError } =
-        await supabase.storage
-          .from("inventory-images")
-          .upload(filePath, file, {
-            cacheControl: "3600",
+      const {
+        error: uploadError,
+      } = await supabase.storage
+        .from(
+          "inventory-images"
+        )
+        .upload(
+          filePath,
+          file,
+          {
+            cacheControl:
+              "3600",
             upsert: false,
-            contentType: file.type,
-          });
+            contentType:
+              file.type,
+          }
+        );
 
       if (uploadError) {
         console.error(
@@ -787,7 +1279,9 @@ const matchesStatus =
         if (
           uploadError.message
             ?.toLowerCase()
-            .includes("row-level security")
+            .includes(
+              "row-level security"
+            )
         ) {
           throw new Error(
             "Image upload was blocked by Supabase Storage RLS. The inventory-images bucket needs an INSERT policy."
@@ -799,14 +1293,23 @@ const matchesStatus =
 
       const {
         data: publicUrlData,
-      } = supabase.storage
-        .from("inventory-images")
-        .getPublicUrl(filePath);
+      } =
+        supabase.storage
+          .from(
+            "inventory-images"
+          )
+          .getPublicUrl(
+            filePath
+          );
 
       const publicUrl =
-        publicUrlData?.publicUrl?.trim() || "";
+        publicUrlData?.publicUrl?.trim() ||
+        "";
 
-      console.log("Generated image public URL:", publicUrl);
+      console.log(
+        "Generated image public URL:",
+        publicUrl
+      );
 
       if (!publicUrl) {
         throw new Error(
@@ -814,48 +1317,30 @@ const matchesStatus =
         );
       }
 
-      /*
-       * IMPORTANT:
-       * Keep the URL in React state too.
-       */
-      setProductForm((prev) => ({
-        ...prev,
-        image_url: publicUrl,
-      }));
+      setProductForm(
+        (prev) => ({
+          ...prev,
+          image_url:
+            publicUrl,
+        })
+      );
 
       return publicUrl;
     } finally {
-      setUploadingImage(false);
+      setUploadingImage(
+        false
+      );
     }
   }
 
   /* =======================================================
-     FIND INSERTED PRODUCT WITHOUT .SINGLE()
+     SAVE IMAGE URL
   ======================================================= */
 
-  async function findProductBySku(sku) {
-    const { data, error: findError } = await supabase
-      .from("inventory_products")
-      .select("id, sku, shop_id, image_url")
-      .eq("shop_id", shopId)
-      .eq("sku", sku)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (findError) {
-      throw findError;
-    }
-
-    return data?.[0] || null;
-  }
-
-  /* =======================================================
-     EXPLICITLY SAVE IMAGE URL
-     
-     This is the important fix.
-  ======================================================= */
-
-  async function saveImageUrlToProduct(productId, imageUrl) {
+  async function saveImageUrlToProduct(
+    productId,
+    imageUrl
+  ) {
     if (!productId) {
       throw new Error(
         "Product was created, but its database ID could not be found."
@@ -866,29 +1351,32 @@ const matchesStatus =
       return;
     }
 
-    console.log("Saving image_url to product:", {
-      productId,
-      imageUrl,
-    });
-
-    const { error: imageUpdateError } = await supabase
-      .from("inventory_products")
+    const {
+      error: imageUpdateError,
+    } = await supabase
+      .from(
+        "inventory_products"
+      )
       .update({
-        image_url: imageUrl,
+        image_url:
+          imageUrl,
       })
-      .eq("id", productId)
-      .eq("shop_id", shopId);
-
-    if (imageUpdateError) {
-      console.error(
-        "image_url database update error:",
-        imageUpdateError
+      .eq(
+        "id",
+        productId
+      )
+      .eq(
+        "shop_id",
+        shopId
       );
 
+    if (imageUpdateError) {
       if (
         imageUpdateError.message
           ?.toLowerCase()
-          .includes("row-level security")
+          .includes(
+            "row-level security"
+          )
       ) {
         throw new Error(
           "The image uploaded successfully, but Supabase blocked saving image_url. Check the UPDATE policy for inventory_products."
@@ -897,35 +1385,6 @@ const matchesStatus =
 
       throw imageUpdateError;
     }
-
-    /*
-     * Verify that the URL actually exists in the database.
-     */
-    const { data: verifyData, error: verifyError } =
-      await supabase
-        .from("inventory_products")
-        .select("id, image_url")
-        .eq("id", productId)
-        .eq("shop_id", shopId)
-        .limit(1);
-
-    if (verifyError) {
-      console.warn(
-        "Could not verify image_url:",
-        verifyError
-      );
-      return;
-    }
-
-    const savedUrl = verifyData?.[0]?.image_url || "";
-
-    console.log("Verified image_url:", savedUrl);
-
-    if (!savedUrl) {
-      throw new Error(
-        "The image uploaded successfully, but image_url is still empty in inventory_products."
-      );
-    }
   }
 
   /* =======================================================
@@ -933,778 +1392,738 @@ const matchesStatus =
   ======================================================= */
 
   async function saveProduct(e) {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!isAdmin) {
-    setError("You do not have permission to save products.");
-    return;
-  }
-
-  if (!shopId) {
-    setError("No shop ID was found.");
-    return;
-  }
-
-  const sku = String(productForm.sku || "").trim();
-  const name = String(productForm.name || "").trim();
-
-  if (!sku) {
-    setError("Please enter the SKU.");
-    return;
-  }
-
-  if (!name) {
-    setError("Please enter the product name.");
-    return;
-  }
-
-  if (!productForm.category_id) {
-    setError("Please select a category.");
-    return;
-  }
-
-  const costPrice = Number(productForm.cost_price || 0);
-  const currentStock = Number(productForm.current_stock || 0);
-  const minimumStock = Number(productForm.minimum_stock || 0);
-
-  if (Number.isNaN(costPrice) || costPrice < 0) {
-    setError("Please enter a valid cost price.");
-    return;
-  }
-
-  if (Number.isNaN(currentStock) || currentStock < 0) {
-    setError("Please enter a valid current stock.");
-    return;
-  }
-
-  if (Number.isNaN(minimumStock) || minimumStock < 0) {
-    setError("Please enter a valid minimum stock.");
-    return;
-  }
-
-  setSaving(true);
-  setError("");
-  setMessage("");
-
-  try {
-    /*
-    ============================================================
-    1. START WITH EXISTING IMAGE URL
-    ============================================================
-    */
-
-    let imageUrl =
-      String(productForm.image_url || "").trim() || null;
-
-    /*
-    ============================================================
-    2. IF USER SELECTED A NEW IMAGE, UPLOAD IT FIRST
-    ============================================================
-    */
-
-    if (productImage) {
-      imageUrl = await uploadProductImage(productImage, sku);
-
-      if (!imageUrl) {
-        throw new Error(
-          "The image uploaded, but no public image URL was returned."
-        );
-      }
-
-      console.log(
-        "IMAGE UPLOAD SUCCESS - PUBLIC URL:",
-        imageUrl
+    if (!isAdmin) {
+      setError(
+        "You do not have permission to save products."
       );
-
-      // Keep the URL in React state too.
-      setProductForm((prev) => ({
-        ...prev,
-        image_url: imageUrl,
-      }));
+      return;
     }
 
-    /*
-    ============================================================
-    3. PRODUCT DATA
-    ============================================================
-    */
+    if (!shopId) {
+      setError(
+        "No shop ID was found."
+      );
+      return;
+    }
 
-    const productData = {
-      shop_id: shopId,
-      sku,
-      name,
-      category_id: productForm.category_id,
-      unit: productForm.unit || "pcs",
-      cost_price: costPrice,
-      current_stock: currentStock,
-      minimum_stock: minimumStock,
-      description:
-        String(productForm.description || "").trim() || null,
-      image_url: imageUrl,
-      active: true,
-    };
+    const sku =
+      String(
+        productForm.sku || ""
+      ).trim();
 
-    console.log(
-      "PRODUCT DATA BEING SAVED:",
-      productData
-    );
+    const name =
+      String(
+        productForm.name || ""
+      ).trim();
 
-    /*
-    ============================================================
-    4. UPDATE EXISTING PRODUCT
-    ============================================================
-    */
+    if (!sku) {
+      setError(
+        "Please enter the SKU."
+      );
+      return;
+    }
 
-    if (editingProduct?.id) {
-      const { error: updateError } = await supabase
-        .from("inventory_products")
-        .update(productData)
-        .eq("id", editingProduct.id)
-        .eq("shop_id", shopId);
+    if (!name) {
+      setError(
+        "Please enter the product name."
+      );
+      return;
+    }
 
-      if (updateError) {
-        console.error(
-          "PRODUCT UPDATE ERROR:",
-          updateError
-        );
+    if (
+      !productForm.category_id
+    ) {
+      setError(
+        "Please select a category."
+      );
+      return;
+    }
 
-        throw new Error(
-          `Could not update product: ${updateError.message}`
-        );
-      }
+    const costPrice =
+      Number(
+        productForm.cost_price || 0
+      );
 
-      /*
-      ==========================================================
-      EXPLICITLY SAVE IMAGE URL AGAIN
-      ==========================================================
-      */
+    const currentStock =
+      Number(
+        productForm.current_stock || 0
+      );
 
-      if (imageUrl) {
-        const { error: imageUpdateError } =
-          await supabase
-            .from("inventory_products")
-            .update({
-              image_url: imageUrl,
-            })
-            .eq("id", editingProduct.id)
-            .eq("shop_id", shopId);
+    const minimumStock =
+      Number(
+        productForm.minimum_stock || 0
+      );
 
-        if (imageUpdateError) {
-          console.error(
-            "IMAGE URL UPDATE ERROR:",
-            imageUpdateError
+    if (
+      Number.isNaN(costPrice) ||
+      costPrice < 0
+    ) {
+      setError(
+        "Please enter a valid cost price."
+      );
+      return;
+    }
+
+    if (
+      Number.isNaN(
+        currentStock
+      ) ||
+      currentStock < 0
+    ) {
+      setError(
+        "Please enter a valid current stock."
+      );
+      return;
+    }
+
+    if (
+      Number.isNaN(
+        minimumStock
+      ) ||
+      minimumStock < 0
+    ) {
+      setError(
+        "Please enter a valid minimum stock."
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      let imageUrl =
+        String(
+          productForm.image_url ||
+            ""
+        ).trim() || null;
+
+      if (productImage) {
+        imageUrl =
+          await uploadProductImage(
+            productImage,
+            sku
           );
 
+        if (!imageUrl) {
           throw new Error(
-            `Product saved, but image_url could not be saved: ${imageUpdateError.message}`
+            "The image uploaded, but no public image URL was returned."
           );
         }
+
+        setProductForm(
+          (prev) => ({
+            ...prev,
+            image_url:
+              imageUrl,
+          })
+        );
       }
+
+      const productData = {
+        shop_id: shopId,
+        sku,
+        name,
+        category_id:
+          productForm.category_id,
+        unit:
+          productForm.unit ||
+          "pcs",
+        cost_price:
+          costPrice,
+        current_stock:
+          currentStock,
+        minimum_stock:
+          minimumStock,
+        description:
+          String(
+            productForm.description ||
+              ""
+          ).trim() || null,
+        image_url:
+          imageUrl,
+        active: true,
+      };
 
       /*
-      ==========================================================
-      VERIFY THE DATABASE VALUE
-      ==========================================================
-      */
-
-      const {
-        data: verifyRows,
-        error: verifyError,
-      } = await supabase
-        .from("inventory_products")
-        .select("id, sku, image_url")
-        .eq("id", editingProduct.id)
-        .eq("shop_id", shopId)
-        .limit(1);
-
-      if (verifyError) {
-        console.error(
-          "IMAGE URL VERIFY ERROR:",
-          verifyError
-        );
-
-        throw new Error(
-          `Product saved, but verification failed: ${verifyError.message}`
-        );
-      }
-
-      const savedProduct = verifyRows?.[0];
-
-      console.log(
-        "DATABASE PRODUCT AFTER SAVE:",
-        savedProduct
-      );
+       * UPDATE
+       */
 
       if (
-        imageUrl &&
-        savedProduct?.image_url !== imageUrl
+        editingProduct?.id
       ) {
-        throw new Error(
-          "The image uploaded successfully, but Supabase did not retain image_url in inventory_products. Please check the UPDATE RLS policy or a database trigger on inventory_products."
-        );
-      }
-
-      setMessage(
-        imageUrl
-          ? "Product updated successfully with image."
-          : "Product updated successfully."
-      );
-    }
-
-    /*
-    ============================================================
-    5. INSERT NEW PRODUCT
-    ============================================================
-    */
-
-    else {
-      const { error: insertError } = await supabase
-        .from("inventory_products")
-        .insert(productData);
-
-      if (insertError) {
-        console.error(
-          "PRODUCT INSERT ERROR:",
-          insertError
-        );
-
-        throw new Error(
-          `Could not create product: ${insertError.message}`
-        );
-      }
-
-      /*
-      ==========================================================
-      FIND THE NEWLY CREATED PRODUCT
-      ==========================================================
-      
-      We intentionally DO NOT use .single().
-      This avoids the previous:
-      
-      "Cannot coerce the result to a single JSON object"
-      ==========================================================
-      */
-
-      const {
-        data: insertedRows,
-        error: findInsertedError,
-      } = await supabase
-        .from("inventory_products")
-        .select("id, sku, image_url, created_at")
-        .eq("shop_id", shopId)
-        .eq("sku", sku)
-        .order("created_at", {
-          ascending: false,
-        })
-        .limit(1);
-
-      if (findInsertedError) {
-        console.error(
-          "FIND INSERTED PRODUCT ERROR:",
-          findInsertedError
-        );
-
-        throw new Error(
-          `Product was created, but could not be found afterward: ${findInsertedError.message}`
-        );
-      }
-
-      const insertedProduct =
-        insertedRows?.[0];
-
-      if (!insertedProduct?.id) {
-        throw new Error(
-          "Product was created, but I could not find its database row afterward."
-        );
-      }
-
-      console.log(
-        "INSERTED PRODUCT:",
-        insertedProduct
-      );
-
-      /*
-      ==========================================================
-      6. EXPLICIT IMAGE URL UPDATE FOR NEW PRODUCT
-      ==========================================================
-      */
-
-      if (imageUrl) {
         const {
-          error: imageUpdateError,
+          error: updateError,
         } = await supabase
-          .from("inventory_products")
-          .update({
-            image_url: imageUrl,
-          })
-          .eq("id", insertedProduct.id)
-          .eq("shop_id", shopId);
-
-        if (imageUpdateError) {
-          console.error(
-            "NEW PRODUCT IMAGE UPDATE ERROR:",
-            imageUpdateError
+          .from(
+            "inventory_products"
+          )
+          .update(
+            productData
+          )
+          .eq(
+            "id",
+            editingProduct.id
+          )
+          .eq(
+            "shop_id",
+            shopId
           );
 
+        if (updateError) {
           throw new Error(
-            `Product was created and image uploaded, but image_url could not be saved: ${imageUpdateError.message}`
+            `Could not update product: ${updateError.message}`
+          );
+        }
+
+        if (imageUrl) {
+          await saveImageUrlToProduct(
+            editingProduct.id,
+            imageUrl
+          );
+        }
+
+        setMessage(
+          imageUrl
+            ? "Product updated successfully with image."
+            : "Product updated successfully."
+        );
+      }
+
+      /*
+       * INSERT
+       */
+
+      else {
+        const {
+          error: insertError,
+        } = await supabase
+          .from(
+            "inventory_products"
+          )
+          .insert(
+            productData
+          );
+
+        if (insertError) {
+          throw new Error(
+            `Could not create product: ${insertError.message}`
           );
         }
 
         /*
-        ========================================================
-        7. VERIFY IMAGE URL AFTER EXPLICIT UPDATE
-        ========================================================
-        */
+         * Find inserted product
+         * without .single()
+         */
 
         const {
-          data: verifyRows,
-          error: verifyError,
+          data: insertedRows,
+          error:
+            findInsertedError,
         } = await supabase
-          .from("inventory_products")
-          .select("id, sku, image_url")
-          .eq("id", insertedProduct.id)
-          .eq("shop_id", shopId)
+          .from(
+            "inventory_products"
+          )
+          .select(
+            "id, sku, image_url, created_at"
+          )
+          .eq(
+            "shop_id",
+            shopId
+          )
+          .eq(
+            "sku",
+            sku
+          )
+          .order(
+            "created_at",
+            {
+              ascending:
+                false,
+            }
+          )
           .limit(1);
 
-        if (verifyError) {
-          console.error(
-            "NEW PRODUCT VERIFY ERROR:",
-            verifyError
-          );
-
+        if (findInsertedError) {
           throw new Error(
-            `Product was created, but image verification failed: ${verifyError.message}`
+            `Product was created, but could not be found afterward: ${findInsertedError.message}`
           );
         }
 
-        const verifiedProduct =
-          verifyRows?.[0];
-
-        console.log(
-          "VERIFIED PRODUCT:",
-          verifiedProduct
-        );
+        const insertedProduct =
+          insertedRows?.[0];
 
         if (
-          verifiedProduct?.image_url !== imageUrl
+          !insertedProduct?.id
         ) {
           throw new Error(
-            "The image uploaded successfully, but inventory_products.image_url is still empty after the database update. This strongly indicates an UPDATE RLS policy or database trigger is preventing the value from being retained."
+            "Product was created, but I could not find its database row afterward."
           );
         }
+
+        if (imageUrl) {
+          await saveImageUrlToProduct(
+            insertedProduct.id,
+            imageUrl
+          );
+        }
+
+        setMessage(
+          imageUrl
+            ? "Product created successfully with image."
+            : "Product created successfully."
+        );
       }
 
-      setMessage(
-        imageUrl
-          ? "Product created successfully with image."
-          : "Product created successfully."
+      await loadProducts();
+
+      closeProductForm();
+    } catch (err) {
+      console.error(
+        "SAVE PRODUCT FINAL ERROR:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Something went wrong while saving the product."
+      );
+    } finally {
+      setSaving(false);
+      setUploadingImage(
+        false
       );
     }
-
-    /*
-    ============================================================
-    8. REFRESH PRODUCTS
-    ============================================================
-    */
-
-    await loadProducts();
-
-    /*
-    ============================================================
-    9. CLOSE FORM
-    ============================================================
-    */
-
-    closeProductForm();
-
-  } catch (err) {
-    console.error(
-      "SAVE PRODUCT FINAL ERROR:",
-      err
-    );
-
-    setError(
-      err?.message ||
-        "Something went wrong while saving the product."
-    );
-  } finally {
-    setSaving(false);
-    setUploadingImage(false);
   }
-}
 
- /* =======================================================
-   CATEGORY MANAGEMENT
-======================================================= */
+  /* =======================================================
+     CATEGORY MANAGEMENT
+  ======================================================= */
 
-function openAddCategory() {
-  setCategoryName("");
-  setError("");
-  setMessage("");
-  setShowCategoryForm(true);
-}
+  function openAddCategory() {
+    setCategoryName("");
+    setError("");
+    setMessage("");
+    setShowCategoryForm(
+      true
+    );
+  }
 
-function closeCategoryForm() {
-  setCategoryName("");
-  setShowCategoryForm(false);
-}
+  function closeCategoryForm() {
+    setCategoryName("");
+    setShowCategoryForm(
+      false
+    );
+  }
 
-/*
- * Categories that are not currently active
- */
-const availableCategoriesToAdd =
-  ALLOWED_CATEGORIES.filter(
-    (allowedCategory) =>
-      !categories.some(
+  const availableCategoriesToAdd =
+    ALLOWED_CATEGORIES.filter(
+      (allowedCategory) =>
+        !categories.some(
+          (category) =>
+            String(
+              category.name || ""
+            )
+              .trim()
+              .toLowerCase() ===
+            allowedCategory.name.toLowerCase()
+        )
+    );
+
+  /* =======================================================
+     ADD CATEGORY
+  ======================================================= */
+
+  async function saveCategory(
+    event
+  ) {
+    event.preventDefault();
+
+    if (!isAdmin) {
+      setError(
+        "Only administrators can manage categories."
+      );
+      return;
+    }
+
+    if (!shopId) {
+      setError(
+        "No shop is assigned to your account."
+      );
+      return;
+    }
+
+    const name =
+      String(
+        categoryName || ""
+      ).trim();
+
+    if (!name) {
+      setError(
+        "Please select a category."
+      );
+      return;
+    }
+
+    const allowedCategory =
+      ALLOWED_CATEGORIES.find(
         (category) =>
-          String(category.name || "")
+          category.name.toLowerCase() ===
+          name.toLowerCase()
+      );
+
+    if (!allowedCategory) {
+      setError(
+        "This category is not available."
+      );
+      return;
+    }
+
+    const alreadyExists =
+      categories.some(
+        (category) =>
+          String(
+            category.name || ""
+          )
             .trim()
             .toLowerCase() ===
           allowedCategory.name.toLowerCase()
-      )
-  );
+      );
 
-/*
- * ADD CATEGORY
- */
-async function saveCategory(event) {
-  event.preventDefault();
-
-  if (!isAdmin) {
-    setError(
-      "Only administrators can manage categories."
-    );
-    return;
-  }
-
-  if (!shopId) {
-    setError(
-      "No shop is assigned to your account."
-    );
-    return;
-  }
-
-  const name = String(categoryName || "").trim();
-
-  if (!name) {
-    setError("Please select a category.");
-    return;
-  }
-
-  const allowedCategory =
-    ALLOWED_CATEGORIES.find(
-      (category) =>
-        category.name.toLowerCase() ===
-        name.toLowerCase()
-    );
-
-  if (!allowedCategory) {
-    setError(
-      "This category is not available."
-    );
-    return;
-  }
-
-  const alreadyExists = categories.some(
-    (category) =>
-      String(category.name || "")
-        .trim()
-        .toLowerCase() ===
-      allowedCategory.name.toLowerCase()
-  );
-
-  if (alreadyExists) {
-    setError(
-      "This category is already active."
-    );
-    return;
-  }
-
-  setSaving(true);
-  setError("");
-  setMessage("");
-
-  try {
-    /*
-     * Check whether an old inactive row already exists.
-     */
-    const {
-      data: existingRows,
-      error: existingError,
-    } = await supabase
-      .from("inventory_categories")
-      .select("id, name, active")
-      .eq("shop_id", shopId)
-      .ilike("name", allowedCategory.name)
-      .limit(1);
-
-    if (existingError) {
-      throw existingError;
+    if (alreadyExists) {
+      setError(
+        "This category is already active."
+      );
+      return;
     }
 
-    const existing =
-      existingRows?.[0] || null;
+    setSaving(true);
+    setError("");
+    setMessage("");
 
-    /*
-     * REACTIVATE OLD CATEGORY
-     */
-    if (existing?.id) {
+    try {
+      const {
+        data: existingRows,
+        error: existingError,
+      } = await supabase
+        .from(
+          "inventory_categories"
+        )
+        .select(
+          "id, name, active"
+        )
+        .eq(
+          "shop_id",
+          shopId
+        )
+        .ilike(
+          "name",
+          allowedCategory.name
+        )
+        .limit(1);
+
+      if (existingError) {
+        throw existingError;
+      }
+
+      const existing =
+        existingRows?.[0] ||
+        null;
+
+      if (existing?.id) {
+        const {
+          error: updateError,
+        } = await supabase
+          .from(
+            "inventory_categories"
+          )
+          .update({
+            active: true,
+          })
+          .eq(
+            "id",
+            existing.id
+          )
+          .eq(
+            "shop_id",
+            shopId
+          );
+
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        const {
+          error: insertError,
+        } = await supabase
+          .from(
+            "inventory_categories"
+          )
+          .insert({
+            name:
+              allowedCategory.name,
+            shop_id:
+              shopId,
+            active: true,
+          });
+
+        if (insertError) {
+          if (
+            insertError.message
+              ?.toLowerCase()
+              .includes(
+                "row-level security"
+              )
+          ) {
+            throw new Error(
+              "Category creation was blocked by Supabase RLS. Check the INSERT policy for inventory_categories."
+            );
+          }
+
+          throw insertError;
+        }
+      }
+
+      await loadCategories();
+
+      closeCategoryForm();
+
+      setMessage(
+        `${allowedCategory.name} added successfully. ${allowedCategory.chinese} 分类添加成功。`
+      );
+    } catch (err) {
+      console.error(
+        "saveCategory error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to add category."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* =======================================================
+     REMOVE CATEGORY
+  ======================================================= */
+
+  async function removeCategory(
+    category
+  ) {
+    if (!isAdmin) {
+      setError(
+        "Only administrators can remove categories."
+      );
+      return;
+    }
+
+    if (
+      !category?.id ||
+      !shopId
+    ) {
+      setError(
+        "Category or shop information is missing."
+      );
+      return;
+    }
+
+    const {
+      data:
+        productsUsingCategory,
+      error:
+        productCheckError,
+    } = await supabase
+      .from(
+        "inventory_products"
+      )
+      .select(
+        "id, name, sku"
+      )
+      .eq(
+        "shop_id",
+        shopId
+      )
+      .eq(
+        "category_id",
+        category.id
+      )
+      .eq(
+        "active",
+        true
+      )
+      .limit(10);
+
+    if (productCheckError) {
+      setError(
+        productCheckError.message ||
+          "Could not check products using this category."
+      );
+      return;
+    }
+
+    if (
+      productsUsingCategory &&
+      productsUsingCategory.length >
+        0
+    ) {
+      const productNames =
+        productsUsingCategory
+          .slice(0, 5)
+          .map(
+            (product) =>
+              `${product.name || "Unnamed"} (${product.sku || "No SKU"})`
+          )
+          .join("\n");
+
+      const more =
+        productsUsingCategory.length >
+        5
+          ? `\n...and ${
+              productsUsingCategory.length -
+              5
+            } more.`
+          : "";
+
+      setError(
+        `Cannot remove "${category.name}" because products are still assigned to it.\n\n${productNames}${more}\n\nPlease move these products to another category first.`
+      );
+
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Remove "${category.name}" / ${
+          categoryChinese[
+            category.name
+          ] || ""
+        }?\n\nThe category will be hidden from the active category list.`
+      );
+
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
       const {
         error: updateError,
       } = await supabase
-        .from("inventory_categories")
+        .from(
+          "inventory_categories"
+        )
         .update({
-          active: true,
+          active: false,
         })
-        .eq("id", existing.id)
-        .eq("shop_id", shopId);
+        .eq(
+          "id",
+          category.id
+        )
+        .eq(
+          "shop_id",
+          shopId
+        );
 
       if (updateError) {
-        console.error(
-          "Category reactivation error:",
-          updateError
-        );
-
-        throw updateError;
-      }
-    }
-
-    /*
-     * CREATE NEW CATEGORY
-     */
-    else {
-      const {
-        error: insertError,
-      } = await supabase
-        .from("inventory_categories")
-        .insert({
-          name: allowedCategory.name,
-          shop_id: shopId,
-          active: true,
-        });
-
-      if (insertError) {
-        console.error(
-          "Category insert error:",
-          insertError
-        );
-
         if (
-          insertError.message
+          updateError.message
             ?.toLowerCase()
-            .includes("row-level security")
+            .includes(
+              "row-level security"
+            )
         ) {
           throw new Error(
-            "Category creation was blocked by Supabase RLS. Check the INSERT policy for inventory_categories."
+            "Category removal was blocked by Supabase RLS. Check the UPDATE policy for inventory_categories."
           );
         }
 
-        throw insertError;
+        throw updateError;
       }
-    }
 
-    await loadCategories();
-
-    closeCategoryForm();
-
-    setMessage(
-      `${allowedCategory.name} added successfully. ${allowedCategory.chinese} 分类添加成功。`
-    );
-  } catch (err) {
-    console.error(
-      "saveCategory error:",
-      err
-    );
-
-    setError(
-      err.message ||
-        "Failed to add category."
-    );
-  } finally {
-    setSaving(false);
-  }
-}
-
-/*
- * REMOVE CATEGORY
- */
-async function removeCategory(category) {
-  if (!isAdmin) {
-    setError(
-      "Only administrators can remove categories."
-    );
-    return;
-  }
-
-  if (!category?.id || !shopId) {
-    setError(
-      "Category or shop information is missing."
-    );
-    return;
-  }
-
-  /*
-   * Check if products are using this category.
-   */
-  const {
-    data: productsUsingCategory,
-    error: productCheckError,
-  } = await supabase
-    .from("inventory_products")
-    .select("id, name, sku")
-    .eq("shop_id", shopId)
-    .eq("category_id", category.id)
-    .eq("active", true)
-    .limit(10);
-
-  if (productCheckError) {
-    console.error(
-      "Category product check error:",
-      productCheckError
-    );
-
-    setError(
-      productCheckError.message ||
-        "Could not check products using this category."
-    );
-
-    return;
-  }
-
-  if (
-    productsUsingCategory &&
-    productsUsingCategory.length > 0
-  ) {
-    const productNames =
-      productsUsingCategory
-        .slice(0, 5)
-        .map(
-          (product) =>
-            `${product.name || "Unnamed"} (${product.sku || "No SKU"})`
-        )
-        .join("\n");
-
-    const more =
-      productsUsingCategory.length > 5
-        ? `\n...and ${
-            productsUsingCategory.length - 5
-          } more.`
-        : "";
-
-    setError(
-      `Cannot remove "${category.name}" because products are still assigned to it.\n\n${productNames}${more}\n\nPlease move these products to another category first.`
-    );
-
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `Remove "${category.name}" / ${
-      categoryChinese[category.name] || ""
-    }?\n\nThe category will be hidden from the active category list.`
-  );
-
-  if (!confirmed) return;
-
-  setSaving(true);
-  setError("");
-  setMessage("");
-
-  try {
-    const {
-      error: updateError,
-    } = await supabase
-      .from("inventory_categories")
-      .update({
-        active: false,
-      })
-      .eq("id", category.id)
-      .eq("shop_id", shopId);
-
-    if (updateError) {
-      console.error(
-        "REMOVE CATEGORY ERROR:",
-        updateError
-      );
+      await loadCategories();
 
       if (
-        updateError.message
-          ?.toLowerCase()
-          .includes("row-level security")
+        String(
+          categoryFilter
+        ) ===
+        String(category.id)
       ) {
-        throw new Error(
-          "Category removal was blocked by Supabase RLS. Check the UPDATE policy for inventory_categories."
+        setCategoryFilter(
+          "all"
         );
       }
 
-      throw updateError;
+      if (
+        String(
+          productForm.category_id
+        ) ===
+        String(category.id)
+      ) {
+        setProductForm(
+          (prev) => ({
+            ...prev,
+            category_id:
+              categories.find(
+                (item) =>
+                  String(
+                    item.id
+                  ) !==
+                  String(
+                    category.id
+                  )
+              )?.id || "",
+          })
+        );
+      }
+
+      setMessage(
+        `"${category.name}" removed successfully. 分类已删除。`
+      );
+    } catch (err) {
+      console.error(
+        "removeCategory error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to remove category."
+      );
+    } finally {
+      setSaving(false);
     }
-
-    await loadCategories();
-
-    /*
-     * If the removed category was selected in the filter,
-     * reset the filter.
-     */
-    if (
-      String(categoryFilter) ===
-      String(category.id)
-    ) {
-      setCategoryFilter("all");
-    }
-
-    /*
-     * If it was selected in the product form,
-     * select the first remaining category.
-     */
-    if (
-      String(productForm.category_id) ===
-      String(category.id)
-    ) {
-      setProductForm((prev) => ({
-        ...prev,
-        category_id:
-          categories.find(
-            (item) =>
-              String(item.id) !==
-              String(category.id)
-          )?.id || "",
-      }));
-    }
-
-    setMessage(
-      `"${category.name}" removed successfully. 分类已删除。`
-    );
-  } catch (err) {
-    console.error(
-      "removeCategory error:",
-      err
-    );
-
-    setError(
-      err.message ||
-        "Failed to remove category."
-    );
-  } finally {
-    setSaving(false);
   }
-}
+
   /* =======================================================
      MOVEMENT
   ======================================================= */
 
-function openMovement(product, type = "IN") {
-  setSelectedProduct(product);
-  setMovementType(
-    String(type).toUpperCase()
-  );
+  function openMovement(
+    product,
+    type = "IN"
+  ) {
+    setSelectedProduct(
+      product
+    );
+
+    setMovementType(
+      String(type).toUpperCase()
+    );
 
     setMovementForm({
       quantity: "",
       unit_cost:
-        product.cost_price !== null &&
-        product.cost_price !== undefined
+        product.cost_price !==
+          null &&
+        product.cost_price !==
+          undefined
           ? product.cost_price
           : "",
       reference: "",
@@ -1713,196 +2132,250 @@ function openMovement(product, type = "IN") {
 
     setError("");
     setMessage("");
-    setShowMovementForm(true);
+    setShowMovementForm(
+      true
+    );
   }
 
   function closeMovementForm() {
     setSelectedProduct(null);
-    setShowMovementForm(false);
-  }
-
-  function handleMovementFormChange(event) {
-    const { name, value } = event.target;
-
-    setMovementForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  }
-
-  async function saveMovement(event) {
-  event.preventDefault();
-
-  if (!canManageStock) {
-    setError("You do not have permission to manage stock.");
-    return;
-  }
-
-  if (!shopId) {
-    setError("No shop is assigned to your account.");
-    return;
-  }
-
-  if (!selectedProduct?.id) {
-    setError("No product selected.");
-    return;
-  }
-
-  const quantity = Number(movementForm.quantity);
-
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    setError("Quantity must be greater than zero.");
-    return;
-  }
-
-  const unitCost =
-    movementForm.unit_cost === ""
-      ? 0
-      : Number(movementForm.unit_cost);
-
-  if (!Number.isFinite(unitCost) || unitCost < 0) {
-    setError("Unit cost must be a valid number.");
-    return;
-  }
-
-  const movement =
-    String(movementType || "").trim().toUpperCase();
-
-  if (!["IN", "OUT", "ADJUSTMENT"].includes(movement)) {
-    setError(`Invalid movement type: ${movement}`);
-    return;
-  }
-
-  setSaving(true);
-  setError("");
-  setMessage("");
-
-  try {
-    console.log("=== SAVING INVENTORY MOVEMENT ===");
-    console.log("Product ID:", selectedProduct.id);
-    console.log("Movement:", movement);
-    console.log("Quantity:", quantity);
-    console.log("Unit Cost:", unitCost);
-    console.log("Shop ID:", shopId);
-
-    const rpcParams = {
-      p_product_id: selectedProduct.id,
-      p_movement_type: movement,
-      p_quantity: quantity,
-      p_unit_cost: unitCost,
-      p_supplier_id: null,
-      p_job_id: null,
-      p_user_id: null,
-      p_reference:
-        movementForm.reference?.trim() || null,
-      p_notes:
-        movementForm.notes?.trim() || null,
-    };
-
-    console.log(
-      "RPC PARAMETERS:",
-      rpcParams
+    setShowMovementForm(
+      false
     );
+  }
 
-    const { data, error: rpcError } =
-      await supabase.rpc(
-        "record_inventory_movement",
-        rpcParams
-      );
+  function handleMovementFormChange(
+    event
+  ) {
+    const {
+      name,
+      value,
+    } = event.target;
 
-    if (rpcError) {
-      console.error(
-        "record_inventory_movement FULL ERROR:",
-        rpcError
-      );
+    setMovementForm(
+      (prev) => ({
+        ...prev,
+        [name]: value,
+      })
+    );
+  }
 
-      console.error(
-        "RPC message:",
-        rpcError.message
-      );
+  async function saveMovement(
+    event
+  ) {
+    event.preventDefault();
 
-      console.error(
-        "RPC details:",
-        rpcError.details
+    if (!canManageStock) {
+      setError(
+        "You do not have permission to manage stock."
       );
-
-      console.error(
-        "RPC hint:",
-        rpcError.hint
-      );
-
-      console.error(
-        "RPC code:",
-        rpcError.code
-      );
-
-      throw new Error(
-        rpcError.message ||
-          rpcError.details ||
-          "Failed to record stock movement."
-      );
+      return;
     }
 
-    console.log(
-      "Movement successfully recorded:",
-      data
-    );
+    if (!shopId) {
+      setError(
+        "No shop is assigned to your account."
+      );
+      return;
+    }
 
-    await loadProducts();
+    if (!selectedProduct?.id) {
+      setError(
+        "No product selected."
+      );
+      return;
+    }
 
-    closeMovementForm();
+    const quantity =
+      Number(
+        movementForm.quantity
+      );
 
-    setMessage(
-      movement === "IN"
-        ? "Stock added successfully. 库存增加成功。"
-        : movement === "OUT"
-        ? "Stock removed successfully. 库存减少成功。"
-        : "Stock adjusted successfully. 库存调整成功。"
-    );
-  } catch (err) {
-    console.error(
-      "saveMovement FULL ERROR:",
-      err
-    );
+    if (
+      !Number.isFinite(
+        quantity
+      ) ||
+      quantity <= 0
+    ) {
+      setError(
+        "Quantity must be greater than zero."
+      );
+      return;
+    }
 
-    setError(
-      err?.message ||
-        err?.details ||
-        "Failed to record stock movement."
-    );
-  } finally {
-    setSaving(false);
+    const unitCost =
+      movementForm.unit_cost ===
+      ""
+        ? 0
+        : Number(
+            movementForm.unit_cost
+          );
+
+    if (
+      !Number.isFinite(
+        unitCost
+      ) ||
+      unitCost < 0
+    ) {
+      setError(
+        "Unit cost must be a valid number."
+      );
+      return;
+    }
+
+    const movement =
+      String(
+        movementType || ""
+      )
+        .trim()
+        .toUpperCase();
+
+    if (
+      ![
+        "IN",
+        "OUT",
+        "ADJUSTMENT",
+      ].includes(movement)
+    ) {
+      setError(
+        `Invalid movement type: ${movement}`
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const rpcParams = {
+        p_product_id:
+          selectedProduct.id,
+        p_movement_type:
+          movement,
+        p_quantity:
+          quantity,
+        p_unit_cost:
+          unitCost,
+        p_supplier_id:
+          null,
+        p_job_id: null,
+        p_user_id: null,
+        p_reference:
+          movementForm.reference?.trim() ||
+          null,
+        p_notes:
+          movementForm.notes?.trim() ||
+          null,
+      };
+
+      const {
+        data,
+        error: rpcError,
+      } =
+        await supabase.rpc(
+          "record_inventory_movement",
+          rpcParams
+        );
+
+      if (rpcError) {
+        console.error(
+          "RPC ERROR:",
+          rpcError
+        );
+
+        throw new Error(
+          rpcError.message ||
+            rpcError.details ||
+            "Failed to record stock movement."
+        );
+      }
+
+      console.log(
+        "Movement successfully recorded:",
+        data
+      );
+
+      await loadProducts();
+
+      closeMovementForm();
+
+      setMessage(
+        movement === "IN"
+          ? "Stock added successfully. 库存增加成功。"
+          : movement === "OUT"
+          ? "Stock removed successfully. 库存减少成功。"
+          : "Stock adjusted successfully. 库存调整成功。"
+      );
+    } catch (err) {
+      console.error(
+        "saveMovement error:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          err?.details ||
+          "Failed to record stock movement."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
-}
 
   /* =======================================================
      HISTORY
   ======================================================= */
 
-  async function loadHistory(product) {
+  async function loadHistory(
+    product
+  ) {
     if (!product?.id) return;
 
-    setSelectedProduct(product);
-    setShowHistoryModal(true);
-    setHistoryLoading(true);
+    setSelectedProduct(
+      product
+    );
+
+    setShowHistoryModal(
+      true
+    );
+
+    setHistoryLoading(
+      true
+    );
+
     setHistory([]);
     setError("");
 
     try {
-      const { data, error: queryError } =
+      const {
+        data,
+        error: queryError,
+      } =
         await supabase
-          .from("inventory_movements")
+          .from(
+            "inventory_movements"
+          )
           .select("*")
-          .eq("product_id", product.id)
-          .order("created_at", {
-            ascending: false,
-          });
+          .eq(
+            "product_id",
+            product.id
+          )
+          .order(
+            "created_at",
+            {
+              ascending:
+                false,
+            }
+          );
 
       if (queryError) {
         throw queryError;
       }
 
-      setHistory(data || []);
+      setHistory(
+        data || []
+      );
     } catch (err) {
       console.error(
         "loadHistory error:",
@@ -1914,99 +2387,158 @@ function openMovement(product, type = "IN") {
           "Failed to load inventory history."
       );
     } finally {
-      setHistoryLoading(false);
+      setHistoryLoading(
+        false
+      );
     }
   }
 
   function closeHistoryModal() {
-    setShowHistoryModal(false);
-    setSelectedProduct(null);
+    setShowHistoryModal(
+      false
+    );
+
+    setSelectedProduct(
+      null
+    );
+
     setHistory([]);
   }
 
-  async function removeProduct(product) {
-  if (!isAdmin) {
-    setError("You do not have permission to remove products.");
-    return;
-  }
+  /* =======================================================
+     REMOVE PRODUCT
+  ======================================================= */
 
-  if (!product?.id || !shopId) {
-    setError("Product or shop information is missing.");
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `Remove "${product.name}" (${product.sku}) from inventory?\n\nThe product will be hidden from the active inventory, but its records will remain in the database.`
-  );
-
-  if (!confirmed) return;
-
-  setSaving(true);
-  setError("");
-  setMessage("");
-
-  try {
-    const { error } = await supabase
-      .from("inventory_products")
-      .update({
-        active: false,
-      })
-      .eq("id", product.id)
-      .eq("shop_id", shopId);
-
-    if (error) {
-      console.error("REMOVE PRODUCT ERROR:", error);
-
-      throw new Error(
-        `Could not remove product: ${error.message}`
+  async function removeProduct(
+    product
+  ) {
+    if (!isAdmin) {
+      setError(
+        "You do not have permission to remove products."
       );
+      return;
     }
 
-    setMessage(
-      `"${product.name}" has been removed from active inventory.`
-    );
+    if (
+      !product?.id ||
+      !shopId
+    ) {
+      setError(
+        "Product or shop information is missing."
+      );
+      return;
+    }
 
-    await loadProducts();
-  } catch (err) {
-    console.error("REMOVE PRODUCT FINAL ERROR:", err);
+    const confirmed =
+      window.confirm(
+        `Remove "${product.name}" (${product.sku}) from inventory?\n\nThe product will be hidden from the active inventory, but its records will remain in the database.`
+      );
 
-    setError(
-      err?.message ||
-        "Something went wrong while removing the product."
-    );
-  } finally {
-    setSaving(false);
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const {
+        error,
+      } = await supabase
+        .from(
+          "inventory_products"
+        )
+        .update({
+          active: false,
+        })
+        .eq(
+          "id",
+          product.id
+        )
+        .eq(
+          "shop_id",
+          shopId
+        );
+
+      if (error) {
+        throw new Error(
+          `Could not remove product: ${error.message}`
+        );
+      }
+
+      /*
+       * Also remove it from bulk selection.
+       */
+
+      setSelectedProductIds(
+        (previous) =>
+          previous.filter(
+            (id) =>
+              id !== product.id
+          )
+      );
+
+      setMessage(
+        `"${product.name}" has been removed from active inventory.`
+      );
+
+      await loadProducts();
+    } catch (err) {
+      console.error(
+        "REMOVE PRODUCT ERROR:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Something went wrong while removing the product."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
-}
+
   /* =======================================================
      CATEGORY LOOKUP
   ======================================================= */
 
-  function getCategoryName(categoryId) {
-    const category = categories.find(
-      (cat) => cat.id === categoryId
-    );
+  function getCategoryName(
+    categoryId
+  ) {
+    const category =
+      categories.find(
+        (cat) =>
+          String(cat.id) ===
+          String(categoryId)
+      );
 
-    return category?.name || "Other";
+    return (
+      category?.name ||
+      "Other"
+    );
   }
 
   /* =======================================================
      IMAGE FALLBACK
   ======================================================= */
 
-  function handleImageError(event) {
+  function handleImageError(
+    event
+  ) {
     console.error(
       "Product image failed to load:",
       event.currentTarget.src
     );
 
-    event.currentTarget.style.display = "none";
+    event.currentTarget.style.display =
+      "none";
 
     const placeholder =
-      event.currentTarget.nextElementSibling;
+      event.currentTarget
+        .nextElementSibling;
 
     if (placeholder) {
-      placeholder.style.display = "flex";
+      placeholder.style.display =
+        "flex";
     }
   }
 
@@ -2104,11 +2636,55 @@ function openMovement(product, type = "IN") {
           color: #fff;
         }
 
+        .bulk-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 14px;
+          padding: 12px 14px;
+          background: #1b1b1b;
+          border: 1px solid #2d2d2d;
+          border-radius: 9px;
+        }
+
+        .bulk-toolbar-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .bulk-selection-count {
+          color: #d6ad50;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .bulk-checkbox {
+          width: 17px;
+          height: 17px;
+          cursor: pointer;
+          accent-color: #d6ad50;
+        }
+
+        .select-all-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #ddd;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
         .alert {
           border-radius: 8px;
           padding: 12px 15px;
           margin-bottom: 16px;
           font-size: 14px;
+          white-space: pre-line;
         }
 
         .alert-error {
@@ -2191,7 +2767,7 @@ function openMovement(product, type = "IN") {
         table {
           width: 100%;
           border-collapse: collapse;
-          min-width: 1050px;
+          min-width: 1150px;
         }
 
         th {
@@ -2351,6 +2927,10 @@ function openMovement(product, type = "IN") {
 
         .modal-large {
           max-width: 900px;
+        }
+
+        .bulk-modal {
+          max-width: 550px;
         }
 
         .modal-header {
@@ -2570,6 +3150,24 @@ function openMovement(product, type = "IN") {
           font-size: 13px;
         }
 
+        .bulk-info-box {
+          background: #202020;
+          border: 1px solid #333;
+          border-radius: 8px;
+          padding: 14px;
+          margin-bottom: 18px;
+        }
+
+        .bulk-info-title {
+          font-weight: 700;
+          margin-bottom: 5px;
+        }
+
+        .bulk-info-subtitle {
+          color: #999;
+          font-size: 12px;
+        }
+
         @media (max-width: 1100px) {
           .stats-grid {
             grid-template-columns: repeat(3, 1fr);
@@ -2605,9 +3203,14 @@ function openMovement(product, type = "IN") {
 
       <div className="inventory-container">
 
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
         <div className="inventory-header">
+
           <div className="inventory-title">
+
             <h1>
               Inventory 库存
             </h1>
@@ -2616,30 +3219,43 @@ function openMovement(product, type = "IN") {
               Manage products, stock levels and inventory
               movements.
             </p>
+
           </div>
 
           <div className="header-actions">
-           {isAdmin && (
-  <button
-    className="btn btn-secondary"
-    onClick={openAddCategory}
-  >
-    Manage Categories / 管理分类
-  </button>
-)}
+
+            {isAdmin && (
+              <button
+                className="btn btn-secondary"
+                onClick={
+                  openAddCategory
+                }
+              >
+                Manage Categories /
+                管理分类
+              </button>
+            )}
 
             {isAdmin && (
               <button
                 className="btn btn-primary"
-                onClick={openAddProduct}
+                onClick={
+                  openAddProduct
+                }
               >
-                + Add Product / 添加产品
+                + Add Product /
+                添加产品
               </button>
             )}
+
           </div>
+
         </div>
 
-        {/* ALERTS */}
+        {/* =================================================
+            ALERTS
+        ================================================= */}
+
         {error && (
           <div className="alert alert-error">
             {error}
@@ -2652,7 +3268,10 @@ function openMovement(product, type = "IN") {
           </div>
         )}
 
-        {/* STATS */}
+        {/* =================================================
+            STATS
+        ================================================= */}
+
         <div className="stats-grid">
 
           <div className="stat-card">
@@ -2711,7 +3330,10 @@ function openMovement(product, type = "IN") {
 
         </div>
 
-        {/* FILTERS */}
+        {/* =================================================
+            FILTERS
+        ================================================= */}
+
         <div className="filters">
 
           <input
@@ -2720,7 +3342,9 @@ function openMovement(product, type = "IN") {
             placeholder="Search SKU, product or category... 搜索..."
             value={search}
             onChange={(e) =>
-              setSearch(e.target.value)
+              setSearch(
+                e.target.value
+              )
             }
           />
 
@@ -2728,33 +3352,49 @@ function openMovement(product, type = "IN") {
             className="select"
             value={categoryFilter}
             onChange={(e) =>
-              setCategoryFilter(e.target.value)
+              setCategoryFilter(
+                e.target.value
+              )
             }
           >
+
             <option value="all">
-              All Categories / 所有分类
+              All Categories /
+              所有分类
             </option>
 
-            {categories.map((category) => (
-              <option
-                key={category.id}
-                value={category.id}
-              >
-                {category.name}
-                {categoryChinese[category.name]
-                  ? ` — ${categoryChinese[category.name]}`
-                  : ""}
-              </option>
-            ))}
+            {categories.map(
+              (category) => (
+                <option
+                  key={category.id}
+                  value={category.id}
+                >
+                  {category.name}
+                  {categoryChinese[
+                    category.name
+                  ]
+                    ? ` — ${
+                        categoryChinese[
+                          category.name
+                        ]
+                      }`
+                    : ""}
+                </option>
+              )
+            )}
+
           </select>
 
           <select
             className="select"
             value={statusFilter}
             onChange={(e) =>
-              setStatusFilter(e.target.value)
+              setStatusFilter(
+                e.target.value
+              )
             }
           >
+
             <option value="all">
               All Status / 所有状态
             </option>
@@ -2770,18 +3410,112 @@ function openMovement(product, type = "IN") {
             <option value="out">
               Out of Stock / 缺货
             </option>
+
           </select>
 
         </div>
 
-        {/* TABLE */}
+        {/* =================================================
+            BULK TOOLBAR
+        ================================================= */}
+
+        {isAdmin && (
+          <div className="bulk-toolbar">
+
+            <div className="bulk-toolbar-left">
+
+              <label className="select-all-label">
+
+                <input
+                  type="checkbox"
+                  className="bulk-checkbox"
+                  checked={
+                    allVisibleProductsSelected
+                  }
+                  onChange={
+                    toggleSelectAllVisible
+                  }
+                  disabled={
+                    loading ||
+                    filteredProducts.length ===
+                      0 ||
+                    saving
+                  }
+                />
+
+                Select All Visible /
+                全选当前产品
+
+              </label>
+
+              {selectedProductIds.length >
+                0 && (
+                <span className="bulk-selection-count">
+                  {selectedProductIds.length} selected /
+                  已选择{" "}
+                  {
+                    selectedProductIds.length
+                  }
+                </span>
+              )}
+
+            </div>
+
+            <div className="header-actions">
+
+              {selectedProductIds.length >
+                0 && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={
+                    clearProductSelection
+                  }
+                  disabled={saving}
+                >
+                  Clear Selection /
+                  清除选择
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={
+                  openBulkCategoryModal
+                }
+                disabled={
+                  saving ||
+                  selectedProductIds.length ===
+                    0
+                }
+              >
+                Change Category /
+                更改分类
+                {selectedProductIds.length >
+                  0
+                  ? ` (${selectedProductIds.length})`
+                  : ""}
+              </button>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* =================================================
+            TABLE
+        ================================================= */}
+
         <div className="table-wrapper">
 
           {loading ? (
             <div className="loading-state">
-              Loading inventory... 正在加载库存...
+              Loading inventory...
+              正在加载库存...
             </div>
-          ) : filteredProducts.length === 0 ? (
+          ) : filteredProducts.length ===
+            0 ? (
             <div className="empty-state">
               No products found.
               <br />
@@ -2789,8 +3523,30 @@ function openMovement(product, type = "IN") {
             </div>
           ) : (
             <table>
+
               <thead>
+
                 <tr>
+
+                  {isAdmin && (
+                    <th>
+                      <input
+                        type="checkbox"
+                        className="bulk-checkbox"
+                        checked={
+                          allVisibleProductsSelected
+                        }
+                        onChange={
+                          toggleSelectAllVisible
+                        }
+                        disabled={
+                          saving
+                        }
+                        title="Select all visible products"
+                      />
+                    </th>
+                  )}
+
                   <th>
                     Photo 图片
                   </th>
@@ -2828,27 +3584,62 @@ function openMovement(product, type = "IN") {
                   <th>
                     Actions 操作
                   </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
+
                 {filteredProducts.map(
                   (product) => {
+
                     const categoryName =
                       getCategoryName(
                         product.category_id
                       );
 
                     const status =
-                      getStatus(product);
+                      getStatus(
+                        product
+                      );
+
+                    const isSelected =
+                      selectedProductIds.includes(
+                        product.id
+                      );
 
                     return (
                       <tr
-                        key={product.id}
+                        key={
+                          product.id
+                        }
                       >
+
+                        {/* SELECT */}
+                        {isAdmin && (
+                          <td>
+                            <input
+                              type="checkbox"
+                              className="bulk-checkbox"
+                              checked={
+                                isSelected
+                              }
+                              onChange={() =>
+                                toggleProductSelection(
+                                  product.id
+                                )
+                              }
+                              disabled={
+                                saving
+                              }
+                            />
+                          </td>
+                        )}
 
                         {/* PHOTO */}
                         <td>
+
                           <div
                             className="product-photo"
                             onClick={() =>
@@ -2859,10 +3650,13 @@ function openMovement(product, type = "IN") {
                               )
                             }
                           >
+
                             {product.image_url ? (
                               <>
                                 <img
-                                  src={product.image_url}
+                                  src={
+                                    product.image_url
+                                  }
                                   alt={
                                     product.name ||
                                     "Product"
@@ -2875,7 +3669,8 @@ function openMovement(product, type = "IN") {
                                 <div
                                   className="photo-placeholder"
                                   style={{
-                                    display: "none",
+                                    display:
+                                      "none",
                                   }}
                                 >
                                   📷
@@ -2886,55 +3681,72 @@ function openMovement(product, type = "IN") {
                                 📷
                               </div>
                             )}
+
                           </div>
+
                         </td>
 
                         {/* SKU */}
                         <td>
+
                           <div className="sku">
-                            {product.sku || "—"}
+                            {product.sku ||
+                              "—"}
                           </div>
+
                         </td>
 
                         {/* PRODUCT */}
                         <td>
+
                           {getProductDisplay(
                             product.name,
                             categoryName
                           )}
+
                         </td>
 
                         {/* CATEGORY */}
                         <td>
+
                           {getCategoryDisplay(
                             categoryName
                           )}
+
                         </td>
 
                         {/* STOCK */}
                         <td>
+
                           <span className="stock-value">
                             {Number(
                               product.current_stock ||
                                 0
                             ).toLocaleString()}
                           </span>{" "}
+
                           <span
                             style={{
-                              color: "#777",
-                              fontSize: "12px",
+                              color:
+                                "#777",
+                              fontSize:
+                                "12px",
                             }}
                           >
-                            {product.unit || "pcs"}
+                            {product.unit ||
+                              "pcs"}
                           </span>
+
                         </td>
 
                         {/* MIN */}
                         <td>
+
                           {Number(
                             product.minimum_stock ||
                               0
                           ).toLocaleString()}
+
                         </td>
 
                         {/* COST */}
@@ -2948,6 +3760,7 @@ function openMovement(product, type = "IN") {
 
                         {/* STATUS */}
                         <td>
+
                           <span
                             className={`status-badge ${status.className}`}
                           >
@@ -2955,27 +3768,36 @@ function openMovement(product, type = "IN") {
 
                             <span
                               style={{
-                                opacity: 0.75,
+                                opacity:
+                                  0.75,
                               }}
                             >
                               /
                             </span>
 
-                            {status.chinese}
+                            {
+                              status.chinese
+                            }
                           </span>
+
                         </td>
 
                         {/* ACTIONS */}
                         <td>
+
                           <div className="action-buttons">
 
                             {isAdmin && (
                               <button
+                                type="button"
                                 className="action-btn"
                                 onClick={() =>
                                   openEditProduct(
                                     product
                                   )
+                                }
+                                disabled={
+                                  saving
                                 }
                               >
                                 Edit 编辑
@@ -2983,72 +3805,294 @@ function openMovement(product, type = "IN") {
                             )}
 
                             {canManageStock && (
-  <>
-    <button
-      type="button"
-      className="action-btn"
-      onClick={() =>
-        openMovement(product, "IN")
-      }
-      disabled={saving}
-    >
-      + Stock In / 入库
-    </button>
+                              <>
+                                <button
+                                  type="button"
+                                  className="action-btn"
+                                  onClick={() =>
+                                    openMovement(
+                                      product,
+                                      "IN"
+                                    )
+                                  }
+                                  disabled={
+                                    saving
+                                  }
+                                >
+                                  + Stock In /
+                                  入库
+                                </button>
 
-    <button
-      type="button"
-      className="action-btn"
-      onClick={() =>
-        openMovement(product, "OUT")
-      }
-      disabled={saving}
-    >
-      − Stock Out / 出库
-    </button>
-  </>
-)}
+                                <button
+                                  type="button"
+                                  className="action-btn"
+                                  onClick={() =>
+                                    openMovement(
+                                      product,
+                                      "OUT"
+                                    )
+                                  }
+                                  disabled={
+                                    saving
+                                  }
+                                >
+                                  − Stock Out /
+                                  出库
+                                </button>
+                              </>
+                            )}
 
                             <button
+                              type="button"
                               className="action-btn"
                               onClick={() =>
                                 loadHistory(
                                   product
                                 )
                               }
+                              disabled={
+                                saving
+                              }
                             >
                               History 历史
                             </button>
-{isAdmin && (
-  <button
-    type="button"
-    onClick={() => removeProduct(product)}
-    disabled={saving}
-    style={{
-      padding: "6px 10px",
-      borderRadius: "6px",
-      border: "1px solid #dc2626",
-      background: "#fff",
-      color: "#dc2626",
-      cursor: saving ? "not-allowed" : "pointer",
-      fontWeight: 600,
-    }}
-  >
-    Remove 删除
-  </button>
-)}
+
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeProduct(
+                                    product
+                                  )
+                                }
+                                disabled={
+                                  saving
+                                }
+                                style={{
+                                  padding:
+                                    "6px 10px",
+                                  borderRadius:
+                                    "6px",
+                                  border:
+                                    "1px solid #dc2626",
+                                  background:
+                                    "#fff",
+                                  color:
+                                    "#dc2626",
+                                  cursor:
+                                    saving
+                                      ? "not-allowed"
+                                      : "pointer",
+                                  fontWeight:
+                                    600,
+                                }}
+                              >
+                                Remove 删除
+                              </button>
+                            )}
+
                           </div>
+
                         </td>
 
                       </tr>
                     );
                   }
                 )}
+
               </tbody>
+
             </table>
           )}
 
         </div>
       </div>
+
+      {/* =====================================================
+          BULK CATEGORY MODAL
+      ===================================================== */}
+
+      {showBulkCategoryModal && (
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (
+              e.target ===
+                e.currentTarget &&
+              !saving
+            ) {
+              closeBulkCategoryModal();
+            }
+          }}
+        >
+
+          <div className="modal bulk-modal">
+
+            <div className="modal-header">
+
+              <h2>
+                Change Category /
+                更改分类
+              </h2>
+
+              <button
+                type="button"
+                className="modal-close"
+                onClick={
+                  closeBulkCategoryModal
+                }
+                disabled={
+                  saving
+                }
+              >
+                ×
+              </button>
+
+            </div>
+
+            <form
+              onSubmit={
+                saveBulkCategoryChange
+              }
+            >
+
+              <div className="modal-body">
+
+                <div className="bulk-info-box">
+
+                  <div className="bulk-info-title">
+                    {selectedProductIds.length}{" "}
+                    product
+                    {selectedProductIds.length ===
+                    1
+                      ? ""
+                      : "s"}{" "}
+                    selected
+                  </div>
+
+                  <div className="bulk-info-subtitle">
+                    已选择{" "}
+                    {
+                      selectedProductIds.length
+                    }{" "}
+                    个产品
+                  </div>
+
+                </div>
+
+                <div className="form-group">
+
+                  <label className="form-label">
+                    New Category /
+                    新分类
+                  </label>
+
+                  <select
+                    className="select"
+                    value={
+                      bulkCategoryId
+                    }
+                    onChange={(e) =>
+                      setBulkCategoryId(
+                        e.target.value
+                      )
+                    }
+                    required
+                    disabled={
+                      saving
+                    }
+                  >
+
+                    <option value="">
+                      Select Category /
+                      选择分类
+                    </option>
+
+                    {categories.map(
+                      (category) => (
+                        <option
+                          key={
+                            category.id
+                          }
+                          value={
+                            category.id
+                          }
+                        >
+                          {
+                            category.name
+                          }{" "}
+                          —{" "}
+                          {categoryChinese[
+                            category.name
+                          ] ||
+                            ""}
+                        </option>
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+                <div
+                  style={{
+                    marginTop:
+                      "15px",
+                    color:
+                      "#888",
+                    fontSize:
+                      "12px",
+                    lineHeight:
+                      1.5,
+                  }}
+                >
+                  This will change the
+                  category for all selected
+                  products at once.
+                  <br />
+                  此操作将一次性更改所有已选择产品的分类。
+                </div>
+
+              </div>
+
+              <div className="modal-footer">
+
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={
+                    closeBulkCategoryModal
+                  }
+                  disabled={
+                    saving
+                  }
+                >
+                  Cancel / 取消
+                </button>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={
+                    saving ||
+                    !bulkCategoryId ||
+                    selectedProductIds.length ===
+                      0
+                  }
+                >
+                  {saving
+                    ? "Updating... 更新中..."
+                    : "Apply Category / 应用分类"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+
+        </div>
+      )}
 
       {/* =====================================================
           PRODUCT MODAL
@@ -3059,16 +4103,19 @@ function openMovement(product, type = "IN") {
           className="modal-overlay"
           onMouseDown={(e) => {
             if (
-              e.target === e.currentTarget &&
+              e.target ===
+                e.currentTarget &&
               !saving
             ) {
               closeProductForm();
             }
           }}
         >
+
           <div className="modal">
 
             <div className="modal-header">
+
               <h2>
                 {editingProduct
                   ? "Edit Product / 编辑产品"
@@ -3076,15 +4123,25 @@ function openMovement(product, type = "IN") {
               </h2>
 
               <button
+                type="button"
                 className="modal-close"
-                onClick={closeProductForm}
-                disabled={saving}
+                onClick={
+                  closeProductForm
+                }
+                disabled={
+                  saving
+                }
               >
                 ×
               </button>
+
             </div>
 
-            <form onSubmit={saveProduct}>
+            <form
+              onSubmit={
+                saveProduct
+              }
+            >
 
               <div className="modal-body">
 
@@ -3094,7 +4151,8 @@ function openMovement(product, type = "IN") {
                   <div className="form-group full">
 
                     <label className="form-label">
-                      Product Photo / 产品图片
+                      Product Photo /
+                      产品图片
                     </label>
 
                     <div className="image-upload">
@@ -3104,7 +4162,9 @@ function openMovement(product, type = "IN") {
                         {imagePreview ? (
                           <img
                             className="image-preview"
-                            src={imagePreview}
+                            src={
+                              imagePreview
+                            }
                             alt="Product preview"
                             onError={(e) => {
                               e.currentTarget.style.display =
@@ -3115,13 +4175,16 @@ function openMovement(product, type = "IN") {
                           <div
                             className="image-preview"
                             style={{
-                              display: "flex",
+                              display:
+                                "flex",
                               alignItems:
                                 "center",
                               justifyContent:
                                 "center",
-                              color: "#666",
-                              fontSize: "30px",
+                              color:
+                                "#666",
+                              fontSize:
+                                "30px",
                             }}
                           >
                             📷
@@ -3132,8 +4195,10 @@ function openMovement(product, type = "IN") {
 
                           <div
                             style={{
-                              fontWeight: 600,
-                              marginBottom: 5,
+                              fontWeight:
+                                600,
+                              marginBottom:
+                                5,
                             }}
                           >
                             {productImage
@@ -3144,10 +4209,13 @@ function openMovement(product, type = "IN") {
                           </div>
 
                           <div className="image-note">
-                            JPG, PNG, WEBP or other
-                            image files.
+                            JPG, PNG,
+                            WEBP or
+                            other image
+                            files.
                             <br />
-                            Maximum size: 5 MB.
+                            Maximum size:
+                            5 MB.
                             <br />
                             JPG、PNG、WEBP等图片，
                             最大5MB。
@@ -3177,9 +4245,12 @@ function openMovement(product, type = "IN") {
                                 onClick={
                                   removeProductImage
                                 }
-                                disabled={saving}
+                                disabled={
+                                  saving
+                                }
                               >
-                                Remove / 删除
+                                Remove /
+                                删除
                               </button>
                             )}
 
@@ -3190,10 +4261,12 @@ function openMovement(product, type = "IN") {
                       </div>
 
                     </div>
+
                   </div>
 
                   {/* SKU */}
                   <div className="form-group">
+
                     <label className="form-label">
                       SKU *
                     </label>
@@ -3201,35 +4274,44 @@ function openMovement(product, type = "IN") {
                     <input
                       className="input"
                       name="sku"
-                      value={productForm.sku}
+                      value={
+                        productForm.sku
+                      }
                       onChange={
                         handleProductFormChange
                       }
                       placeholder="e.g. PPF-001"
                       required
                     />
+
                   </div>
 
                   {/* NAME */}
                   <div className="form-group">
+
                     <label className="form-label">
-                      Product Name 产品名称 *
+                      Product Name
+                      产品名称 *
                     </label>
 
                     <input
                       className="input"
                       name="name"
-                      value={productForm.name}
+                      value={
+                        productForm.name
+                      }
                       onChange={
                         handleProductFormChange
                       }
                       placeholder="Product name"
                       required
                     />
+
                   </div>
 
                   {/* CATEGORY */}
                   <div className="form-group">
+
                     <label className="form-label">
                       Category 分类 *
                     </label>
@@ -3245,17 +4327,26 @@ function openMovement(product, type = "IN") {
                       }
                       required
                     >
+
                       <option value="">
-                        Select Category / 选择分类
+                        Select Category /
+                        选择分类
                       </option>
 
                       {categories.map(
                         (category) => (
                           <option
-                            key={category.id}
-                            value={category.id}
+                            key={
+                              category.id
+                            }
+                            value={
+                              category.id
+                            }
                           >
-                            {category.name}
+                            {
+                              category.name
+                            }
+
                             {categoryChinese[
                               category.name
                             ]
@@ -3268,11 +4359,14 @@ function openMovement(product, type = "IN") {
                           </option>
                         )
                       )}
+
                     </select>
+
                   </div>
 
                   {/* UNIT */}
                   <div className="form-group">
+
                     <label className="form-label">
                       Unit 单位
                     </label>
@@ -3280,18 +4374,23 @@ function openMovement(product, type = "IN") {
                     <input
                       className="input"
                       name="unit"
-                      value={productForm.unit}
+                      value={
+                        productForm.unit
+                      }
                       onChange={
                         handleProductFormChange
                       }
                       placeholder="pcs"
                     />
+
                   </div>
 
                   {/* COST */}
                   <div className="form-group">
+
                     <label className="form-label">
-                      Cost Price 成本价
+                      Cost Price
+                      成本价
                     </label>
 
                     <input
@@ -3308,12 +4407,15 @@ function openMovement(product, type = "IN") {
                       }
                       placeholder="0.00"
                     />
+
                   </div>
 
                   {/* STOCK */}
                   <div className="form-group">
+
                     <label className="form-label">
-                      Current Stock 当前库存
+                      Current Stock
+                      当前库存
                     </label>
 
                     <input
@@ -3330,12 +4432,15 @@ function openMovement(product, type = "IN") {
                       }
                       placeholder="0"
                     />
+
                   </div>
 
                   {/* MIN */}
                   <div className="form-group">
+
                     <label className="form-label">
-                      Minimum Stock 最低库存
+                      Minimum Stock
+                      最低库存
                     </label>
 
                     <input
@@ -3352,12 +4457,15 @@ function openMovement(product, type = "IN") {
                       }
                       placeholder="0"
                     />
+
                   </div>
 
                   {/* DESCRIPTION */}
                   <div className="form-group full">
+
                     <label className="form-label">
-                      Description 描述
+                      Description
+                      描述
                     </label>
 
                     <textarea
@@ -3370,6 +4478,7 @@ function openMovement(product, type = "IN") {
                       }
                       placeholder="Optional product description..."
                     />
+
                   </div>
 
                 </div>
@@ -3381,33 +4490,38 @@ function openMovement(product, type = "IN") {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={closeProductForm}
-                  disabled={saving}
+                  onClick={
+                    closeProductForm
+                  }
+                  disabled={
+                    saving
+                  }
                 >
                   Cancel / 取消
                 </button>
 
                 <button
-  type="submit"
-  className={`btn ${
-    movementType === "IN"
-      ? "btn-success"
-      : "btn-danger"
-  }`}
-  disabled={saving}
->
-  {saving
-    ? "Saving..."
-    : movementType === "IN"
-    ? "Add Stock / 入库"
-    : "Remove Stock / 出库"}
-</button>
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={
+                    saving ||
+                    uploadingImage
+                  }
+                >
+                  {saving ||
+                  uploadingImage
+                    ? "Saving... 保存中..."
+                    : editingProduct
+                    ? "Save Changes / 保存修改"
+                    : "Save Product / 保存产品"}
+                </button>
 
               </div>
 
             </form>
 
           </div>
+
         </div>
       )}
 
@@ -3420,30 +4534,44 @@ function openMovement(product, type = "IN") {
           className="modal-overlay"
           onMouseDown={(e) => {
             if (
-              e.target === e.currentTarget &&
+              e.target ===
+                e.currentTarget &&
               !saving
             ) {
               closeMovementForm();
             }
           }}
         >
+
           <div className="modal">
 
             <div className="modal-header">
+
               <h2>
-                Stock Movement / 库存变动
+                Stock Movement /
+                库存变动
               </h2>
 
               <button
+                type="button"
                 className="modal-close"
-                onClick={closeMovementForm}
-                disabled={saving}
+                onClick={
+                  closeMovementForm
+                }
+                disabled={
+                  saving
+                }
               >
                 ×
               </button>
+
             </div>
 
-            <form onSubmit={saveMovement}>
+            <form
+              onSubmit={
+                saveMovement
+              }
+            >
 
               <div className="modal-body">
 
@@ -3451,28 +4579,40 @@ function openMovement(product, type = "IN") {
                   <div className="movement-product">
 
                     <div className="movement-product-name">
-                      {selectedProduct.name}
+                      {
+                        selectedProduct.name
+                      }
                     </div>
 
                     <div
                       style={{
-                        color: "#d6ad50",
-                        fontSize: "12px",
-                        marginTop: 3,
+                        color:
+                          "#d6ad50",
+                        fontSize:
+                          "12px",
+                        marginTop:
+                          3,
                       }}
                     >
-                      SKU: {selectedProduct.sku}
+                      SKU:{" "}
+                      {
+                        selectedProduct.sku
+                      }
                     </div>
 
                     <div className="movement-product-stock">
-                      Current Stock / 当前库存:{" "}
+                      Current Stock /
+                      当前库存:{" "}
                       <strong>
                         {Number(
                           selectedProduct.current_stock ||
                             0
                         ).toLocaleString()}
                       </strong>{" "}
-                      {selectedProduct.unit || "pcs"}
+                      {
+                        selectedProduct.unit ||
+                        "pcs"
+                      }
                     </div>
 
                   </div>
@@ -3481,45 +4621,59 @@ function openMovement(product, type = "IN") {
                 <div className="form-grid">
 
                   <div className="form-group full">
-  <label className="form-label">
-    Movement Type / 变动类型
-  </label>
 
-  <div className="movement-type-buttons">
-
-    <button
-      type="button"
-      className={`movement-type ${
-        movementType === "IN"
-          ? "active"
-          : ""
-      }`}
-      onClick={() =>
-        setMovementType("IN")
-      }
-    >
-      + Stock In / 入库
-    </button>
-
-    <button
-      type="button"
-      className={`movement-type ${
-        movementType === "OUT"
-          ? "active"
-          : ""
-      }`}
-      onClick={() =>
-        setMovementType("OUT")
-      }
-    >
-      − Stock Out / 出库
-    </button>
-
-  </div>
-</div>
-                  <div className="form-group">
                     <label className="form-label">
-                      Quantity 数量 *
+                      Movement Type /
+                      变动类型
+                    </label>
+
+                    <div className="movement-type-buttons">
+
+                      <button
+                        type="button"
+                        className={`movement-type ${
+                          movementType ===
+                          "IN"
+                            ? "active"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setMovementType(
+                            "IN"
+                          )
+                        }
+                      >
+                        + Stock In /
+                        入库
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`movement-type ${
+                          movementType ===
+                          "OUT"
+                            ? "active"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setMovementType(
+                            "OUT"
+                          )
+                        }
+                      >
+                        − Stock Out /
+                        出库
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                  <div className="form-group">
+
+                    <label className="form-label">
+                      Quantity
+                      数量 *
                     </label>
 
                     <input
@@ -3536,11 +4690,14 @@ function openMovement(product, type = "IN") {
                       }
                       required
                     />
+
                   </div>
 
                   <div className="form-group">
+
                     <label className="form-label">
-                      Unit Cost 单位成本
+                      Unit Cost
+                      单位成本
                     </label>
 
                     <input
@@ -3556,11 +4713,14 @@ function openMovement(product, type = "IN") {
                         handleMovementFormChange
                       }
                     />
+
                   </div>
 
                   <div className="form-group full">
+
                     <label className="form-label">
-                      Reference 参考
+                      Reference
+                      参考
                     </label>
 
                     <input
@@ -3574,9 +4734,11 @@ function openMovement(product, type = "IN") {
                       }
                       placeholder="Invoice, PO, supplier, etc."
                     />
+
                   </div>
 
                   <div className="form-group full">
+
                     <label className="form-label">
                       Notes 备注
                     </label>
@@ -3591,6 +4753,7 @@ function openMovement(product, type = "IN") {
                       }
                       placeholder="Optional notes..."
                     />
+
                   </div>
 
                 </div>
@@ -3605,7 +4768,9 @@ function openMovement(product, type = "IN") {
                   onClick={
                     closeMovementForm
                   }
-                  disabled={saving}
+                  disabled={
+                    saving
+                  }
                 >
                   Cancel / 取消
                 </button>
@@ -3613,15 +4778,19 @@ function openMovement(product, type = "IN") {
                 <button
                   type="submit"
                   className={`btn ${
-                    movementType === "in"
+                    movementType ===
+                    "IN"
                       ? "btn-success"
                       : "btn-danger"
                   }`}
-                  disabled={saving}
+                  disabled={
+                    saving
+                  }
                 >
                   {saving
                     ? "Saving..."
-                    : movementType === "in"
+                    : movementType ===
+                      "IN"
                     ? "Add Stock / 入库"
                     : "Remove Stock / 出库"}
                 </button>
@@ -3631,6 +4800,7 @@ function openMovement(product, type = "IN") {
             </form>
 
           </div>
+
         </div>
       )}
 
@@ -3639,245 +4809,352 @@ function openMovement(product, type = "IN") {
       ===================================================== */}
 
       {showCategoryForm && (
-  <div
-    className="modal-overlay"
-    onMouseDown={(e) => {
-      if (
-        e.target === e.currentTarget &&
-        !saving
-      ) {
-        closeCategoryForm();
-      }
-    }}
-  >
-    <div className="modal">
-
-      <div className="modal-header">
-        <h2>
-          Categories / 分类
-        </h2>
-
-        <button
-          className="modal-close"
-          onClick={closeCategoryForm}
-          disabled={saving}
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="modal-body">
-
-        {/* ACTIVE CATEGORIES */}
         <div
-          style={{
-            marginBottom: "22px",
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (
+              e.target ===
+                e.currentTarget &&
+              !saving
+            ) {
+              closeCategoryForm();
+            }
           }}
         >
-          <div
-            className="form-label"
-            style={{
-              marginBottom: "10px",
-              fontSize: "14px",
-            }}
-          >
-            Active Categories / 当前分类
-          </div>
 
-          {categories.length === 0 ? (
-            <div
-              style={{
-                padding: "15px",
-                border: "1px solid #333",
-                borderRadius: "8px",
-                color: "#888",
-              }}
-            >
-              No active categories.
-              <br />
-              没有活动分类。
+          <div className="modal">
+
+            <div className="modal-header">
+
+              <h2>
+                Categories / 分类
+              </h2>
+
+              <button
+                type="button"
+                className="modal-close"
+                onClick={
+                  closeCategoryForm
+                }
+                disabled={
+                  saving
+                }
+              >
+                ×
+              </button>
+
             </div>
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}
-            >
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                    padding: "12px",
-                    background: "#202020",
-                    border: "1px solid #333",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                      }}
-                    >
-                      {category.name}
-                    </div>
 
-                    <div
-                      style={{
-                        color: "#999",
-                        fontSize: "12px",
-                        marginTop: "3px",
-                      }}
-                    >
-                      {categoryChinese[
-                        category.name
-                      ] || "—"}
-                    </div>
-                  </div>
+            <div className="modal-body">
 
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() =>
-                      removeCategory(category)
-                    }
-                    disabled={saving}
-                    style={{
-                      padding:
-                        "7px 11px",
-                      fontSize: "12px",
-                    }}
-                  >
-                    Remove / 删除
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ADD CATEGORY */}
-        <div
-          style={{
-            borderTop:
-              "1px solid #333",
-            paddingTop: "20px",
-          }}
-        >
-          <div
-            className="form-label"
-            style={{
-              marginBottom: "10px",
-              fontSize: "14px",
-            }}
-          >
-            Add Category / 添加分类
-          </div>
-
-          {availableCategoriesToAdd.length ===
-          0 ? (
-            <div
-              style={{
-                padding: "12px",
-                background: "#173a27",
-                border:
-                  "1px solid #2e6948",
-                borderRadius: "8px",
-                color: "#a8e4bd",
-                fontSize: "13px",
-              }}
-            >
-              All six categories are active.
-              <br />
-              六个分类都已启用。
-            </div>
-          ) : (
-            <form onSubmit={saveCategory}>
-              <div className="form-group">
-
-                <label className="form-label">
-                  Category 分类
-                </label>
-
-                <select
-                  className="select"
-                  value={categoryName}
-                  onChange={(e) =>
-                    setCategoryName(
-                      e.target.value
-                    )
-                  }
-                  required
-                >
-                  <option value="">
-                    Select Category / 选择分类
-                  </option>
-
-                  {availableCategoriesToAdd.map(
-                    (category) => (
-                      <option
-                        key={category.name}
-                        value={category.name}
-                      >
-                        {category.name} —{" "}
-                        {category.chinese}
-                      </option>
-                    )
-                  )}
-                </select>
-
-              </div>
+              {/* ACTIVE CATEGORIES */}
 
               <div
                 style={{
-                  marginTop: "15px",
-                  display: "flex",
-                  justifyContent:
-                    "flex-end",
+                  marginBottom:
+                    "22px",
                 }}
               >
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={
-                    saving ||
-                    !categoryName
-                  }
+
+                <div
+                  className="form-label"
+                  style={{
+                    marginBottom:
+                      "10px",
+                    fontSize:
+                      "14px",
+                  }}
                 >
-                  {saving
-                    ? "Saving..."
-                    : "Add Category / 添加分类"}
-                </button>
+                  Active Categories /
+                  当前分类
+                </div>
+
+                {categories.length ===
+                0 ? (
+                  <div
+                    style={{
+                      padding:
+                        "15px",
+                      border:
+                        "1px solid #333",
+                      borderRadius:
+                        "8px",
+                      color:
+                        "#888",
+                    }}
+                  >
+                    No active
+                    categories.
+                    <br />
+                    没有活动分类。
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display:
+                        "flex",
+                      flexDirection:
+                        "column",
+                      gap:
+                        "8px",
+                    }}
+                  >
+
+                    {categories.map(
+                      (category) => (
+                        <div
+                          key={
+                            category.id
+                          }
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            justifyContent:
+                              "space-between",
+                            gap:
+                              "12px",
+                            padding:
+                              "12px",
+                            background:
+                              "#202020",
+                            border:
+                              "1px solid #333",
+                            borderRadius:
+                              "8px",
+                          }}
+                        >
+
+                          <div>
+
+                            <div
+                              style={{
+                                fontWeight:
+                                  700,
+                              }}
+                            >
+                              {
+                                category.name
+                              }
+                            </div>
+
+                            <div
+                              style={{
+                                color:
+                                  "#999",
+                                fontSize:
+                                  "12px",
+                                marginTop:
+                                  "3px",
+                              }}
+                            >
+                              {categoryChinese[
+                                category.name
+                              ] ||
+                                "—"}
+                            </div>
+
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() =>
+                              removeCategory(
+                                category
+                              )
+                            }
+                            disabled={
+                              saving
+                            }
+                            style={{
+                              padding:
+                                "7px 11px",
+                              fontSize:
+                                "12px",
+                            }}
+                          >
+                            Remove /
+                            删除
+                          </button>
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+                )}
+
               </div>
-            </form>
-          )}
+
+              {/* ADD CATEGORY */}
+
+              <div
+                style={{
+                  borderTop:
+                    "1px solid #333",
+                  paddingTop:
+                    "20px",
+                }}
+              >
+
+                <div
+                  className="form-label"
+                  style={{
+                    marginBottom:
+                      "10px",
+                    fontSize:
+                      "14px",
+                  }}
+                >
+                  Add Category /
+                  添加分类
+                </div>
+
+                {availableCategoriesToAdd.length ===
+                0 ? (
+                  <div
+                    style={{
+                      padding:
+                        "12px",
+                      background:
+                        "#173a27",
+                      border:
+                        "1px solid #2e6948",
+                      borderRadius:
+                        "8px",
+                      color:
+                        "#a8e4bd",
+                      fontSize:
+                        "13px",
+                    }}
+                  >
+                    All{" "}
+                    {
+                      ALLOWED_CATEGORIES.length
+                    }{" "}
+                    categories are
+                    active.
+                    <br />
+                    全部{" "}
+                    {
+                      ALLOWED_CATEGORIES.length
+                    }{" "}
+                    个分类都已启用。
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={
+                      saveCategory
+                    }
+                  >
+
+                    <div className="form-group">
+
+                      <label className="form-label">
+                        Category 分类
+                      </label>
+
+                      <select
+                        className="select"
+                        value={
+                          categoryName
+                        }
+                        onChange={(e) =>
+                          setCategoryName(
+                            e.target.value
+                          )
+                        }
+                        required
+                      >
+
+                        <option value="">
+                          Select Category /
+                          选择分类
+                        </option>
+
+                        {availableCategoriesToAdd.map(
+                          (
+                            category
+                          ) => (
+                            <option
+                              key={
+                                category.name
+                              }
+                              value={
+                                category.name
+                              }
+                            >
+                              {
+                                category.name
+                              }{" "}
+                              —{" "}
+                              {
+                                category.chinese
+                              }
+                            </option>
+                          )
+                        )}
+
+                      </select>
+
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop:
+                          "15px",
+                        display:
+                          "flex",
+                        justifyContent:
+                          "flex-end",
+                      }}
+                    >
+
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={
+                          saving ||
+                          !categoryName
+                        }
+                      >
+                        {saving
+                          ? "Saving..."
+                          : "Add Category / 添加分类"}
+                      </button>
+
+                    </div>
+
+                  </form>
+                )}
+
+              </div>
+
+            </div>
+
+            <div className="modal-footer">
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={
+                  closeCategoryForm
+                }
+                disabled={
+                  saving
+                }
+              >
+                Close / 关闭
+              </button>
+
+            </div>
+
+          </div>
 
         </div>
-
-      </div>
-
-      <div className="modal-footer">
-
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={closeCategoryForm}
-          disabled={saving}
-        >
-          Close / 关闭
-        </button>
-
-      </div>
-
-    </div>
-  </div>
-)}
+      )}
 
       {/* =====================================================
           HISTORY MODAL
@@ -3888,24 +5165,29 @@ function openMovement(product, type = "IN") {
           className="modal-overlay"
           onMouseDown={(e) => {
             if (
-              e.target === e.currentTarget
+              e.target ===
+              e.currentTarget
             ) {
               closeHistoryModal();
             }
           }}
         >
+
           <div className="modal modal-large">
 
             <div className="modal-header">
 
               <h2>
-                Inventory History / 库存历史
+                Inventory History /
+                库存历史
+
                 {selectedProduct
                   ? ` — ${selectedProduct.name}`
                   : ""}
               </h2>
 
               <button
+                type="button"
                 className="modal-close"
                 onClick={
                   closeHistoryModal
@@ -3924,9 +5206,11 @@ function openMovement(product, type = "IN") {
                   <br />
                   正在加载历史记录...
                 </div>
-              ) : history.length === 0 ? (
+              ) : history.length ===
+                0 ? (
                 <div className="empty-state">
-                  No inventory movements found.
+                  No inventory
+                  movements found.
                   <br />
                   没有库存变动记录。
                 </div>
@@ -3936,7 +5220,9 @@ function openMovement(product, type = "IN") {
                   <table className="history-table">
 
                     <thead>
+
                       <tr>
+
                         <th>
                           Date 日期
                         </th>
@@ -3950,20 +5236,25 @@ function openMovement(product, type = "IN") {
                         </th>
 
                         <th>
-                          Unit Cost 单位成本
+                          Unit Cost
+                          单位成本
                         </th>
 
                         <th>
-                          Reference 参考
+                          Reference
+                          参考
                         </th>
 
                         <th>
                           Notes 备注
                         </th>
+
                       </tr>
+
                     </thead>
 
                     <tbody>
+
                       {history.map(
                         (movement) => {
 
@@ -3975,10 +5266,14 @@ function openMovement(product, type = "IN") {
                             ).toLowerCase();
 
                           const isIn =
-                            type === "in" ||
-                            type === "stock_in" ||
-                            type === "purchase" ||
-                            type === "receive";
+                            type ===
+                              "in" ||
+                            type ===
+                              "stock_in" ||
+                            type ===
+                              "purchase" ||
+                            type ===
+                              "receive";
 
                           return (
                             <tr
@@ -3998,6 +5293,7 @@ function openMovement(product, type = "IN") {
                               </td>
 
                               <td>
+
                                 <span
                                   className={
                                     isIn
@@ -4009,6 +5305,7 @@ function openMovement(product, type = "IN") {
                                     ? "+ IN / 入库"
                                     : "- OUT / 出库"}
                                 </span>
+
                               </td>
 
                               <td>
@@ -4027,19 +5324,24 @@ function openMovement(product, type = "IN") {
                               </td>
 
                               <td>
-                                {movement.reference ||
-                                  "—"}
+                                {
+                                  movement.reference ||
+                                  "—"
+                                }
                               </td>
 
                               <td>
-                                {movement.notes ||
-                                  "—"}
+                                {
+                                  movement.notes ||
+                                  "—"
+                                }
                               </td>
 
                             </tr>
                           );
                         }
                       )}
+
                     </tbody>
 
                   </table>
@@ -4052,6 +5354,7 @@ function openMovement(product, type = "IN") {
             <div className="modal-footer">
 
               <button
+                type="button"
                 className="btn btn-secondary"
                 onClick={
                   closeHistoryModal
@@ -4063,6 +5366,7 @@ function openMovement(product, type = "IN") {
             </div>
 
           </div>
+
         </div>
       )}
 
@@ -4073,12 +5377,17 @@ function openMovement(product, type = "IN") {
       {selectedImage && (
         <div
           className="modal-overlay"
-          onClick={closeImageViewer}
+          onClick={
+            closeImageViewer
+          }
         >
 
           <button
+            type="button"
             className="image-viewer-close"
-            onClick={closeImageViewer}
+            onClick={
+              closeImageViewer
+            }
           >
             ×
           </button>
@@ -4091,12 +5400,18 @@ function openMovement(product, type = "IN") {
           >
 
             <img
-              src={selectedImage.url}
-              alt={selectedImage.name}
+              src={
+                selectedImage.url
+              }
+              alt={
+                selectedImage.name
+              }
             />
 
             <div className="image-viewer-title">
-              {selectedImage.name}
+              {
+                selectedImage.name
+              }
             </div>
 
           </div>
