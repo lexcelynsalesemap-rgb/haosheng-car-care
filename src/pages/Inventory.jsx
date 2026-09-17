@@ -152,15 +152,22 @@ export default function Inventory() {
     loggedInUser?.is_admin === true ||
     loggedInUser?.isAdmin === true;
 
-  const userName =
-    loggedInUser?.name ||
-    loggedInUser?.full_name ||
-    loggedInUser?.username ||
-    "";
+ const userName =
+  loggedInUser?.name ||
+  loggedInUser?.full_name ||
+  loggedInUser?.username ||
+  loggedInUser?.user_name ||
+  "";
 
-  const canManageStock =
-    isAdmin ||
-    userName.toLowerCase().includes("daniel");
+
+const normalizedUserName = String(userName || "")
+  .trim()
+  .toLowerCase();
+
+const canManageStock =
+  isAdmin ||
+  normalizedUserName.includes("daniel") ||
+  normalizedUserName === "shop 1 staff";
 
   const showCost = canSeeInventoryCost(loggedInUser);
 
@@ -2599,32 +2606,22 @@ const filteredProducts = useMemo(() => {
                             )}
 
                             {canManageStock && (
-                              <>
-                                <button
-                                  className="action-btn"
-                                  onClick={() =>
-                                    openMovement(
-                                      product,
-                                      "in"
-                                    )
-                                  }
-                                >
-                                  + Stock 入库
-                                </button>
+  <>
+    <button
+      className="action-btn"
+      onClick={() => openMovement(product, "in")}
+    >
+      + Stock 入库
+    </button>
 
-                                <button
-                                  className="action-btn"
-                                  onClick={() =>
-                                    openMovement(
-                                      product,
-                                      "out"
-                                    )
-                                  }
-                                >
-                                  − Stock 出库
-                                </button>
-                              </>
-                            )}
+    <button
+      className="action-btn"
+      onClick={() => openMovement(product, "out")}
+    >
+      − Stock 出库
+    </button>
+  </>
+)}
 
                             <button
                               className="action-btn"
