@@ -3210,31 +3210,48 @@ export default function Inventory() {
            PRINT REPORT
         ===================================================== */
 
-        .inventory-print-area {
-          display: none;
-        }
+      .inventory-print-area {
+  display: none;
+}
 
-        .print-report-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 20px;
-          margin-bottom: 18px;
-          padding-bottom: 12px;
-          border-bottom: 2px solid #222;
-        }
+/* LOGO + REPORT TITLE */
+.print-report-brand {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
 
-        .print-report-title {
-          font-size: 24px;
-          font-weight: 700;
-          color: #111;
-        }
+.print-report-logo {
+  width: 45mm;
+  height: 20mm;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+  flex-shrink: 0;
+}
 
-        .print-report-subtitle {
-          margin-top: 4px;
-          font-size: 12px;
-          color: #555;
-        }
+/* REPORT HEADER */
+.print-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #222;
+}
+
+.print-report-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111;
+}
+
+.print-report-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #555;
+}
 
         .print-report-meta {
           text-align: right;
@@ -4172,51 +4189,60 @@ export default function Inventory() {
 
       <div className="inventory-print-area">
 
-        <div className="print-report-header">
+  <div className="print-report-header">
 
-          <div>
+    {/* LOGO + TITLE */}
+    <div className="print-report-brand">
 
-            <div className="print-report-title">
-              Inventory Stock Report /
-              库存报告
-            </div>
+      <img
+        src="/ga-logo.png"
+        alt="GA Logo"
+        className="print-report-logo"
+      />
 
-            <div className="print-report-subtitle">
-              Product inventory and current stock levels /
-              产品库存及当前库存水平
-            </div>
-
-          </div>
-
-          <div className="print-report-meta">
-
-            <div>
-              Printed:
-              {" "}
-              {new Date().toLocaleString(
-                "en-QA"
-              )}
-            </div>
-
-            <div>
-              Products:
-              {" "}
-              {filteredProducts.length}
-            </div>
-
-            <div>
-              Shop:
-              {" "}
-              {loggedInUser?.shop_name ||
-                loggedInUser?.shop?.name ||
-                shopId ||
-                "—"}
-            </div>
-
-          </div>
-
+      <div>
+        <div className="print-report-title">
+          Inventory Stock Report /
+          库存报告
         </div>
 
+        <div className="print-report-subtitle">
+          Product inventory and current stock levels /
+          产品库存及当前库存水平
+        </div>
+      </div>
+
+    </div>
+
+    {/* REPORT INFORMATION */}
+    <div className="print-report-meta">
+
+      <div>
+        Printed:
+        {" "}
+        {new Date().toLocaleString(
+          "en-QA"
+        )}
+      </div>
+
+      <div>
+        Products:
+        {" "}
+        {filteredProducts.length}
+      </div>
+
+      <div>
+        Shop:
+        {" "}
+        {loggedInUser?.shop_name ||
+          loggedInUser?.shop?.name ||
+          shopId ||
+          "—"}
+      </div>
+
+    </div>
+
+  </div>
         <div className="print-filter-summary">
 
           <strong>
