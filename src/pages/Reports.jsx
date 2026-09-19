@@ -2204,9 +2204,65 @@ function printTeyseerReport() {
     return dateA.localeCompare(dateB);
   });
 
+  /*
+  ------------------------------------------------------------
+  GET PRICE FROM JOB SERVICES
+  ------------------------------------------------------------
+  */
+
+  function getJobPrice(job) {
+    const services = Array.isArray(job.services)
+      ? job.services
+      : [];
+
+    const serviceDetails =
+      job.serviceDetails &&
+      typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
+
+    let total = 0;
+
+    services.forEach((serviceName) => {
+      const details =
+        serviceDetails[serviceName] || {};
+
+      const price =
+        Number(details.price || 0);
+
+      const quantity =
+        Number(details.quantity || 1);
+
+      const discount =
+        Number(details.discount || 0);
+
+      const serviceTotal = Math.max(
+        price * quantity - discount,
+        0
+      );
+
+      total += serviceTotal;
+    });
+
+    return total;
+  }
+
+  /*
+  ------------------------------------------------------------
+  BUILD ROWS
+  ------------------------------------------------------------
+  */
+
   const rows = sortedTeyseerJobs
     .map((job) => {
-      const carMake =
+
+      /*
+      CAR TYPE / MAKE
+      */
+
+      const carType =
+        job.carType ||
+        job.car_type ||
         job.carMake ||
         job.car_make ||
         job.make ||
@@ -2214,11 +2270,19 @@ function printTeyseerReport() {
         job.brand ||
         "-";
 
+      /*
+      MODEL
+      */
+
       const model =
         job.carModel ||
         job.car_model ||
         job.model ||
         "-";
+
+      /*
+      PLATE
+      */
 
       const plate =
         job.plate ||
@@ -2226,11 +2290,19 @@ function printTeyseerReport() {
         job.plate_no ||
         "-";
 
+      /*
+      VOUCHER
+      */
+
       const voucher =
         job.voucherNumber ||
         job.voucher_number ||
         job.voucher ||
         "-";
+
+      /*
+      RECEIPT
+      */
 
       const receipt =
         job.receipt_number ||
@@ -2239,15 +2311,17 @@ function printTeyseerReport() {
         "-";
 
       /*
-      IMPORTANT:
-      calculateJob() already calculated the correct
-      Teyseer amount for this job.
+      PRICE
+
+      Do NOT use job.teyseerSales here.
+      Calculate directly from the job services.
       */
 
-      const amount = number(job.teyseerSales);
+      const amount = getJobPrice(job);
 
       return `
         <tr>
+
           <td>
             ${escapeHtml(
               getJobDate(job) || "-"
@@ -2255,7 +2329,7 @@ function printTeyseerReport() {
           </td>
 
           <td>
-            ${escapeHtml(carMake)}
+            ${escapeHtml(carType)}
           </td>
 
           <td>
@@ -2283,17 +2357,30 @@ function printTeyseerReport() {
           <td class="price">
             QAR ${money(amount)}
           </td>
+
         </tr>
       `;
     })
     .join("");
 
+  /*
+  ------------------------------------------------------------
+  TOTAL
+  ------------------------------------------------------------
+  */
+
   const totalAmount =
     sortedTeyseerJobs.reduce(
       (total, job) =>
-        total + number(job.teyseerSales),
+        total + getJobPrice(job),
       0
     );
+
+  /*
+  ------------------------------------------------------------
+  INVOICE DATE
+  ------------------------------------------------------------
+  */
 
   const invoiceDate =
     new Date().toLocaleDateString(
@@ -2305,6 +2392,12 @@ function printTeyseerReport() {
       }
     );
 
+  /*
+  ------------------------------------------------------------
+  INVOICE NUMBER
+  ------------------------------------------------------------
+  */
+
   const invoiceNumber =
     String(
       typeof teyseerInvoiceNumber !==
@@ -2312,6 +2405,12 @@ function printTeyseerReport() {
         ? teyseerInvoiceNumber
         : "0006"
     ).padStart(4, "0");
+
+  /*
+  ------------------------------------------------------------
+  OPEN PRINT WINDOW
+  ------------------------------------------------------------
+  */
 
   const printWindow = window.open(
     "",
@@ -2329,7 +2428,9 @@ function printTeyseerReport() {
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
+
     <head>
+
       <meta charset="UTF-8" />
 
       <title>
@@ -2640,9 +2741,11 @@ function printTeyseerReport() {
           .footer {
             page-break-inside: avoid;
           }
+
         }
 
       </style>
+
     </head>
 
     <body>
@@ -2652,10 +2755,12 @@ function printTeyseerReport() {
         <div class="header">
 
           <div class="logoArea">
+
             <img
               src="${gaLogo}"
               class="logo"
             />
+
           </div>
 
           <div class="companyArea">
@@ -2692,6 +2797,7 @@ function printTeyseerReport() {
         <table class="infoTable">
 
           <tr>
+
             <td class="infoLabel">
               DATE:
             </td>
@@ -2707,9 +2813,11 @@ function printTeyseerReport() {
             <td class="infoRightValue">
               ${escapeHtml(invoiceNumber)}
             </td>
+
           </tr>
 
           <tr>
+
             <td class="infoLabel">
               NAME/COMPANY:
             </td>
@@ -2720,9 +2828,11 @@ function printTeyseerReport() {
             >
               TEYSEER MOTORS CO. WLL.
             </td>
+
           </tr>
 
           <tr>
+
             <td class="infoLabel">
               ADDRESS:
             </td>
@@ -2733,9 +2843,11 @@ function printTeyseerReport() {
             >
               AIRPORT St. DOHA, QATAR
             </td>
+
           </tr>
 
           <tr>
+
             <td class="infoLabel">
               CONTACT NUMBER:
             </td>
@@ -2746,6 +2858,7 @@ function printTeyseerReport() {
             >
               50900458
             </td>
+
           </tr>
 
         </table>
@@ -2753,6 +2866,7 @@ function printTeyseerReport() {
         <table class="mainTable">
 
           <thead>
+
             <tr>
 
               <th class="date">
@@ -2788,6 +2902,7 @@ function printTeyseerReport() {
               </th>
 
             </tr>
+
           </thead>
 
           <tbody>
@@ -2891,6 +3006,7 @@ function printTeyseerReport() {
       </div>
 
     </body>
+
     </html>
   `);
 
