@@ -2284,85 +2284,117 @@ async function printTeyseerReport() {
   );
 
   const { data: teyseerServices, error } =
-    await supabase
-      .from("job_services")
-      .select("*")
-      .in("job_id", jobIds)
-      .eq("owner", "Teyseer");
+  await supabase
+    .from("job_services")
+    .select("*")
+    .in("job_id", jobIds);
 
-  if (error) {
-    console.error(
-      "TEYSEER SERVICES ERROR:",
-      error
-    );
+if (error) {
+  console.error(
+    "TEYSEER SERVICES ERROR:",
+    error
+  );
 
-    alert(error.message);
-    return;
+  alert(error.message);
+  return;
+}
+
+const servicesByJob = {};
+
+(teyseerServices || []).forEach((service) => {
+  if (!servicesByJob[service.job_id]) {
+    servicesByJob[service.job_id] = [];
   }
 
-  /*
-   * GROUP SERVICES BY JOB
-   */
-  const servicesByJob = {};
+  servicesByJob[service.job_id].push(service);
+});
 
-  (teyseerServices || []).forEach((service) => {
-    if (!servicesByJob[service.job_id]) {
-      servicesByJob[service.job_id] = [];
-    }
 
-    servicesByJob[service.job_id].push(service);
-  });
+function getTeyseerServices(job) {
+  const source = normalizeSource(job?.source);
 
-  /*
-   * DESCRIPTION
-   */
-  function getTeyseerServices(job) {
-    const services =
-      servicesByJob[job.id] || [];
+  const services = servicesByJob[job.id] || [];
 
+  if (source === "teyseer motors") {
     if (!services.length) {
-      return "Full WTT";
+      return "-";
     }
 
     return services
       .map((service) =>
-        service.service_name || ""
+        service?.service_name ||
+        service?.name ||
+        service?.title ||
+        ""
       )
       .filter(Boolean)
       .join(", ");
   }
 
-  /*
-   * PRICE
-   *
-   * ONLY TEYSEER SERVICES
-   */
-  function getJobPrice(job) {
-    const services =
-      servicesByJob[job.id] || [];
+  const teyseerServices = services.filter(
+    (service) =>
+      normalizeSource(service?.owner) === "teyseer"
+  );
 
-    return services.reduce(
-      (total, service) => {
-        const price = Number(
-          service.price || 0
-        );
+  if (!teyseerServices.length) {
+    return "-";
+  }
 
-        const discount = Number(
-          service.discount || 0
-        );
+  return teyseerServices
+    .map((service) =>
+      service?.service_name ||
+      service?.name ||
+      service?.title ||
+      ""
+    )
+    .filter(Boolean)
+    .join(", ");
+}
 
-        return (
-          total +
-          Math.max(
-            price - discount,
-            0
-          )
-        );
-      },
-      0
+
+function getJobPrice(job) {
+  const source = normalizeSource(job?.source);
+
+  const services = servicesByJob[job.id] || [];
+
+  let servicesToCalculate;
+
+  if (source === "teyseer motors") {
+    servicesToCalculate = services;
+  } else {
+    servicesToCalculate = services.filter(
+      (service) =>
+        normalizeSource(service?.owner) === "teyseer"
     );
   }
 
+  return servicesToCalculate.reduce(
+    (total, service) => {
+      const price = Number(
+        service?.price || 0
+      );
+
+      const quantity = Number(
+        service?.quantity ||
+        service?.qty ||
+        1
+      );
+
+      const discount = Number(
+        service?.discount || 0
+      );
+
+      const amount =
+        Math.max(
+          price * quantity - discount,
+          0
+        );
+
+      return total + amount;
+    },
+    0
+  );
+}
   const rows = sortedTeyseerJobs
     .map((job) => {
       const source = job.source || "";
