@@ -22,13 +22,14 @@ function JobDetails() {
   // TEYSEER CHECK
   // -----------------------------------
 
-  function isTeyseerSource(sourceName) {
-    return (
-      sourceName === "Teyseer Motors" ||
-      sourceName === "Teyseer Motors - Bahaa" ||
-      sourceName === "Teyseer Motors - Salah"
-    );
-  }
+ function isTeyseerSource(sourceName) {
+  return (
+    sourceName === "Teyseer Motors" ||
+    sourceName === "Teyseer Motors - Bahaa" ||
+    sourceName === "Teyseer Motors - Salah" ||
+    sourceName === "Teyseer Motors - Abdou"
+  );
+}
 
   function isWttService(serviceName) {
     return serviceName

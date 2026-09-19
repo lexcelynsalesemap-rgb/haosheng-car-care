@@ -1292,230 +1292,10 @@ const financial = useMemo(() => {
   jobs,
   linkedPayments,
 ]);
-  /*
-  ============================================================
-  TEYSEER JOBS
-  ============================================================
-  */
-
-  const teyseerJobs =
-    useMemo(() => {
-      return calculatedJobs.filter(
-        (job) =>
-          job.isTeyseer
-      );
-    }, [calculatedJobs]);
-
-  const filteredTeyseerJobs =
-    useMemo(() => {
-      return teyseerJobs.filter(
-        (job) =>
-          isDateInRange(
-            getJobDate(job),
-            teyseerStartDate,
-            teyseerEndDate
-          )
-      );
-    }, [
-      teyseerJobs,
-      teyseerStartDate,
-      teyseerEndDate,
-    ]);
-
-  /*
-  ============================================================
-  TEYSEER SOURCE TOTALS
-  ============================================================
-  */
-
-  const teyseerMotorsAmount = filteredTeyseerJobs
-  .filter(
-    (job) =>
-      normalizeSource(job.source) ===
-      "Teyseer Motors"
-  )
-  .reduce(
-    (sum, job) =>
-      sum + Number(job.teyseerSales || 0),
-    0
-  );
-
-const salahAmount = filteredTeyseerJobs
-  .filter(
-    (job) =>
-      normalizeSource(job.source) ===
-      "Teyseer Motors - Salah"
-  )
-  .reduce(
-    (sum, job) =>
-      sum + Number(job.teyseerSales || 0),
-    0
-  );
-
-const bahaaAmount = filteredTeyseerJobs
-  .filter(
-    (job) =>
-      normalizeSource(job.source) ===
-      "Teyseer Motors - Bahaa"
-  )
-  .reduce(
-    (sum, job) =>
-      sum + Number(job.teyseerSales || 0),
-    0
-  );
-
-const abdouAmount = filteredTeyseerJobs
-  .filter(
-    (job) =>
-      normalizeSource(job.source) ===
-      "Teyseer Motors - Abdou"
-  )
-  .reduce(
-    (sum, job) =>
-      sum + Number(job.teyseerSales || 0),
-    0
-  );
-
- const filteredTeyseerSales = financial.teyseerSales;
-
+const filteredTeyseerSales = financial.teyseerSales;
 const filteredTeyseerPaid = financial.teyseerPaid;
-
 const filteredTeyseerBalance = financial.teyseerBalance;
 
-  /*
-  ============================================================
-  TEYSEER SERVICE COUNTS
-  ============================================================
-  */
-
-  const teyseerMotorsServiceItems =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors"
-        )
-        .reduce(
-          (count, job) =>
-            count +
-            job.services.length,
-          0
-        );
-    }, [filteredTeyseerJobs]);
-
-  const salahServiceItems =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors - Salah"
-        )
-        .reduce(
-          (count, job) =>
-            count +
-            job.services.length,
-          0
-        );
-    }, [filteredTeyseerJobs]);
-
-  const bahaaServiceItems =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors - Bahaa"
-        )
-        .reduce(
-          (count, job) =>
-            count +
-            job.services.length,
-          0
-        );
-    }, [filteredTeyseerJobs]);
-
-  const abdouServiceItems =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors - Abdou"
-        )
-        .reduce(
-          (count, job) =>
-            count +
-            job.services.length,
-          0
-        );
-    }, [filteredTeyseerJobs]);
-
-  const filteredTeyseerCars =
-    filteredTeyseerJobs.length;
-
-  /*
-  ============================================================
-  DISCREPANCIES
-  ============================================================
-  */
-
-  const discrepancyJobs =
-    useMemo(() => {
-      return teyseerJobs.filter(
-        (job) =>
-          Math.abs(
-            number(
-              job.discrepancy
-            )
-          ) > 0.01
-      );
-    }, [teyseerJobs]);
-
-  const totalTeyseerDiscrepancy =
-    discrepancyJobs.reduce(
-      (sum, job) =>
-        sum +
-        number(
-          job.discrepancy
-        ),
-      0
-    );
-
-  /*
-  ============================================================
-  UNLINKED PAYMENTS
-  ============================================================
-  */
-
-  const unlinkedPayments =
-    useMemo(() => {
-      return payments.filter(
-        (payment) =>
-          payment.job_id === null ||
-          payment.job_id === undefined ||
-          payment.job_id === ""
-      );
-    }, [payments]);
-
-  const unlinkedPaymentTotal =
-    unlinkedPayments.reduce(
-      (sum, payment) =>
-        sum +
-        number(
-          payment.amount
-        ),
-      0
-    );
 
   /*
   ============================================================
@@ -1812,543 +1592,709 @@ const filteredTeyseerBalance = financial.teyseerBalance;
       ([a], [b]) =>
         b.localeCompare(a)
     );
-  /*
-  ============================================================
-  AL NUSOOR
-  ============================================================
-  */
-  const alnusoorJobs =
-    useMemo(() => {
-      return calculatedJobs.filter(
-        (job) => {
-          const customer =
-            String(
-              job.customer || ""
-            )
-              .toLowerCase()
-              .trim();
-          const isAlnusoor =
-            customer.includes(
-              "al nusoor"
-            ) ||
-            customer.includes(
-              "alnusoor"
-            );
-          if (!isAlnusoor) {
-            return false;
-          }
-          return isDateInRange(
-            getJobDate(job),
-            alnusoorStartDate,
-            alnusoorEndDate
-          );
-        }
-      );
-    }, [
-      calculatedJobs,
+ /*
+============================================================
+AL NUSOOR
+============================================================
+*/
+
+const alnusoorJobs = useMemo(() => {
+  return calculatedJobs.filter((job) => {
+    const customer = String(job?.customer || "")
+      .toLowerCase()
+      .trim();
+
+    const isAlnusoor =
+      customer.includes("al nusoor") ||
+      customer.includes("alnusoor");
+
+    if (!isAlnusoor) {
+      return false;
+    }
+
+    return isDateInRange(
+      getJobDate(job),
       alnusoorStartDate,
-      alnusoorEndDate,
-    ]);
-  const alnusoorGross =
-    alnusoorJobs.reduce(
-      (sum, job) =>
-        sum + job.gross,
-      0
+      alnusoorEndDate
     );
-  const alnusoorDiscount =
-    alnusoorJobs.reduce(
-      (sum, job) =>
-        sum + job.discount,
-      0
-    );
-  const alnusoorNet =
-    alnusoorJobs.reduce(
-      (sum, job) =>
-        sum + job.canonicalNet,
-      0
-    );
-  const alnusoorPaid =
-    alnusoorJobs.reduce(
-      (sum, job) =>
-        sum + job.customerPaid,
-      0
-    );
-  const alnusoorBalance =
-    alnusoorJobs.reduce(
-      (sum, job) =>
-        sum + job.customerBalance,
-      0
-    );
-  /*
-  ============================================================
-  PRINT AL NUSOOR
-  ============================================================
-  */
-  function printAlnusoorReport() {
-    if (
-      alnusoorJobs.length === 0
-    ) {
-      alert(
-        "No Al Nusoor jobs found."
-      );
-      return;
-    }
-    const rows =
-      alnusoorJobs
-        .map(
-          (job) => `
-            <tr>
-              <td>${getJobDate(job) || "-"}</td>
-              <td>${escapeHtml(
-                job.customer || "-"
-              )}</td>
-              <td>${escapeHtml(
-                job.carMake ||
-                  job.carType ||
-                  job.carModel ||
-                  "-"
-              )}</td>
-              <td>${escapeHtml(
-                job.plate || "-"
-              )}</td>
-              <td class="money">${money(
-                job.gross
-              )}</td>
-              <td class="money">${money(
-                job.discount
-              )}</td>
-              <td class="money">${money(
-                job.canonicalNet
-              )}</td>
-              <td class="money">${money(
-                job.customerPaid
-              )}</td>
-              <td class="money">${money(
-                job.customerBalance
-              )}</td>
-            </tr>
-          `
-        )
-        .join("");
-    const printWindow =
-      window.open(
-        "",
-        "_blank",
-        "width=1200,height=1000"
-      );
-    if (!printWindow) {
-      alert(
-        "Please allow pop-ups for this website."
-      );
-      return;
-    }
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Al Nusoor Center Report</title>
-        <style>
-          * {
-            box-sizing: border-box;
-          }
-          @page {
-            size: A4 landscape;
-            margin: 10mm;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            color: #000;
-            font-size: 10px;
-            margin: 0;
-            padding: 10px;
-          }
-          .header {
-            display: flex;
-            gap: 18px;
-            margin-bottom: 25px;
-          }
-          .logo {
-            width: 95px;
-            height: 95px;
-            object-fit: contain;
-          }
-          .companyName {
-            font-size: 17px;
-            font-weight: bold;
-            margin-bottom: 8px;
-          }
-          .arabicName {
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 8px;
-          }
-          .address {
-            font-size: 11px;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-          th {
-            text-align: left;
-            padding: 7px;
-            background: #111827;
-            color: white;
-          }
-          td {
-            padding: 7px;
-            border-bottom: 1px solid #ddd;
-          }
-          .money {
-            text-align: right;
-          }
-          .summary {
-            margin-top: 20px;
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
-          }
-          .box {
-            border: 1px solid #ccc;
-            padding: 10px;
-          }
-          .label {
-            font-size: 9px;
-            color: #666;
-          }
-          .value {
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 5px;
-          }
-          .footer {
-            margin-top: 40px;
-            border-top: 1px solid #000;
-            padding-top: 10px;
-            text-align: center;
-            font-size: 8px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <img
-            src="${gaLogo}"
-            class="logo"
-          />
-          <div>
-            <div class="companyName">
-              HAOSHENG CAR SERVICE AND ACCESSORIES
-            </div>
-            <div class="arabicName">
-              هاوشنغ لخدمات وزينة السيارات
-            </div>
-            <div class="address">
-              Building 358, Salwa Road, Doha - Qatar
-            </div>
-          </div>
-        </div>
-        <h2>AL NUSOOR CENTER REPORT</h2>
-        <p>
-          Period:
-          ${alnusoorStartDate || "All dates"}
-          -
-          ${alnusoorEndDate || "All dates"}
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>DATE</th>
-              <th>CUSTOMER</th>
-              <th>CAR</th>
-              <th>PLATE</th>
-              <th>GROSS</th>
-              <th>DISCOUNT</th>
-              <th>NET</th>
-              <th>PAID</th>
-              <th>BALANCE</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-        <div class="summary">
-          <div class="box">
-            <div class="label">CARS</div>
-            <div class="value">
-              ${alnusoorJobs.length}
-            </div>
-          </div>
-          <div class="box">
-            <div class="label">GROSS</div>
-            <div class="value">
-              QAR ${money(alnusoorGross)}
-            </div>
-          </div>
-          <div class="box">
-            <div class="label">DISCOUNT</div>
-            <div class="value">
-              QAR ${money(alnusoorDiscount)}
-            </div>
-          </div>
-          <div class="box">
-            <div class="label">NET</div>
-            <div class="value">
-              QAR ${money(alnusoorNet)}
-            </div>
-          </div>
-          <div class="box">
-            <div class="label">PAID</div>
-            <div class="value">
-              QAR ${money(alnusoorPaid)}
-            </div>
-          </div>
-          <div class="box">
-            <div class="label">BALANCE</div>
-            <div class="value">
-              QAR ${money(alnusoorBalance)}
-            </div>
-          </div>
-        </div>
-        <div class="footer">
-          <strong>
-            Tel: +974 4441 5866 |
-            C.R.NO: 199725 |
-            E-mail: info@haoshengcar.com
-          </strong>
-          <br />
-          Fereej Al Manaseer,
-          Zone 55, St. 340,
-          Bldg 358, Salwa Road,
-          Doha, Qatar
-        </div>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 500);
-    };
+  });
+}, [
+  calculatedJobs,
+  alnusoorStartDate,
+  alnusoorEndDate,
+]);
+
+const alnusoorGross = alnusoorJobs.reduce(
+  (sum, job) => sum + number(job?.gross),
+  0
+);
+
+const alnusoorDiscount = alnusoorJobs.reduce(
+  (sum, job) => sum + number(job?.discount),
+  0
+);
+
+const alnusoorNet = alnusoorJobs.reduce(
+  (sum, job) => sum + number(job?.canonicalNet),
+  0
+);
+
+const alnusoorPaid = alnusoorJobs.reduce(
+  (sum, job) => sum + number(job?.customerPaid),
+  0
+);
+
+const alnusoorBalance = alnusoorJobs.reduce(
+  (sum, job) => sum + number(job?.customerBalance),
+  0
+);
+
+/*
+============================================================
+PRINT AL NUSOOR
+============================================================
+*/
+
+function printAlnusoorReport() {
+  if (alnusoorJobs.length === 0) {
+    alert("No Al Nusoor jobs found.");
+    return;
   }
-  function printTeyseerReport() {
- // ============================================================
-// TEYSEER SALES CALCULATION FOR REPORT
-// ============================================================
 
-const calculateTeyseerSales = (job) => {
-  const services = Array.isArray(job?.services)
-    ? job.services
-    : [];
+  const rows = alnusoorJobs
+    .map(
+      (job) => `
+        <tr>
+          <td>${getJobDate(job) || "-"}</td>
+          <td>${escapeHtml(job?.customer || "-")}</td>
+          <td>${escapeHtml(
+            job?.carMake ||
+            job?.carType ||
+            job?.carModel ||
+            "-"
+          )}</td>
+          <td>${escapeHtml(job?.plate || "-")}</td>
+          <td class="money">${money(job?.gross)}</td>
+          <td class="money">${money(job?.discount)}</td>
+          <td class="money">${money(job?.canonicalNet)}</td>
+          <td class="money">${money(job?.customerPaid)}</td>
+          <td class="money">${money(job?.customerBalance)}</td>
+        </tr>
+      `
+    )
+    .join("");
 
-  const serviceDetails =
-    job?.serviceDetails &&
-    typeof job.serviceDetails === "object"
-      ? job.serviceDetails
-      : {};
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1200,height=1000"
+  );
 
-  const source = String(
-    job?.source ||
-    job?.jobSource ||
-    job?.customerSource ||
-    ""
-  )
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
+  if (!printWindow) {
+    alert("Please allow pop-ups for this website.");
+    return;
+  }
 
-  const isPureTeyseer =
-    source === "teyseer motors";
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Al Nusoor Center Report</title>
+      <style>
+        * {
+          box-sizing: border-box;
+        }
 
-  const isSalah =
-    source === "teyseer motors - salah" ||
-    source === "teyseer motors-salah" ||
-    source === "teyseer-salah";
+        @page {
+          size: A4 landscape;
+          margin: 10mm;
+        }
 
-  const isBahaa =
-    source === "teyseer motors - bahaa" ||
-    source === "teyseer motors-bahaa" ||
-    source === "teyseer-bahaa";
+        body {
+          font-family: Arial, sans-serif;
+          color: #000;
+          font-size: 10px;
+          margin: 0;
+          padding: 10px;
+        }
 
-  const isAbdou =
-    source === "teyseer motors - abdou" ||
-    source === "teyseer motors-abdou" ||
-    source === "teyseer-abdou";
+        .header {
+          display: flex;
+          gap: 18px;
+          margin-bottom: 25px;
+        }
 
-  return services.reduce(
-    (total, serviceName) => {
-      const details =
-        serviceDetails[serviceName] || {};
+        .logo {
+          width: 95px;
+          height: 95px;
+          object-fit: contain;
+        }
 
-      const price =
-        Number(details.price || 0);
+        .companyName {
+          font-size: 17px;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
 
-      const quantity =
-        Number(details.quantity || 1);
+        .arabicName {
+          font-size: 15px;
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
 
-      const discount =
-        Number(details.discount || 0);
+        .address {
+          font-size: 11px;
+        }
 
-      const serviceAmount = Math.max(
+        table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        th {
+          text-align: left;
+          padding: 7px;
+          background: #111827;
+          color: white;
+        }
+
+        td {
+          padding: 7px;
+          border-bottom: 1px solid #ddd;
+        }
+
+        .money {
+          text-align: right;
+        }
+
+        .summary {
+          margin-top: 20px;
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 10px;
+        }
+
+        .box {
+          border: 1px solid #ccc;
+          padding: 10px;
+        }
+
+        .label {
+          font-size: 9px;
+          color: #666;
+        }
+
+        .value {
+          font-size: 14px;
+          font-weight: bold;
+          margin-top: 5px;
+        }
+
+        .footer {
+          margin-top: 40px;
+          border-top: 1px solid #000;
+          padding-top: 10px;
+          text-align: center;
+          font-size: 8px;
+        }
+      </style>
+    </head>
+
+    <body>
+      <div class="header">
+        <img
+          src="${gaLogo}"
+          class="logo"
+        />
+
+        <div>
+          <div class="companyName">
+            HAOSHENG CAR SERVICE AND ACCESSORIES
+          </div>
+
+          <div class="arabicName">
+            هاوشنغ لخدمات وزينة السيارات
+          </div>
+
+          <div class="address">
+            Building 358, Salwa Road, Doha - Qatar
+          </div>
+        </div>
+      </div>
+
+      <h2>AL NUSOOR CENTER REPORT</h2>
+
+      <p>
+        Period:
+        ${alnusoorStartDate || "All dates"}
+        -
+        ${alnusoorEndDate || "All dates"}
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>DATE</th>
+            <th>CUSTOMER</th>
+            <th>CAR</th>
+            <th>PLATE</th>
+            <th>GROSS</th>
+            <th>DISCOUNT</th>
+            <th>NET</th>
+            <th>PAID</th>
+            <th>BALANCE</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+
+      <div class="summary">
+
+        <div class="box">
+          <div class="label">CARS</div>
+          <div class="value">
+            ${alnusoorJobs.length}
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">GROSS</div>
+          <div class="value">
+            QAR ${money(alnusoorGross)}
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">DISCOUNT</div>
+          <div class="value">
+            QAR ${money(alnusoorDiscount)}
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">NET</div>
+          <div class="value">
+            QAR ${money(alnusoorNet)}
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">PAID</div>
+          <div class="value">
+            QAR ${money(alnusoorPaid)}
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="label">BALANCE</div>
+          <div class="value">
+            QAR ${money(alnusoorBalance)}
+          </div>
+        </div>
+
+      </div>
+
+      <div class="footer">
+        <strong>
+          Tel: +974 4441 5866 |
+          C.R.NO: 199725 |
+          E-mail: info@haoshengcar.com
+        </strong>
+
+        <br />
+
+        Fereej Al Manaseer,
+        Zone 55, St. 340,
+        Bldg 358, Salwa Road,
+        Doha, Qatar
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 500);
+  };
+};
+
+
+/*
+============================================================
+TEYSEER JOBS
+============================================================
+*/
+
+const filteredTeyseerJobs = useMemo(() => {
+  return calculatedJobs.filter((job) => {
+    if (!isTeyseerJob(job)) {
+      return false;
+    }
+
+    return isDateInRange(
+      getJobDate(job),
+      teyseerStartDate,
+      teyseerEndDate
+    );
+  });
+}, [
+  calculatedJobs,
+  teyseerStartDate,
+  teyseerEndDate,
+]);
+
+const teyseerJobs = filteredTeyseerJobs;
+
+
+/*
+============================================================
+TEYSEER SOURCE AMOUNTS
+============================================================
+*/
+
+const teyseerSourceAmounts = useMemo(() => {
+  const totals = {
+    "Teyseer Motors": 0,
+    "Teyseer Motors - Salah": 0,
+    "Teyseer Motors - Bahaa": 0,
+    "Teyseer Motors - Abdou": 0,
+  };
+
+  filteredTeyseerJobs.forEach((job) => {
+    const source = normalizeSource(job?.source);
+
+    if (!totals.hasOwnProperty(source)) {
+      return;
+    }
+
+    const services = Array.isArray(job?.services)
+      ? job.services
+      : [];
+
+    services.forEach((service) => {
+      const quantity = Math.max(
+        number(
+          service?.quantity ??
+            service?.qty ??
+            1
+        ),
+        1
+      );
+
+      const price = number(
+        service?.price ??
+          service?.unit_price ??
+          service?.amount ??
+          service?.total ??
+          0
+      );
+
+      const discount = number(
+        service?.discount ??
+          service?.discount_amount ??
+          0
+      );
+
+      const amount = Math.max(
         price * quantity - discount,
         0
       );
 
-      const isWtt =
-        String(serviceName || "")
-          .toLowerCase()
-          .includes("wtt");
+      totals[source] += amount;
+    });
+  });
 
-      // Teyseer Motors = ALL SERVICES
-      if (isPureTeyseer) {
-        return total + serviceAmount;
-      }
+  return totals;
+}, [filteredTeyseerJobs]);
 
-      // Salah / Bahaa / Abdou = WTT ONLY
-      if (
-        (isSalah || isBahaa || isAbdou) &&
-        isWtt
-      ) {
-        return total + serviceAmount;
-      }
+const teyseerMotorsAmount =
+  teyseerSourceAmounts["Teyseer Motors"];
 
-      return total;
-    },
+const salahAmount =
+  teyseerSourceAmounts["Teyseer Motors - Salah"];
+
+const bahaaAmount =
+  teyseerSourceAmounts["Teyseer Motors - Bahaa"];
+
+const abdouAmount =
+  teyseerSourceAmounts["Teyseer Motors - Abdou"];
+
+
+/*
+============================================================
+TEYSEER SERVICE COUNTS
+============================================================
+*/
+
+const teyseerMotorsServiceItems = useMemo(() => {
+  return filteredTeyseerJobs
+    .filter(
+      (job) =>
+        normalizeSource(job?.source) ===
+        "Teyseer Motors"
+    )
+    .reduce(
+      (count, job) =>
+        count +
+        (Array.isArray(job?.services)
+          ? job.services.length
+          : 0),
+      0
+    );
+}, [filteredTeyseerJobs]);
+
+const salahServiceItems = useMemo(() => {
+  return filteredTeyseerJobs
+    .filter(
+      (job) =>
+        normalizeSource(job?.source) ===
+        "Teyseer Motors - Salah"
+    )
+    .reduce(
+      (count, job) =>
+        count +
+        (Array.isArray(job?.services)
+          ? job.services.length
+          : 0),
+      0
+    );
+}, [filteredTeyseerJobs]);
+
+const bahaaServiceItems = useMemo(() => {
+  return filteredTeyseerJobs
+    .filter(
+      (job) =>
+        normalizeSource(job?.source) ===
+        "Teyseer Motors - Bahaa"
+    )
+    .reduce(
+      (count, job) =>
+        count +
+        (Array.isArray(job?.services)
+          ? job.services.length
+          : 0),
+      0
+    );
+}, [filteredTeyseerJobs]);
+
+const abdouServiceItems = useMemo(() => {
+  return filteredTeyseerJobs
+    .filter(
+      (job) =>
+        normalizeSource(job?.source) ===
+        "Teyseer Motors - Abdou"
+    )
+    .reduce(
+      (count, job) =>
+        count +
+        (Array.isArray(job?.services)
+          ? job.services.length
+          : 0),
+      0
+    );
+}, [filteredTeyseerJobs]);
+
+const filteredTeyseerCars =
+  filteredTeyseerJobs.length;
+
+
+/*
+============================================================
+TEYSEER DESCRIPTION
+============================================================
+*/
+
+function getTeyseerDescription(job) {
+  if (job?.serviceNames) {
+    return job.serviceNames;
+  }
+
+  if (Array.isArray(job?.services)) {
+    return job.services
+      .map((service) => {
+        if (typeof service === "string") {
+          return service;
+        }
+
+        return (
+          service?.service_name ||
+          service?.name ||
+          service?.title ||
+          ""
+        );
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return "";
+}
+
+
+/*
+============================================================
+TEYSEER DISCREPANCIES
+============================================================
+*/
+
+const discrepancyJobs = useMemo(() => {
+  return teyseerJobs.filter(
+    (job) =>
+      Math.abs(
+        number(job?.discrepancy)
+      ) > 0.01
+  );
+}, [teyseerJobs]);
+
+const totalTeyseerDiscrepancy =
+  discrepancyJobs.reduce(
+    (sum, job) =>
+      sum + number(job?.discrepancy),
     0
   );
-};
 
 
-// ============================================================
-// TEYSEER PRINT ROWS
-// ============================================================
+/*
+============================================================
+UNLINKED PAYMENTS
+============================================================
+*/
 
-const rows = sortedTeyseerJobs
-  .map((job) => {
-    const fullCarName =
-      job.carMake ||
-      job.carBrand ||
-      job.carType ||
-      job.carModel ||
-      job.vehicleName ||
-      job.vehicle ||
-      "";
+const unlinkedPayments = useMemo(() => {
+  return payments.filter(
+    (payment) =>
+      payment?.job_id === null ||
+      payment?.job_id === undefined ||
+      payment?.job_id === ""
+  );
+}, [payments]);
 
-    let carMake =
-      job.carMake ||
-      job.car_make ||
-      job.make ||
-      job.brand ||
-      job.vehicleMake ||
-      job.vehicle_make ||
-      "";
+const unlinkedPaymentTotal =
+  unlinkedPayments.reduce(
+    (sum, payment) =>
+      sum + number(payment?.amount),
+    0
+  );
 
-    let model =
-      job.carModel ||
-      job.car_model ||
-      job.model ||
-      "";
+/*
+============================================================
+PRINT TEYSEER REPORT
+============================================================
+*/
 
-    if (!carMake && fullCarName) {
-      const parts = String(fullCarName)
-        .trim()
-        .split(/\s+/);
+function printTeyseerReport() {
+  if (!filteredTeyseerJobs.length) {
+    alert("No Teyseer jobs found.");
+    return;
+  }
 
-      carMake = parts[0] || "-";
+  const sortedTeyseerJobs = [
+    ...filteredTeyseerJobs,
+  ].sort((a, b) => {
+    const dateA = getJobDate(a) || "";
+    const dateB = getJobDate(b) || "";
 
-      if (!model && parts.length > 1) {
-        model = parts.slice(1).join(" ");
-      }
-    }
+    return dateA.localeCompare(dateB);
+  });
 
-    carMake = carMake || "-";
-    model = model || "-";
+  const rows = sortedTeyseerJobs
+    .map((job) => {
+      const carMake =
+        job.carMake ||
+        job.car_make ||
+        job.make ||
+        job.carBrand ||
+        job.brand ||
+        "-";
 
-    const plate =
-      job.plate ||
-      job.plateNumber ||
-      "-";
+      const model =
+        job.carModel ||
+        job.car_model ||
+        job.model ||
+        "-";
 
-    const voucher =
-      job.voucherNumber ||
-      job.voucher_number ||
-      "-";
+      const plate =
+        job.plate ||
+        job.plateNumber ||
+        job.plate_no ||
+        "-";
 
-    const receipt =
-      job.receipt_number ||
-      job.receiptNumber ||
-      "-";
+      const voucher =
+        job.voucherNumber ||
+        job.voucher_number ||
+        job.voucher ||
+        "-";
 
-    // IMPORTANT:
-    // Calculate the amount directly from the job.
-    // Do NOT use job.teyseerSales.
+      const receipt =
+        job.receipt_number ||
+        job.receiptNumber ||
+        job.receipt ||
+        "-";
 
-  const amount = Number(
-  job.teyseerSales || 0
-);
+      /*
+      IMPORTANT:
+      calculateJob() already calculated the correct
+      Teyseer amount for this job.
+      */
 
-    return `
-      <tr>
+      const amount = number(job.teyseerSales);
 
-        <td>
-          ${escapeHtml(
-            getJobDate(job) || "-"
-          )}
-        </td>
+      return `
+        <tr>
+          <td>
+            ${escapeHtml(
+              getJobDate(job) || "-"
+            )}
+          </td>
 
-        <td>
-          ${escapeHtml(carMake)}
-        </td>
+          <td>
+            ${escapeHtml(carMake)}
+          </td>
 
-        <td>
-          ${escapeHtml(model)}
-        </td>
+          <td>
+            ${escapeHtml(model)}
+          </td>
 
-        <td>
-          ${escapeHtml(plate)}
-        </td>
+          <td>
+            ${escapeHtml(plate)}
+          </td>
 
-        <td class="description">
-          ${escapeHtml(
-            getTeyseerDescription(job)
-          )}
-        </td>
+          <td class="description">
+            ${escapeHtml(
+              getTeyseerDescription(job)
+            )}
+          </td>
 
-        <td class="voucher">
-          ${escapeHtml(voucher)}
-        </td>
+          <td class="voucher">
+            ${escapeHtml(voucher)}
+          </td>
 
-        <td class="receipt">
-          ${escapeHtml(receipt)}
-        </td>
+          <td class="receipt">
+            ${escapeHtml(receipt)}
+          </td>
 
-        <td class="price">
-          QAR ${money(amount)}
-        </td>
+          <td class="price">
+            QAR ${money(amount)}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
 
-      </tr>
-    `;
-  })
-  .join("");
+  const totalAmount =
+    sortedTeyseerJobs.reduce(
+      (total, job) =>
+        total + number(job.teyseerSales),
+      0
+    );
 
-
-// ============================================================
-// TEYSEER TOTAL
-// ============================================================
-
-const totalAmount = sortedTeyseerJobs.reduce(
-  (total, job) =>
-    total + Number(job.teyseerSales || 0),
-  0
-);
-
-console.log(
-  "TEYSEER PRINT TOTAL:",
-  totalAmount
-);
   const invoiceDate =
     new Date().toLocaleDateString(
       "en-US",
@@ -2359,12 +2305,19 @@ console.log(
       }
     );
 
-  const printWindow =
-    window.open(
-      "",
-      "_blank",
-      "width=1500,height=1000"
-    );
+  const invoiceNumber =
+    String(
+      typeof teyseerInvoiceNumber !==
+      "undefined"
+        ? teyseerInvoiceNumber
+        : "0006"
+    ).padStart(4, "0");
+
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1500,height=1000"
+  );
 
   if (!printWindow) {
     alert(
@@ -2377,7 +2330,6 @@ console.log(
     <!DOCTYPE html>
     <html>
     <head>
-
       <meta charset="UTF-8" />
 
       <title>
@@ -2407,6 +2359,7 @@ console.log(
             Arial,
             Helvetica,
             sans-serif;
+
           color: #111;
           font-size: 10px;
           padding: 8px;
@@ -2449,7 +2402,6 @@ console.log(
           font-size: 18px;
           font-weight: 800;
           margin-bottom: 7px;
-          letter-spacing: 0.2px;
         }
 
         .arabicName {
@@ -2530,7 +2482,6 @@ console.log(
           text-align: left;
           font-size: 9px;
           font-weight: 800;
-          white-space: nowrap;
         }
 
         .mainTable td {
@@ -2581,7 +2532,6 @@ console.log(
 
         .totalArea {
           width: 100%;
-          margin-top: 0;
           border-collapse: collapse;
         }
 
@@ -2667,10 +2617,6 @@ console.log(
           line-height: 1.5;
         }
 
-        .footer strong {
-          font-size: 8px;
-        }
-
         @media print {
 
           body {
@@ -2694,11 +2640,9 @@ console.log(
           .footer {
             page-break-inside: avoid;
           }
-
         }
 
       </style>
-
     </head>
 
     <body>
@@ -2708,12 +2652,10 @@ console.log(
         <div class="header">
 
           <div class="logoArea">
-
             <img
               src="${gaLogo}"
               class="logo"
             />
-
           </div>
 
           <div class="companyArea">
@@ -2740,13 +2682,7 @@ console.log(
             </div>
 
             <div class="invoiceNumber">
-              INVOICE NO.
-              ${String(
-                typeof teyseerInvoiceNumber !==
-                  "undefined"
-                  ? teyseerInvoiceNumber
-                  : "0006"
-              ).padStart(4, "0")}
+              INVOICE NO. ${invoiceNumber}
             </div>
 
           </div>
@@ -2756,7 +2692,6 @@ console.log(
         <table class="infoTable">
 
           <tr>
-
             <td class="infoLabel">
               DATE:
             </td>
@@ -2770,18 +2705,11 @@ console.log(
             </td>
 
             <td class="infoRightValue">
-              ${String(
-                typeof teyseerInvoiceNumber !==
-                  "undefined"
-                  ? teyseerInvoiceNumber
-                  : "0006"
-              ).padStart(4, "0")}
+              ${escapeHtml(invoiceNumber)}
             </td>
-
           </tr>
 
           <tr>
-
             <td class="infoLabel">
               NAME/COMPANY:
             </td>
@@ -2792,11 +2720,9 @@ console.log(
             >
               TEYSEER MOTORS CO. WLL.
             </td>
-
           </tr>
 
           <tr>
-
             <td class="infoLabel">
               ADDRESS:
             </td>
@@ -2807,11 +2733,9 @@ console.log(
             >
               AIRPORT St. DOHA, QATAR
             </td>
-
           </tr>
 
           <tr>
-
             <td class="infoLabel">
               CONTACT NUMBER:
             </td>
@@ -2822,7 +2746,6 @@ console.log(
             >
               50900458
             </td>
-
           </tr>
 
         </table>
@@ -2830,7 +2753,6 @@ console.log(
         <table class="mainTable">
 
           <thead>
-
             <tr>
 
               <th class="date">
@@ -2866,13 +2788,10 @@ console.log(
               </th>
 
             </tr>
-
           </thead>
 
           <tbody>
-
             ${rows}
-
           </tbody>
 
         </table>
@@ -2972,7 +2891,6 @@ console.log(
       </div>
 
     </body>
-
     </html>
   `);
 
