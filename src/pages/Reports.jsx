@@ -2189,8 +2189,7 @@ PRINT TEYSEER REPORT
 ============================================================
 */
 
-function printTeyseerReport() {
-
+async function printTeyseerReport() {
   if (!filteredTeyseerJobs.length) {
     alert("No Teyseer jobs found.");
     return;
@@ -2200,6 +2199,7 @@ function printTeyseerReport() {
     (a, b) => {
       const dateA = getJobDate(a) || "";
       const dateB = getJobDate(b) || "";
+
       return dateA.localeCompare(dateB);
     }
   );
@@ -2212,8 +2212,6 @@ function printTeyseerReport() {
   }
 
   function isTeyseerSource(source) {
-    const value = normalizeSource(source);
-
     return [
       "teyseer motors",
       "teyseer motors - salah",
@@ -2225,15 +2223,18 @@ function printTeyseerReport() {
       "teyseer-salah",
       "teyseer-bahaa",
       "teyseer-abdou",
-    ].includes(value);
+    ].includes(normalizeSource(source));
   }
 
   function getCarMake(job) {
     return (
       job.carType ||
       job.car_type ||
-      job.carModel ||
-      job.car_model ||
+      job.carMake ||
+      job.car_make ||
+      job.make ||
+      job.carBrand ||
+      job.brand ||
       "-"
     );
   }
@@ -2275,132 +2276,166 @@ function printTeyseerReport() {
     );
   }
 
+  /*
+   * LOAD ONLY SERVICES OWNED BY TEYSEER
+   */
+  const jobIds = sortedTeyseerJobs.map(
+    (job) => job.id
+  );
 
-  // PUT THE NEW FUNCTIONS HERE
+  const { data: teyseerServices, error } =
+    await supabase
+      .from("job_services")
+      .select("*")
+      .in("job_id", jobIds)
+      .eq("owner", "Teyseer");
 
-  function getTeyseerServices(job) {
-    const source = normalizeSource(job.source);
-
-    const services = Array.isArray(job.services)
-      ? job.services
-          .map((service) => {
-            if (typeof service === "string") {
-              return service;
-            }
-
-            return (
-              service?.name ||
-              service?.service_name ||
-              service?.title ||
-              ""
-            );
-          })
-          .filter(Boolean)
-      : typeof job.services === "string"
-      ? job.services
-          .split(",")
-          .map((service) => service.trim())
-          .filter(Boolean)
-      : [];
-
-    if (source === "teyseer motors") {
-      return services.length
-        ? services.join(", ")
-        : "Full WTT";
-    }
-
-    const teyseerServices = services.filter((service) =>
-      String(service)
-        .toLowerCase()
-        .includes("wtt")
+  if (error) {
+    console.error(
+      "TEYSEER SERVICES ERROR:",
+      error
     );
 
-    return teyseerServices.length
-      ? teyseerServices.join(", ")
-      : "Full WTT";
+    alert(error.message);
+    return;
   }
 
+  /*
+   * GROUP SERVICES BY JOB
+   */
+  const servicesByJob = {};
 
-  function getJobPrice(job) {
-    const source = normalizeSource(job.source);
-
-    const allServicesBelongToTeyseer =
-      source === "teyseer motors";
-
-    let total = 0;
-
-    if (
-      job.serviceDetails &&
-      typeof job.serviceDetails === "object"
-    ) {
-      Object.entries(job.serviceDetails).forEach(
-        ([serviceName, details]) => {
-          if (!details) return;
-
-          const isWtt = String(serviceName)
-            .toLowerCase()
-            .includes("wtt");
-
-          if (
-            !allServicesBelongToTeyseer &&
-            !isWtt
-          ) {
-            return;
-          }
-
-          const price = Number(details.price || 0);
-          const quantity = Number(details.quantity || 1);
-          const discount = Number(details.discount || 0);
-
-          total += Math.max(
-            price * quantity - discount,
-            0
-          );
-        }
-      );
+  (teyseerServices || []).forEach((service) => {
+    if (!servicesByJob[service.job_id]) {
+      servicesByJob[service.job_id] = [];
     }
 
-    return total;
+    servicesByJob[service.job_id].push(service);
+  });
+
+  /*
+   * DESCRIPTION
+   */
+  function getTeyseerServices(job) {
+    const services =
+      servicesByJob[job.id] || [];
+
+    if (!services.length) {
+      return "Full WTT";
+    }
+
+    return services
+      .map((service) =>
+        service.service_name || ""
+      )
+      .filter(Boolean)
+      .join(", ");
   }
 
+  /*
+   * PRICE
+   *
+   * ONLY TEYSEER SERVICES
+   */
+  function getJobPrice(job) {
+    const services =
+      servicesByJob[job.id] || [];
 
-  // THEN YOUR EXISTING CODE CONTINUES HERE
+    return services.reduce(
+      (total, service) => {
+        const price = Number(
+          service.price || 0
+        );
+
+        const discount = Number(
+          service.discount || 0
+        );
+
+        return (
+          total +
+          Math.max(
+            price - discount,
+            0
+          )
+        );
+      },
+      0
+    );
+  }
 
   const rows = sortedTeyseerJobs
     .map((job) => {
-
       const source = job.source || "";
 
-      const carMake = getCarMake(job);
-      const model = getCarModel(job);
-      const plate = getPlate(job);
-      const voucher = getVoucher(job);
-      const receipt = getReceipt(job);
+      const description =
+        isTeyseerSource(source)
+          ? getTeyseerServices(job)
+          : "-";
 
-      const description = isTeyseerSource(source)
-        ? getTeyseerServices(job)
-        : "-";
-
-      const amount = getJobPrice(job);
+      const amount =
+        getJobPrice(job);
 
       return `
-        ...
+        <tr>
+          <td>
+            ${escapeHtml(
+              getJobDate(job) || "-"
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              getCarMake(job)
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              getCarModel(job)
+            )}
+          </td>
+
+          <td>
+            ${escapeHtml(
+              getPlate(job)
+            )}
+          </td>
+
+          <td class="description">
+            ${escapeHtml(
+              description
+            )}
+          </td>
+
+          <td class="voucher">
+            ${escapeHtml(
+              getVoucher(job)
+            )}
+          </td>
+
+          <td class="receipt">
+            ${escapeHtml(
+              getReceipt(job)
+            )}
+          </td>
+
+          <td class="price">
+            QAR ${money(amount)}
+          </td>
+        </tr>
       `;
     })
     .join("");
 
+  /*
+   * TOTAL TEYSEER AMOUNT
+   */
   const totalAmount =
     sortedTeyseerJobs.reduce(
       (total, job) =>
         total + getJobPrice(job),
       0
     );
-
-  /*
-  ------------------------------------------------------------
-  INVOICE DATE
-  ------------------------------------------------------------
-  */
 
   const invoiceDate =
     new Date().toLocaleDateString(
@@ -2412,25 +2447,13 @@ function printTeyseerReport() {
       }
     );
 
-  /*
-  ------------------------------------------------------------
-  INVOICE NUMBER
-  ------------------------------------------------------------
-  */
-
   const invoiceNumber =
     String(
       typeof teyseerInvoiceNumber !==
-      "undefined"
+        "undefined"
         ? teyseerInvoiceNumber
         : "0006"
     ).padStart(4, "0");
-
-  /*
-  ------------------------------------------------------------
-  OPEN PRINT WINDOW
-  ------------------------------------------------------------
-  */
 
   const printWindow = window.open(
     "",
@@ -2446,589 +2469,569 @@ function printTeyseerReport() {
   }
 
   printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-
-    <head>
-
-      <meta charset="UTF-8" />
-
-      <title>
-        Teyseer Motors Invoice
-      </title>
-
-      <style>
-
-        * {
-          box-sizing: border-box;
-        }
-
-        @page {
-          size: A4 landscape;
-          margin: 8mm;
-        }
-
-        html,
-        body {
-          margin: 0;
-          padding: 0;
-          background: white;
-        }
-
-        body {
-          font-family:
-            Arial,
-            Helvetica,
-            sans-serif;
-
-          color: #111;
-          font-size: 10px;
-          padding: 8px;
-        }
-
-        .invoice {
-          width: 100%;
-          max-width: 1100px;
-          margin: 0 auto;
-        }
-
-        .header {
-          display: flex;
-          align-items: flex-start;
-          min-height: 95px;
-          border-bottom: 2px solid #111;
-          padding-bottom: 8px;
-          margin-bottom: 8px;
-        }
-
-        .logoArea {
-          width: 125px;
-          display: flex;
-          align-items: flex-start;
-          justify-content: center;
-        }
-
-        .logo {
-          width: 100px;
-          height: 85px;
-          object-fit: contain;
-        }
-
-        .companyArea {
-          flex: 1;
-          padding-top: 2px;
-        }
-
-        .companyName {
-          font-size: 18px;
-          font-weight: 800;
-          margin-bottom: 7px;
-        }
-
-        .arabicName {
-          font-size: 15px;
-          font-weight: 700;
-          margin-bottom: 7px;
-          direction: rtl;
-          text-align: left;
-        }
-
-        .address {
-          font-size: 9px;
-          color: #333;
-        }
-
-        .invoiceTitleArea {
-          width: 190px;
-          text-align: right;
-          padding-top: 5px;
-        }
-
-        .invoiceTitle {
-          font-size: 22px;
-          font-weight: 800;
-          margin-bottom: 12px;
-        }
-
-        .invoiceNumber {
-          font-size: 11px;
-          font-weight: 700;
-        }
-
-        .infoTable {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 10px;
-        }
-
-        .infoTable td {
-          padding: 5px 4px;
-          vertical-align: top;
-          border: none;
-          font-size: 10px;
-        }
-
-        .infoLabel {
-          width: 145px;
-          font-weight: 800;
-          white-space: nowrap;
-        }
-
-        .infoValue {
-          font-weight: 600;
-        }
-
-        .infoRightLabel {
-          width: 105px;
-          font-weight: 800;
-          white-space: nowrap;
-        }
-
-        .infoRightValue {
-          width: 160px;
-        }
-
-        .mainTable {
-          width: 100%;
-          border-collapse: collapse;
-          table-layout: fixed;
-          margin-top: 5px;
-        }
-
-        .mainTable th {
-          border: 1px solid #111;
-          background: #fff;
-          color: #111;
-          padding: 6px 5px;
-          text-align: left;
-          font-size: 9px;
-          font-weight: 800;
-        }
-
-        .mainTable td {
-          border: 1px solid #111;
-          padding: 5px;
-          vertical-align: top;
-          font-size: 9px;
-          line-height: 1.25;
-          overflow-wrap: anywhere;
-        }
-
-        .date {
-          width: 10%;
-        }
-
-        .make {
-          width: 10%;
-        }
-
-        .model {
-          width: 12%;
-        }
-
-        .plate {
-          width: 11%;
-        }
-
-        .description {
-          width: 29%;
-        }
-
-        .voucher {
-          width: 8%;
-          text-align: center;
-        }
-
-        .receipt {
-          width: 8%;
-          text-align: center;
-        }
-
-        .price {
-          width: 12%;
-          text-align: right;
-          white-space: nowrap;
-          font-weight: 600;
-        }
-
-        .totalArea {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        .totalArea td {
-          padding: 6px 5px;
-          font-size: 10px;
-          font-weight: 800;
-        }
-
-        .totalLabel {
-          text-align: right;
-          border: 1px solid #111;
-          border-top: none;
-        }
-
-        .totalValue {
-          width: 12%;
-          text-align: right;
-          border: 1px solid #111;
-          border-top: none;
-          white-space: nowrap;
-        }
-
-        .netAmount {
-          margin-top: 8px;
-          display: flex;
-          align-items: center;
-          font-size: 11px;
-          font-weight: 800;
-        }
-
-        .netAmountLabel {
-          width: 145px;
-        }
-
-        .netAmountValue {
-          font-size: 13px;
-        }
-
-        .payment {
-          margin-top: 8px;
-          font-size: 10px;
-          line-height: 1.6;
-        }
-
-        .paymentTitle {
-          font-weight: 800;
-        }
-
-        .signatureArea {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 45px;
-          min-height: 65px;
-        }
-
-        .signatureBox {
-          width: 40%;
-          text-align: center;
-        }
-
-        .signatureArabic {
-          font-size: 10px;
-          margin-bottom: 5px;
-        }
-
-        .signatureEnglish {
-          font-size: 10px;
-          font-weight: 700;
-        }
-
-        .signatureLine {
-          margin-top: 25px;
-          border-bottom: 1px solid #111;
-        }
-
-        .footer {
-          margin-top: 18px;
-          padding-top: 7px;
-          border-top: 1px solid #111;
-          text-align: center;
-          font-size: 8px;
-          line-height: 1.5;
-        }
-
-        @media print {
-
-          body {
-            padding: 0;
-          }
-
-          .invoice {
-            width: 100%;
-            max-width: none;
-          }
-
-          thead {
-            display: table-header-group;
-          }
-
-          tr {
-            page-break-inside: avoid;
-          }
-
-          .signatureArea,
-          .footer {
-            page-break-inside: avoid;
-          }
-
-        }
-
-      </style>
-
-    </head>
-
-    <body>
-
-      <div class="invoice">
-
-        <div class="header">
-
-          <div class="logoArea">
-
-            <img
-              src="${gaLogo}"
-              class="logo"
-            />
-
-          </div>
-
-          <div class="companyArea">
-
-            <div class="companyName">
-              HAOSHENG CAR SERVICE AND ACCESSORIES
-            </div>
-
-            <div class="arabicName">
-              هاوشنغ لخدمات وزينة السيارات
-            </div>
-
-            <div class="address">
-              Building 358, Salwa Road,
-              Doha - Qatar
-            </div>
-
-          </div>
-
-          <div class="invoiceTitleArea">
-
-            <div class="invoiceTitle">
-              INVOICE
-            </div>
-
-            <div class="invoiceNumber">
-              INVOICE NO. ${invoiceNumber}
-            </div>
-
-          </div>
-
-        </div>
-
-        <table class="infoTable">
-
-          <tr>
-
-            <td class="infoLabel">
-              DATE:
-            </td>
-
-            <td class="infoValue">
-              ${escapeHtml(invoiceDate)}
-            </td>
-
-            <td class="infoRightLabel">
-              INVOICE NO.
-            </td>
-
-            <td class="infoRightValue">
-              ${escapeHtml(invoiceNumber)}
-            </td>
-
-          </tr>
-
-          <tr>
-
-            <td class="infoLabel">
-              NAME/COMPANY:
-            </td>
-
-            <td
-              class="infoValue"
-              colspan="3"
-            >
-              TEYSEER MOTORS CO. WLL.
-            </td>
-
-          </tr>
-
-          <tr>
-
-            <td class="infoLabel">
-              ADDRESS:
-            </td>
-
-            <td
-              class="infoValue"
-              colspan="3"
-            >
-              AIRPORT St. DOHA, QATAR
-            </td>
-
-          </tr>
-
-          <tr>
-
-            <td class="infoLabel">
-              CONTACT NUMBER:
-            </td>
-
-            <td
-              class="infoValue"
-              colspan="3"
-            >
-              50900458
-            </td>
-
-          </tr>
-
-        </table>
-
-        <table class="mainTable">
-
-          <thead>
-
-            <tr>
-
-              <th class="date">
-                DATE
-              </th>
-
-              <th class="make">
-                CAR MAKE
-              </th>
-
-              <th class="model">
-                MODEL
-              </th>
-
-              <th class="plate">
-                PLATE NO.
-              </th>
-
-              <th class="description">
-                DESCRIPTION
-              </th>
-
-              <th class="voucher">
-                Voucher#
-              </th>
-
-              <th class="receipt">
-                RECEIPT #
-              </th>
-
-              <th class="price">
-                PRICE
-              </th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-            ${rows}
-          </tbody>
-
-        </table>
-
-        <table class="totalArea">
-
-          <tr>
-
-            <td class="totalLabel">
-              TOTAL AMOUNT:
-            </td>
-
-            <td class="totalValue">
-              QAR ${money(totalAmount)}
-            </td>
-
-          </tr>
-
-        </table>
-
-        <div class="netAmount">
-
-          <div class="netAmountLabel">
-            NET AMOUNT:
-          </div>
-
-          <div class="netAmountValue">
-            QAR ${money(totalAmount)}
-          </div>
-
-        </div>
-
-        <div class="payment">
-
-          <div class="paymentTitle">
-            PAYMENT METHOD:
-          </div>
-
-          CASH /
-          VISA /
-          MASTERCARD /
-          AMEX /
-          NAPS /
-          BANK TRANSFER
-
-        </div>
-
-        <div class="signatureArea">
-
-          <div class="signatureBox">
-
-            <div class="signatureArabic">
-              توقيع العميل
-            </div>
-
-            <div class="signatureEnglish">
-              CUSTOMER'S SIGNATURE
-            </div>
-
-            <div class="signatureLine"></div>
-
-          </div>
-
-          <div class="signatureBox">
-
-            <div class="signatureArabic">
-              توقيع المعتمد
-            </div>
-
-            <div class="signatureEnglish">
-              AUTHORIZED SIGNATURE
-            </div>
-
-            <div class="signatureLine"></div>
-
-          </div>
-
-        </div>
-
-        <div class="footer">
-
-          <strong>
-            Tel: +974 3368 1888 -
-            C.R.NO: 199725 -
-            E-mail: info@haoshengcar.com
-          </strong>
-
-          <br />
-
-          Fereej Al Manaseer,
-          Zone 55, St. 340,
-          Bldg 358, Salwa Road,
-          Doha, Qatar
-
-        </div>
-
-      </div>
-
-    </body>
-
-    </html>
-  `);
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<title>Teyseer Motors Invoice</title>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+@page {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: white;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111;
+  font-size: 10px;
+  padding: 8px;
+}
+
+.invoice {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  min-height: 95px;
+  border-bottom: 2px solid #111;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.logoArea {
+  width: 125px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.logo {
+  width: 100px;
+  height: 85px;
+  object-fit: contain;
+}
+
+.companyArea {
+  flex: 1;
+  padding-top: 2px;
+}
+
+.companyName {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 7px;
+}
+
+.arabicName {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 7px;
+  direction: rtl;
+  text-align: left;
+}
+
+.address {
+  font-size: 9px;
+  color: #333;
+}
+
+.invoiceTitleArea {
+  width: 190px;
+  text-align: right;
+  padding-top: 5px;
+}
+
+.invoiceTitle {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.invoiceNumber {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.infoTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.infoTable td {
+  padding: 5px 4px;
+  vertical-align: top;
+  border: none;
+  font-size: 10px;
+}
+
+.infoLabel {
+  width: 145px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.infoValue {
+  font-weight: 600;
+}
+
+.infoRightLabel {
+  width: 105px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.infoRightValue {
+  width: 160px;
+}
+
+.mainTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin-top: 5px;
+}
+
+.mainTable th {
+  border: 1px solid #111;
+  background: #fff;
+  color: #111;
+  padding: 6px 5px;
+  text-align: left;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.mainTable td {
+  border: 1px solid #111;
+  padding: 5px;
+  vertical-align: top;
+  font-size: 9px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.date {
+  width: 10%;
+}
+
+.make {
+  width: 10%;
+}
+
+.model {
+  width: 12%;
+}
+
+.plate {
+  width: 11%;
+}
+
+.description {
+  width: 29%;
+}
+
+.voucher {
+  width: 8%;
+  text-align: center;
+}
+
+.receipt {
+  width: 8%;
+  text-align: center;
+}
+
+.price {
+  width: 12%;
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.totalArea {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.totalArea td {
+  padding: 6px 5px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.totalLabel {
+  text-align: right;
+  border: 1px solid #111;
+  border-top: none;
+}
+
+.totalValue {
+  width: 12%;
+  text-align: right;
+  border: 1px solid #111;
+  border-top: none;
+  white-space: nowrap;
+}
+
+.netAmount {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.netAmountLabel {
+  width: 145px;
+}
+
+.netAmountValue {
+  font-size: 13px;
+}
+
+.payment {
+  margin-top: 8px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.paymentTitle {
+  font-weight: 800;
+}
+
+.signatureArea {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 45px;
+  min-height: 65px;
+}
+
+.signatureBox {
+  width: 40%;
+  text-align: center;
+}
+
+.signatureArabic {
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+
+.signatureEnglish {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.signatureLine {
+  margin-top: 25px;
+  border-bottom: 1px solid #111;
+}
+
+.footer {
+  margin-top: 18px;
+  padding-top: 7px;
+  border-top: 1px solid #111;
+  text-align: center;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+@media print {
+
+  body {
+    padding: 0;
+  }
+
+  .invoice {
+    width: 100%;
+    max-width: none;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  .signatureArea,
+  .footer {
+    page-break-inside: avoid;
+  }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="invoice">
+
+<div class="header">
+
+<div class="logoArea">
+<img
+  src="${gaLogo}"
+  class="logo"
+/>
+</div>
+
+<div class="companyArea">
+
+<div class="companyName">
+HAOSHENG CAR SERVICE AND ACCESSORIES
+</div>
+
+<div class="arabicName">
+هاوشنغ لخدمات وزينة السيارات
+</div>
+
+<div class="address">
+Building 358, Salwa Road,
+Doha - Qatar
+</div>
+
+</div>
+
+<div class="invoiceTitleArea">
+
+<div class="invoiceTitle">
+INVOICE
+</div>
+
+<div class="invoiceNumber">
+INVOICE NO. ${invoiceNumber}
+</div>
+
+</div>
+
+</div>
+
+<table class="infoTable">
+
+<tr>
+<td class="infoLabel">
+DATE:
+</td>
+
+<td class="infoValue">
+${escapeHtml(invoiceDate)}
+</td>
+
+<td class="infoRightLabel">
+INVOICE NO.
+</td>
+
+<td class="infoRightValue">
+${escapeHtml(invoiceNumber)}
+</td>
+</tr>
+
+<tr>
+<td class="infoLabel">
+NAME/COMPANY:
+</td>
+
+<td
+class="infoValue"
+colspan="3"
+>
+TEYSEER MOTORS CO. WLL.
+</td>
+</tr>
+
+<tr>
+<td class="infoLabel">
+ADDRESS:
+</td>
+
+<td
+class="infoValue"
+colspan="3"
+>
+AIRPORT St. DOHA, QATAR
+</td>
+</tr>
+
+<tr>
+<td class="infoLabel">
+CONTACT NUMBER:
+</td>
+
+<td
+class="infoValue"
+colspan="3"
+>
+50900458
+</td>
+</tr>
+
+</table>
+
+<table class="mainTable">
+
+<thead>
+
+<tr>
+
+<th class="date">
+DATE
+</th>
+
+<th class="make">
+CAR MAKE
+</th>
+
+<th class="model">
+MODEL
+</th>
+
+<th class="plate">
+PLATE NO.
+</th>
+
+<th class="description">
+DESCRIPTION
+</th>
+
+<th class="voucher">
+Voucher#
+</th>
+
+<th class="receipt">
+RECEIPT #
+</th>
+
+<th class="price">
+PRICE
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+${rows}
+</tbody>
+
+</table>
+
+<table class="totalArea">
+
+<tr>
+
+<td class="totalLabel">
+TOTAL AMOUNT:
+</td>
+
+<td class="totalValue">
+QAR ${money(totalAmount)}
+</td>
+
+</tr>
+
+</table>
+
+<div class="netAmount">
+
+<div class="netAmountLabel">
+NET AMOUNT:
+</div>
+
+<div class="netAmountValue">
+QAR ${money(totalAmount)}
+</div>
+
+</div>
+
+<div class="payment">
+
+<div class="paymentTitle">
+PAYMENT METHOD:
+</div>
+
+CASH /
+VISA /
+MASTERCARD /
+AMEX /
+NAPS /
+BANK TRANSFER
+
+</div>
+
+<div class="signatureArea">
+
+<div class="signatureBox">
+
+<div class="signatureArabic">
+توقيع العميل
+</div>
+
+<div class="signatureEnglish">
+CUSTOMER'S SIGNATURE
+</div>
+
+<div class="signatureLine"></div>
+
+</div>
+
+<div class="signatureBox">
+
+<div class="signatureArabic">
+توقيع المعتمد
+</div>
+
+<div class="signatureEnglish">
+AUTHORIZED SIGNATURE
+</div>
+
+<div class="signatureLine"></div>
+
+</div>
+
+</div>
+
+<div class="footer">
+
+<strong>
+Tel: +974 3368 1888 -
+C.R.NO: 199725 -
+E-mail: info@haoshengcar.com
+</strong>
+
+<br>
+
+Fereej Al Manaseer,
+Zone 55, St. 340,
+Bldg 358, Salwa Road,
+Doha, Qatar
+
+</div>
+
+</div>
+
+</body>
+</html>
+`);
 
   printWindow.document.close();
 
