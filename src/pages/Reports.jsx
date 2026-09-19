@@ -2190,190 +2190,204 @@ PRINT TEYSEER REPORT
 */
 
 function printTeyseerReport() {
+
   if (!filteredTeyseerJobs.length) {
     alert("No Teyseer jobs found.");
     return;
   }
 
-  const sortedTeyseerJobs = [
-    ...filteredTeyseerJobs,
-  ].sort((a, b) => {
-    const dateA = getJobDate(a) || "";
-    const dateB = getJobDate(b) || "";
+  const sortedTeyseerJobs = [...filteredTeyseerJobs].sort(
+    (a, b) => {
+      const dateA = getJobDate(a) || "";
+      const dateB = getJobDate(b) || "";
+      return dateA.localeCompare(dateB);
+    }
+  );
 
-    return dateA.localeCompare(dateB);
-  });
+  function normalizeSource(source) {
+    return String(source || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
 
-  /*
-  ------------------------------------------------------------
-  GET PRICE FROM JOB SERVICES
-  ------------------------------------------------------------
-  */
+  function isTeyseerSource(source) {
+    const value = normalizeSource(source);
 
-  function getJobPrice(job) {
+    return [
+      "teyseer motors",
+      "teyseer motors - salah",
+      "teyseer motors - bahaa",
+      "teyseer motors - abdou",
+      "teyseer motors-salah",
+      "teyseer motors-bahaa",
+      "teyseer motors-abdou",
+      "teyseer-salah",
+      "teyseer-bahaa",
+      "teyseer-abdou",
+    ].includes(value);
+  }
+
+  function getCarMake(job) {
+    return (
+      job.carType ||
+      job.car_type ||
+      job.carModel ||
+      job.car_model ||
+      "-"
+    );
+  }
+
+  function getCarModel(job) {
+    return (
+      job.carModel ||
+      job.car_model ||
+      job.model ||
+      "-"
+    );
+  }
+
+  function getPlate(job) {
+    return (
+      job.plate ||
+      job.plateNumber ||
+      job.plate_number ||
+      job.plate_no ||
+      "-"
+    );
+  }
+
+  function getVoucher(job) {
+    return (
+      job.voucherNumber ||
+      job.voucher_number ||
+      job.voucher ||
+      "-"
+    );
+  }
+
+  function getReceipt(job) {
+    return (
+      job.receipt_number ||
+      job.receiptNumber ||
+      job.receipt ||
+      "-"
+    );
+  }
+
+
+  // PUT THE NEW FUNCTIONS HERE
+
+  function getTeyseerServices(job) {
+    const source = normalizeSource(job.source);
+
     const services = Array.isArray(job.services)
       ? job.services
+          .map((service) => {
+            if (typeof service === "string") {
+              return service;
+            }
+
+            return (
+              service?.name ||
+              service?.service_name ||
+              service?.title ||
+              ""
+            );
+          })
+          .filter(Boolean)
+      : typeof job.services === "string"
+      ? job.services
+          .split(",")
+          .map((service) => service.trim())
+          .filter(Boolean)
       : [];
 
-    const serviceDetails =
-      job.serviceDetails &&
-      typeof job.serviceDetails === "object"
-        ? job.serviceDetails
-        : {};
+    if (source === "teyseer motors") {
+      return services.length
+        ? services.join(", ")
+        : "Full WTT";
+    }
+
+    const teyseerServices = services.filter((service) =>
+      String(service)
+        .toLowerCase()
+        .includes("wtt")
+    );
+
+    return teyseerServices.length
+      ? teyseerServices.join(", ")
+      : "Full WTT";
+  }
+
+
+  function getJobPrice(job) {
+    const source = normalizeSource(job.source);
+
+    const allServicesBelongToTeyseer =
+      source === "teyseer motors";
 
     let total = 0;
 
-    services.forEach((serviceName) => {
-      const details =
-        serviceDetails[serviceName] || {};
+    if (
+      job.serviceDetails &&
+      typeof job.serviceDetails === "object"
+    ) {
+      Object.entries(job.serviceDetails).forEach(
+        ([serviceName, details]) => {
+          if (!details) return;
 
-      const price =
-        Number(details.price || 0);
+          const isWtt = String(serviceName)
+            .toLowerCase()
+            .includes("wtt");
 
-      const quantity =
-        Number(details.quantity || 1);
+          if (
+            !allServicesBelongToTeyseer &&
+            !isWtt
+          ) {
+            return;
+          }
 
-      const discount =
-        Number(details.discount || 0);
+          const price = Number(details.price || 0);
+          const quantity = Number(details.quantity || 1);
+          const discount = Number(details.discount || 0);
 
-      const serviceTotal = Math.max(
-        price * quantity - discount,
-        0
+          total += Math.max(
+            price * quantity - discount,
+            0
+          );
+        }
       );
-
-      total += serviceTotal;
-    });
+    }
 
     return total;
   }
 
-  /*
-  ------------------------------------------------------------
-  BUILD ROWS
-  ------------------------------------------------------------
-  */
+
+  // THEN YOUR EXISTING CODE CONTINUES HERE
 
   const rows = sortedTeyseerJobs
     .map((job) => {
-  const carMake =
-    job.carMake ||
-    job.car_make ||
-    job.make ||
-    job.carBrand ||
-    job.brand ||
-    "-";
 
-  const model =
-    job.carModel ||
-    job.car_model ||
-    job.model ||
-    "-";
+      const source = job.source || "";
 
-  const plate =
-    job.plate ||
-    job.plateNumber ||
-    job.plate_no ||
-    "-";
+      const carMake = getCarMake(job);
+      const model = getCarModel(job);
+      const plate = getPlate(job);
+      const voucher = getVoucher(job);
+      const receipt = getReceipt(job);
 
-  const voucher =
-    job.voucherNumber ||
-    job.voucher_number ||
-    job.voucher ||
-    "-";
+      const description = isTeyseerSource(source)
+        ? getTeyseerServices(job)
+        : "-";
 
-  const receipt =
-    job.receipt_number ||
-    job.receiptNumber ||
-    job.receipt ||
-    "-";
+      const amount = getJobPrice(job);
 
-  const source = String(job.source || "").trim().toLowerCase();
-
-const teyseerSources = [
-  "teyseer motors",
-  "teyseer motors - salah",
-  "teyseer motors - bahaa",
-  "teyseer motors - abdou"
-];
-
-const isTeyseerJob = teyseerSources.includes(source);
-
-let description = "-";
-
-if (isTeyseerJob) {
-  if (Array.isArray(job.services)) {
-    description = job.services
-      .map((service) => {
-        if (typeof service === "string") {
-          return service;
-        }
-
-        return (
-          service?.name ||
-          service?.service_name ||
-          service?.title ||
-          ""
-        );
-      })
-      .filter(Boolean)
-      .join(", ");
-  } else if (
-    typeof job.services === "string" &&
-    job.services.trim()
-  ) {
-    description = job.services.trim();
-  }
-
-  if (!description) {
-    description = getTeyseerDescription(job) || "-";
-  }
-}
-  const amount =
-    number(job.teyseerSales);
-
-  return `
-    <tr>
-      <td>
-        ${escapeHtml(getJobDate(job) || "-")}
-      </td>
-
-      <td>
-        ${escapeHtml(carMake)}
-      </td>
-
-      <td>
-        ${escapeHtml(model)}
-      </td>
-
-      <td>
-        ${escapeHtml(plate)}
-      </td>
-
-      <td class="description">
-        ${escapeHtml(description)}
-      </td>
-
-      <td class="voucher">
-        ${escapeHtml(voucher)}
-      </td>
-
-      <td class="receipt">
-        ${escapeHtml(receipt)}
-      </td>
-
-      <td class="price">
-        QAR ${money(amount)}
-      </td>
-    </tr>
-  `;
-})
+      return `
+        ...
+      `;
+    })
     .join("");
-
-  /*
-  ------------------------------------------------------------
-  TOTAL
-  ------------------------------------------------------------
-  */
 
   const totalAmount =
     sortedTeyseerJobs.reduce(
