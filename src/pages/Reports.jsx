@@ -2255,112 +2255,118 @@ function printTeyseerReport() {
 
   const rows = sortedTeyseerJobs
     .map((job) => {
+  const carMake =
+    job.carMake ||
+    job.car_make ||
+    job.make ||
+    job.carBrand ||
+    job.brand ||
+    "-";
 
-      /*
-      CAR TYPE / MAKE
-      */
+  const model =
+    job.carModel ||
+    job.car_model ||
+    job.model ||
+    "-";
 
-      const carType =
-        job.carType ||
-        job.car_type ||
-        job.carMake ||
-        job.car_make ||
-        job.make ||
-        job.carBrand ||
-        job.brand ||
-        "-";
+  const plate =
+    job.plate ||
+    job.plateNumber ||
+    job.plate_no ||
+    "-";
 
-      /*
-      MODEL
-      */
+  const voucher =
+    job.voucherNumber ||
+    job.voucher_number ||
+    job.voucher ||
+    "-";
 
-      const model =
-        job.carModel ||
-        job.car_model ||
-        job.model ||
-        "-";
+  const receipt =
+    job.receipt_number ||
+    job.receiptNumber ||
+    job.receipt ||
+    "-";
 
-      /*
-      PLATE
-      */
+  const source = String(job.source || "").trim().toLowerCase();
 
-      const plate =
-        job.plate ||
-        job.plateNumber ||
-        job.plate_no ||
-        "-";
+const teyseerSources = [
+  "teyseer motors",
+  "teyseer motors - salah",
+  "teyseer motors - bahaa",
+  "teyseer motors - abdou"
+];
 
-      /*
-      VOUCHER
-      */
+const isTeyseerJob = teyseerSources.includes(source);
 
-      const voucher =
-        job.voucherNumber ||
-        job.voucher_number ||
-        job.voucher ||
-        "-";
+let description = "-";
 
-      /*
-      RECEIPT
-      */
+if (isTeyseerJob) {
+  if (Array.isArray(job.services)) {
+    description = job.services
+      .map((service) => {
+        if (typeof service === "string") {
+          return service;
+        }
 
-      const receipt =
-        job.receipt_number ||
-        job.receiptNumber ||
-        job.receipt ||
-        "-";
+        return (
+          service?.name ||
+          service?.service_name ||
+          service?.title ||
+          ""
+        );
+      })
+      .filter(Boolean)
+      .join(", ");
+  } else if (
+    typeof job.services === "string" &&
+    job.services.trim()
+  ) {
+    description = job.services.trim();
+  }
 
-      /*
-      PRICE
+  if (!description) {
+    description = getTeyseerDescription(job) || "-";
+  }
+}
+  const amount =
+    number(job.teyseerSales);
 
-      Do NOT use job.teyseerSales here.
-      Calculate directly from the job services.
-      */
+  return `
+    <tr>
+      <td>
+        ${escapeHtml(getJobDate(job) || "-")}
+      </td>
 
-      const amount = getJobPrice(job);
+      <td>
+        ${escapeHtml(carMake)}
+      </td>
 
-      return `
-        <tr>
+      <td>
+        ${escapeHtml(model)}
+      </td>
 
-          <td>
-            ${escapeHtml(
-              getJobDate(job) || "-"
-            )}
-          </td>
+      <td>
+        ${escapeHtml(plate)}
+      </td>
 
-          <td>
-            ${escapeHtml(carType)}
-          </td>
+      <td class="description">
+        ${escapeHtml(description)}
+      </td>
 
-          <td>
-            ${escapeHtml(model)}
-          </td>
+      <td class="voucher">
+        ${escapeHtml(voucher)}
+      </td>
 
-          <td>
-            ${escapeHtml(plate)}
-          </td>
+      <td class="receipt">
+        ${escapeHtml(receipt)}
+      </td>
 
-          <td class="description">
-            ${escapeHtml(
-              getTeyseerDescription(job)
-            )}
-          </td>
-
-          <td class="voucher">
-            ${escapeHtml(voucher)}
-          </td>
-
-          <td class="receipt">
-            ${escapeHtml(receipt)}
-          </td>
-
-          <td class="price">
-            QAR ${money(amount)}
-          </td>
-
-        </tr>
-      `;
-    })
+      <td class="price">
+        QAR ${money(amount)}
+      </td>
+    </tr>
+  `;
+})
     .join("");
 
   /*
