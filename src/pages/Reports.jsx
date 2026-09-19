@@ -1740,8 +1740,17 @@ const getTeyseerDescription = (job) => {
   return services || "-";
 };
 
-  const rows = filteredTeyseerJobs
-    .map((job) => {
+  const sortedTeyseerJobs = [...filteredTeyseerJobs].sort(
+  (a, b) => {
+    const dateA = getJobDate(a) || "";
+    const dateB = getJobDate(b) || "";
+
+    return dateA.localeCompare(dateB);
+  }
+);
+
+const rows = sortedTeyseerJobs
+  .map((job) => {
     const fullCarName =
   job.carMake ||
   job.carBrand ||
