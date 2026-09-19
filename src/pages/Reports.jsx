@@ -1328,115 +1328,59 @@ const financial = useMemo(() => {
   ============================================================
   */
 
-  const teyseerMotorsAmount =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors"
-        )
-        .reduce(
-          (sum, job) =>
-            sum +
-            number(
-              job.teyseerSales
-            ),
-          0
-        );
-    }, [filteredTeyseerJobs]);
+  const teyseerMotorsAmount = filteredTeyseerJobs
+  .filter(
+    (job) =>
+      normalizeSource(job.source) ===
+      "Teyseer Motors"
+  )
+  .reduce(
+    (sum, job) =>
+      sum + Number(job.teyseerSales || 0),
+    0
+  );
 
-  const salahAmount =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors - Salah"
-        )
-        .reduce(
-          (sum, job) =>
-            sum +
-            number(
-              job.teyseerSales
-            ),
-          0
-        );
-    }, [filteredTeyseerJobs]);
+const salahAmount = filteredTeyseerJobs
+  .filter(
+    (job) =>
+      normalizeSource(job.source) ===
+      "Teyseer Motors - Salah"
+  )
+  .reduce(
+    (sum, job) =>
+      sum + Number(job.teyseerSales || 0),
+    0
+  );
 
-  const bahaaAmount =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors - Bahaa"
-        )
-        .reduce(
-          (sum, job) =>
-            sum +
-            number(
-              job.teyseerSales
-            ),
-          0
-        );
-    }, [filteredTeyseerJobs]);
+const bahaaAmount = filteredTeyseerJobs
+  .filter(
+    (job) =>
+      normalizeSource(job.source) ===
+      "Teyseer Motors - Bahaa"
+  )
+  .reduce(
+    (sum, job) =>
+      sum + Number(job.teyseerSales || 0),
+    0
+  );
 
-  const abdouAmount =
-    useMemo(() => {
-      return filteredTeyseerJobs
-        .filter(
-          (job) =>
-            normalizeSource(
-              job.source
-            ) ===
-            "Teyseer Motors - Abdou"
-        )
-        .reduce(
-          (sum, job) =>
-            sum +
-            number(
-              job.teyseerSales
-            ),
-          0
-        );
-    }, [filteredTeyseerJobs]);
+const abdouAmount = filteredTeyseerJobs
+  .filter(
+    (job) =>
+      normalizeSource(job.source) ===
+      "Teyseer Motors - Abdou"
+  )
+  .reduce(
+    (sum, job) =>
+      sum + Number(job.teyseerSales || 0),
+    0
+  );
 
-  const filteredTeyseerSales =
-    filteredTeyseerJobs.reduce(
-      (sum, job) =>
-        sum +
-        number(
-          job.teyseerSales
-        ),
-      0
-    );
+ const filteredTeyseerSales = financial.teyseerSales;
 
-  const filteredTeyseerPaid =
-    filteredTeyseerJobs.reduce(
-      (sum, job) =>
-        sum +
-        number(
-          job.teyseerPaid
-        ),
-      0
-    );
+const filteredTeyseerPaid = financial.teyseerPaid;
 
-  const filteredTeyseerBalance =
-    filteredTeyseerJobs.reduce(
-      (sum, job) =>
-        sum +
-        number(
-          job.teyseerBalance
-        ),
-      0
-    );
+const filteredTeyseerBalance = financial.teyseerBalance;
 
   /*
   ============================================================
@@ -2190,175 +2134,237 @@ const financial = useMemo(() => {
       }, 500);
     };
   }
-  /*
-  ============================================================
-  PRINT TEYSEER
-  ============================================================
-  */
-function printTeyseerReport() {
-  if (filteredTeyseerJobs.length === 0) {
-    alert("No Teyseer jobs found.");
-    return;
-  }
-const teyseerSources = [
-  "TEYSEER MOTORS - SALAH",
-  "TEYSEER MOTORS - BAHAA",
-  "TEYSEER MOTORS - ABDOU",
-];
+  function printTeyseerReport() {
+ // ============================================================
+// TEYSEER SALES CALCULATION FOR REPORT
+// ============================================================
 
-const getTeyseerDescription = (job) => {
+const calculateTeyseerSales = (job) => {
+  const services = Array.isArray(job?.services)
+    ? job.services
+    : [];
+
+  const serviceDetails =
+    job?.serviceDetails &&
+    typeof job.serviceDetails === "object"
+      ? job.serviceDetails
+      : {};
+
   const source = String(
-    job.source ||
-      job.jobSource ||
-      job.customerSource ||
-      ""
+    job?.source ||
+    job?.jobSource ||
+    job?.customerSource ||
+    ""
   )
     .trim()
-    .toUpperCase();
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 
-  const services = String(job.serviceNames || "");
+  const isPureTeyseer =
+    source === "teyseer motors";
 
-  // Teyseer Motors - Salah / Bahaa / Abdou = ONLY WTT
-  if (teyseerSources.includes(source)) {
-    return "WTT";
-  }
+  const isSalah =
+    source === "teyseer motors - salah" ||
+    source === "teyseer motors-salah" ||
+    source === "teyseer-salah";
 
-  return services || "-";
+  const isBahaa =
+    source === "teyseer motors - bahaa" ||
+    source === "teyseer motors-bahaa" ||
+    source === "teyseer-bahaa";
+
+  const isAbdou =
+    source === "teyseer motors - abdou" ||
+    source === "teyseer motors-abdou" ||
+    source === "teyseer-abdou";
+
+  return services.reduce(
+    (total, serviceName) => {
+      const details =
+        serviceDetails[serviceName] || {};
+
+      const price =
+        Number(details.price || 0);
+
+      const quantity =
+        Number(details.quantity || 1);
+
+      const discount =
+        Number(details.discount || 0);
+
+      const serviceAmount = Math.max(
+        price * quantity - discount,
+        0
+      );
+
+      const isWtt =
+        String(serviceName || "")
+          .toLowerCase()
+          .includes("wtt");
+
+      // Teyseer Motors = ALL SERVICES
+      if (isPureTeyseer) {
+        return total + serviceAmount;
+      }
+
+      // Salah / Bahaa / Abdou = WTT ONLY
+      if (
+        (isSalah || isBahaa || isAbdou) &&
+        isWtt
+      ) {
+        return total + serviceAmount;
+      }
+
+      return total;
+    },
+    0
+  );
 };
 
-  const sortedTeyseerJobs = [...filteredTeyseerJobs].sort(
-  (a, b) => {
-    const dateA = getJobDate(a) || "";
-    const dateB = getJobDate(b) || "";
 
-    return dateA.localeCompare(dateB);
-  }
-);
+// ============================================================
+// TEYSEER PRINT ROWS
+// ============================================================
 
 const rows = sortedTeyseerJobs
   .map((job) => {
     const fullCarName =
-  job.carMake ||
-  job.carBrand ||
-  job.carType ||
-  job.carModel ||
-  job.vehicleName ||
-  job.vehicle ||
-  "";
+      job.carMake ||
+      job.carBrand ||
+      job.carType ||
+      job.carModel ||
+      job.vehicleName ||
+      job.vehicle ||
+      "";
 
-let carMake =
-  job.carMake ||
-  job.car_make ||
-  job.make ||
-  job.brand ||
-  job.vehicleMake ||
-  job.vehicle_make ||
-  "";
+    let carMake =
+      job.carMake ||
+      job.car_make ||
+      job.make ||
+      job.brand ||
+      job.vehicleMake ||
+      job.vehicle_make ||
+      "";
 
-let model =
-  job.carModel ||
-  job.car_model ||
-  job.model ||
-  "";
+    let model =
+      job.carModel ||
+      job.car_model ||
+      job.model ||
+      "";
 
-if (!carMake && fullCarName) {
-  const parts = String(fullCarName)
-    .trim()
-    .split(/\s+/);
+    if (!carMake && fullCarName) {
+      const parts = String(fullCarName)
+        .trim()
+        .split(/\s+/);
 
-  carMake = parts[0] || "-";
+      carMake = parts[0] || "-";
 
-  if (!model && parts.length > 1) {
-    model = parts.slice(1).join(" ");
-  }
-}
+      if (!model && parts.length > 1) {
+        model = parts.slice(1).join(" ");
+      }
+    }
 
-carMake = carMake || "-";
-model = model || "-";
+    carMake = carMake || "-";
+    model = model || "-";
 
-      const plate =
-        job.plate ||
-        job.plateNumber ||
-        "-";
+    const plate =
+      job.plate ||
+      job.plateNumber ||
+      "-";
 
-      const voucher =
-        job.voucherNumber ||
-        job.voucher_number ||
-        "-";
+    const voucher =
+      job.voucherNumber ||
+      job.voucher_number ||
+      "-";
 
-      const receipt =
-        job.receipt_number ||
-        job.receiptNumber ||
-        "-";
+    const receipt =
+      job.receipt_number ||
+      job.receiptNumber ||
+      "-";
 
-      const amount = number(
-        job.teyseerSales
-      );
+    // IMPORTANT:
+    // Calculate the amount directly from the job.
+    // Do NOT use job.teyseerSales.
 
-      return `
-        <tr>
+    const amount =
+      calculateTeyseerSales(job);
 
-          <td>
-            ${escapeHtml(
-              getJobDate(job) || "-"
-            )}
-          </td>
+    return `
+      <tr>
 
-          <td>
-            ${escapeHtml(carMake)}
-          </td>
+        <td>
+          ${escapeHtml(
+            getJobDate(job) || "-"
+          )}
+        </td>
 
-          <td>
-            ${escapeHtml(model)}
-          </td>
+        <td>
+          ${escapeHtml(carMake)}
+        </td>
 
-          <td>
-            ${escapeHtml(plate)}
-          </td>
+        <td>
+          ${escapeHtml(model)}
+        </td>
 
-          <td class="description">
-            ${escapeHtml(
-              getTeyseerDescription(job)
-            )}
-          </td>
+        <td>
+          ${escapeHtml(plate)}
+        </td>
 
-          <td class="voucher">
-            ${escapeHtml(voucher)}
-          </td>
+        <td class="description">
+          ${escapeHtml(
+            getTeyseerDescription(job)
+          )}
+        </td>
 
-          <td class="receipt">
-            ${escapeHtml(receipt)}
-          </td>
+        <td class="voucher">
+          ${escapeHtml(voucher)}
+        </td>
 
-          <td class="price">
-            QAR ${money(amount)}
-          </td>
+        <td class="receipt">
+          ${escapeHtml(receipt)}
+        </td>
 
-        </tr>
-      `;
-    })
-    .join("");
+        <td class="price">
+          QAR ${money(amount)}
+        </td>
 
-  const totalAmount = filteredTeyseerJobs.reduce(
+      </tr>
+    `;
+  })
+  .join("");
+
+
+// ============================================================
+// TEYSEER TOTAL
+// ============================================================
+
+const totalAmount =
+  sortedTeyseerJobs.reduce(
     (total, job) =>
-      total + number(job.teyseerSales),
+      total + calculateTeyseerSales(job),
     0
   );
 
-  const invoiceDate = new Date().toLocaleDateString(
-    "en-US",
-    {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }
-  );
+console.log(
+  "TEYSEER PRINT TOTAL:",
+  totalAmount
+);
+  const invoiceDate =
+    new Date().toLocaleDateString(
+      "en-US",
+      {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }
+    );
 
-  const printWindow = window.open(
-    "",
-    "_blank",
-    "width=1500,height=1000"
-  );
+  const printWindow =
+    window.open(
+      "",
+      "_blank",
+      "width=1500,height=1000"
+    );
 
   if (!printWindow) {
     alert(
@@ -2369,9 +2375,7 @@ model = model || "-";
 
   printWindow.document.write(`
     <!DOCTYPE html>
-
     <html>
-
     <head>
 
       <meta charset="UTF-8" />
@@ -2399,7 +2403,10 @@ model = model || "-";
         }
 
         body {
-          font-family: Arial, Helvetica, sans-serif;
+          font-family:
+            Arial,
+            Helvetica,
+            sans-serif;
           color: #111;
           font-size: 10px;
           padding: 8px;
@@ -2410,10 +2417,6 @@ model = model || "-";
           max-width: 1100px;
           margin: 0 auto;
         }
-
-        /* =========================
-           HEADER
-        ========================= */
 
         .header {
           display: flex;
@@ -2479,10 +2482,6 @@ model = model || "-";
           font-weight: 700;
         }
 
-        /* =========================
-           CUSTOMER INFORMATION
-        ========================= */
-
         .infoTable {
           width: 100%;
           border-collapse: collapse;
@@ -2516,10 +2515,6 @@ model = model || "-";
           width: 160px;
         }
 
-        /* =========================
-           MAIN TABLE
-        ========================= */
-
         .mainTable {
           width: 100%;
           border-collapse: collapse;
@@ -2546,10 +2541,6 @@ model = model || "-";
           line-height: 1.25;
           overflow-wrap: anywhere;
         }
-
-        /*
-          Column widths
-        */
 
         .date {
           width: 10%;
@@ -2587,18 +2578,6 @@ model = model || "-";
           white-space: nowrap;
           font-weight: 600;
         }
-
-        /* =========================
-           EMPTY ROWS
-        ========================= */
-
-        .emptyRow td {
-          height: 18px;
-        }
-
-        /* =========================
-           TOTAL
-        ========================= */
 
         .totalArea {
           width: 100%;
@@ -2642,10 +2621,6 @@ model = model || "-";
           font-size: 13px;
         }
 
-        /* =========================
-           PAYMENT
-        ========================= */
-
         .payment {
           margin-top: 8px;
           font-size: 10px;
@@ -2655,10 +2630,6 @@ model = model || "-";
         .paymentTitle {
           font-weight: 800;
         }
-
-        /* =========================
-           SIGNATURES
-        ========================= */
 
         .signatureArea {
           display: flex;
@@ -2687,10 +2658,6 @@ model = model || "-";
           border-bottom: 1px solid #111;
         }
 
-        /* =========================
-           FOOTER
-        ========================= */
-
         .footer {
           margin-top: 18px;
           padding-top: 7px;
@@ -2703,10 +2670,6 @@ model = model || "-";
         .footer strong {
           font-size: 8px;
         }
-
-        /* =========================
-           PRINT
-        ========================= */
 
         @media print {
 
@@ -2741,10 +2704,6 @@ model = model || "-";
     <body>
 
       <div class="invoice">
-
-        <!-- =========================
-             HEADER
-        ========================= -->
 
         <div class="header">
 
@@ -2793,11 +2752,6 @@ model = model || "-";
           </div>
 
         </div>
-
-
-        <!-- =========================
-             CUSTOMER INFORMATION
-        ========================= -->
 
         <table class="infoTable">
 
@@ -2873,11 +2827,6 @@ model = model || "-";
 
         </table>
 
-
-        <!-- =========================
-             ITEMS TABLE
-        ========================= -->
-
         <table class="mainTable">
 
           <thead>
@@ -2928,11 +2877,6 @@ model = model || "-";
 
         </table>
 
-
-        <!-- =========================
-             TOTAL
-        ========================= -->
-
         <table class="totalArea">
 
           <tr>
@@ -2949,7 +2893,6 @@ model = model || "-";
 
         </table>
 
-
         <div class="netAmount">
 
           <div class="netAmountLabel">
@@ -2961,11 +2904,6 @@ model = model || "-";
           </div>
 
         </div>
-
-
-        <!-- =========================
-             PAYMENT METHOD
-        ========================= -->
 
         <div class="payment">
 
@@ -2981,11 +2919,6 @@ model = model || "-";
           BANK TRANSFER
 
         </div>
-
-
-        <!-- =========================
-             SIGNATURES
-        ========================= -->
 
         <div class="signatureArea">
 
@@ -3003,7 +2936,6 @@ model = model || "-";
 
           </div>
 
-
           <div class="signatureBox">
 
             <div class="signatureArabic">
@@ -3019,11 +2951,6 @@ model = model || "-";
           </div>
 
         </div>
-
-
-        <!-- =========================
-             FOOTER
-        ========================= -->
 
         <div class="footer">
 
