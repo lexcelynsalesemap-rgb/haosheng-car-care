@@ -2286,8 +2286,9 @@ const rows = sortedTeyseerJobs
     // Calculate the amount directly from the job.
     // Do NOT use job.teyseerSales.
 
-    const amount =
-      calculateTeyseerSales(job);
+  const amount = Number(
+  job.teyseerSales || 0
+);
 
     return `
       <tr>
@@ -2338,12 +2339,11 @@ const rows = sortedTeyseerJobs
 // TEYSEER TOTAL
 // ============================================================
 
-const totalAmount =
-  sortedTeyseerJobs.reduce(
-    (total, job) =>
-      total + calculateTeyseerSales(job),
-    0
-  );
+const totalAmount = sortedTeyseerJobs.reduce(
+  (total, job) =>
+    total + Number(job.teyseerSales || 0),
+  0
+);
 
 console.log(
   "TEYSEER PRINT TOTAL:",
