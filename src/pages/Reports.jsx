@@ -2,6 +2,75 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
 import gaLogo from "../assets/ga-logo.png";
 
+function isCash(payment) {
+  const method = String(
+    payment?.method ??
+    payment?.paymentMethod ??
+    payment?.payment_method ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return method === "cash";
+}
+
+function isCard(payment) {
+  const method = String(
+    payment?.method ??
+    payment?.paymentMethod ??
+    payment?.payment_method ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return (
+    method === "card" ||
+    method === "credit card" ||
+    method === "creditcard"
+  );
+}
+function isBankTransfer(payment) {
+  const method = String(
+    payment?.method ??
+    payment?.paymentMethod ??
+    payment?.payment_method ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+
+  return (
+    method === "bank transfer" ||
+    method === "bank_transfer" ||
+    method === "banktransfer" ||
+    method === "transfer"
+  );
+}
+
+
+function isTeyseerSource(source) {
+  const value = String(source || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\s*-\s*/g, " - ");
+
+  return [
+    "teyseer motors",
+    "teyseer motors - salah",
+    "teyseer motors - bahaa",
+    "teyseer motors - abdou",
+  ].includes(value);
+}
+
+// Compatibility helper used by the Teyseer report section.
+// A job is a Teyseer job when its source is any recognized Teyseer source.
+function isTeyseerJob(job) {
+  return isTeyseerSource(job?.source);
+}
+
 const TEYSEER_SOURCES = [
   "Teyseer Motors",
   "Teyseer Motors - Bahaa",
@@ -61,9 +130,9 @@ function todayQatar() {
 function getJobDate(job) {
   return qatarDate(
     job.created_at ||
-      job.job_date ||
-      job.date ||
-      job.createdDate
+    job.job_date ||
+    job.date ||
+    job.createdDate
   );
 }
 
@@ -81,374 +150,316 @@ function isDateInRange(date, startDate, endDate) {
   return true;
 }
 
+
+/*
+============================================================
+DASHBOARD-COMPATIBLE CALCULATION HELPERS
+============================================================
+These helpers intentionally mirror the Dashboard calculation:
+
+service amount = price × quantity - service discount
+Teyseer Motors = all services → Teyseer
+Teyseer Motors - Salah/Bahaa/Abdou:
+  WTT → Teyseer
+  other → respective customer/sales person
+Salah/Bahaa/Abdou = customer sales
+Walk-in/Other = Sales Team/customer sales
+
+Payments:
+  pure Teyseer → Teyseer Paid
+  anything with customer sales → Customer Paid
+============================================================
+*/
+
 function normalizeSource(source) {
-  return String(source || "").trim();
-}
-
-function isTeyseerJob(job) {
-  return TEYSEER_SOURCES.includes(
-    normalizeSource(job.source)
-  );
-}
-
-function getPaymentMethod(payment) {
-  return String(
-    payment.payment_method ||
-      payment.method ||
-      payment.type ||
-      ""
-  )
+  return String(source || "")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 }
 
-function isCash(payment) {
-  return getPaymentMethod(payment).includes("cash");
+function isPureTeyseerSource(source) {
+  return normalizeSource(source) === "teyseer motors";
 }
 
-function isCard(payment) {
-  const method = getPaymentMethod(payment);
-
+function isTeyseerSalahSource(source) {
+  const value = normalizeSource(source);
   return (
-    method.includes("visa") ||
-    method.includes("mastercard") ||
-    method.includes("master card") ||
-    method === "card" ||
-    method.includes("credit card") ||
-    method.includes("debit card") ||
-    method.includes("amex") ||
-    method.includes("american express") ||
-    method.includes("naps")
+    value === "teyseer motors - salah" ||
+    value === "teyseer motors-salah" ||
+    value === "teyseer-salah"
   );
 }
 
-function isBankTransfer(payment) {
-  const method = getPaymentMethod(payment);
-
+function isTeyseerBahaaSource(source) {
+  const value = normalizeSource(source);
   return (
-    method.includes("bank") ||
-    method.includes("transfer")
+    value === "teyseer motors - bahaa" ||
+    value === "teyseer motors-bahaa" ||
+    value === "teyseer-bahaa"
   );
 }
 
-function getServicesForJob(jobServices, jobId) {
-  return jobServices.filter(
-    (service) =>
-      String(service.job_id) === String(jobId)
-  );
-}
-
-function getServiceAmount(services) {
-  return services.reduce((sum, service) => {
-    const quantity = Math.max(
-      number(
-        service.quantity ??
-          service.qty ??
-          1
-      ),
-      1
-    );
-
-    const price = number(
-      service.price ??
-        service.unit_price ??
-        service.amount ??
-        service.total ??
-        0
-    );
-
-    const discount = number(
-      service.discount ??
-        service.discount_amount ??
-        0
-    );
-
-    return (
-      sum +
-      Math.max(
-        price * quantity - discount,
-        0
-      )
-    );
-  }, 0);
-}
-
-function getServiceNames(services) {
-  return services
-    .map(
-      (service) =>
-        service.service_name ||
-        service.name ||
-        service.title ||
-        ""
-    )
-    .filter(Boolean)
-    .join(", ");
-}
-
-function isWttService(service) {
-  const serviceName = String(
-    service.service_name ||
-      service.name ||
-      service.title ||
-      ""
-  )
-    .trim()
-    .toLowerCase();
-
+function isTeyseerAbdouSource(source) {
+  const value = normalizeSource(source);
   return (
-    serviceName === "wtt" ||
-    serviceName.includes("wtt")
+    value === "teyseer motors - abdou" ||
+    value === "teyseer motors-abdou" ||
+    value === "teyseer-abdou"
   );
 }
 
-function calculateJob(
-  job,
-  jobServices,
-  paymentsByJob
-) {
-  const services = getServicesForJob(
-    jobServices,
-    job.id
+function isWttService(serviceName) {
+  return String(serviceName || "")
+    .toLowerCase()
+    .includes("wtt");
+}
+
+/*
+Dashboard uses the final service amount:
+price × quantity - service discount
+*/
+function getServiceGross(serviceName, serviceDetails) {
+  const details = serviceDetails?.[serviceName] || {};
+
+  const price = Number(details.price || 0);
+  const quantity = Number(details.quantity || 1);
+  const serviceDiscount = Number(details.discount || 0);
+
+  return Math.max(
+    price * quantity - serviceDiscount,
+    0
   );
+}
+
+function getJobSalesBreakdown(job) {
+  const services = Array.isArray(job?.services)
+    ? job.services
+    : [];
+
+  const serviceDetails =
+    job?.serviceDetails &&
+    typeof job.serviceDetails === "object"
+      ? job.serviceDetails
+      : {};
+
+  const source = normalizeSource(job?.source);
 
   let gross = 0;
+  let teyseer = 0;
+  let salah = 0;
+  let bahaa = 0;
+  let abdou = 0;
+  let salesTeam = 0;
 
-  let teyseerSales = 0;
-  let salahSales = 0;
-  let bahaaSales = 0;
-  let abdouSales = 0;
-  let salesTeamSales = 0;
-
-  const source = normalizeSource(job.source);
-
-  services.forEach((service) => {
-    const quantity = Math.max(
-      number(
-        service.quantity ??
-          service.qty ??
-          1
-      ),
-      1
-    );
-
-    const price = number(
-      service.price ??
-        service.unit_price ??
-        service.amount ??
-        service.total ??
-        0
-    );
-
-    const discount = number(
-      service.discount ??
-        service.discount_amount ??
-        0
-    );
-
-    const amount = Math.max(
-      price * quantity - discount,
-      0
+  services.forEach((serviceName) => {
+    const amount = getServiceGross(
+      serviceName,
+      serviceDetails
     );
 
     gross += amount;
 
-    const serviceName = String(
-      service.service_name ||
-        service.name ||
-        service.title ||
-        ""
-    )
-      .trim()
-      .toLowerCase();
+    const isWtt = isWttService(serviceName);
 
-    const isWtt =
-      serviceName === "wtt" ||
-      serviceName.includes("wtt");
-
-    if (
-      source === "teyseer motors"
-    ) {
-      teyseerSales += amount;
+    if (isPureTeyseerSource(source)) {
+      teyseer += amount;
       return;
     }
 
-    if (
-      source ===
-      "teyseer motors - salah"
-    ) {
-      if (isWtt) {
-        teyseerSales += amount;
-      } else {
-        salahSales += amount;
-      }
-
+    if (isTeyseerSalahSource(source)) {
+      if (isWtt) teyseer += amount;
+      else salah += amount;
       return;
     }
 
-    if (
-      source ===
-      "teyseer motors - bahaa"
-    ) {
-      if (isWtt) {
-        teyseerSales += amount;
-      } else {
-        bahaaSales += amount;
-      }
-
+    if (isTeyseerBahaaSource(source)) {
+      if (isWtt) teyseer += amount;
+      else bahaa += amount;
       return;
     }
 
-    if (
-      source ===
-      "teyseer motors - abdou"
-    ) {
-      if (isWtt) {
-        teyseerSales += amount;
-      } else {
-        abdouSales += amount;
-      }
-
+    if (isTeyseerAbdouSource(source)) {
+      if (isWtt) teyseer += amount;
+      else abdou += amount;
       return;
     }
 
     if (source === "salah") {
-      salahSales += amount;
+      salah += amount;
       return;
     }
 
     if (source === "bahaa") {
-      bahaaSales += amount;
+      bahaa += amount;
       return;
     }
 
     if (source === "abdou") {
-      abdouSales += amount;
+      abdou += amount;
       return;
     }
 
-    salesTeamSales += amount;
+    salesTeam += amount;
   });
 
-  const customerSales =
-    salahSales +
-    bahaaSales +
-    abdouSales +
-    salesTeamSales;
+  return {
+    gross,
+    teyseer,
+    salah,
+    bahaa,
+    abdou,
+    salesTeam,
+    customerSales:
+      salah +
+      bahaa +
+      abdou +
+      salesTeam,
+  };
+}
 
-  const totalSales =
-    teyseerSales +
-    customerSales;
+/*
+Return the exact per-job fields used by Reports.
+Important: job.services/serviceDetails are the Dashboard source
+for sales calculation. job_services is NOT used to recalculate sales.
+*/
+function calculateJob(job, _jobServices, paymentsByJob) {
+  const breakdown = getJobSalesBreakdown(job);
 
   const linkedPayments =
     paymentsByJob[String(job.id)] || [];
 
-  const paid =
-    linkedPayments.reduce(
-      (sum, payment) =>
-        sum + number(payment.amount),
-      0
-    );
+  const paid = linkedPayments.reduce(
+    (sum, payment) =>
+      sum + number(payment.amount),
+    0
+  );
 
   let customerPaid = 0;
   let teyseerPaid = 0;
 
-  if (paid > 0 && totalSales > 0) {
-    const teyseerRatio =
-      teyseerSales / totalSales;
-
-    const customerRatio =
-      customerSales / totalSales;
-
-    teyseerPaid =
-      Math.min(
-        paid * teyseerRatio,
-        teyseerSales
-      );
-
-    customerPaid =
-      Math.min(
-        paid * customerRatio,
-        customerSales
-      );
+  // Exact Dashboard payment allocation.
+  if (
+    breakdown.teyseer > 0 &&
+    breakdown.customerSales <= 0
+  ) {
+    teyseerPaid = paid;
+  } else if (
+    breakdown.customerSales > 0
+  ) {
+    customerPaid = Math.min(
+      paid,
+      breakdown.customerSales
+    );
   }
 
-  customerPaid =
-    Math.round(
-      customerPaid * 100
-    ) / 100;
+  const customerBalance = Math.max(
+    breakdown.customerSales - customerPaid,
+    0
+  );
 
-  teyseerPaid =
-    Math.round(
-      teyseerPaid * 100
-    ) / 100;
+  const teyseerBalance = Math.max(
+    breakdown.teyseer - teyseerPaid,
+    0
+  );
 
-  const customerBalance =
-    Math.max(
-      customerSales -
-        customerPaid,
-      0
-    );
+  /*
+   * Keep these fields for the existing Reports UI.
+   * gross/discount are the original job-level values used by
+   * reports such as Al Nusoor.
+   * serviceGross is the Dashboard-calculated service total.
+   */
+  const gross = number(job?.price);
+  const discount = number(job?.discount);
 
-  const teyseerBalance =
-    Math.max(
-      teyseerSales -
-        teyseerPaid,
-      0
-    );
+  const canonicalNet =
+    breakdown.teyseer +
+    breakdown.customerSales;
 
   return {
     ...job,
 
     gross,
+    discount,
 
-    discount: number(job.discount),
+    // Dashboard sales amount after service discounts.
+    serviceGross: breakdown.gross,
 
-    jobNet: totalSales,
+    // Dashboard-compatible sales breakdown.
+    teyseerSales: breakdown.teyseer,
+    salahSales: breakdown.salah,
+    bahaaSales: breakdown.bahaa,
+    abdouSales: breakdown.abdou,
+    salesTeamSales: breakdown.salesTeam,
+    customerSales: breakdown.customerSales,
 
-    services,
-
-    serviceTotal: gross,
-
-    serviceGross: gross,
-
-    serviceDiscount: 0,
-
-    serviceFinal: gross,
-
-    serviceNames:
-      getServiceNames(services),
-
-    canonicalNet: totalSales,
-
-    customerSales,
-
-    teyseerSales,
+    canonicalNet,
+    jobNet: canonicalNet,
+    net: canonicalNet,
 
     paid,
-
     customerPaid,
-
     teyseerPaid,
 
     customerBalance,
-
     teyseerBalance,
-
     balance: customerBalance,
 
     discrepancy:
-      Math.round(
-        (totalSales - gross) *
-          100
-      ) / 100,
+      canonicalNet -
+      (breakdown.teyseer + breakdown.customerSales),
 
-    isTeyseer:
-      isTeyseerJob(job),
+    cashPaid: linkedPayments
+      .filter(isCash)
+      .reduce(
+        (sum, payment) =>
+          sum + number(payment.amount),
+        0
+      ),
 
-    linkedPayments,
+    cardPaid: linkedPayments
+      .filter(isCard)
+      .reduce(
+        (sum, payment) =>
+          sum + number(payment.amount),
+        0
+      ),
+
+    bankTransferPaid: linkedPayments
+      .filter(isBankTransfer)
+      .reduce(
+        (sum, payment) =>
+          sum + number(payment.amount),
+        0
+      ),
+
+    otherPaid: linkedPayments
+      .filter(
+        (payment) =>
+          !isCash(payment) &&
+          !isCard(payment) &&
+          !isBankTransfer(payment)
+      )
+      .reduce(
+        (sum, payment) =>
+          sum + number(payment.amount),
+        0
+      ),
   };
 }
+
+function getPaymentMethod(payment) {
+  return String(
+    payment?.payment_method ??
+    payment?.method ??
+    payment?.paymentMethod ??
+    payment?.type ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
 
 function Card({
   title,
@@ -916,112 +927,18 @@ const financial = useMemo(() => {
   let abdouSales = 0;
   let salesTeamSales = 0;
 
-  // ==========================================================
-  // SALES - SAME CALCULATION AS DASHBOARD
-  // ==========================================================
+  let customerPaid = 0;
+  let teyseerPaid = 0;
 
-  jobs.forEach((job) => {
-    const services = Array.isArray(job?.services)
-      ? job.services
-      : [];
+  calculatedJobs.forEach((job) => {
+    teyseerSales += number(job.teyseerSales);
+    salahSales += number(job.salahSales);
+    bahaaSales += number(job.bahaaSales);
+    abdouSales += number(job.abdouSales);
+    salesTeamSales += number(job.salesTeamSales);
 
-    const serviceDetails =
-      job?.serviceDetails &&
-      typeof job.serviceDetails === "object"
-        ? job.serviceDetails
-        : {};
-
-    const source = String(job?.source || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-    services.forEach((serviceName) => {
-      const details =
-        serviceDetails?.[serviceName] || {};
-
-      const price = Number(details.price || 0);
-      const quantity = Number(details.quantity || 1);
-      const discount = Number(details.discount || 0);
-
-      const amount = Math.max(
-        price * quantity - discount,
-        0
-      );
-
-      const isWtt = String(serviceName || "")
-        .toLowerCase()
-        .includes("wtt");
-
-      // PURE TEYSEER
-      if (source === "teyseer motors") {
-        teyseerSales += amount;
-        return;
-      }
-
-      // TEYSEER - SALAH
-      if (
-        source === "teyseer motors - salah" ||
-        source === "teyseer motors-salah" ||
-        source === "teyseer-salah"
-      ) {
-        if (isWtt) {
-          teyseerSales += amount;
-        } else {
-          salahSales += amount;
-        }
-        return;
-      }
-
-      // TEYSEER - BAHAA
-      if (
-        source === "teyseer motors - bahaa" ||
-        source === "teyseer motors-bahaa" ||
-        source === "teyseer-bahaa"
-      ) {
-        if (isWtt) {
-          teyseerSales += amount;
-        } else {
-          bahaaSales += amount;
-        }
-        return;
-      }
-
-      // TEYSEER - ABDOU
-      if (
-        source === "teyseer motors - abdou" ||
-        source === "teyseer motors-abdou" ||
-        source === "teyseer-abdou"
-      ) {
-        if (isWtt) {
-          teyseerSales += amount;
-        } else {
-          abdouSales += amount;
-        }
-        return;
-      }
-
-      // NORMAL SALAH
-      if (source === "salah") {
-        salahSales += amount;
-        return;
-      }
-
-      // NORMAL BAHAA
-      if (source === "bahaa") {
-        bahaaSales += amount;
-        return;
-      }
-
-      // NORMAL ABDOU
-      if (source === "abdou") {
-        abdouSales += amount;
-        return;
-      }
-
-      // WALK-IN / OTHER
-      salesTeamSales += amount;
-    });
+    customerPaid += number(job.customerPaid);
+    teyseerPaid += number(job.teyseerPaid);
   });
 
   const customerSales =
@@ -1034,222 +951,64 @@ const financial = useMemo(() => {
     teyseerSales +
     customerSales;
 
-  // ==========================================================
-  // PAYMENTS
-  // ==========================================================
-
-  let customerPaid = 0;
-  let teyseerPaid = 0;
-
-  linkedPayments.forEach((payment) => {
-    const job = jobs.find(
-      (item) =>
-        item.id === payment.job_id
-    );
-
-    if (!job) {
-      return;
-    }
-
-    const paymentAmount =
-      Number(payment.amount || 0);
-
-    const services = Array.isArray(job?.services)
-      ? job.services
-      : [];
-
-    const serviceDetails =
-      job?.serviceDetails &&
-      typeof job.serviceDetails === "object"
-        ? job.serviceDetails
-        : {};
-
-    const source = String(job?.source || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-    let jobTeyseerSales = 0;
-    let jobCustomerSales = 0;
-
-    services.forEach((serviceName) => {
-      const details =
-        serviceDetails?.[serviceName] || {};
-
-      const price = Number(details.price || 0);
-      const quantity = Number(details.quantity || 1);
-      const discount = Number(details.discount || 0);
-
-      const amount = Math.max(
-        price * quantity - discount,
-        0
-      );
-
-      const isWtt = String(serviceName || "")
-        .toLowerCase()
-        .includes("wtt");
-
-      if (source === "teyseer motors") {
-        jobTeyseerSales += amount;
-        return;
-      }
-
-      if (
-        source === "teyseer motors - salah" ||
-        source === "teyseer motors-salah" ||
-        source === "teyseer-salah"
-      ) {
-        if (isWtt) {
-          jobTeyseerSales += amount;
-        } else {
-          jobCustomerSales += amount;
-        }
-        return;
-      }
-
-      if (
-        source === "teyseer motors - bahaa" ||
-        source === "teyseer motors-bahaa" ||
-        source === "teyseer-bahaa"
-      ) {
-        if (isWtt) {
-          jobTeyseerSales += amount;
-        } else {
-          jobCustomerSales += amount;
-        }
-        return;
-      }
-
-      if (
-        source === "teyseer motors - abdou" ||
-        source === "teyseer motors-abdou" ||
-        source === "teyseer-abdou"
-      ) {
-        if (isWtt) {
-          jobTeyseerSales += amount;
-        } else {
-          jobCustomerSales += amount;
-        }
-        return;
-      }
-
-      jobCustomerSales += amount;
-    });
-
-    if (
-      jobTeyseerSales > 0 &&
-      jobCustomerSales === 0
-    ) {
-      teyseerPaid += paymentAmount;
-    } else if (
-      jobCustomerSales > 0
-    ) {
-      customerPaid += paymentAmount;
-    }
-  });
-
-  // ==========================================================
-  // TOTAL PAID
-  // ==========================================================
-
   const paid =
     customerPaid +
     teyseerPaid;
 
-  // ==========================================================
-  // BALANCES
-  // ==========================================================
+  const customerBalance = Math.max(
+    customerSales - customerPaid,
+    0
+  );
 
-  const customerBalance =
-    Math.max(
-      customerSales -
-        customerPaid,
-      0
-    );
+  const teyseerBalance = Math.max(
+    teyseerSales - teyseerPaid,
+    0
+  );
 
-  const teyseerBalance =
-    Math.max(
-      teyseerSales -
-        teyseerPaid,
-      0
-    );
-
-  console.log(
-    "========== REPORT SALES =========="
+  const serviceGross = calculatedJobs.reduce(
+    (sum, job) =>
+      sum + number(job.serviceGross),
+    0
   );
 
   console.log(
-    "TEYSEER SALES:",
-    teyseerSales
+    "========== REPORT SALES / DASHBOARD LOGIC =========="
   );
-
+  console.log("TEYSEER SALES:", teyseerSales);
+  console.log("SALAH SALES:", salahSales);
+  console.log("BAHAA SALES:", bahaaSales);
+  console.log("ABDOU SALES:", abdouSales);
+  console.log("SALES TEAM SALES:", salesTeamSales);
+  console.log("CUSTOMER / PERSONAL SALES:", customerSales);
+  console.log("TOTAL SALES:", totalSales);
+  console.log("SERVICE GROSS:", serviceGross);
+  console.log("CUSTOMER PAID:", customerPaid);
+  console.log("TEYSEER PAID:", teyseerPaid);
+  console.log("TOTAL PAID:", paid);
+  console.log("CUSTOMER BALANCE:", customerBalance);
+  console.log("TEYSEER BALANCE:", teyseerBalance);
   console.log(
-    "SALAH SALES:",
-    salahSales
-  );
-
-  console.log(
-    "BAHAA SALES:",
-    bahaaSales
-  );
-
-  console.log(
-    "ABDOU SALES:",
-    abdouSales
-  );
-
-  console.log(
-    "SALES TEAM SALES:",
-    salesTeamSales
-  );
-
-  console.log(
-    "CUSTOMER SALES:",
-    customerSales
-  );
-
-  console.log(
-    "TOTAL SALES:",
-    totalSales
-  );
-
-  console.log(
-    "CUSTOMER PAID:",
-    customerPaid
-  );
-
-  console.log(
-    "TEYSEER PAID:",
-    teyseerPaid
-  );
-
-  console.log(
-    "CUSTOMER BALANCE:",
-    customerBalance
-  );
-
-  console.log(
-    "TEYSEER BALANCE:",
-    teyseerBalance
-  );
-
-  console.log(
-    "================================="
+    "===================================================="
   );
 
   return {
     customerSales,
     teyseerSales,
     totalSales,
+
+    // Keep existing UI field name.
     netSales: totalSales,
 
+    // Dashboard-compatible paid totals.
     paid,
-
     customerPaid,
     teyseerPaid,
 
     customerBalance,
     teyseerBalance,
+
+    // Service total after service-level discounts.
+    serviceGross,
 
     cashPaid: linkedPayments
       .filter(isCash)
@@ -1289,9 +1048,10 @@ const financial = useMemo(() => {
       ),
   };
 }, [
-  jobs,
+  calculatedJobs,
   linkedPayments,
 ]);
+
 const filteredTeyseerSales = financial.teyseerSales;
 const filteredTeyseerPaid = financial.teyseerPaid;
 const filteredTeyseerBalance = financial.teyseerBalance;
@@ -1431,7 +1191,50 @@ const filteredTeyseerBalance = financial.teyseerBalance;
       calculatedJobs,
       reportDate,
     ]);
+console.log(
+  "=== DAILY TEYSEER DEBUG ==="
+);
 
+console.log(
+  "=== DAILY TEYSEER DEBUG ===",
+  JSON.stringify(
+    selectedDateJobs.map((job) => ({
+      id: job.id,
+      date: getJobDate(job),
+      source: job.source,
+      normalizedSource: normalizeSource(job.source),
+      customerSales: job.customerSales,
+      teyseerSales: job.teyseerSales,
+      jobNet: job.jobNet,
+      serviceNames: job.serviceNames,
+      services: job.services?.map((s) => ({
+        name:
+          s.service_name ||
+          s.name ||
+          s.title,
+        price:
+          s.price ??
+          s.unit_price ??
+          s.amount ??
+          s.total,
+        quantity:
+          s.quantity ??
+          s.qty,
+      })),
+    })),
+    null,
+    2
+  )
+);
+
+console.log(
+  "DAILY TEYSEER TOTAL:",
+  selectedDateJobs.reduce(
+    (sum, job) =>
+      sum + number(job.teyseerSales),
+    0
+  )
+);
   const selectedDateCustomerSales =
     selectedDateJobs.reduce(
       (sum, job) =>
@@ -1442,15 +1245,17 @@ const filteredTeyseerBalance = financial.teyseerBalance;
       0
     );
 
-  const selectedDateTeyseerSales =
-    selectedDateJobs.reduce(
-      (sum, job) =>
-        sum +
-        number(
-          job.teyseerSales
-        ),
-      0
-    );
+ const selectedDateTeyseerSales =
+  selectedDateJobs.reduce(
+    (sum, job) => {
+      const teyseerAmount = number(
+        job.teyseerSales
+      );
+
+      return sum + teyseerAmount;
+    },
+    0
+  );
 
   const selectedDateSales =
     selectedDateCustomerSales +
@@ -1970,45 +1775,28 @@ const teyseerSourceAmounts = useMemo(() => {
   filteredTeyseerJobs.forEach((job) => {
     const source = normalizeSource(job?.source);
 
-    if (!totals.hasOwnProperty(source)) {
+    if (source === "teyseer motors") {
+      totals["Teyseer Motors"] +=
+        number(job?.teyseerSales);
       return;
     }
 
-    const services = Array.isArray(job?.services)
-      ? job.services
-      : [];
+    if (source === "teyseer motors - salah") {
+      totals["Teyseer Motors - Salah"] +=
+        number(job?.teyseerSales);
+      return;
+    }
 
-    services.forEach((service) => {
-      const quantity = Math.max(
-        number(
-          service?.quantity ??
-            service?.qty ??
-            1
-        ),
-        1
-      );
+    if (source === "teyseer motors - bahaa") {
+      totals["Teyseer Motors - Bahaa"] +=
+        number(job?.teyseerSales);
+      return;
+    }
 
-      const price = number(
-        service?.price ??
-          service?.unit_price ??
-          service?.amount ??
-          service?.total ??
-          0
-      );
-
-      const discount = number(
-        service?.discount ??
-          service?.discount_amount ??
-          0
-      );
-
-      const amount = Math.max(
-        price * quantity - discount,
-        0
-      );
-
-      totals[source] += amount;
-    });
+    if (source === "teyseer motors - abdou") {
+      totals["Teyseer Motors - Abdou"] +=
+        number(job?.teyseerSales);
+    }
   });
 
   return totals;
@@ -2204,28 +1992,7 @@ async function printTeyseerReport() {
     }
   );
 
-  function normalizeSource(source) {
-    return String(source || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-  }
-
-  function isTeyseerSource(source) {
-    return [
-      "teyseer motors",
-      "teyseer motors - salah",
-      "teyseer motors - bahaa",
-      "teyseer motors - abdou",
-      "teyseer motors-salah",
-      "teyseer motors-bahaa",
-      "teyseer motors-abdou",
-      "teyseer-salah",
-      "teyseer-bahaa",
-      "teyseer-abdou",
-    ].includes(normalizeSource(source));
-  }
-
+  function normalizeSource(source) { return String(source || "") .trim() .toLowerCase() .replace(/\s+/g, " ") .replace(/\s*-\s*/g, " - "); } function isTeyseerSource(source) { const normalized = normalizeSource(source); return [ "teyseer motors", "teyseer motors - salah", "teyseer motors - bahaa", "teyseer motors - abdou", ].includes(normalized); }
   function getCarMake(job) {
     return (
       job.carType ||
@@ -2465,7 +2232,7 @@ function getJobPrice(job) {
   const totalAmount =
     sortedTeyseerJobs.reduce(
       (total, job) =>
-        total + getJobPrice(job),
+        total + number(job.teyseerSales),
       0
     );
 
