@@ -19,6 +19,8 @@ function Dashboard() {
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
   const [dateFilter, setDateFilter] = useState("All");
+  const [selectedSalesStaff, setSelectedSalesStaff] = useState(null);
+  const [staffCustomerSearch, setStaffCustomerSearch] = useState("");
 
   // ==========================================
   // LOAD
@@ -638,6 +640,13 @@ function Dashboard() {
   let customerPaid = 0;
   let teyseerPaid = 0;
 
+  // Individual sales-staff payment totals.
+  // These use the exact same sales breakdown as the dashboard.
+  let salahPaid = 0;
+  let bahaaPaid = 0;
+  let abdouPaid = 0;
+  let salesTeamPaid = 0;
+
   filteredPayments.forEach(
     (payment) => {
       const job =
@@ -659,6 +668,10 @@ function Dashboard() {
           payment.amount || 0
         );
 
+      if (paymentAmount <= 0) {
+        return;
+      }
+
       // ======================================
       // PURE TEYSEER JOB
       // ======================================
@@ -676,7 +689,13 @@ function Dashboard() {
       // ======================================
       // CUSTOMER / PERSONAL / SALES TEAM JOB
       //
-      // Payment belongs to customer side.
+      // Keep the existing dashboard logic for
+      // total customer paid.
+      //
+      // Also distribute the same payment among
+      // the individual sales staff according to
+      // their share of the customer-side sales.
+      // This keeps: staff paid total = customer paid.
       // ======================================
 
       if (
@@ -684,9 +703,77 @@ function Dashboard() {
       ) {
         customerPaid +=
           paymentAmount;
+
+        const customerBase =
+          breakdown.customerSales;
+
+        // Salah share
+        if (breakdown.salah > 0) {
+          salahPaid +=
+            paymentAmount *
+            (breakdown.salah / customerBase);
+        }
+
+        // Bahaa share
+        if (breakdown.bahaa > 0) {
+          bahaaPaid +=
+            paymentAmount *
+            (breakdown.bahaa / customerBase);
+        }
+
+        // Abdou share
+        if (breakdown.abdou > 0) {
+          abdouPaid +=
+            paymentAmount *
+            (breakdown.abdou / customerBase);
+        }
+
+        // Sales Team share
+        if (breakdown.salesTeam > 0) {
+          salesTeamPaid +=
+            paymentAmount *
+            (breakdown.salesTeam / customerBase);
+        }
       }
     }
   );
+
+  // ==========================================
+  // INDIVIDUAL SALES-STAFF BALANCES
+  //
+  // Balance = sales assigned to the staff
+  //           - payments allocated to the staff
+  // ==========================================
+
+  const salahBalance =
+    Math.max(
+      salahSales - salahPaid,
+      0
+    );
+
+  const bahaaBalance =
+    Math.max(
+      bahaaSales - bahaaPaid,
+      0
+    );
+
+  const abdouBalance =
+    Math.max(
+      abdouSales - abdouPaid,
+      0
+    );
+
+  const salesTeamBalance =
+    Math.max(
+      salesTeamSales - salesTeamPaid,
+      0
+    );
+
+  const salesStaffBalanceTotal =
+    salahBalance +
+    bahaaBalance +
+    abdouBalance +
+    salesTeamBalance;
 
   // ==========================================
   // BALANCES
@@ -705,6 +792,98 @@ function Dashboard() {
         teyseerPaid,
       0
     );
+
+  // ==========================================
+  // SALES STAFF OUTSTANDING CUSTOMER LISTS
+  // ==========================================
+
+  const paymentByJobId = {};
+
+  filteredPayments.forEach((payment) => {
+    const amount = Number(payment.amount || 0);
+    if (amount > 0) {
+      paymentByJobId[payment.job_id] =
+        (paymentByJobId[payment.job_id] || 0) + amount;
+    }
+  });
+
+  const salesStaffCustomerRows = {
+    Salah: [],
+    Bahaa: [],
+    Abdou: [],
+    "Sales Team": [],
+  };
+
+  const staffKeys = {
+    Salah: "salah",
+    Bahaa: "bahaa",
+    Abdou: "abdou",
+    "Sales Team": "salesTeam",
+  };
+
+  filteredJobs.forEach((job) => {
+    const breakdown = getJobSalesBreakdown(job);
+    const jobPaymentTotal = paymentByJobId[job.id] || 0;
+    const customerSidePaid = Math.min(
+      Math.max(jobPaymentTotal, 0),
+      Math.max(breakdown.customerSales, 0)
+    );
+
+    Object.entries(staffKeys).forEach(([staffName, staffKey]) => {
+      const staffSales = Number(breakdown[staffKey] || 0);
+
+      if (staffSales <= 0) return;
+
+      const staffPaid =
+        breakdown.customerSales > 0
+          ? customerSidePaid *
+            (staffSales / breakdown.customerSales)
+          : 0;
+
+      const staffBalance = Math.max(
+        staffSales - staffPaid,
+        0
+      );
+
+      if (staffBalance <= 0) return;
+
+      salesStaffCustomerRows[staffName].push({
+        job,
+        sales: staffSales,
+        paid: staffPaid,
+        balance: staffBalance,
+      });
+    });
+  });
+
+  const selectedStaffRows = selectedSalesStaff
+    ? salesStaffCustomerRows[selectedSalesStaff] || []
+    : [];
+
+  const normalizedStaffSearch = staffCustomerSearch
+    .trim()
+    .toLowerCase();
+
+  const visibleStaffRows = selectedStaffRows.filter((row) => {
+    if (!normalizedStaffSearch) return true;
+
+    const job = row.job;
+    const searchable = [
+      job.customer,
+      job.carModel,
+      job.vehicle,
+      job.plateNumber,
+      job.plate,
+      job.licensePlate,
+      job.source,
+      job.id,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchable.includes(normalizedStaffSearch);
+  });
 
   // ==========================================
   // SOURCE REPORT
@@ -1129,6 +1308,96 @@ function Dashboard() {
             icon="💵"
           />
 
+          {/* INDIVIDUAL SALES-STAFF BALANCES */}
+
+          <Card
+            title="Salah Balance"
+            value={`QAR ${money(
+              salahBalance
+            )}`}
+            icon="⚠️"
+            onClick={() => {
+              setSelectedSalesStaff("Salah");
+              setStaffCustomerSearch("");
+            }}
+          />
+
+          <Card
+            title="Bahaa Balance"
+            value={`QAR ${money(
+              bahaaBalance
+            )}`}
+            icon="⚠️"
+            onClick={() => {
+              setSelectedSalesStaff("Bahaa");
+              setStaffCustomerSearch("");
+            }}
+          />
+
+          <Card
+            title="Abdou Balance"
+            value={`QAR ${money(
+              abdouBalance
+            )}`}
+            icon="⚠️"
+            onClick={() => {
+              setSelectedSalesStaff("Abdou");
+              setStaffCustomerSearch("");
+            }}
+          />
+
+          <Card
+            title="Sales Team Balance"
+            value={`QAR ${money(
+              salesTeamBalance
+            )}`}
+            icon="⚠️"
+            onClick={() => {
+              setSelectedSalesStaff("Sales Team");
+              setStaffCustomerSearch("");
+            }}
+          />
+
+          <Card
+            title="Total Sales Staff Balance"
+            value={`QAR ${money(
+              salesStaffBalanceTotal
+            )}`}
+            icon="📊"
+          />
+
+          <Card
+            title="Salah Paid"
+            value={`QAR ${money(
+              salahPaid
+            )}`}
+            icon="💳"
+          />
+
+          <Card
+            title="Bahaa Paid"
+            value={`QAR ${money(
+              bahaaPaid
+            )}`}
+            icon="💳"
+          />
+
+          <Card
+            title="Abdou Paid"
+            value={`QAR ${money(
+              abdouPaid
+            )}`}
+            icon="💳"
+          />
+
+          <Card
+            title="Sales Team Paid"
+            value={`QAR ${money(
+              salesTeamPaid
+            )}`}
+            icon="💳"
+          />
+
           <Card
             title="Customer / Personal Sales"
             value={`QAR ${money(
@@ -1168,6 +1437,110 @@ function Dashboard() {
             )}`}
             icon="🏢⚠️"
           />
+        </div>
+
+        {/* INDIVIDUAL SALES STAFF BALANCE */}
+
+        <h2 style={styles.heading}>
+          Individual Sales Staff Balances
+        </h2>
+
+        <div style={styles.tableBox}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Sales Staff</th>
+                <th style={styles.th}>Sales</th>
+                <th style={styles.th}>Paid</th>
+                <th style={styles.th}>Balance</th>
+                <th style={styles.th}>Collection %</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {[
+                {
+                  name: "Salah",
+                  sales: salahSales,
+                  paid: salahPaid,
+                  balance: salahBalance,
+                },
+                {
+                  name: "Bahaa",
+                  sales: bahaaSales,
+                  paid: bahaaPaid,
+                  balance: bahaaBalance,
+                },
+                {
+                  name: "Abdou",
+                  sales: abdouSales,
+                  paid: abdouPaid,
+                  balance: abdouBalance,
+                },
+                {
+                  name: "Sales Team",
+                  sales: salesTeamSales,
+                  paid: salesTeamPaid,
+                  balance: salesTeamBalance,
+                },
+              ].map((staff) => {
+                const collection =
+                  staff.sales > 0
+                    ? Math.min(
+                        (staff.paid / staff.sales) * 100,
+                        100
+                      )
+                    : 0;
+
+                return (
+                  <tr key={staff.name}>
+                    <td style={{ ...styles.td, fontWeight: "bold" }}>
+                      {staff.name}
+                    </td>
+
+                    <td style={styles.td}>
+                      QAR {money(staff.sales)}
+                    </td>
+
+                    <td style={styles.paidTd}>
+                      QAR {money(staff.paid)}
+                    </td>
+
+                    <td style={styles.balanceTd}>
+                      QAR {money(staff.balance)}
+                    </td>
+
+                    <td style={styles.td}>
+                      {collection.toFixed(1)}%
+                    </td>
+                  </tr>
+                );
+              })}
+
+              <tr>
+                <td style={styles.totalTd}>
+                  TOTAL
+                </td>
+                <td style={styles.totalTd}>
+                  QAR {money(customerSales)}
+                </td>
+                <td style={styles.totalPaidTd}>
+                  QAR {money(customerPaid)}
+                </td>
+                <td style={styles.totalBalanceTd}>
+                  QAR {money(salesStaffBalanceTotal)}
+                </td>
+                <td style={styles.totalTd}>
+                  {customerSales > 0
+                    ? Math.min(
+                        (customerPaid / customerSales) * 100,
+                        100
+                      ).toFixed(1)
+                    : "0.0"}%
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         {/* RECENT JOBS */}
@@ -1618,6 +1991,145 @@ function Dashboard() {
             </p>
           </Link>
         </div>
+
+        {/* SALES STAFF OUTSTANDING CUSTOMERS MODAL */}
+        {selectedSalesStaff && (
+          <div
+            style={styles.modalOverlay}
+            onClick={() => setSelectedSalesStaff(null)}
+          >
+            <div
+              style={styles.modal}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div style={styles.modalHeader}>
+                <div>
+                  <h2 style={styles.modalTitle}>
+                    {selectedSalesStaff} — Outstanding Customers
+                  </h2>
+                  <p style={styles.modalSubtitle}>
+                    Customers/jobs with an unpaid balance assigned to {selectedSalesStaff}.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  style={styles.modalCloseButton}
+                  onClick={() => setSelectedSalesStaff(null)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={styles.modalSummaryRow}>
+                <div style={styles.modalSummaryCard}>
+                  <span style={styles.modalSummaryLabel}>Customers / Jobs</span>
+                  <strong style={styles.modalSummaryValue}>
+                    {selectedStaffRows.length}
+                  </strong>
+                </div>
+
+                <div style={styles.modalSummaryCard}>
+                  <span style={styles.modalSummaryLabel}>Outstanding Balance</span>
+                  <strong style={styles.modalBalanceValue}>
+                    QAR {money(
+                      selectedStaffRows.reduce(
+                        (sum, row) => sum + row.balance,
+                        0
+                      )
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <input
+                type="text"
+                value={staffCustomerSearch}
+                onChange={(event) =>
+                  setStaffCustomerSearch(event.target.value)
+                }
+                placeholder="Search customer, vehicle, plate, source, or job ID..."
+                style={styles.modalSearch}
+              />
+
+              <div style={styles.modalTableWrap}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Customer</th>
+                      <th style={styles.th}>Vehicle</th>
+                      <th style={styles.th}>Source</th>
+                      <th style={styles.th}>Date</th>
+                      <th style={styles.th}>Sales</th>
+                      <th style={styles.th}>Paid</th>
+                      <th style={styles.th}>Balance</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {visibleStaffRows.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={styles.empty}>
+                          {selectedStaffRows.length === 0
+                            ? "No outstanding customers for this sales staff."
+                            : "No customers match your search."}
+                        </td>
+                      </tr>
+                    ) : (
+                      visibleStaffRows.map((row) => {
+                        const job = row.job;
+                        const vehicle =
+                          job.carModel ||
+                          job.vehicle ||
+                          "-";
+                        const plate =
+                          job.plateNumber ||
+                          job.plate ||
+                          job.licensePlate ||
+                          "";
+
+                        return (
+                          <tr key={`${selectedSalesStaff}-${job.id}`}>
+                            <td style={{ ...styles.td, fontWeight: "bold" }}>
+                              {job.customer || "Walk-in Customer"}
+                            </td>
+
+                            <td style={styles.td}>
+                              {vehicle}
+                              {plate ? ` • ${plate}` : ""}
+                            </td>
+
+                            <td style={styles.td}>
+                              {job.source || "-"}
+                            </td>
+
+                            <td style={styles.td}>
+                              {job.created_at
+                                ? new Date(job.created_at).toLocaleDateString()
+                                : "-"}
+                            </td>
+
+                            <td style={styles.td}>
+                              QAR {money(row.sales)}
+                            </td>
+
+                            <td style={styles.paidTd}>
+                              QAR {money(row.paid)}
+                            </td>
+
+                            <td style={styles.balanceTd}>
+                              QAR {money(row.balance)}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1632,6 +2144,7 @@ function Card({
   value,
   status,
   icon,
+  onClick,
 }) {
   const colors = {
     "Total Jobs": "#d4af37",
@@ -1651,6 +2164,17 @@ function Card({
     "Abdou Sales": "#d4af37",
 
     "Sales Team Sales": "#d4af37",
+
+    "Salah Balance": "#f59e0b",
+    "Bahaa Balance": "#f59e0b",
+    "Abdou Balance": "#f59e0b",
+    "Sales Team Balance": "#f59e0b",
+    "Total Sales Staff Balance": "#dc2626",
+
+    "Salah Paid": "#22c55e",
+    "Bahaa Paid": "#22c55e",
+    "Abdou Paid": "#22c55e",
+    "Sales Team Paid": "#22c55e",
 
     "Customer / Personal Sales":
       "#d4af37",
@@ -1678,7 +2202,14 @@ function Card({
             colors[title] ||
             "#d4af37"
           }`,
+        ...(onClick
+          ? {
+              cursor: "pointer",
+              transition: "0.2s",
+            }
+          : {}),
       }}
+      onClick={onClick}
     >
       <div style={styles.icon}>
         {icon}
@@ -1997,6 +2528,152 @@ const styles = {
   actionIcon: {
     fontSize: "32px",
     marginBottom: "8px",
+  },
+
+  paidTd: {
+    padding: "14px",
+    borderBottom: "1px solid #292929",
+    color: "#22c55e",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+
+  balanceTd: {
+    padding: "14px",
+    borderBottom: "1px solid #292929",
+    color: "#f59e0b",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+
+  totalTd: {
+    padding: "14px",
+    borderTop: "2px solid #d4af37",
+    color: "#d4af37",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+
+  totalPaidTd: {
+    padding: "14px",
+    borderTop: "2px solid #d4af37",
+    color: "#22c55e",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+
+  totalBalanceTd: {
+    padding: "14px",
+    borderTop: "2px solid #d4af37",
+    color: "#dc2626",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.78)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    zIndex: 9999,
+    boxSizing: "border-box",
+  },
+
+  modal: {
+    width: "100%",
+    maxWidth: "1250px",
+    maxHeight: "90vh",
+    overflow: "auto",
+    background: "#111",
+    border: "1px solid #3b321c",
+    borderRadius: "14px",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+    padding: "24px",
+    boxSizing: "border-box",
+  },
+
+  modalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "20px",
+    marginBottom: "20px",
+  },
+
+  modalTitle: {
+    margin: 0,
+    color: "#d4af37",
+    fontSize: "24px",
+  },
+
+  modalSubtitle: {
+    margin: "8px 0 0",
+    color: "#999",
+  },
+
+  modalCloseButton: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "8px",
+    border: "1px solid #444",
+    background: "#1b1b1b",
+    color: "#fff",
+    fontSize: "28px",
+    cursor: "pointer",
+    lineHeight: 1,
+  },
+
+  modalSummaryRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+    gap: "14px",
+    marginBottom: "18px",
+  },
+
+  modalSummaryCard: {
+    background: "#171717",
+    border: "1px solid #292929",
+    borderRadius: "10px",
+    padding: "16px",
+  },
+
+  modalSummaryLabel: {
+    display: "block",
+    color: "#999",
+    fontSize: "13px",
+    marginBottom: "6px",
+  },
+
+  modalSummaryValue: {
+    color: "#f5f5f5",
+    fontSize: "22px",
+  },
+
+  modalBalanceValue: {
+    color: "#f59e0b",
+    fontSize: "22px",
+  },
+
+  modalSearch: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    border: "1px solid #3b321c",
+    background: "#0b0b0b",
+    color: "#fff",
+    outline: "none",
+    marginBottom: "18px",
+    fontSize: "14px",
+  },
+
+  modalTableWrap: {
+    overflowX: "auto",
+    border: "1px solid #292929",
+    borderRadius: "10px",
   },
 
   empty: {
