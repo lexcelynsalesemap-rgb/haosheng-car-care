@@ -72,6 +72,7 @@ function Invoice() {
   const isTeyseer =
     job.source === "Teyseer Motors" ||
     job.source === "Teyseer Motors - Bahaa" ||
+    job.source === "Teyseer Motors - Abdou" ||
     job.source === "Teyseer Motors - Salah";
 
   // =========================================================
@@ -1591,7 +1592,7 @@ const styles = {
 
   vehicleArabic: {
     fontSize: "7px",
-    color: colors.gold,
+    color: colors.black,
     marginTop: "3px",
   },
 
