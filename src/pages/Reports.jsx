@@ -126,7 +126,124 @@ function todayQatar() {
     timeZone: "Asia/Qatar",
   });
 }
+function getJobServicesDescription(job, jobServices = []) {
+  const names = [];
 
+  const addName = (value) => {
+    if (value === null || value === undefined) return;
+
+    if (typeof value === "object") {
+      if (Array.isArray(value)) {
+        value.forEach(addName);
+        return;
+      }
+
+      const nestedName =
+        value.service_name ??
+        value.serviceName ??
+        value.name ??
+        value.title ??
+        value.description ??
+        value.service ??
+        value.label;
+
+      if (nestedName !== null && nestedName !== undefined) {
+        addName(nestedName);
+      }
+      return;
+    }
+
+    let text = String(value).trim();
+    if (!text || text === "-") return;
+
+    // Services may be stored as JSON text.
+    if (
+      (text.startsWith("[") && text.endsWith("]")) ||
+      (text.startsWith("{") && text.endsWith("}"))
+    ) {
+      try {
+        addName(JSON.parse(text));
+        return;
+      } catch {
+        // Keep the original text if it is not valid JSON.
+      }
+    }
+
+    if (
+      !names.some(
+        (existing) =>
+          existing.toLowerCase() === text.toLowerCase()
+      )
+    ) {
+      names.push(text);
+    }
+  };
+
+  // Direct service names.
+  addName(job?.serviceNames);
+
+  // Services stored directly on the job.
+  const services = job?.services;
+
+  if (Array.isArray(services)) {
+    services.forEach(addName);
+  } else if (services && typeof services === "object") {
+    Object.entries(services).forEach(([key, value]) => {
+      if (value && typeof value === "object") {
+        addName(value);
+      } else {
+        addName(key);
+      }
+    });
+  } else if (services) {
+    addName(services);
+  }
+
+  // Service details.
+  const serviceDetails = job?.serviceDetails;
+
+  if (serviceDetails && typeof serviceDetails === "object") {
+    if (Array.isArray(serviceDetails)) {
+      serviceDetails.forEach(addName);
+    } else {
+      Object.entries(serviceDetails).forEach(
+        ([serviceName, details]) => {
+          if (details && typeof details === "object") {
+            addName({
+              ...details,
+              name:
+                details.service_name ??
+                details.serviceName ??
+                details.name ??
+                serviceName,
+            });
+          } else {
+            addName(serviceName);
+          }
+        }
+      );
+    }
+  }
+
+  // Fallback to the job_services table.
+  if (Array.isArray(jobServices)) {
+    jobServices
+      .filter((service) => {
+        const serviceJobId =
+          service?.job_id ??
+          service?.jobId ??
+          service?.jobID;
+
+        return (
+          String(serviceJobId ?? "") ===
+          String(job?.id ?? "")
+        );
+      })
+      .forEach(addName);
+  }
+
+  return names.join(", ");
+}
 function getJobDate(job) {
   return qatarDate(
     job.created_at ||
@@ -1052,9 +1169,7 @@ const financial = useMemo(() => {
   linkedPayments,
 ]);
 
-const filteredTeyseerSales = financial.teyseerSales;
-const filteredTeyseerPaid = financial.teyseerPaid;
-const filteredTeyseerBalance = financial.teyseerBalance;
+
 
 
   /*
@@ -1757,6 +1872,27 @@ const filteredTeyseerJobs = useMemo(() => {
 
 const teyseerJobs = filteredTeyseerJobs;
 
+const filteredTeyseerSales =
+  filteredTeyseerJobs.reduce(
+    (sum, job) =>
+      sum + number(job.teyseerSales),
+    0
+  );
+
+const filteredTeyseerPaid =
+  filteredTeyseerJobs.reduce(
+    (sum, job) =>
+      sum + number(job.teyseerPaid),
+    0
+  );
+
+const filteredTeyseerBalance =
+  filteredTeyseerJobs.reduce(
+    (sum, job) =>
+      sum + number(job.teyseerBalance),
+    0
+  );
+
 
 /*
 ============================================================
@@ -1900,29 +2036,10 @@ TEYSEER DESCRIPTION
 */
 
 function getTeyseerDescription(job) {
-  if (job?.serviceNames) {
-    return job.serviceNames;
-  }
-
-  if (Array.isArray(job?.services)) {
-    return job.services
-      .map((service) => {
-        if (typeof service === "string") {
-          return service;
-        }
-
-        return (
-          service?.service_name ||
-          service?.name ||
-          service?.title ||
-          ""
-        );
-      })
-      .filter(Boolean)
-      .join(", ");
-  }
-
-  return "";
+  return getJobServicesDescription(
+    job,
+    jobServices
+  );
 }
 
 
@@ -2912,22 +3029,21 @@ Doha, Qatar
           )}
         </td>
 
-        <td>
+        <td class="services">
           ${escapeHtml(
-            job.serviceNames || "-"
+            getJobServicesDescription(
+              job,
+              jobServices
+            ) || "-"
           )}
         </td>
 
         <td class="money">
-          QAR ${money(job.gross)}
+          QAR ${money(job.serviceGross)}
         </td>
 
         <td class="money">
-          QAR ${money(
-            job.serviceDiscount ??
-            job.discount ??
-            0
-          )}
+          QAR ${money(job.discount)}
         </td>
 
         <td class="money">
@@ -4266,6 +4382,21 @@ td {
 
               </div>
 
+              <div className="source-box">
+
+                <div className="source-name">
+                  Teyseer Motors - Abdou
+                </div>
+
+                <div className="source-value">
+                  QAR{" "}
+                  {money(
+                    abdouAmount
+                  )}
+                </div>
+
+              </div>
+
             </div>
 
           </div>
@@ -4330,6 +4461,25 @@ td {
                   Net Sales: QAR{" "}
                   {money(
                     bahaaAmount
+                  )}
+                </div>
+
+              </div>
+
+              <div className="source-box">
+
+                <div className="source-name">
+                  Abdou
+                </div>
+
+                <div className="source-value">
+                  {abdouServiceItems}
+                </div>
+
+                <div>
+                  Net Sales: QAR{" "}
+                  {money(
+                    abdouAmount
                   )}
                 </div>
 
@@ -4409,8 +4559,10 @@ td {
                         </td>
 
                         <td>
-                          {job.serviceNames ||
-                            "-"}
+                          {getJobServicesDescription(
+                            job,
+                            jobServices
+                          ) || "-"}
                         </td>
 
                         <td>
@@ -5087,8 +5239,10 @@ td {
                         </td>
 
                         <td>
-                          {job.serviceNames ||
-                            "-"}
+                          {getJobServicesDescription(
+                            job,
+                            jobServices
+                          ) || "-"}
                         </td>
 
                         <td className="right">
