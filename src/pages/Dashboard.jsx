@@ -25,6 +25,14 @@ function Dashboard() {
   // ==========================================
   // LOAD
   // ==========================================
+const user = JSON.parse(
+  localStorage.getItem("user") || "null"
+);
+
+const isAdmin =
+  String(user?.role || "")
+    .trim()
+    .toLowerCase() === "admin";
 
   useEffect(() => {
     loadDashboard();
@@ -1945,28 +1953,24 @@ function Dashboard() {
             </p>
           </Link>
 
-          <Link
-            to="/reports"
-            style={
-              styles.actionCard
-            }
-          >
-            <div
-              style={
-                styles.actionIcon
-              }
-            >
-              📊
-            </div>
+          {isAdmin && (
+  <Link
+    to="/reports"
+    style={styles.actionCard}
+  >
+    <div style={styles.actionIcon}>
+      📊
+    </div>
 
-            <h3>
-              Reports
-            </h3>
+    <h3>
+      Reports
+    </h3>
 
-            <p>
-              Financial overview
-            </p>
-          </Link>
+    <p>
+      Financial overview
+    </p>
+  </Link>
+)}
 
           <Link
             to="/inventory"

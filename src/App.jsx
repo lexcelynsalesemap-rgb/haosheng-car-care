@@ -21,16 +21,18 @@ function App() {
       <Routes>
 
         {/* PUBLIC */}
+
         <Route
           path="/login"
           element={<Login />}
         />
 
-        {/* ADMIN ONLY */}
+        {/* ADMIN + MANAGER */}
+
         <Route
           path="/"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -39,7 +41,7 @@ function App() {
         <Route
           path="/new-job"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <NewJob />
             </ProtectedRoute>
           }
@@ -48,7 +50,7 @@ function App() {
         <Route
           path="/jobs"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <Jobs />
             </ProtectedRoute>
           }
@@ -57,7 +59,7 @@ function App() {
         <Route
           path="/invoice/:id"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <Invoice />
             </ProtectedRoute>
           }
@@ -66,7 +68,7 @@ function App() {
         <Route
           path="/jobs/:id"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <JobDetails />
             </ProtectedRoute>
           }
@@ -75,17 +77,8 @@ function App() {
         <Route
           path="/edit-job/:id"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <EditJob />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <Settings />
             </ProtectedRoute>
           }
         />
@@ -93,7 +86,7 @@ function App() {
         <Route
           path="/technician-earnings"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <TechnicianEarnings />
             </ProtectedRoute>
           }
@@ -102,11 +95,13 @@ function App() {
         <Route
           path="/assign-technician/:id"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "manager"]}>
               <AssignTechnician />
             </ProtectedRoute>
           }
         />
+
+        {/* REPORTS - ADMIN ONLY */}
 
         <Route
           path="/reports"
@@ -117,6 +112,19 @@ function App() {
           }
         />
 
+        {/* SETTINGS - ADMIN ONLY */}
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* USERS - ADMIN ONLY */}
+
         <Route
           path="/users"
           element={
@@ -126,11 +134,19 @@ function App() {
           }
         />
 
-        {/* INVENTORY — ADMIN + STAFF */}
+        {/* INVENTORY - ADMIN + MANAGER + STAFF + INVENTORY STAFF */}
+
         <Route
           path="/inventory"
           element={
-            <ProtectedRoute allowedRoles={["admin", "staff"]}>
+            <ProtectedRoute
+              allowedRoles={[
+                "admin",
+                "manager",
+                "staff",
+                "inventory_staff"
+              ]}
+            >
               <Inventory />
             </ProtectedRoute>
           }

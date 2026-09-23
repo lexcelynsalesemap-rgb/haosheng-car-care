@@ -15,21 +15,36 @@ function ProtectedRoute({ children, allowedRoles }) {
     user = JSON.parse(userData);
   } catch (error) {
     console.error("Invalid user data:", error);
+
     localStorage.removeItem("user");
+
     return <Navigate to="/login" replace />;
   }
 
-  // If this route has role restrictions
-  if (
-    allowedRoles &&
-    !allowedRoles.includes(user?.role)
-  ) {
-    // Staff can only use Inventory
-    if (user?.role === "staff") {
+  // Normalize the user's role
+  const userRole = String(user?.role || "")
+    .trim()
+    .toLowerCase();
+
+  // Normalize allowed roles
+  const roles = (allowedRoles || []).map((role) =>
+    String(role)
+      .trim()
+      .toLowerCase()
+  );
+
+  // Check permission
+  if (roles.length > 0 && !roles.includes(userRole)) {
+
+    // Staff and inventory staff can only access Inventory
+    if (
+      userRole === "staff" ||
+      userRole === "inventory_staff"
+    ) {
       return <Navigate to="/inventory" replace />;
     }
 
-    // Other unauthorized users
+    // Manager/admin unauthorized page
     return <Navigate to="/" replace />;
   }
 
