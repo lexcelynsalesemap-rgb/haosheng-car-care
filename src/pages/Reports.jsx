@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
 import gaLogo from "../assets/ga-logo.png";
+import * as XLSX from "xlsx";
 
 function isCash(payment) {
   const method = String(
@@ -628,6 +629,9 @@ function Reports() {
   const [reportDate, setReportDate] =
     useState(todayQatar());
 
+const [reportMonth, setReportMonth] = useState(
+  todayQatar().slice(0, 7)
+);
   const [
     alnusoorStartDate,
     setAlnusoorStartDate,
@@ -1029,6 +1033,7 @@ function Reports() {
       );
     }, [payments]);
 
+
   /*
  /*
 ============================================================
@@ -1170,7 +1175,1028 @@ const financial = useMemo(() => {
 ]);
 
 
+/*
+============================================================
+EXPORT WHOLE MONTH TO EXCEL
+============================================================
+*/
 
+function exportMonthlyExcel() {
+  if (!reportMonth) {
+    alert("Please select a month.");
+    return;
+  }
+
+  const monthStart = `${reportMonth}-01`;
+
+  const [year, month] = reportMonth.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+
+  const monthEnd =
+    `${reportMonth}-${String(lastDay).padStart(2, "0")}`;
+
+  const inMonth = (date) => {
+    if (!date) return false;
+
+    const d = String(date).slice(0, 10);
+
+    return d >= monthStart && d <= monthEnd;
+  };
+
+  /*
+  ----------------------------------------------------------
+  JOBS FOR SELECTED MONTH
+  ----------------------------------------------------------
+  */
+
+  const monthJobs = calculatedJobs.filter((job) =>
+    inMonth(getJobDate(job))
+  );
+
+  /*
+  ----------------------------------------------------------
+  PAYMENTS FOR SELECTED MONTH
+  ----------------------------------------------------------
+  */
+
+  const monthPayments = payments.filter((payment) =>
+    inMonth(payment.payment_date)
+  );
+
+  /*
+  ----------------------------------------------------------
+  JOB LOOKUP
+  ----------------------------------------------------------
+  */
+
+  const jobMap = new Map(
+    calculatedJobs.map((job) => [
+      String(job.id),
+      job
+    ])
+  );
+
+  /*
+  ----------------------------------------------------------
+  HELPER FUNCTIONS
+  ----------------------------------------------------------
+  */
+
+  const getCustomer = (job) =>
+    job.customer ||
+    job.customer_name ||
+    job.customerName ||
+    "";
+
+  const getSource = (job) =>
+    job.source ||
+    job.sales_source ||
+    job.salesSource ||
+    "";
+
+  const getPlate = (job) =>
+    job.plate_number ||
+    job.plateNumber ||
+    job.plate ||
+    job.car_plate ||
+    "";
+
+  const getMake = (job) =>
+    job.car_make ||
+    job.carMake ||
+    job.make ||
+    "";
+
+  const getModel = (job) =>
+    job.car_model ||
+    job.carModel ||
+    job.model ||
+    "";
+
+  const getVoucher = (job) =>
+    job.voucher_no ||
+    job.voucher ||
+    job.voucherNumber ||
+    "";
+
+  const getReceipt = (job) =>
+    job.receipt_no ||
+    job.receipt ||
+    job.receiptNumber ||
+    "";
+
+  const getServiceText = (job) => {
+    try {
+      return getJobServicesDescription(job, jobServices) || "";
+    } catch {
+      return "";
+    }
+  };
+
+  /*
+  ----------------------------------------------------------
+  MONTHLY SALES TOTALS
+  ----------------------------------------------------------
+  */
+
+  const monthlyTeyseerSales = monthJobs.reduce(
+    (sum, job) => sum + number(job.teyseerSales),
+    0
+  );
+
+  const monthlySalahSales = monthJobs.reduce(
+    (sum, job) => sum + number(job.salahSales),
+    0
+  );
+
+  const monthlyBahaaSales = monthJobs.reduce(
+    (sum, job) => sum + number(job.bahaaSales),
+    0
+  );
+
+  const monthlyAbdouSales = monthJobs.reduce(
+    (sum, job) => sum + number(job.abdouSales),
+    0
+  );
+
+  const monthlySalesTeamSales = monthJobs.reduce(
+    (sum, job) => sum + number(job.salesTeamSales),
+    0
+  );
+
+  const monthlyCustomerSales =
+    monthlySalahSales +
+    monthlyBahaaSales +
+    monthlyAbdouSales +
+    monthlySalesTeamSales;
+
+  const monthlyTotalSales =
+    monthlyTeyseerSales +
+    monthlyCustomerSales;
+
+  /*
+  ----------------------------------------------------------
+  CURRENT BALANCES OF MONTH JOBS
+  ----------------------------------------------------------
+  */
+
+  const monthlyCustomerBalance = monthJobs.reduce(
+    (sum, job) => sum + number(job.customerBalance),
+    0
+  );
+
+  const monthlyTeyseerBalance = monthJobs.reduce(
+    (sum, job) => sum + number(job.teyseerBalance),
+    0
+  );
+
+  const monthlyTotalBalance =
+    monthlyCustomerBalance +
+    monthlyTeyseerBalance;
+
+  /*
+  ----------------------------------------------------------
+  PAYMENTS BY JOB
+  ----------------------------------------------------------
+  */
+
+  const paymentsByMonthJob = {};
+
+  monthPayments.forEach((payment) => {
+    const jobId = payment.job_id;
+
+    if (
+      jobId === null ||
+      jobId === undefined ||
+      String(jobId).trim() === ""
+    ) {
+      return;
+    }
+
+    const key = String(jobId);
+
+    if (!paymentsByMonthJob[key]) {
+      paymentsByMonthJob[key] = [];
+    }
+
+    paymentsByMonthJob[key].push(payment);
+  });
+
+  /*
+  ----------------------------------------------------------
+  MONTHLY COLLECTIONS
+  Uses PAYMENT DATE, not job date.
+  ----------------------------------------------------------
+  */
+
+  let monthlyCustomerPaid = 0;
+  let monthlyTeyseerPaid = 0;
+
+  Object.entries(paymentsByMonthJob).forEach(
+    ([jobId, jobPayments]) => {
+      const job = jobMap.get(jobId);
+
+      if (!job) return;
+
+      const totalJobPayment = jobPayments.reduce(
+        (sum, payment) =>
+          sum + number(payment.amount),
+        0
+      );
+
+      /*
+      Pure Teyseer:
+      payment belongs to Teyseer.
+      */
+
+      if (
+        number(job.customerSales) <= 0 &&
+        number(job.teyseerSales) > 0
+      ) {
+        monthlyTeyseerPaid += totalJobPayment;
+      }
+
+      /*
+      Customer sale:
+      payment belongs to customer sales,
+      capped by customer sales amount.
+      */
+
+      else if (number(job.customerSales) > 0) {
+        monthlyCustomerPaid += Math.min(
+          totalJobPayment,
+          number(job.customerSales)
+        );
+      }
+    }
+  );
+
+  const monthlyTotalPaid =
+    monthlyCustomerPaid +
+    monthlyTeyseerPaid;
+
+  /*
+  ----------------------------------------------------------
+  PAYMENT METHOD TOTALS
+  ----------------------------------------------------------
+  */
+
+  let monthlyCash = 0;
+  let monthlyCard = 0;
+  let monthlyBankTransfer = 0;
+  let monthlyOther = 0;
+
+  monthPayments.forEach((payment) => {
+    const amount = number(payment.amount);
+    const method = getPaymentMethod(payment);
+
+    if (isCash(method)) {
+      monthlyCash += amount;
+    } else if (isCard(method)) {
+      monthlyCard += amount;
+    } else if (isBankTransfer(method)) {
+      monthlyBankTransfer += amount;
+    } else {
+      monthlyOther += amount;
+    }
+  });
+
+  /*
+  ----------------------------------------------------------
+  DAILY SUMMARY
+  ----------------------------------------------------------
+  */
+
+  const dailyRows = [];
+
+  for (let day = 1; day <= lastDay; day++) {
+    const date =
+      `${reportMonth}-${String(day).padStart(2, "0")}`;
+
+    const dayJobs = monthJobs.filter(
+      (job) => getJobDate(job) === date
+    );
+
+    const dayPayments = monthPayments.filter(
+      (payment) =>
+        String(payment.payment_date || "").slice(0, 10) === date
+    );
+
+    const dayTeyseerSales = dayJobs.reduce(
+      (sum, job) => sum + number(job.teyseerSales),
+      0
+    );
+
+    const daySalahSales = dayJobs.reduce(
+      (sum, job) => sum + number(job.salahSales),
+      0
+    );
+
+    const dayBahaaSales = dayJobs.reduce(
+      (sum, job) => sum + number(job.bahaaSales),
+      0
+    );
+
+    const dayAbdouSales = dayJobs.reduce(
+      (sum, job) => sum + number(job.abdouSales),
+      0
+    );
+
+    const daySalesTeamSales = dayJobs.reduce(
+      (sum, job) => sum + number(job.salesTeamSales),
+      0
+    );
+
+    const dayCustomerSales =
+      daySalahSales +
+      dayBahaaSales +
+      dayAbdouSales +
+      daySalesTeamSales;
+
+    const dayTotalSales =
+      dayTeyseerSales +
+      dayCustomerSales;
+
+    let dayCash = 0;
+    let dayVisa = 0;
+    let dayMastercard = 0;
+    let dayBankTransfer = 0;
+    let dayOther = 0;
+    let dayPaid = 0;
+
+    dayPayments.forEach((payment) => {
+      const amount = number(payment.amount);
+      const method = getPaymentMethod(payment);
+
+      dayPaid += amount;
+
+      if (isCash(method)) {
+        dayCash += amount;
+      } else if (isBankTransfer(method)) {
+        dayBankTransfer += amount;
+      } else if (
+        String(method).toLowerCase().includes("visa")
+      ) {
+        dayVisa += amount;
+      } else if (
+        String(method).toLowerCase().includes("master")
+      ) {
+        dayMastercard += amount;
+      } else {
+        dayOther += amount;
+      }
+    });
+
+    dailyRows.push({
+      Date: date,
+      "Cars / Jobs": dayJobs.length,
+
+      "Teyseer Sales": Number(
+        dayTeyseerSales.toFixed(2)
+      ),
+
+      "Salah Sales": Number(
+        daySalahSales.toFixed(2)
+      ),
+
+      "Bahaa Sales": Number(
+        dayBahaaSales.toFixed(2)
+      ),
+
+      "Abdou Sales": Number(
+        dayAbdouSales.toFixed(2)
+      ),
+
+      "Sales Team": Number(
+        daySalesTeamSales.toFixed(2)
+      ),
+
+      "Customer Sales": Number(
+        dayCustomerSales.toFixed(2)
+      ),
+
+      "Total Sales": Number(
+        dayTotalSales.toFixed(2)
+      ),
+
+      "Total Paid": Number(
+        dayPaid.toFixed(2)
+      ),
+
+      Cash: Number(
+        dayCash.toFixed(2)
+      ),
+
+      Visa: Number(
+        dayVisa.toFixed(2)
+      ),
+
+      Mastercard: Number(
+        dayMastercard.toFixed(2)
+      ),
+
+      "Bank Transfer": Number(
+        dayBankTransfer.toFixed(2)
+      ),
+
+      Other: Number(
+        dayOther.toFixed(2)
+      )
+    });
+  }
+
+  /*
+  ----------------------------------------------------------
+  ALL JOBS
+  ----------------------------------------------------------
+  */
+
+  const allJobsRows = monthJobs.map((job) => ({
+    Date: getJobDate(job),
+
+    "Job ID": job.id,
+
+    Customer: getCustomer(job),
+
+    Source: getSource(job),
+
+    "Car Make": getMake(job),
+
+    Model: getModel(job),
+
+    Plate: getPlate(job),
+
+    Services: getServiceText(job),
+
+    "Teyseer Sales": Number(
+      number(job.teyseerSales).toFixed(2)
+    ),
+
+    "Salah Sales": Number(
+      number(job.salahSales).toFixed(2)
+    ),
+
+    "Bahaa Sales": Number(
+      number(job.bahaaSales).toFixed(2)
+    ),
+
+    "Abdou Sales": Number(
+      number(job.abdouSales).toFixed(2)
+    ),
+
+    "Sales Team": Number(
+      number(job.salesTeamSales).toFixed(2)
+    ),
+
+    "Customer Sales": Number(
+      number(job.customerSales).toFixed(2)
+    ),
+
+    "Total Sales": Number(
+      number(job.canonicalNet).toFixed(2)
+    ),
+
+    Paid: Number(
+      number(job.paid).toFixed(2)
+    ),
+
+    "Customer Paid": Number(
+      number(job.customerPaid).toFixed(2)
+    ),
+
+    "Teyseer Paid": Number(
+      number(job.teyseerPaid).toFixed(2)
+    ),
+
+    "Customer Balance": Number(
+      number(job.customerBalance).toFixed(2)
+    ),
+
+    "Teyseer Balance": Number(
+      number(job.teyseerBalance).toFixed(2)
+    ),
+
+    "Total Balance": Number(
+      (
+        number(job.customerBalance) +
+        number(job.teyseerBalance)
+      ).toFixed(2)
+    )
+  }));
+
+  /*
+  ----------------------------------------------------------
+  TEYSEER JOBS
+  ----------------------------------------------------------
+  */
+
+  const teyseerRows = monthJobs
+    .filter((job) => isTeyseerJob(job))
+    .map((job) => ({
+      Date: getJobDate(job),
+
+      "Job ID": job.id,
+
+      Customer: getCustomer(job),
+
+      Source: getSource(job),
+
+      "Car Make": getMake(job),
+
+      Model: getModel(job),
+
+      Plate: getPlate(job),
+
+      "Teyseer Services": getServiceText(job),
+
+      Voucher: getVoucher(job),
+
+      Receipt: getReceipt(job),
+
+      "Teyseer Sales": Number(
+        number(job.teyseerSales).toFixed(2)
+      ),
+
+      "Teyseer Paid": Number(
+        number(job.teyseerPaid).toFixed(2)
+      ),
+
+      "Teyseer Balance": Number(
+        number(job.teyseerBalance).toFixed(2)
+      )
+    }));
+
+  /*
+  ----------------------------------------------------------
+  CUSTOMER SALES
+  ----------------------------------------------------------
+  */
+
+  const customerRows = monthJobs
+    .filter(
+      (job) => number(job.customerSales) > 0
+    )
+    .map((job) => ({
+      Date: getJobDate(job),
+
+      "Job ID": job.id,
+
+      Customer: getCustomer(job),
+
+      Source: getSource(job),
+
+      "Car Make": getMake(job),
+
+      Model: getModel(job),
+
+      Plate: getPlate(job),
+
+      "Salah Sales": Number(
+        number(job.salahSales).toFixed(2)
+      ),
+
+      "Bahaa Sales": Number(
+        number(job.bahaaSales).toFixed(2)
+      ),
+
+      "Abdou Sales": Number(
+        number(job.abdouSales).toFixed(2)
+      ),
+
+      "Sales Team": Number(
+        number(job.salesTeamSales).toFixed(2)
+      ),
+
+      "Customer Sales": Number(
+        number(job.customerSales).toFixed(2)
+      ),
+
+      "Customer Paid": Number(
+        number(job.customerPaid).toFixed(2)
+      ),
+
+      "Customer Balance": Number(
+        number(job.customerBalance).toFixed(2)
+      )
+    }));
+
+  /*
+  ----------------------------------------------------------
+  PAYMENTS
+  ----------------------------------------------------------
+  */
+
+  const paymentRows = monthPayments.map((payment) => {
+    const job = payment.job_id
+      ? jobMap.get(String(payment.job_id))
+      : null;
+
+    return {
+      Date: String(
+        payment.payment_date || ""
+      ).slice(0, 10),
+
+      "Payment ID": payment.id,
+
+      "Job ID": payment.job_id || "",
+
+      Customer: job
+        ? getCustomer(job)
+        : "",
+
+      Source: job
+        ? getSource(job)
+        : "",
+
+      Plate: job
+        ? getPlate(job)
+        : "",
+
+      Method: getPaymentMethod(payment),
+
+      Amount: Number(
+        number(payment.amount).toFixed(2)
+      ),
+
+      Status: job
+        ? "Linked"
+        : "Unlinked"
+    };
+  });
+
+  /*
+  ----------------------------------------------------------
+  OUTSTANDING
+  ----------------------------------------------------------
+  */
+
+  const outstandingRows = monthJobs
+    .filter(
+      (job) =>
+        number(job.customerBalance) > 0 ||
+        number(job.teyseerBalance) > 0
+    )
+    .map((job) => ({
+      Date: getJobDate(job),
+
+      "Job ID": job.id,
+
+      Customer: getCustomer(job),
+
+      Source: getSource(job),
+
+      "Car Make": getMake(job),
+
+      Model: getModel(job),
+
+      Plate: getPlate(job),
+
+      "Customer Sales": Number(
+        number(job.customerSales).toFixed(2)
+      ),
+
+      "Teyseer Sales": Number(
+        number(job.teyseerSales).toFixed(2)
+      ),
+
+      "Customer Paid": Number(
+        number(job.customerPaid).toFixed(2)
+      ),
+
+      "Teyseer Paid": Number(
+        number(job.teyseerPaid).toFixed(2)
+      ),
+
+      "Customer Balance": Number(
+        number(job.customerBalance).toFixed(2)
+      ),
+
+      "Teyseer Balance": Number(
+        number(job.teyseerBalance).toFixed(2)
+      ),
+
+      "Total Outstanding": Number(
+        (
+          number(job.customerBalance) +
+          number(job.teyseerBalance)
+        ).toFixed(2)
+      )
+    }));
+
+  /*
+  ----------------------------------------------------------
+  AL NUSOOR
+  ----------------------------------------------------------
+  */
+
+  const alNusoorRows = monthJobs
+    .filter((job) => {
+      const customer = String(
+        getCustomer(job)
+      ).toLowerCase();
+
+      return (
+        customer.includes("al nusoor") ||
+        customer.includes("alnusoor")
+      );
+    })
+    .map((job) => ({
+      Date: getJobDate(job),
+
+      "Job ID": job.id,
+
+      Customer: getCustomer(job),
+
+      "Car Make": getMake(job),
+
+      Model: getModel(job),
+
+      Plate: getPlate(job),
+
+      Services: getServiceText(job),
+
+      Gross: Number(
+        number(job.gross).toFixed(2)
+      ),
+
+      Discount: Number(
+        number(job.discount).toFixed(2)
+      ),
+
+      Net: Number(
+        number(job.canonicalNet).toFixed(2)
+      ),
+
+      Paid: Number(
+        number(job.customerPaid).toFixed(2)
+      ),
+
+      Balance: Number(
+        number(job.customerBalance).toFixed(2)
+      )
+    }));
+
+  /*
+  ----------------------------------------------------------
+  MONTHLY SUMMARY
+  ----------------------------------------------------------
+  */
+
+  const summaryRows = [
+    {
+      "Report Month": reportMonth,
+      "Period Start": monthStart,
+      "Period End": monthEnd,
+      "Cars / Jobs": monthJobs.length,
+
+      "Teyseer Sales": Number(
+        monthlyTeyseerSales.toFixed(2)
+      ),
+
+      "Salah Sales": Number(
+        monthlySalahSales.toFixed(2)
+      ),
+
+      "Bahaa Sales": Number(
+        monthlyBahaaSales.toFixed(2)
+      ),
+
+      "Abdou Sales": Number(
+        monthlyAbdouSales.toFixed(2)
+      ),
+
+      "Sales Team": Number(
+        monthlySalesTeamSales.toFixed(2)
+      ),
+
+      "Customer Sales": Number(
+        monthlyCustomerSales.toFixed(2)
+      ),
+
+      "Total Sales": Number(
+        monthlyTotalSales.toFixed(2)
+      ),
+
+      "Customer Paid": Number(
+        monthlyCustomerPaid.toFixed(2)
+      ),
+
+      "Teyseer Paid": Number(
+        monthlyTeyseerPaid.toFixed(2)
+      ),
+
+      "Total Paid": Number(
+        monthlyTotalPaid.toFixed(2)
+      ),
+
+      "Current Customer Balance": Number(
+        monthlyCustomerBalance.toFixed(2)
+      ),
+
+      "Current Teyseer Balance": Number(
+        monthlyTeyseerBalance.toFixed(2)
+      ),
+
+      "Current Total Balance": Number(
+        monthlyTotalBalance.toFixed(2)
+      ),
+
+      "Cash Collected": Number(
+        monthlyCash.toFixed(2)
+      ),
+
+      "Card Collected": Number(
+        monthlyCard.toFixed(2)
+      ),
+
+      "Bank Transfer": Number(
+        monthlyBankTransfer.toFixed(2)
+      ),
+
+      "Other Payments": Number(
+        monthlyOther.toFixed(2)
+      )
+    }
+  ];
+
+  /*
+  ----------------------------------------------------------
+  UNLINKED PAYMENTS
+  ----------------------------------------------------------
+  */
+
+  const unlinkedRows = monthPayments
+    .filter(
+      (payment) =>
+        !payment.job_id ||
+        String(payment.job_id).trim() === ""
+    )
+    .map((payment) => ({
+      Date: String(
+        payment.payment_date || ""
+      ).slice(0, 10),
+
+      "Payment ID": payment.id,
+
+      Method: getPaymentMethod(payment),
+
+      Amount: Number(
+        number(payment.amount).toFixed(2)
+      ),
+
+      Status: "UNLINKED"
+    }));
+
+  /*
+  ----------------------------------------------------------
+  CREATE EXCEL WORKBOOK
+  ----------------------------------------------------------
+  */
+
+  const workbook = XLSX.utils.book_new();
+
+  const addSheet = (
+    sheetName,
+    rows,
+    widths = []
+  ) => {
+    const worksheet =
+      XLSX.utils.json_to_sheet(rows);
+
+    if (widths.length) {
+      worksheet["!cols"] = widths.map(
+        (width) => ({
+          wch: width
+        })
+      );
+    }
+
+    if (worksheet["!ref"]) {
+      worksheet["!autofilter"] = {
+        ref: worksheet["!ref"]
+      };
+    }
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      sheetName
+    );
+  };
+
+  /*
+  ----------------------------------------------------------
+  ADD ALL SHEETS
+  ----------------------------------------------------------
+  */
+
+  addSheet(
+    "Monthly Summary",
+    summaryRows,
+    [
+      15, 15, 15, 12,
+      15, 15, 15, 15, 15,
+      18, 15, 15, 15, 18,
+      20, 20, 20, 15, 15, 18
+    ]
+  );
+
+  addSheet(
+    "Daily Summary",
+    dailyRows,
+    [
+      14, 12, 15, 15, 15,
+      15, 15, 18, 15, 15,
+      15, 15, 15, 18, 15
+    ]
+  );
+
+  addSheet(
+    "All Jobs",
+    allJobsRows,
+    [
+      14, 10, 25, 28, 15,
+      18, 15, 50, 15, 15,
+      15, 15, 15, 18, 15,
+      15, 15, 18, 18, 18
+    ]
+  );
+
+  addSheet(
+    "Teyseer Jobs",
+    teyseerRows,
+    [
+      14, 10, 25, 28, 15,
+      18, 15, 55, 15, 15,
+      18, 18, 18
+    ]
+  );
+
+  addSheet(
+    "Customer Sales",
+    customerRows,
+    [
+      14, 10, 25, 28, 15,
+      18, 15, 15, 15, 15,
+      15, 18, 18
+    ]
+  );
+
+  addSheet(
+    "Payments",
+    paymentRows,
+    [
+      14, 12, 10, 25, 28,
+      15, 18, 15, 12
+    ]
+  );
+
+  addSheet(
+    "Outstanding",
+    outstandingRows,
+    [
+      14, 10, 25, 28, 15,
+      18, 15, 18, 18, 18,
+      18, 20
+    ]
+  );
+
+  addSheet(
+    "Al Nusoor",
+    alNusoorRows,
+    [
+      14, 10, 25, 15, 18,
+      15, 50, 15, 15, 15,
+      15, 18
+    ]
+  );
+
+  addSheet(
+    "Unlinked Payments",
+    unlinkedRows,
+    [
+      14, 12, 18, 15, 15
+    ]
+  );
+
+  /*
+  ----------------------------------------------------------
+  FILE NAME
+  ----------------------------------------------------------
+  */
+
+  const fileName =
+    `Haosheng_Monthly_Report_${reportMonth}.xlsx`;
+
+  XLSX.writeFile(
+    workbook,
+    fileName
+  );
+
+  alert(
+    `Excel report created successfully for ${reportMonth}.`
+  );
+}
 
   /*
   ============================================================
@@ -5296,6 +6322,49 @@ td {
           </div>
         </>
       )}
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "15px"
+  }}
+>
+  <label
+    style={{
+      fontWeight: "600"
+    }}
+  >
+    Excel Month:
+  </label>
+
+  <input
+    type="month"
+    value={reportMonth}
+    onChange={(e) =>
+      setReportMonth(e.target.value)
+    }
+    style={{
+      padding: "8px 10px",
+      border: "1px solid #ccc",
+      borderRadius: "6px"
+    }}
+  />
+
+  <button
+    type="button"
+    onClick={exportMonthlyExcel}
+    style={{
+      padding: "9px 16px",
+      border: "none",
+      borderRadius: "6px",
+      cursor: "pointer",
+      fontWeight: "600"
+    }}
+  >
+    📊 EXPORT MONTH TO EXCEL
+  </button>
+</div>
 
       {activeSection === "settings" && (
         <>
