@@ -979,18 +979,38 @@ export default function Inventory() {
     return { start, end };
   }
 
-  async function loadMonthlyExpenses(monthValue = expenseMonth) {
+async function loadMonthlyExpenses(monthValue = expenseMonth) {
   if (!shopId || !showCost) return;
 
   const range = getMonthRange(monthValue);
+
   if (!range) return;
 
   setExpensesLoading(true);
   setError("");
 
   try {
+    const { data: testMovements, error: testError } = await supabase
+  .from("inventory_stock_movements")
+  .select("*")
+  .eq("movement_type", "IN")
+  .gte("created_at", "2026-09-01T00:00:00")
+  .lt("created_at", "2026-10-01T00:00:00");
+
+console.log("TEST MOVEMENTS:", testMovements);
+console.log("TEST MOVEMENT ERROR:", testError);
+
+const testTotal = (testMovements || []).reduce(
+  (sum, item) =>
+    sum +
+    Number(item.quantity || 0) *
+    Number(item.unit_cost || 0),
+  0
+);
+
+console.log("TEST INVENTORY TOTAL:", testTotal);
     // =====================================================
-    // 1. LOAD GENERAL SHOP EXPENSES
+    // 1. GENERAL SHOP EXPENSES
     // =====================================================
 
     const {
@@ -1011,7 +1031,7 @@ export default function Inventory() {
     }
 
     // =====================================================
-    // 2. LOAD INVENTORY PURCHASE MOVEMENTS
+    // 2. INVENTORY STOCK-IN MOVEMENTS
     // =====================================================
 
     const {
@@ -1050,64 +1070,32 @@ export default function Inventory() {
     }
 
     // =====================================================
-    // 3. BUILD PRODUCT MAP
+    // 3. CALCULATE INVENTORY PURCHASES
     // =====================================================
 
-    const productMap = new Map();
+    const purchases = (movementData || []).map(
+      (movement) => {
+        const quantity =
+          Number(movement.quantity || 0);
 
-    (products || []).forEach((product) => {
-      productMap.set(
-        String(product.id),
-        product
-      );
-    });
-
-    // =====================================================
-    // 4. FILTER MOVEMENTS FOR THIS SHOP
-    // =====================================================
-
-    const purchases = (movementData || [])
-      .filter((movement) => {
-        const product = productMap.get(
-          String(movement.product_id)
-        );
-
-        return (
-          product &&
-          String(product.shop_id) === String(shopId)
-        );
-      })
-      .map((movement) => {
-        const product = productMap.get(
-          String(movement.product_id)
-        );
-
-        const quantity = Number(
-          movement.quantity || 0
-        );
-
-        const unitCost = Number(
-          movement.unit_cost || 0
-        );
+        const unitCost =
+          Number(movement.unit_cost || 0);
 
         return {
           ...movement,
 
-          product_name:
-            product?.name ||
-            "Unknown Product",
+          quantity,
 
-          sku:
-            product?.sku ||
-            "",
+          unit_cost: unitCost,
 
           total_cost:
             quantity * unitCost,
         };
-      });
+      }
+    );
 
     // =====================================================
-    // 5. SAVE RESULTS
+    // 4. SAVE RESULTS
     // =====================================================
 
     setExpenses(
@@ -1116,6 +1104,20 @@ export default function Inventory() {
 
     setInventoryPurchases(
       purchases
+    );
+
+    console.log(
+      "MONTHLY INVENTORY MOVEMENTS:",
+      purchases
+    );
+
+    console.log(
+      "MONTHLY INVENTORY PURCHASE TOTAL:",
+      purchases.reduce(
+        (sum, item) =>
+          sum + Number(item.total_cost || 0),
+        0
+      )
     );
 
   } catch (err) {
@@ -1128,21 +1130,23 @@ export default function Inventory() {
       err?.message ||
         "Failed to load monthly expenses."
     );
+
   } finally {
     setExpensesLoading(false);
   }
 }
 
+
 const monthlyExpenseSummary = useMemo(() => {
   const inventoryPurchasesTotal =
-    inventoryPurchases.reduce(
+    (inventoryPurchases || []).reduce(
       (sum, item) =>
         sum + Number(item.total_cost || 0),
       0
     );
 
   const generalExpensesTotal =
-    expenses.reduce(
+    (expenses || []).reduce(
       (sum, item) =>
         sum + Number(item.amount || 0),
       0
@@ -1154,7 +1158,7 @@ const monthlyExpenseSummary = useMemo(() => {
 
   const categoryTotals = {};
 
-  expenses.forEach((expense) => {
+  (expenses || []).forEach((expense) => {
     const category =
       expense.category || "General";
 
@@ -1173,7 +1177,21 @@ const monthlyExpenseSummary = useMemo(() => {
   expenses,
   inventoryPurchases,
 ]);
+<div className="bg-white rounded-xl shadow-sm border p-5">
+  <div className="text-sm text-gray-500">
+    Inventory Expenses This Month
+  </div>
 
+  <div className="text-2xl font-bold mt-2">
+    QAR{" "}
+    {Number(
+      monthlyExpenseSummary.inventoryPurchasesTotal
+    ).toLocaleString("en-QA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}
+  </div>
+</div>
   function openAddExpense() {
     if (!isAdmin) {
       setError("Only administrators can add general expenses.");
