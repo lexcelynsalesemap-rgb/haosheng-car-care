@@ -4525,12 +4525,18 @@ td {
 
     printWindow.document.close();
 
-    printWindow.onload = () => {
-      setTimeout(() => {
+    // Edge/Chrome may fire the popup load event before an onload
+    // handler is attached. Use a short delay after document.close()
+    // so the report is fully rendered before opening the print dialog.
+    setTimeout(() => {
+      try {
         printWindow.focus();
         printWindow.print();
-      }, 500);
-    };
+      } catch (error) {
+        console.error("DAILY REPORT PRINT ERROR:", error);
+        alert("The daily report could not be printed. Please try again.");
+      }
+    }, 800);
   }
 
   /*
