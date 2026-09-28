@@ -29,17 +29,7 @@ function isCard(payment) {
   return (
     method === "card" ||
     method === "credit card" ||
-    method === "creditcard" ||
-    method === "debit card" ||
-    method === "debitcard" ||
-    method === "card payment" ||
-    method === "cardpayment" ||
-    method === "visa" ||
-    method === "mastercard" ||
-    method === "master card" ||
-    method.includes("card") ||
-    method.includes("visa") ||
-    method.includes("mastercard")
+    method === "creditcard"
   );
 }
 function isBankTransfer(payment) {
@@ -116,86 +106,6 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
-}
-
-function createPrintWindow() {
-  const iframe = document.createElement("iframe");
-
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "1px";
-  iframe.style.height = "1px";
-  iframe.style.border = "0";
-  iframe.style.opacity = "0";
-  iframe.style.pointerEvents = "none";
-  iframe.style.zIndex = "-1";
-
-  document.body.appendChild(iframe);
-
-  let html = "";
-  let loaded = false;
-  let loadHandler = null;
-  let printed = false;
-
-  const cleanup = () => {
-    setTimeout(() => {
-      try {
-        iframe.remove();
-      } catch (error) {
-        console.warn("PRINT IFRAME CLEANUP ERROR:", error);
-      }
-    }, 1000);
-  };
-
-  iframe.addEventListener("load", () => {
-    loaded = true;
-    if (typeof loadHandler === "function") {
-      loadHandler();
-    }
-  });
-
-  return {
-    document: {
-      write(content) {
-        html += String(content ?? "");
-      },
-      close() {
-        // srcdoc keeps the print document same-origin with the app.
-        iframe.srcdoc = html;
-      },
-    },
-
-    focus() {
-      try {
-        iframe.contentWindow?.focus();
-      } catch (error) {
-        console.warn("PRINT FOCUS ERROR:", error);
-      }
-    },
-
-    print() {
-      if (printed) return;
-      printed = true;
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch (error) {
-        console.error("PRINT ERROR:", error);
-        alert("The report could not be printed. Please try again.");
-      } finally {
-        cleanup();
-      }
-    },
-
-    set onload(handler) {
-      loadHandler = handler;
-      if (loaded && typeof loadHandler === "function") {
-        setTimeout(() => loadHandler(), 0);
-      }
-    },
-  };
 }
 
 function qatarDate(value) {
@@ -2720,7 +2630,16 @@ function printAlnusoorReport() {
     )
     .join("");
 
-  const printWindow = createPrintWindow();
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1200,height=1000"
+  );
+
+  if (!printWindow) {
+    alert("Please allow pop-ups for this website.");
+    return;
+  }
 
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -2944,12 +2863,17 @@ function printAlnusoorReport() {
 
   printWindow.document.close();
 
-  printWindow.onload = () => {
-    setTimeout(() => {
+  // Give Edge time to finish rendering the real top-level popup
+  // before invoking the native Windows print pipeline.
+  setTimeout(() => {
+    try {
       printWindow.focus();
       printWindow.print();
-    }, 500);
-  };
+    } catch (error) {
+      console.error("REPORT PRINT ERROR:", error);
+      alert("The report could not be printed. Please try again.");
+    }
+  }, 800);
 };
 
 
@@ -3478,7 +3402,18 @@ function getJobPrice(job) {
         : "0006"
     ).padStart(4, "0");
 
-  const printWindow = createPrintWindow();
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1500,height=1000"
+  );
+
+  if (!printWindow) {
+    alert(
+      "Please allow pop-ups for this website."
+    );
+    return;
+  }
 
   printWindow.document.write(`
 <!DOCTYPE html>
@@ -4047,12 +3982,17 @@ Doha, Qatar
 
   printWindow.document.close();
 
-  printWindow.onload = () => {
-    setTimeout(() => {
+  // Give Edge time to finish rendering the real top-level popup
+  // before invoking the native Windows print pipeline.
+  setTimeout(() => {
+    try {
       printWindow.focus();
       printWindow.print();
-    }, 500);
-  };
+    } catch (error) {
+      console.error("REPORT PRINT ERROR:", error);
+      alert("The report could not be printed. Please try again.");
+    }
+  }, 800);
 }
   /*
   ============================================================
@@ -4060,402 +4000,304 @@ Doha, Qatar
   ============================================================
   */
 
- function printDailyReport() {
-  if (!reportDate) {
-    alert("Please select a date.");
-    return;
-  }
+  function printDailyReport() {
+    if (!reportDate) {
+      alert(
+        "Please select a date."
+      );
+      return;
+    }
 
-  console.log("======================================");
-  console.log("DAILY REPORT PRINT START");
-  console.log("DATE:", reportDate);
-  console.log("======================================");
-
-  try {
-    const dailyJobs = selectedDateJobs || [];
+    const dailyJobs =
+      selectedDateJobs || [];
 
     const totalTeyseerSales =
-      Number(selectedDateTeyseerSales || 0);
+      selectedDateTeyseerSales;
 
     const totalCustomerSales =
-      Number(selectedDateCustomerSales || 0);
+      selectedDateCustomerSales;
 
     const totalSales =
-      Number(selectedDateSales || 0);
+      selectedDateSales;
 
     const totalCustomerPaid =
-      Number(selectedDateCustomerPaid || 0);
+      selectedDateCustomerPaid;
 
     const totalBalance =
-      Number(selectedDateBalance || 0);
-
-    /*
-    ============================================================
-    DAILY CAR ROWS
-    ============================================================
-    */
+      selectedDateBalance;
 
     const rows = dailyJobs
-      .map(
-        (job, index) => `
-          <tr>
-            <td class="center">${index + 1}</td>
+  .map(
+    (job, index) => `
+      <tr>
+        <td>${index + 1}</td>
 
-            <td>
-              ${escapeHtml(getJobDate(job) || "-")}
-            </td>
+        <td>
+          ${escapeHtml(
+            getJobDate(job) || "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(job.source || "-")}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.source || "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(job.customer || "-")}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.customer || "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(
-                job.carModel ||
-                job.carType ||
-                job.carMake ||
-                "-"
-              )}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.carModel ||
+              job.carType ||
+              job.carMake ||
+              "-"
+          )}
+        </td>
 
-            <td>
-              ${escapeHtml(job.plate || "-")}
-            </td>
+        <td>
+          ${escapeHtml(
+            job.plate || "-"
+          )}
+        </td>
 
-            <td class="services">
-              ${escapeHtml(
-                getJobServicesDescription(
-                  job,
-                  jobServices
-                ) || "-"
-              )}
-            </td>
+        <td class="services">
+          ${escapeHtml(
+            getJobServicesDescription(
+              job,
+              jobServices
+            ) || "-"
+          )}
+        </td>
 
-            <td class="money">
-              QAR ${money(job.serviceGross)}
-            </td>
+        <td class="money">
+          QAR ${money(job.serviceGross)}
+        </td>
 
-            <td class="money">
-              QAR ${money(job.discount)}
-            </td>
+        <td class="money">
+          QAR ${money(job.discount)}
+        </td>
 
-            <td class="money">
-              QAR ${money(job.paid)}
-            </td>
+        <td class="money">
+          QAR ${money(job.paid)}
+        </td>
 
-            <td class="money">
-              QAR ${money(job.customerBalance)}
-            </td>
-          </tr>
-        `
-      )
-      .join("");
+        <td class="money">
+          QAR ${money(
+            job.customerBalance
+          )}
+        </td>
+      </tr>
+    `
+  )
+  .join("");
 
-    /*
-    ============================================================
-    DAILY PAYMENT ROWS
-    ============================================================
-    */
+    const printWindow =
+      window.open(
+        "",
+        "_blank",
+        "width=1500,height=1000"
+      );
 
-    const selectedPaymentRows = (dailyPayments || [])
-      .filter(([date]) => date === reportDate)
-      .map(
-        ([date, data]) => `
-          <tr>
-            <td>
-              ${escapeHtml(date)}
-            </td>
+    if (!printWindow) {
+      alert(
+        "Please allow pop-ups for this website."
+      );
+      return;
+    }
 
-            <td class="money">
-              QAR ${money(data.cash)}
-            </td>
+    const selectedPaymentRows =
+      dailyPayments
+        .filter(
+          ([date]) =>
+            date === reportDate
+        )
+        .map(
+          ([date, data]) => `
+            <tr>
+              <td>${escapeHtml(date)}</td>
 
-            <td class="money">
-              QAR ${money(data.visa)}
-            </td>
+              <td class="money">
+                QAR ${money(data.cash)}
+              </td>
 
-            <td class="money">
-              QAR ${money(data.mastercard)}
-            </td>
+              <td class="money">
+                QAR ${money(data.visa)}
+              </td>
 
-            <td class="money">
-              QAR ${money(data.bankTransfer)}
-            </td>
+              <td class="money">
+                QAR ${money(data.mastercard)}
+              </td>
 
-            <td class="money">
-              QAR ${money(data.other)}
-            </td>
+              <td class="money">
+                QAR ${money(
+                  data.bankTransfer
+                )}
+              </td>
 
-            <td class="money">
-              QAR ${money(data.total)}
-            </td>
-          </tr>
-        `
-      )
-      .join("");
+              <td class="money">
+                QAR ${money(data.other)}
+              </td>
 
-    /*
-    ============================================================
-    REPORT HTML
-    ============================================================
-    */
+              <td class="money">
+                QAR ${money(data.total)}
+              </td>
+            </tr>
+          `
+        )
+        .join("");
 
-    const reportHTML = `
+    printWindow.document.write(`
       <!DOCTYPE html>
       <html>
-        <head>
-          <meta charset="UTF-8" />
 
-          <title>Haosheng Daily Report - ${escapeHtml(
+      <head>
+
+        <title>
+          Daily Report - ${escapeHtml(
             reportDate
-          )}</title>
+          )}
+        </title>
 
-          <style>
+        <style>
 
-            @page {
-              size: A4 landscape;
-              margin: 8mm;
-            }
+          * {
+            box-sizing: border-box;
+          }
 
-            * {
-              box-sizing: border-box;
-            }
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
 
-            html,
-            body {
-              width: 100%;
-              margin: 0;
-              padding: 0;
-              background: #ffffff;
-            }
+          body {
+            font-family: Arial, sans-serif;
+            color: #000;
+            margin: 0;
+            padding: 15px;
+            font-size: 9px;
+          }
 
-            body {
-              color: #000000;
-              background: #ffffff;
-              font-family: Arial, Helvetica, sans-serif;
-              font-size: 9px;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
+          .header {
+            display: flex;
+            width: 100%;
+            min-height: 100px;
+            margin-bottom: 15px;
+          }
 
-            .print-container {
-              width: 100%;
-              margin: 0;
-              padding: 0;
-            }
+          .logo {
+            width: 100px;
+            height: 90px;
+            object-fit: contain;
+          }
 
-            /*
-            =====================================================
-            HEADER
-            =====================================================
-            */
+          .company {
+            padding-left: 20px;
+          }
 
-            .print-header {
-              display: flex;
-              align-items: center;
-              width: 100%;
-              min-height: 75px;
-              margin-bottom: 12px;
-            }
+          .companyName {
+            font-size: 17px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
 
-            .print-logo {
-              width: 85px;
-              height: 75px;
-              object-fit: contain;
-              margin-right: 18px;
-            }
+          .arabicName {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
 
-            .print-company {
-              padding-top: 2px;
-            }
+          .reportTitle {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 6px;
+          }
 
-            .print-company-name {
-              font-size: 17px;
-              font-weight: bold;
-              margin-bottom: 5px;
-            }
+          .period {
+            margin-bottom: 15px;
+          }
 
-            .print-arabic-name {
-              font-size: 14px;
-              font-weight: bold;
-              margin-bottom: 5px;
-            }
+          .summary {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+          }
 
-            .print-address {
-              font-size: 9px;
-            }
+          .box {
+            border: 1px solid #999;
+            padding: 8px;
+          }
 
-            /*
-            =====================================================
-            REPORT TITLE
-            =====================================================
-            */
+          .boxLabel {
+            font-size: 8px;
+            color: #666;
+          }
 
-            .print-report-title {
-              font-size: 16px;
-              font-weight: bold;
-              margin-top: 5px;
-              margin-bottom: 4px;
-            }
+          .boxValue {
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 4px;
+          }
 
-            .print-period {
-              font-size: 10px;
-              margin-bottom: 10px;
-            }
+          table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
 
-            /*
-            =====================================================
-            SUMMARY
-            =====================================================
-            */
+th {
+  background: #111827;
+  color: white;
+  padding: 6px 4px;
+  text-align: left;
+  font-size: 8px;
+  font-weight: 700;
+}
 
-            .print-summary {
-              display: grid;
-              grid-template-columns: repeat(6, 1fr);
-              gap: 7px;
-              width: 100%;
-              margin: 10px 0 14px;
-            }
+td {
+  padding: 5px 4px;
+  border: 1px solid #d1d5db;
+  vertical-align: top;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
 
-            .print-box {
-              border: 1px solid #888;
-              padding: 7px;
-              min-height: 48px;
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
+.number {
+  width: 2.5%;
+  text-align: center;
+  padding: 4px 1px;
+}
 
-            .print-box-label {
-              font-size: 8px;
-              color: #555;
-              font-weight: bold;
-            }
+.services {
+  width: 28%;
+}
 
-            .print-box-value {
-              font-size: 12px;
-              font-weight: bold;
-              margin-top: 4px;
-            }
+.money {
+  width: 12%;
+  text-align: right;
+  white-space: nowrap;
+}
 
-            /*
-            =====================================================
-            SECTION TITLES
-            =====================================================
-            */
+          .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 18px 0 8px;
+          }
 
-            .print-section-title {
-              font-size: 12px;
-              font-weight: bold;
-              margin: 12px 0 6px;
-            }
+          .footer {
+            margin-top: 35px;
+            border-top: 1px solid #000;
+            padding-top: 8px;
+            text-align: center;
+            font-size: 8px;
+          }
 
-            /*
-            =====================================================
-            TABLES
-            =====================================================
-            */
-
-            .print-table {
-              width: 100%;
-              border-collapse: collapse;
-              table-layout: fixed;
-            }
-
-            .print-table th {
-              background: #111827;
-              color: #ffffff;
-              border: 1px solid #111827;
-              padding: 5px 3px;
-              text-align: left;
-              font-size: 7.5px;
-              font-weight: bold;
-
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-
-            .print-table td {
-              border: 1px solid #c7c7c7;
-              padding: 4px 3px;
-              vertical-align: top;
-              font-size: 7.5px;
-              overflow-wrap: anywhere;
-            }
-
-            .print-table .money {
-              text-align: right;
-              white-space: nowrap;
-            }
-
-            .print-table .center {
-              text-align: center;
-            }
-
-            .print-table .services {
-              width: 27%;
-            }
-
-            /*
-            =====================================================
-            DAILY CARS COLUMN WIDTHS
-            =====================================================
-            */
-
-            .print-table th:nth-child(1),
-            .print-table td:nth-child(1) {
-              width: 3%;
-            }
-
-            .print-table th:nth-child(2),
-            .print-table td:nth-child(2) {
-              width: 8%;
-            }
-
-            .print-table th:nth-child(3),
-            .print-table td:nth-child(3) {
-              width: 10%;
-            }
-
-            .print-table th:nth-child(4),
-            .print-table td:nth-child(4) {
-              width: 10%;
-            }
-
-            .print-table th:nth-child(5),
-            .print-table td:nth-child(5) {
-              width: 9%;
-            }
-
-            .print-table th:nth-child(6),
-            .print-table td:nth-child(6) {
-              width: 7%;
-            }
-
-            .print-table th:nth-child(7),
-            .print-table td:nth-child(7) {
-              width: 27%;
-            }
-
-            .print-table th:nth-child(8),
-            .print-table td:nth-child(8),
-            .print-table th:nth-child(9),
-            .print-table td:nth-child(9),
-            .print-table th:nth-child(10),
-            .print-table td:nth-child(10),
-            .print-table th:nth-child(11),
-            .print-table td:nth-child(11) {
-              width: 6.5%;
-            }
-
-            /*
-            =====================================================
-            TABLE PRINTING
-            =====================================================
-            */
+          @media print {
 
             thead {
               display: table-header-group;
@@ -4463,428 +4305,249 @@ Doha, Qatar
 
             tr {
               page-break-inside: avoid;
-              break-inside: avoid;
             }
 
-            .payment-table th,
-            .payment-table td {
-              font-size: 8px;
-            }
+          }
 
-            /*
-            =====================================================
-            NO DATA
-            =====================================================
-            */
+        </style>
 
-            .no-data {
-              text-align: center;
-              padding: 15px !important;
-            }
+      </head>
 
-            /*
-            =====================================================
-            FOOTER
-            =====================================================
-            */
+      <body>
 
-            .print-footer {
-              margin-top: 18px;
-              padding-top: 7px;
-              border-top: 1px solid #000;
-              text-align: center;
-              font-size: 7.5px;
-              line-height: 1.5;
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
+        <div class="header">
 
-            img {
-              max-width: 100%;
-            }
+          <img
+            src="${gaLogo}"
+            class="logo"
+          />
 
-            /*
-            =====================================================
-            PRINT ONLY
-            =====================================================
-            */
+          <div class="company">
 
-            @media print {
-
-              html,
-              body {
-                width: 100%;
-                margin: 0;
-                padding: 0;
-              }
-
-              .print-container {
-                width: 100%;
-              }
-
-              .no-print {
-                display: none !important;
-              }
-            }
-
-          </style>
-        </head>
-
-        <body>
-
-          <div class="print-container">
-
-            <!-- =============================================
-                 HEADER
-                 ============================================= -->
-
-            <div class="print-header">
-
-              <img
-                src="${gaLogo}"
-                class="print-logo"
-                alt="Haosheng Logo"
-              />
-
-              <div class="print-company">
-
-                <div class="print-company-name">
-                  HAOSHENG CAR SERVICE AND ACCESSORIES
-                </div>
-
-                <div class="print-arabic-name">
-                  هاوشنغ لخدمات وزينة السيارات
-                </div>
-
-                <div class="print-address">
-                  Building 358, Salwa Road, Doha - Qatar
-                </div>
-
-              </div>
-
+            <div class="companyName">
+              HAOSHENG CAR SERVICE AND ACCESSORIES
             </div>
 
-            <!-- =============================================
-                 TITLE
-                 ============================================= -->
-
-            <div class="print-report-title">
-              DAILY REPORT
+            <div class="arabicName">
+              هاوشنغ لخدمات وزينة السيارات
             </div>
 
-            <div class="print-period">
-              Date: ${escapeHtml(reportDate)}
-            </div>
-
-            <!-- =============================================
-                 SUMMARY
-                 ============================================= -->
-
-            <div class="print-summary">
-
-              <div class="print-box">
-
-                <div class="print-box-label">
-                  CARS
-                </div>
-
-                <div class="print-box-value">
-                  ${dailyJobs.length}
-                </div>
-
-              </div>
-
-              <div class="print-box">
-
-                <div class="print-box-label">
-                  TEYSEER SALES
-                </div>
-
-                <div class="print-box-value">
-                  QAR ${money(totalTeyseerSales)}
-                </div>
-
-              </div>
-
-              <div class="print-box">
-
-                <div class="print-box-label">
-                  CUSTOMER SALES
-                </div>
-
-                <div class="print-box-value">
-                  QAR ${money(totalCustomerSales)}
-                </div>
-
-              </div>
-
-              <div class="print-box">
-
-                <div class="print-box-label">
-                  TOTAL SALES
-                </div>
-
-                <div class="print-box-value">
-                  QAR ${money(totalSales)}
-                </div>
-
-              </div>
-
-              <div class="print-box">
-
-                <div class="print-box-label">
-                  CUSTOMER PAID
-                </div>
-
-                <div class="print-box-value">
-                  QAR ${money(totalCustomerPaid)}
-                </div>
-
-              </div>
-
-              <div class="print-box">
-
-                <div class="print-box-label">
-                  CUSTOMER BALANCE
-                </div>
-
-                <div class="print-box-value">
-                  QAR ${money(totalBalance)}
-                </div>
-
-              </div>
-
-            </div>
-
-            <!-- =============================================
-                 DAILY PAYMENTS
-                 ============================================= -->
-
-            <div class="print-section-title">
-              DAILY PAYMENTS
-            </div>
-
-            <table class="print-table payment-table">
-
-              <thead>
-
-                <tr>
-                  <th>DATE</th>
-                  <th>CASH</th>
-                  <th>VISA</th>
-                  <th>MASTERCARD</th>
-                  <th>BANK</th>
-                  <th>PAYLATER</th>
-                  <th>TOTAL</th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                ${
-                  selectedPaymentRows ||
-                  `
-                    <tr>
-                      <td
-                        colspan="7"
-                        class="no-data"
-                      >
-                        No payment data found.
-                      </td>
-                    </tr>
-                  `
-                }
-
-              </tbody>
-
-            </table>
-
-            <!-- =============================================
-                 DAILY CARS
-                 ============================================= -->
-
-            <div class="print-section-title">
-              DAILY CARS
-            </div>
-
-            <table class="print-table">
-
-              <thead>
-
-                <tr>
-                  <th>#</th>
-                  <th>DATE</th>
-                  <th>SOURCE</th>
-                  <th>CUSTOMER</th>
-                  <th>CAR MODEL</th>
-                  <th>PLATE</th>
-                  <th>SERVICES</th>
-                  <th>GROSS TOTAL</th>
-                  <th>DISCOUNT</th>
-                  <th>PAID</th>
-                  <th>BALANCE</th>
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                ${
-                  rows ||
-                  `
-                    <tr>
-                      <td
-                        colspan="11"
-                        class="no-data"
-                      >
-                        No jobs found for this date.
-                      </td>
-                    </tr>
-                  `
-                }
-
-              </tbody>
-
-            </table>
-
-            <!-- =============================================
-                 FOOTER
-                 ============================================= -->
-
-            <div class="print-footer">
-
-              Tel: +974 4441 5866 |
-              C.R.NO: 199725 |
-              E-mail: info@haoshengcar.com
-
-              <br />
-
-              Fereej Al Manaseer,
-              Zone 55, St. 340,
-              Bldg 358, Salwa Road,
-              Doha, Qatar
-
+            <div>
+              Building 358,
+              Salwa Road,
+              Doha - Qatar
             </div>
 
           </div>
 
-        </body>
+        </div>
+
+        <div class="reportTitle">
+          DAILY REPORT
+        </div>
+
+        <div class="period">
+          Date: ${escapeHtml(
+            reportDate
+          )}
+        </div>
+
+        <div class="summary">
+
+          <div class="box">
+            <div class="boxLabel">
+              CARS
+            </div>
+
+            <div class="boxValue">
+              ${dailyJobs.length}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              TEYSEER SALES
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalTeyseerSales
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              CUSTOMER SALES
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalCustomerSales
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              TOTAL SALES
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalSales
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              CUSTOMER PAID
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalCustomerPaid
+              )}
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="boxLabel">
+              CUSTOMER BALANCE
+            </div>
+
+            <div class="boxValue">
+              QAR ${money(
+                totalBalance
+              )}
+            </div>
+          </div>
+
+        </div>
+
+        <div class="section-title">
+          DAILY PAYMENTS
+        </div>
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>DATE</th>
+              <th>CASH</th>
+              <th>VISA</th>
+              <th>MASTERCARD</th>
+              <th>BANK</th>
+              <th>OTHER</th>
+              <th>TOTAL</th>
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            ${
+              selectedPaymentRows ||
+              `
+                <tr>
+                  <td
+                    colspan="7"
+                    style="text-align:center;"
+                  >
+                    No payment data found.
+                  </td>
+                </tr>
+              `
+            }
+
+          </tbody>
+
+        </table>
+
+        <div class="section-title">
+          DAILY CARS
+        </div>
+
+        <table>
+
+          <thead>
+
+         <tr>
+  <th>#</th>
+  <th>DATE</th>
+  <th>SOURCE</th>
+  <th>CUSTOMER</th>
+  <th>CAR MODEL</th>
+  <th>PLATE</th>
+  <th>SERVICES</th>
+  <th>GROSS TOTAL</th>
+  <th>DISCOUNT</th>
+  <th>PAID</th>
+  <th>BALANCE</th>
+</tr>
+
+          </thead>
+
+          <tbody>
+
+            ${
+              rows ||
+              `
+                <tr>
+                  <td
+                    colspan="11"
+                    style="
+                      text-align:center;
+                      padding:20px;
+                    "
+                  >
+                    No jobs found for this date.
+                  </td>
+                </tr>
+              `
+            }
+
+          </tbody>
+
+        </table>
+
+        <div class="footer">
+
+          Tel: +974 4441 5866 |
+          C.R.NO: 199725 |
+          E-mail: info@haoshengcar.com
+
+          <br />
+
+          Fereej Al Manaseer,
+          Zone 55, St. 340,
+          Bldg 358, Salwa Road,
+          Doha, Qatar
+
+        </div>
+
+      </body>
+
       </html>
-    `;
-
-    /*
-    ============================================================
-    CREATE SEPARATE PRINT WINDOW
-    ============================================================
-    */
-
-    console.log("CREATING PRINT WINDOW");
-
-    const printWindow = window.open(
-      "",
-      "_blank",
-      "width=1200,height=800"
-    );
-
-    if (!printWindow) {
-      alert(
-        "The print window was blocked by the browser. Please allow pop-ups for this website and try again."
-      );
-      return;
-    }
-
-    console.log("PRINT WINDOW CREATED");
-
-    /*
-    ============================================================
-    WRITE REPORT
-    ============================================================
-    */
-
-    printWindow.document.open();
-
-    printWindow.document.write(reportHTML);
+    `);
 
     printWindow.document.close();
 
-    console.log("PRINT HTML WRITTEN");
-
-    /*
-    ============================================================
-    WAIT FOR PRINT DOCUMENT
-    ============================================================
-    */
-
-    const startPrinting = () => {
+    // Edge/Chrome may fire the popup load event before an onload
+    // handler is attached. Use a short delay after document.close()
+    // so the report is fully rendered before opening the print dialog.
+    setTimeout(() => {
       try {
-        console.log("PRINT DOCUMENT READY");
-
         printWindow.focus();
-
-        console.log("CALLING PRINT WINDOW PRINT()");
-
         printWindow.print();
-
-        console.log(
-          "PRINT WINDOW PRINT() CALLED SUCCESSFULLY"
-        );
-
       } catch (error) {
-        console.error(
-          "DAILY REPORT PRINT ERROR:",
-          error
-        );
-
-        try {
-          printWindow.close();
-        } catch (closeError) {
-          console.error(
-            "PRINT WINDOW CLOSE ERROR:",
-            closeError
-          );
-        }
-
-        alert(
-          "The daily report could not be printed. Please try again."
-        );
+        console.error("DAILY REPORT PRINT ERROR:", error);
+        alert("The daily report could not be printed. Please try again.");
       }
-    };
-
-    /*
-    ============================================================
-    WAIT FOR DOCUMENT LOAD
-    ============================================================
-    */
-
-    if (printWindow.document.readyState === "complete") {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          startPrinting();
-        });
-      });
-    } else {
-      printWindow.onload = () => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            startPrinting();
-          });
-        });
-      };
-    }
-
-  } catch (error) {
-
-    console.error(
-      "DAILY REPORT PRINT FUNCTION FAILED:",
-      error
-    );
-
-    alert(
-      "There was an error preparing the Daily Report for printing."
-    );
+    }, 800);
   }
-}
 
   /*
   ============================================================
