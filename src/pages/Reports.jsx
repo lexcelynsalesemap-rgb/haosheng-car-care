@@ -4220,41 +4220,70 @@ Doha, Qatar
         @media print {
 
           @page {
-            size: A4 landscape;
-            margin: 10mm;
-          }
+  size: A4 landscape;
+  margin: 8mm;
+}
 
-          html,
-          body {
-            width: 100%;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
+html,
+body {
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: white !important;
+}
 
-          body > * {
-            display: none !important;
-          }
+body > * {
+  display: none !important;
+}
 
-          body > #haosheng-print-container {
-            display: block !important;
-          }
+body > #haosheng-print-container {
+  display: block !important;
+}
 
-          #haosheng-print-container {
-            display: block !important;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            color: #000 !important;
-            background: #fff !important;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 9px;
-          }
+#haosheng-print-container {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #000 !important;
+  background: #fff !important;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9px;
+}
 
-          * {
-            box-sizing: border-box;
-          }
+#haosheng-print-container * {
+  box-sizing: border-box;
+}
 
+#haosheng-print-container table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: auto;
+}
+
+#haosheng-print-container th,
+#haosheng-print-container td {
+  border: 1px solid #000 !important;
+  padding: 4px !important;
+  vertical-align: middle;
+}
+
+#haosheng-print-container th {
+  font-weight: bold;
+  background: #eee !important;
+}
+
+#haosheng-print-container tr {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+@media print {
+  button,
+  .no-print {
+    display: none !important;
+  }
+}
           .print-header {
             display: flex;
             align-items: center;
