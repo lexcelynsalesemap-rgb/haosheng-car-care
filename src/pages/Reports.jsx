@@ -108,6 +108,86 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function createPrintWindow() {
+  const iframe = document.createElement("iframe");
+
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "1px";
+  iframe.style.height = "1px";
+  iframe.style.border = "0";
+  iframe.style.opacity = "0";
+  iframe.style.pointerEvents = "none";
+  iframe.style.zIndex = "-1";
+
+  document.body.appendChild(iframe);
+
+  let html = "";
+  let loaded = false;
+  let loadHandler = null;
+  let printed = false;
+
+  const cleanup = () => {
+    setTimeout(() => {
+      try {
+        iframe.remove();
+      } catch (error) {
+        console.warn("PRINT IFRAME CLEANUP ERROR:", error);
+      }
+    }, 1000);
+  };
+
+  iframe.addEventListener("load", () => {
+    loaded = true;
+    if (typeof loadHandler === "function") {
+      loadHandler();
+    }
+  });
+
+  return {
+    document: {
+      write(content) {
+        html += String(content ?? "");
+      },
+      close() {
+        // srcdoc keeps the print document same-origin with the app.
+        iframe.srcdoc = html;
+      },
+    },
+
+    focus() {
+      try {
+        iframe.contentWindow?.focus();
+      } catch (error) {
+        console.warn("PRINT FOCUS ERROR:", error);
+      }
+    },
+
+    print() {
+      if (printed) return;
+      printed = true;
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (error) {
+        console.error("PRINT ERROR:", error);
+        alert("The report could not be printed. Please try again.");
+      } finally {
+        cleanup();
+      }
+    },
+
+    set onload(handler) {
+      loadHandler = handler;
+      if (loaded && typeof loadHandler === "function") {
+        setTimeout(() => loadHandler(), 0);
+      }
+    },
+  };
+}
+
 function qatarDate(value) {
   if (!value) return null;
 
@@ -2630,16 +2710,7 @@ function printAlnusoorReport() {
     )
     .join("");
 
-  const printWindow = window.open(
-    "",
-    "_blank",
-    "width=1200,height=1000"
-  );
-
-  if (!printWindow) {
-    alert("Please allow pop-ups for this website.");
-    return;
-  }
+  const printWindow = createPrintWindow();
 
   printWindow.document.write(`
     <!DOCTYPE html>
@@ -3397,18 +3468,7 @@ function getJobPrice(job) {
         : "0006"
     ).padStart(4, "0");
 
-  const printWindow = window.open(
-    "",
-    "_blank",
-    "width=1500,height=1000"
-  );
-
-  if (!printWindow) {
-    alert(
-      "Please allow pop-ups for this website."
-    );
-    return;
-  }
+  const printWindow = createPrintWindow();
 
   printWindow.document.write(`
 <!DOCTYPE html>
@@ -4086,19 +4146,7 @@ Doha, Qatar
   )
   .join("");
 
-    const printWindow =
-      window.open(
-        "",
-        "_blank",
-        "width=1500,height=1000"
-      );
-
-    if (!printWindow) {
-      alert(
-        "Please allow pop-ups for this website."
-      );
-      return;
-    }
+    const printWindow = createPrintWindow();
 
     const selectedPaymentRows =
       dailyPayments
