@@ -4674,7 +4674,7 @@ Doha, Qatar
                   <th>VISA</th>
                   <th>MASTERCARD</th>
                   <th>BANK</th>
-                  <th>OTHER</th>
+                  <th>PAYLATER</th>
                   <th>TOTAL</th>
                 </tr>
 
