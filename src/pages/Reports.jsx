@@ -29,7 +29,17 @@ function isCard(payment) {
   return (
     method === "card" ||
     method === "credit card" ||
-    method === "creditcard"
+    method === "creditcard" ||
+    method === "debit card" ||
+    method === "debitcard" ||
+    method === "card payment" ||
+    method === "cardpayment" ||
+    method === "visa" ||
+    method === "mastercard" ||
+    method === "master card" ||
+    method.includes("card") ||
+    method.includes("visa") ||
+    method.includes("mastercard")
   );
 }
 function isBankTransfer(payment) {
