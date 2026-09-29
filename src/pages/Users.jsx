@@ -14,8 +14,12 @@ function Users() {
   const [role, setRole] = useState("staff");
   const [shopId, setShopId] = useState("");
 
+  const [passwordUser, setPasswordUser] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const loggedInUser = JSON.parse(
-    localStorage.getItem("user")
+    localStorage.getItem("user") || "null"
   );
 
   // -----------------------------------
@@ -23,23 +27,32 @@ function Users() {
   // -----------------------------------
 
   async function loadUsers() {
-    setLoading(true);
+  setLoading(true);
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, name, email, role, shop_id")
-      .order("id", { ascending: true });
+  console.log("LOADING USERS...");
 
-    if (error) {
-      console.error("LOAD USERS ERROR:", error);
-      alert(error.message);
-      setLoading(false);
-      return;
-    }
+  const { data, error } = await supabase
+    .from("users")
+    .select(
+      "id, name, email, role, shop_id, auth_user_id"
+    )
+    .order("id", { ascending: true });
 
-    setUsers(data || []);
+  console.log("USERS DATA:", data);
+  console.log("USERS ERROR:", error);
+  console.log("USERS COUNT:", data?.length);
+
+  if (error) {
+    console.error("LOAD USERS ERROR:", error);
+    alert(error.message);
     setLoading(false);
+    return;
   }
+
+  setUsers(data || []);
+  setLoading(false);
+}
+
 
   // -----------------------------------
   // LOAD SHOPS
@@ -59,6 +72,10 @@ function Users() {
 
     setShops(data || []);
   }
+
+  // -----------------------------------
+  // INITIAL LOAD
+  // -----------------------------------
 
   useEffect(() => {
     loadUsers();
@@ -87,6 +104,11 @@ function Users() {
       return;
     }
 
+    if (password.length < 6) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
+
     if (!shopId) {
       alert("Please select a shop.");
       return;
@@ -95,41 +117,51 @@ function Users() {
     setSaving(true);
 
     try {
-      // Check if email already exists
-      const { data: existingUser, error: checkError } =
-        await supabase
-          .from("users")
-          .select("id")
-          .eq("email", email.trim())
-          .maybeSingle();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (checkError) {
-        throw checkError;
-      }
-
-      if (existingUser) {
-        alert("A user with this email already exists.");
-        setSaving(false);
+      if (!session) {
+        alert(
+          "Your session has expired. Please log in again."
+        );
         return;
       }
 
-      const { error } = await supabase
-        .from("users")
-        .insert({
-          name: name.trim(),
-          email: email.trim(),
-          password: password,
-          role: role,
-          shop_id: Number(shopId)
-        });
+      const { data, error } =
+        await supabase.functions.invoke(
+          "create-user",
+          {
+            body: {
+              name: name.trim(),
+              email: email.trim().toLowerCase(),
+              password: password,
+              role: role,
+              shop_id: Number(shopId),
+            },
+          }
+        );
+
+      console.log(
+        "CREATE USER RESPONSE:",
+        data
+      );
+
+      console.log(
+        "CREATE USER ERROR:",
+        error
+      );
 
       if (error) {
         throw error;
       }
 
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       alert("User created successfully.");
 
-      // Clear form
       setName("");
       setEmail("");
       setPassword("");
@@ -139,47 +171,242 @@ function Users() {
       await loadUsers();
 
     } catch (error) {
-      console.error("CREATE USER ERROR:", error);
+      console.error(
+        "CREATE USER ERROR:",
+        error
+      );
 
       alert(
-        error.message ||
-        "Could not create user."
+        error instanceof Error
+          ? error.message
+          : "Could not create user."
       );
+
     } finally {
       setSaving(false);
     }
   }
 
   // -----------------------------------
+  // OPEN CHANGE PASSWORD
+  // -----------------------------------
+
+  function openChangePassword(user) {
+    console.log(
+      "CHANGE PASSWORD CLICKED:",
+      user
+    );
+
+    if (!user.auth_user_id) {
+      alert(
+        "This user does not have a Supabase Auth account."
+      );
+      return;
+    }
+
+    setPasswordUser(user);
+    setNewPassword("");
+  }
+
+  // -----------------------------------
+  // SAVE NEW PASSWORD
+  // -----------------------------------
+
+  async function saveNewPassword() {
+  console.log("SAVE NEW PASSWORD STARTED");
+
+  if (!passwordUser) {
+    console.log("NO PASSWORD USER");
+    return;
+  }
+
+  console.log("PASSWORD USER:", passwordUser);
+
+  if (!newPassword) {
+    alert("Please enter a new password.");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    alert("Password must be at least 6 characters.");
+    return;
+  }
+
+  setChangingPassword(true);
+
+  try {
+    console.log("GETTING SESSION...");
+
+    const {
+      data: sessionData,
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    console.log("SESSION DATA:", sessionData);
+    console.log("SESSION ERROR:", sessionError);
+
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    const session = sessionData?.session;
+
+    console.log("SESSION EXISTS:", !!session);
+
+    if (!session) {
+      alert(
+        "Your login session has expired. Please log in again."
+      );
+      return;
+    }
+
+    console.log(
+      "CURRENT AUTH USER:",
+      session.user.id
+    );
+
+    console.log(
+      "TARGET DATABASE USER:",
+      passwordUser.id
+    );
+
+    console.log(
+      "TARGET AUTH USER:",
+      passwordUser.auth_user_id
+    );
+
+    console.log(
+      "CALLING CHANGE-PASSWORD FUNCTION..."
+    );
+
+    const {
+      data,
+      error,
+    } = await supabase.functions.invoke(
+      "change-password",
+      {
+        body: {
+          user_id: passwordUser.id,
+          new_password: newPassword,
+        },
+      }
+    );
+
+    console.log(
+      "CHANGE PASSWORD RESPONSE:",
+      data
+    );
+
+    console.log(
+      "CHANGE PASSWORD ERROR:",
+      error
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.success) {
+      throw new Error(
+        data?.error ||
+          "Could not change password."
+      );
+    }
+
+    alert(
+      "Password changed successfully."
+    );
+
+    setPasswordUser(null);
+    setNewPassword("");
+
+  } catch (error) {
+    console.error(
+      "CHANGE PASSWORD ERROR:",
+      error
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Could not change password."
+    );
+
+  } finally {
+    setChangingPassword(false);
+  }
+}
+
+  // -----------------------------------
   // DELETE USER
   // -----------------------------------
 
-  async function deleteUser(userId) {
-    if (userId === loggedInUser?.id) {
-      alert("You cannot delete your own account.");
+  async function deleteUser(user) {
+    if (user.id === loggedInUser?.id) {
+      alert(
+        "You cannot delete your own account."
+      );
+      return;
+    }
+
+    if (!user.auth_user_id) {
+      alert(
+        "This user does not have a Supabase Auth account."
+      );
       return;
     }
 
     const confirmed = window.confirm(
-      "Are you sure you want to delete this user?"
+      `Are you sure you want to permanently delete ${user.name}?`
     );
 
-    if (!confirmed) return;
-
-    const { error } = await supabase
-      .from("users")
-      .delete()
-      .eq("id", userId);
-
-    if (error) {
-      console.error("DELETE USER ERROR:", error);
-      alert(error.message);
+    if (!confirmed) {
       return;
     }
 
-    alert("User deleted.");
+    try {
+      const {
+        data,
+        error,
+      } = await supabase.functions.invoke(
+        "delete-user",
+        {
+          body: {
+            user_id: user.id,
+            auth_user_id: user.auth_user_id,
+          },
+        }
+      );
 
-    await loadUsers();
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.success) {
+        throw new Error(
+          data?.error ||
+            "Could not delete user."
+        );
+      }
+
+      alert(
+        "User deleted successfully."
+      );
+
+      await loadUsers();
+
+    } catch (error) {
+      console.error(
+        "DELETE USER ERROR:",
+        error
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Could not delete user."
+      );
+    }
   }
 
   // -----------------------------------
@@ -190,11 +417,15 @@ function Users() {
     return (
       <div style={styles.page}>
         <div style={styles.denied}>
-          <h2>Access Denied</h2>
+
+          <h2>
+            Access Denied
+          </h2>
 
           <p>
             Only administrators can manage users.
           </p>
+
         </div>
       </div>
     );
@@ -208,6 +439,81 @@ function Users() {
     <div style={styles.page}>
 
       <div style={styles.container}>
+
+        {/* CHANGE PASSWORD MODAL */}
+
+        {passwordUser && (
+          <div style={styles.passwordModal}>
+
+            <div style={styles.passwordBox}>
+
+              <h2 style={styles.sectionTitle}>
+                Change Password
+              </h2>
+
+              <p style={styles.passwordUserText}>
+                {passwordUser.name}
+              </p>
+
+              <p style={styles.passwordEmailText}>
+                {passwordUser.email}
+              </p>
+
+              <label style={styles.label}>
+                New Password
+              </label>
+
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) =>
+                  setNewPassword(
+                    e.target.value
+                  )
+                }
+                placeholder="Enter new password"
+                style={styles.input}
+                autoFocus
+              />
+
+              <p style={styles.passwordHint}>
+                Password must be at least 6 characters.
+              </p>
+
+              <div style={styles.passwordActions}>
+
+                <button
+                  onClick={() => {
+                    setPasswordUser(null);
+                    setNewPassword("");
+                  }}
+                  style={styles.cancelButton}
+                  disabled={changingPassword}
+                >
+                  CANCEL
+                </button>
+
+                <button
+                  onClick={saveNewPassword}
+                  style={{
+                    ...styles.passwordButton,
+                    opacity: changingPassword
+                      ? 0.6
+                      : 1,
+                  }}
+                  disabled={changingPassword}
+                >
+                  {changingPassword
+                    ? "CHANGING..."
+                    : "CHANGE PASSWORD"}
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
 
         <h1 style={styles.title}>
           User Management
@@ -277,6 +583,7 @@ function Users() {
             }
             style={styles.input}
           >
+
             <option value="staff">
               Staff
             </option>
@@ -292,6 +599,7 @@ function Users() {
             <option value="admin">
               Admin
             </option>
+
           </select>
 
           <label style={styles.label}>
@@ -305,6 +613,7 @@ function Users() {
             }
             style={styles.input}
           >
+
             <option value="">
               Select Shop
             </option>
@@ -314,9 +623,11 @@ function Users() {
                 key={shop.id}
                 value={shop.id}
               >
-                {shop.name || `Shop ${shop.id}`}
+                {shop.name ||
+                  `Shop ${shop.id}`}
               </option>
             ))}
+
           </select>
 
           <button
@@ -324,7 +635,9 @@ function Users() {
             disabled={saving}
             style={{
               ...styles.button,
-              opacity: saving ? 0.6 : 1
+              opacity: saving
+                ? 0.6
+                : 1,
             }}
           >
             {saving
@@ -334,7 +647,7 @@ function Users() {
 
         </div>
 
-        {/* USERS */}
+        {/* EXISTING USERS */}
 
         <div style={styles.card}>
 
@@ -344,7 +657,9 @@ function Users() {
 
           {loading ? (
 
-            <p>Loading users...</p>
+            <p>
+              Loading users...
+            </p>
 
           ) : users.length === 0 ? (
 
@@ -363,7 +678,7 @@ function Users() {
                   style={styles.userRow}
                 >
 
-                  <div>
+                  <div style={styles.userInfo}>
 
                     <div style={styles.userName}>
                       {user.name}
@@ -374,31 +689,51 @@ function Users() {
                     </div>
 
                     <div style={styles.details}>
+
                       Role:{" "}
+
                       <strong>
                         {user.role}
                       </strong>
+
                       {" • "}
+
                       Shop:{" "}
+
                       <strong>
                         {user.shop_id}
                       </strong>
+
                     </div>
 
                   </div>
 
-                  {user.id !== loggedInUser?.id && (
+                  <div style={styles.actions}>
 
                     <button
                       onClick={() =>
-                        deleteUser(user.id)
+                        openChangePassword(user)
                       }
-                      style={styles.deleteButton}
+                      style={styles.passwordButton}
                     >
-                      Delete
+                      Change Password
                     </button>
 
-                  )}
+                    {user.id !==
+                      loggedInUser?.id && (
+
+                      <button
+                        onClick={() =>
+                          deleteUser(user)
+                        }
+                        style={styles.deleteButton}
+                      >
+                        Delete
+                      </button>
+
+                    )}
+
+                  </div>
 
                 </div>
 
@@ -417,27 +752,29 @@ function Users() {
 }
 
 const styles = {
+
   page: {
     minHeight: "100vh",
     background: "#0b0b0b",
     color: "#fff",
-    padding: "30px"
+    padding: "30px",
+    boxSizing: "border-box",
   },
 
   container: {
     maxWidth: "750px",
-    margin: "0 auto"
+    margin: "0 auto",
   },
 
   title: {
     color: "#d4af37",
     fontSize: "30px",
-    marginBottom: "5px"
+    marginBottom: "5px",
   },
 
   subtitle: {
     color: "#999",
-    marginBottom: "25px"
+    marginBottom: "25px",
   },
 
   card: {
@@ -445,19 +782,19 @@ const styles = {
     border: "1px solid #3b321c",
     borderRadius: "12px",
     padding: "20px",
-    marginBottom: "20px"
+    marginBottom: "20px",
   },
 
   sectionTitle: {
     color: "#d4af37",
-    marginTop: 0
+    marginTop: 0,
   },
 
   label: {
     display: "block",
     marginTop: "12px",
     marginBottom: "6px",
-    color: "#ccc"
+    color: "#ccc",
   },
 
   input: {
@@ -468,7 +805,7 @@ const styles = {
     border: "1px solid #555",
     background: "#222",
     color: "#fff",
-    fontSize: "16px"
+    fontSize: "16px",
   },
 
   button: {
@@ -481,13 +818,13 @@ const styles = {
     color: "#080808",
     fontWeight: "bold",
     fontSize: "16px",
-    cursor: "pointer"
+    cursor: "pointer",
   },
 
   userList: {
     display: "flex",
     flexDirection: "column",
-    gap: "10px"
+    gap: "10px",
   },
 
   userRow: {
@@ -498,23 +835,46 @@ const styles = {
     padding: "15px",
     background: "#222",
     border: "1px solid #444",
-    borderRadius: "10px"
+    borderRadius: "10px",
+  },
+
+  userInfo: {
+    minWidth: 0,
+    flex: 1,
   },
 
   userName: {
     fontSize: "18px",
-    fontWeight: "bold"
+    fontWeight: "bold",
   },
 
   email: {
     color: "#aaa",
-    marginTop: "3px"
+    marginTop: "3px",
+    wordBreak: "break-word",
   },
 
   details: {
     color: "#888",
     marginTop: "7px",
-    fontSize: "14px"
+    fontSize: "14px",
+  },
+
+  actions: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    flexShrink: 0,
+  },
+
+  passwordButton: {
+    background: "#d4af37",
+    color: "#080808",
+    border: "none",
+    padding: "9px 12px",
+    borderRadius: "7px",
+    cursor: "pointer",
+    fontWeight: "bold",
   },
 
   deleteButton: {
@@ -524,11 +884,11 @@ const styles = {
     padding: "9px 12px",
     borderRadius: "7px",
     cursor: "pointer",
-    fontWeight: "bold"
+    fontWeight: "bold",
   },
 
   empty: {
-    color: "#888"
+    color: "#888",
   },
 
   denied: {
@@ -538,8 +898,71 @@ const styles = {
     background: "#151515",
     padding: "30px",
     borderRadius: "12px",
-    border: "1px solid #991b1b"
-  }
+    border: "1px solid #991b1b",
+  },
+
+  passwordModal: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0, 0, 0, 0.75)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 9999,
+    padding: "20px",
+    boxSizing: "border-box",
+  },
+
+  passwordBox: {
+    width: "100%",
+    maxWidth: "450px",
+    background: "#151515",
+    border: "1px solid #d4af37",
+    borderRadius: "12px",
+    padding: "25px",
+    boxSizing: "border-box",
+    boxShadow:
+      "0 10px 40px rgba(0, 0, 0, 0.6)",
+  },
+
+  passwordUserText: {
+    color: "#fff",
+    fontSize: "18px",
+    fontWeight: "bold",
+    marginBottom: "4px",
+  },
+
+  passwordEmailText: {
+    color: "#999",
+    marginTop: 0,
+    marginBottom: "20px",
+  },
+
+  passwordHint: {
+    color: "#777",
+    fontSize: "13px",
+    marginTop: "7px",
+  },
+
+  passwordActions: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "20px",
+  },
+
+  cancelButton: {
+    flex: 1,
+    padding: "12px",
+    border: "1px solid #555",
+    borderRadius: "8px",
+    background: "#222",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
 };
 
 export default Users;
