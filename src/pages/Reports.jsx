@@ -26,11 +26,14 @@ function isCard(payment) {
     .trim()
     .toLowerCase();
 
-  return (
-    method === "card" ||
-    method === "credit card" ||
-    method === "creditcard"
-  );
+ return (
+  method === "card" ||
+  method === "credit card" ||
+  method === "creditcard" ||
+  method === "visa" ||
+  method === "mastercard"
+);
+
 }
 function isBankTransfer(payment) {
   const method = String(
@@ -2652,7 +2655,7 @@ function printAlnusoorReport() {
         }
 
         @page {
-          size: A4 landscape;
+          size: A4 portrait;
           margin: 10mm;
         }
 
@@ -3430,7 +3433,7 @@ function getJobPrice(job) {
 }
 
 @page {
-  size: A4 landscape;
+  size: A4 portrait;
   margin: 8mm;
 }
 
