@@ -465,7 +465,7 @@ function TechnicianEarnings() {
           @media print {
 
             @page {
-              size: landscape;
+              size: portrait;
               margin: 5mm;
             }
 
