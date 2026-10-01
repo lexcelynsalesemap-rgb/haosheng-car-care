@@ -1264,31 +1264,72 @@ const filteredJobs = jobs.filter((job) => {
             Dashboard Period
           </label>
 
-          <select
-            value={dateFilter}
-            onChange={(e) =>
-              setDateFilter(
-                e.target.value
-              )
-            }
-            style={styles.select}
-          >
-            <option value="All">
-              All Time
-            </option>
+         <select
+  value={dateFilter}
+  onChange={(e) => setDateFilter(e.target.value)}
+  style={styles.select}
+>
+  <option value="All">
+    All Time
+  </option>
 
-            <option value="Today">
-              Today
-            </option>
+  <option value="Today">
+    Today
+  </option>
 
-            <option value="Month">
-              This Month
-            </option>
+  <option value="January">
+    January
+  </option>
 
-            <option value="Year">
-              This Year
-            </option>
-          </select>
+  <option value="February">
+    February
+  </option>
+
+  <option value="March">
+    March
+  </option>
+
+  <option value="April">
+    April
+  </option>
+
+  <option value="May">
+    May
+  </option>
+
+  <option value="June">
+    June
+  </option>
+
+  <option value="July">
+    July
+  </option>
+
+  <option value="August">
+    August
+  </option>
+
+  <option value="September">
+    September
+  </option>
+
+  <option value="October">
+    October
+  </option>
+
+  <option value="November">
+    November
+  </option>
+
+  <option value="December">
+    December
+  </option>
+
+  <option value="Year">
+    This Year
+  </option>
+</select>
+
         </div>
 
         {/* SUMMARY CARDS */}
