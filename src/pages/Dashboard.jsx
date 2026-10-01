@@ -447,50 +447,111 @@ const isAdmin =
   }
 
   // ==========================================
-  // DATE FILTER
-  // ==========================================
+// DATE FILTER OPTIONS
+// ==========================================
 
-  const filteredJobs = jobs.filter(
-    (job) => {
-      if (dateFilter === "All") {
-        return true;
-      }
+const dateFilters = [
+  { label: "All", value: "All" },
+  { label: "Today", value: "Today" },
 
-      if (!job.created_at) {
-        return false;
-      }
+  { label: "January", value: 0 },
+  { label: "February", value: 1 },
+  { label: "March", value: 2 },
+  { label: "April", value: 3 },
+  { label: "May", value: 4 },
+  { label: "June", value: 5 },
+  { label: "July", value: 6 },
+  { label: "August", value: 7 },
+  { label: "September", value: 8 },
+  { label: "October", value: 9 },
+  { label: "November", value: 10 },
+  { label: "December", value: 11 },
 
-      const jobDate =
-        new Date(job.created_at);
+  { label: "Year", value: "Year" },
+];
 
-      const now = new Date();
 
-      if (dateFilter === "Today") {
-        return (
-          jobDate.toDateString() ===
-          now.toDateString()
-        );
-      }
+// ==========================================
+// DATE FILTER
+// ==========================================
 
-      if (dateFilter === "Month") {
-        return (
-          jobDate.getMonth() ===
-            now.getMonth() &&
-          jobDate.getFullYear() ===
-            now.getFullYear()
-        );
-      }
+const filteredJobs = jobs.filter((job) => {
 
-      if (dateFilter === "Year") {
-        return (
-          jobDate.getFullYear() ===
-          now.getFullYear()
-        );
-      }
+  // ------------------------------------------
+  // ALL
+  // ------------------------------------------
 
-      return true;
-    }
-  );
+  if (dateFilter === "All") {
+    return true;
+  }
+
+
+  // ------------------------------------------
+  // CHECK CREATED DATE
+  // ------------------------------------------
+
+  if (!job.created_at) {
+    return false;
+  }
+
+
+  // ------------------------------------------
+  // CONVERT DATE
+  // ------------------------------------------
+
+  const jobDate = new Date(job.created_at);
+  const now = new Date();
+
+
+  // Make sure the date is valid
+  if (isNaN(jobDate.getTime())) {
+    return false;
+  }
+
+
+  // ------------------------------------------
+  // TODAY
+  // ------------------------------------------
+
+  if (dateFilter === "Today") {
+    return (
+      jobDate.getDate() === now.getDate() &&
+      jobDate.getMonth() === now.getMonth() &&
+      jobDate.getFullYear() === now.getFullYear()
+    );
+  }
+
+
+  // ------------------------------------------
+  // CURRENT YEAR
+  // ------------------------------------------
+
+  if (dateFilter === "Year") {
+    return (
+      jobDate.getFullYear() === now.getFullYear()
+    );
+  }
+
+
+  // ------------------------------------------
+  // INDIVIDUAL MONTH
+  // ------------------------------------------
+
+  if (typeof dateFilter === "number") {
+    return (
+      jobDate.getMonth() === dateFilter &&
+      jobDate.getFullYear() === now.getFullYear()
+    );
+  }
+
+
+  // ------------------------------------------
+  // DEFAULT
+  // ------------------------------------------
+
+  return true;
+});
+
 
   // ==========================================
   // JOB COUNTS
