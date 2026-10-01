@@ -6417,6 +6417,10 @@ td {
                   "August",
                   manualPending.August,
                 ],
+                [
+                  "September",
+                  manualPending.September,
+                ],
               ].map(
                 ([month, amount]) => (
                   <div
