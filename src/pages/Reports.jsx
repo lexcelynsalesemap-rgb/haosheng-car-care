@@ -779,6 +779,11 @@ const [reportMonth, setReportMonth] = useState(
         item.setting_name ===
         "August Pending"
     );
+    const september = data.find(
+      (item) =>
+        item.setting_name ===
+        "September Pending"
+    );
 
     const teyseer = data.find(
       (item) =>
@@ -797,6 +802,10 @@ const [reportMonth, setReportMonth] = useState(
 
       August: august
         ? number(august.amount)
+        : DEFAULT_PENDING.August,
+
+        September: september
+        ? number(september.amount)
         : DEFAULT_PENDING.August,
     });
 
