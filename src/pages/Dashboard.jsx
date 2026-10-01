@@ -475,43 +475,38 @@ const dateFilters = [
 // DATE FILTER
 // ==========================================
 
-const filteredJobs = jobs.filter((job) => {
+// ==========================================
+// DATE FILTER
+// ==========================================
 
-  // ------------------------------------------
-  // ALL
-  // ------------------------------------------
+const filteredJobs = jobs.filter((job) => {
+  // ==========================================
+  // ALL TIME
+  // ==========================================
 
   if (dateFilter === "All") {
     return true;
   }
 
-
-  // ------------------------------------------
-  // CHECK CREATED DATE
-  // ------------------------------------------
+  // ==========================================
+  // CHECK DATE
+  // ==========================================
 
   if (!job.created_at) {
     return false;
   }
 
-
-  // ------------------------------------------
-  // CONVERT DATE
-  // ------------------------------------------
-
   const jobDate = new Date(job.created_at);
   const now = new Date();
 
-
-  // Make sure the date is valid
+  // Invalid date
   if (isNaN(jobDate.getTime())) {
     return false;
   }
 
-
-  // ------------------------------------------
+  // ==========================================
   // TODAY
-  // ------------------------------------------
+  // ==========================================
 
   if (dateFilter === "Today") {
     return (
@@ -521,10 +516,9 @@ const filteredJobs = jobs.filter((job) => {
     );
   }
 
-
-  // ------------------------------------------
-  // CURRENT YEAR
-  // ------------------------------------------
+  // ==========================================
+  // THIS YEAR
+  // ==========================================
 
   if (dateFilter === "Year") {
     return (
@@ -532,25 +526,38 @@ const filteredJobs = jobs.filter((job) => {
     );
   }
 
+  // ==========================================
+  // MONTH FILTER
+  // ==========================================
 
-  // ------------------------------------------
-  // INDIVIDUAL MONTH
-  // ------------------------------------------
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
-  if (typeof dateFilter === "number") {
+  const selectedMonth =
+    monthNames.indexOf(dateFilter);
+
+  if (selectedMonth !== -1) {
     return (
-      jobDate.getMonth() === dateFilter &&
+      jobDate.getMonth() === selectedMonth &&
       jobDate.getFullYear() === now.getFullYear()
     );
   }
 
-
-  // ------------------------------------------
-  // DEFAULT
-  // ------------------------------------------
-
   return true;
 });
+
 
 
   // ==========================================
@@ -1264,9 +1271,11 @@ const filteredJobs = jobs.filter((job) => {
             Dashboard Period
           </label>
 
-         <select
+        <select
   value={dateFilter}
-  onChange={(e) => setDateFilter(e.target.value)}
+  onChange={(e) =>
+    setDateFilter(e.target.value)
+  }
   style={styles.select}
 >
   <option value="All">
@@ -1329,6 +1338,7 @@ const filteredJobs = jobs.filter((job) => {
     This Year
   </option>
 </select>
+
 
         </div>
 
