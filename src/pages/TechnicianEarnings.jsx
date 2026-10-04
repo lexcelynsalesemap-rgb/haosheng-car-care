@@ -512,7 +512,7 @@ function TechnicianEarnings() {
             .printHeader h1 {
               margin: 0 0 2px 0 !important;
               padding: 0 !important;
-              font-size: 18px !important;
+              font-size: 14px !important;
               line-height: 1.2 !important;
             }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase/client";
 import gaLogo from "../assets/ga-logo.png";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 function isCash(payment) {
   const method = String(
@@ -4006,6 +4007,847 @@ Doha, Qatar
     }
   }, 800);
 }
+async function exportTeyseerReportExcel() {
+  if (!filteredTeyseerJobs.length) {
+    alert("No Teyseer jobs found.");
+    return;
+  }
+
+  const sortedTeyseerJobs = [...filteredTeyseerJobs].sort(
+    (a, b) => {
+      const dateA = getJobDate(a) || "";
+      const dateB = getJobDate(b) || "";
+
+      return dateA.localeCompare(dateB);
+    }
+  );
+
+  const workbook = new ExcelJS.Workbook();
+
+  const worksheet = workbook.addWorksheet(
+    "Teyseer Invoice"
+  );
+
+  worksheet.columns = [
+    { header: "DATE", key: "date", width: 14 },
+    { header: "CAR MAKE", key: "make", width: 15 },
+    { header: "MODEL", key: "model", width: 17 },
+    { header: "PLATE NO.", key: "plate", width: 15 },
+    { header: "DESCRIPTION", key: "description", width: 40 },
+    { header: "Voucher#", key: "voucher", width: 13 },
+    { header: "RECEIPT #", key: "receipt", width: 13 },
+    { header: "PRICE", key: "price", width: 17 }
+  ];
+
+  // --------------------------------------------------
+  // LOAD SERVICES
+  // --------------------------------------------------
+
+  const jobIds = sortedTeyseerJobs.map(
+    job => job.id
+  );
+
+  const {
+    data: teyseerServices,
+    error
+  } = await supabase
+    .from("job_services")
+    .select("*")
+    .in("job_id", jobIds);
+
+  if (error) {
+    console.error(
+      "TEYSEER SERVICES ERROR:",
+      error
+    );
+
+    alert(error.message);
+    return;
+  }
+
+  // --------------------------------------------------
+  // GROUP SERVICES BY JOB
+  // --------------------------------------------------
+
+  const servicesByJob = {};
+
+  (teyseerServices || []).forEach(service => {
+
+    if (!servicesByJob[service.job_id]) {
+      servicesByJob[service.job_id] = [];
+    }
+
+    servicesByJob[service.job_id].push(service);
+
+  });
+
+  // --------------------------------------------------
+  // HELPERS
+  // --------------------------------------------------
+
+  function normalizeSource(source) {
+    return String(source || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/\s*-\s*/g, " - ");
+  }
+
+  function isTeyseerSource(source) {
+    const normalized =
+      normalizeSource(source);
+
+    return [
+      "teyseer motors",
+      "teyseer motors - salah",
+      "teyseer motors - bahaa",
+      "teyseer motors - abdou"
+    ].includes(normalized);
+  }
+
+  function getCarMake(job) {
+    return (
+      job.carType ||
+      job.car_type ||
+      job.carMake ||
+      job.car_make ||
+      job.make ||
+      job.carBrand ||
+      job.brand ||
+      "-"
+    );
+  }
+
+  function getCarModel(job) {
+    return (
+      job.carModel ||
+      job.car_model ||
+      job.model ||
+      "-"
+    );
+  }
+
+  function getPlate(job) {
+    return (
+      job.plate ||
+      job.plateNumber ||
+      job.plate_number ||
+      job.plate_no ||
+      "-"
+    );
+  }
+
+  function getVoucher(job) {
+    return (
+      job.voucherNumber ||
+      job.voucher_number ||
+      job.voucher ||
+      "-"
+    );
+  }
+
+  function getReceipt(job) {
+    return (
+      job.receipt_number ||
+      job.receiptNumber ||
+      job.receipt ||
+      "-"
+    );
+  }
+
+  function getTeyseerServices(job) {
+
+    const source =
+      normalizeSource(job?.source);
+
+    const services =
+      servicesByJob[job.id] || [];
+
+    if (source === "teyseer motors") {
+
+      if (!services.length) {
+        return "-";
+      }
+
+      return services
+        .map(service =>
+          service?.service_name ||
+          service?.name ||
+          service?.title ||
+          ""
+        )
+        .filter(Boolean)
+        .join(", ");
+    }
+
+    const ownedServices =
+      services.filter(
+        service =>
+          normalizeSource(
+            service?.owner
+          ) === "teyseer"
+      );
+
+    if (!ownedServices.length) {
+      return "-";
+    }
+
+    return ownedServices
+      .map(service =>
+        service?.service_name ||
+        service?.name ||
+        service?.title ||
+        ""
+      )
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  function getJobPrice(job) {
+
+    const source =
+      normalizeSource(job?.source);
+
+    const services =
+      servicesByJob[job.id] || [];
+
+    const servicesToCalculate =
+      source === "teyseer motors"
+        ? services
+        : services.filter(
+            service =>
+              normalizeSource(
+                service?.owner
+              ) === "teyseer"
+          );
+
+    return servicesToCalculate.reduce(
+      (total, service) => {
+
+        const price =
+          Number(service?.price || 0);
+
+        const quantity =
+          Number(
+            service?.quantity ||
+            service?.qty ||
+            1
+          );
+
+        const discount =
+          Number(
+            service?.discount || 0
+          );
+
+        return (
+          total +
+          Math.max(
+            price * quantity - discount,
+            0
+          )
+        );
+
+      },
+      0
+    );
+  }
+
+  // --------------------------------------------------
+  // ADD TITLE
+  // --------------------------------------------------
+
+  worksheet.mergeCells("A1:H1");
+
+  worksheet.getCell("A1").value =
+    "HAOSHENG CAR SERVICE AND ACCESSORIES";
+
+  worksheet.getCell("A1").font = {
+    name: "Arial",
+    size: 18,
+    bold: true
+  };
+
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
+
+  worksheet.getRow(1).height = 30;
+
+  // --------------------------------------------------
+  // ARABIC NAME
+  // --------------------------------------------------
+
+  worksheet.mergeCells("A2:H2");
+
+  worksheet.getCell("A2").value =
+    "هاوشنغ لخدمات وزينة السيارات";
+
+  worksheet.getCell("A2").font = {
+    name: "Arial",
+    size: 14,
+    bold: true
+  };
+
+  worksheet.getCell("A2").alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
+
+  // --------------------------------------------------
+  // ADDRESS
+  // --------------------------------------------------
+
+  worksheet.mergeCells("A3:H3");
+
+  worksheet.getCell("A3").value =
+    "Building 358, Salwa Road, Doha - Qatar";
+
+  worksheet.getCell("A3").font = {
+    name: "Arial",
+    size: 9
+  };
+
+  worksheet.getCell("A3").alignment = {
+    horizontal: "center"
+  };
+
+  // --------------------------------------------------
+  // INVOICE TITLE
+  // --------------------------------------------------
+
+  worksheet.mergeCells("A5:H5");
+
+  worksheet.getCell("A5").value =
+    "INVOICE";
+
+  worksheet.getCell("A5").font = {
+    name: "Arial",
+    size: 22,
+    bold: true
+  };
+
+  worksheet.getCell("A5").alignment = {
+    horizontal: "center"
+  };
+
+  // --------------------------------------------------
+  // INVOICE NUMBER
+  // --------------------------------------------------
+
+  const invoiceNumber =
+    String(
+      typeof teyseerInvoiceNumber !==
+        "undefined"
+        ? teyseerInvoiceNumber
+        : "0006"
+    ).padStart(4, "0");
+
+  worksheet.mergeCells("A6:H6");
+
+  worksheet.getCell("A6").value =
+    `INVOICE NO. ${invoiceNumber}`;
+
+  worksheet.getCell("A6").font = {
+    name: "Arial",
+    size: 11,
+    bold: true
+  };
+
+  worksheet.getCell("A6").alignment = {
+    horizontal: "center"
+  };
+
+  // --------------------------------------------------
+  // CUSTOMER INFORMATION
+  // --------------------------------------------------
+
+  worksheet.mergeCells("A8:B8");
+  worksheet.mergeCells("C8:H8");
+
+  worksheet.getCell("A8").value =
+    "DATE:";
+
+  worksheet.getCell("C8").value =
+    new Date().toLocaleDateString(
+      "en-US",
+      {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }
+    );
+
+  worksheet.mergeCells("A9:B9");
+  worksheet.mergeCells("C9:H9");
+
+  worksheet.getCell("A9").value =
+    "NAME/COMPANY:";
+
+  worksheet.getCell("C9").value =
+    "TEYSEER MOTORS CO. WLL.";
+
+  worksheet.mergeCells("A10:B10");
+  worksheet.mergeCells("C10:H10");
+
+  worksheet.getCell("A10").value =
+    "ADDRESS:";
+
+  worksheet.getCell("C10").value =
+    "AIRPORT St. DOHA, QATAR";
+
+  worksheet.mergeCells("A11:B11");
+  worksheet.mergeCells("C11:H11");
+
+  worksheet.getCell("A11").value =
+    "CONTACT NUMBER:";
+
+  worksheet.getCell("C11").value =
+    "50900458";
+
+  [
+    "A8",
+    "A9",
+    "A10",
+    "A11"
+  ].forEach(cell => {
+
+    worksheet.getCell(cell).font = {
+      name: "Arial",
+      size: 10,
+      bold: true
+    };
+
+  });
+
+  // --------------------------------------------------
+  // TABLE HEADER
+  // --------------------------------------------------
+
+  const headerRow = 13;
+
+  const headers = [
+    "DATE",
+    "CAR MAKE",
+    "MODEL",
+    "PLATE NO.",
+    "DESCRIPTION",
+    "Voucher#",
+    "RECEIPT #",
+    "PRICE"
+  ];
+
+  headers.forEach(
+    (header, index) => {
+
+      const cell =
+        worksheet.getCell(
+          headerRow,
+          index + 1
+        );
+
+      cell.value = header;
+
+      cell.font = {
+        name: "Arial",
+        size: 9,
+        bold: true
+      };
+
+      cell.alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true
+      };
+
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" }
+      };
+
+    }
+  );
+
+  // --------------------------------------------------
+  // JOB ROWS
+  // --------------------------------------------------
+
+  let rowNumber =
+    headerRow + 1;
+
+  sortedTeyseerJobs.forEach(job => {
+
+    const source =
+      job.source || "";
+
+    const description =
+      isTeyseerSource(source)
+        ? getTeyseerServices(job)
+        : "-";
+
+    const amount =
+      getJobPrice(job);
+
+    const row = worksheet.getRow(
+      rowNumber
+    );
+
+    row.values = [
+      getJobDate(job) || "-",
+      getCarMake(job),
+      getCarModel(job),
+      getPlate(job),
+      description,
+      getVoucher(job),
+      getReceipt(job),
+      amount
+    ];
+
+    row.height = 30;
+
+    row.eachCell(cell => {
+
+      cell.font = {
+        name: "Arial",
+        size: 9
+      };
+
+      cell.alignment = {
+        vertical: "top",
+        wrapText: true
+      };
+
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" }
+      };
+
+    });
+
+    row.getCell(8).numFmt =
+      '"QAR " #,##0.00';
+
+    row.getCell(8).alignment = {
+      horizontal: "right",
+      vertical: "top"
+    };
+
+    rowNumber++;
+
+  });
+
+  // --------------------------------------------------
+  // TOTAL
+  // --------------------------------------------------
+
+  const totalAmount =
+    sortedTeyseerJobs.reduce(
+      (total, job) =>
+        total +
+        number(job.teyseerSales),
+      0
+    );
+
+  worksheet.mergeCells(
+    `A${rowNumber}:G${rowNumber}`
+  );
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).value =
+    "TOTAL AMOUNT:";
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).font = {
+    name: "Arial",
+    size: 10,
+    bold: true
+  };
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).alignment = {
+    horizontal: "right"
+  };
+
+  worksheet.getCell(
+    `H${rowNumber}`
+  ).value =
+    totalAmount;
+
+  worksheet.getCell(
+    `H${rowNumber}`
+  ).font = {
+    name: "Arial",
+    size: 10,
+    bold: true
+  };
+
+  worksheet.getCell(
+    `H${rowNumber}`
+  ).numFmt =
+    '"QAR " #,##0.00';
+
+  // --------------------------------------------------
+  // BORDERS
+  // --------------------------------------------------
+
+  for (
+    let col = 1;
+    col <= 8;
+    col++
+  ) {
+
+    worksheet.getCell(
+      rowNumber,
+      col
+    ).border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" }
+    };
+
+  }
+
+  // --------------------------------------------------
+  // NET AMOUNT
+  // --------------------------------------------------
+
+  rowNumber += 2;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:B${rowNumber}`
+  );
+
+  worksheet.mergeCells(
+    `C${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).value =
+    "NET AMOUNT:";
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).font = {
+    name: "Arial",
+    size: 11,
+    bold: true
+  };
+
+  worksheet.getCell(
+    `C${rowNumber}`
+  ).value =
+    totalAmount;
+
+  worksheet.getCell(
+    `C${rowNumber}`
+  ).font = {
+    name: "Arial",
+    size: 13,
+    bold: true
+  };
+
+  worksheet.getCell(
+    `C${rowNumber}`
+  ).numFmt =
+    '"QAR " #,##0.00';
+
+  // --------------------------------------------------
+  // PAYMENT METHOD
+  // --------------------------------------------------
+
+  rowNumber += 2;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).value =
+    "PAYMENT METHOD:";
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).font = {
+    name: "Arial",
+    size: 10,
+    bold: true
+  };
+
+  rowNumber++;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).value =
+    "CASH / VISA / MASTERCARD / AMEX / NAPS / BANK TRANSFER";
+
+  // --------------------------------------------------
+  // SIGNATURES
+  // --------------------------------------------------
+
+  rowNumber += 4;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:D${rowNumber}`
+  );
+
+  worksheet.mergeCells(
+    `E${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).value =
+    "CUSTOMER'S SIGNATURE";
+
+  worksheet.getCell(
+    `E${rowNumber}`
+  ).value =
+    "AUTHORIZED SIGNATURE";
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).alignment = {
+    horizontal: "center"
+  };
+
+  worksheet.getCell(
+    `E${rowNumber}`
+  ).alignment = {
+    horizontal: "center"
+  };
+
+  // --------------------------------------------------
+  // FOOTER
+  // --------------------------------------------------
+
+  rowNumber += 3;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).value =
+    "Tel: +974 3368 1888 - C.R.NO: 199725 - E-mail: info@haoshengcar.com";
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).font = {
+    name: "Arial",
+    size: 8,
+    bold: true
+  };
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).alignment = {
+    horizontal: "center"
+  };
+
+  rowNumber++;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).value =
+    "Fereej Al Manaseer, Zone 55, St. 340, Bldg 358, Salwa Road, Doha, Qatar";
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).font = {
+    name: "Arial",
+    size: 8
+  };
+
+  worksheet.getCell(
+    `A${rowNumber}`
+  ).alignment = {
+    horizontal: "center"
+  };
+
+  // --------------------------------------------------
+  // PRINT SETTINGS
+  // --------------------------------------------------
+
+  worksheet.pageSetup = {
+    paperSize: 9,
+    orientation: "portrait",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: {
+      left: 0.25,
+      right: 0.25,
+      top: 0.35,
+      bottom: 0.35,
+      header: 0.15,
+      footer: 0.15
+    }
+  };
+
+  worksheet.pageSetup.printArea =
+    `A1:H${rowNumber}`;
+
+  worksheet.views = [
+    {
+      showGridLines: false
+    }
+  ];
+
+  // --------------------------------------------------
+  // DOWNLOAD FILE
+  // --------------------------------------------------
+
+  const buffer =
+    await workbook.xlsx.writeBuffer();
+
+  const blob =
+    new Blob(
+      [buffer],
+      {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      }
+    );
+
+  const url =
+    URL.createObjectURL(blob);
+
+  const link =
+    document.createElement("a");
+
+  link.href = url;
+
+  link.download =
+    `Teyseer_Invoice_${invoiceNumber}.xlsx`;
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+}
+
   /*
   ============================================================
   PRINT DAILY
@@ -5288,6 +6130,13 @@ td {
               >
                 Print Report
               </button>
+<button
+  className="btn btn-dark"
+  onClick={exportTeyseerReportExcel}
+>
+  Export Teyseer Excel
+</button>
+
 
             </div>
 
