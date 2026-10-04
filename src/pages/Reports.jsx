@@ -257,6 +257,14 @@ function getJobDate(job) {
     job.createdDate
   );
 }
+function getPaymentDate(payment) {
+  return String(
+    payment?.payment_date ||
+    payment?.paid_at ||
+    payment?.created_at ||
+    ""
+  ).slice(0, 10);
+}
 
 function isDateInRange(date, startDate, endDate) {
   if (!date) return false;
@@ -1305,6 +1313,16 @@ function exportMonthlyExcel() {
       return "";
     }
   };
+const getJobPaymentDates = (job) => {
+  const jobPayments =
+    paymentsByJob[String(job.id)] || [];
+
+  return jobPayments
+    .map((payment) => getPaymentDate(payment))
+    .filter(Boolean)
+    .sort()
+    .join(", ");
+};
 
   /*
   ----------------------------------------------------------
@@ -1624,10 +1642,13 @@ function exportMonthlyExcel() {
   ----------------------------------------------------------
   */
 
-  const allJobsRows = monthJobs.map((job) => ({
-    Date: getJobDate(job),
+ const allJobsRows = monthJobs.map((job) => ({
+  "Customer Came Date": getJobDate(job),
 
-    "Job ID": job.id,
+  "Payment Date": getJobPaymentDates(job),
+
+  "Job ID": job.id,
+
 
     Customer: getCustomer(job),
 
@@ -1703,12 +1724,15 @@ function exportMonthlyExcel() {
   ----------------------------------------------------------
   */
 
-  const teyseerRows = monthJobs
-    .filter((job) => isTeyseerJob(job))
-    .map((job) => ({
-      Date: getJobDate(job),
+ const teyseerRows = monthJobs
+  .filter((job) => isTeyseerJob(job))
+  .map((job) => ({
+    "Customer Came Date": getJobDate(job),
 
-      "Job ID": job.id,
+    "Payment Date": getJobPaymentDates(job),
+
+    "Job ID": job.id,
+
 
       Customer: getCustomer(job),
 
@@ -1745,14 +1769,17 @@ function exportMonthlyExcel() {
   ----------------------------------------------------------
   */
 
-  const customerRows = monthJobs
-    .filter(
-      (job) => number(job.customerSales) > 0
-    )
-    .map((job) => ({
-      Date: getJobDate(job),
+const customerRows = monthJobs
+  .filter(
+    (job) => number(job.customerSales) > 0
+  )
+  .map((job) => ({
+    "Customer Came Date": getJobDate(job),
 
-      "Job ID": job.id,
+    "Payment Date": getJobPaymentDates(job),
+
+    "Job ID": job.id,
+
 
       Customer: getCustomer(job),
 
@@ -1805,9 +1832,12 @@ function exportMonthlyExcel() {
       : null;
 
     return {
-      Date: String(
-        payment.payment_date || ""
-      ).slice(0, 10),
+      "Payment Date": getPaymentDate(payment),
+
+"Customer Came Date": job
+  ? getJobDate(job)
+  : "",
+
 
       "Payment ID": payment.id,
 
@@ -1843,16 +1873,19 @@ function exportMonthlyExcel() {
   ----------------------------------------------------------
   */
 
-  const outstandingRows = monthJobs
-    .filter(
-      (job) =>
-        number(job.customerBalance) > 0 ||
-        number(job.teyseerBalance) > 0
-    )
-    .map((job) => ({
-      Date: getJobDate(job),
+ const outstandingRows = monthJobs
+  .filter(
+    (job) =>
+      number(job.customerBalance) > 0 ||
+      number(job.teyseerBalance) > 0
+  )
+  .map((job) => ({
+    "Customer Came Date": getJobDate(job),
 
-      "Job ID": job.id,
+    "Payment Date": getJobPaymentDates(job),
+
+    "Job ID": job.id,
+
 
       Customer: getCustomer(job),
 
@@ -1914,9 +1947,12 @@ function exportMonthlyExcel() {
       );
     })
     .map((job) => ({
-      Date: getJobDate(job),
+  "Customer Came Date": getJobDate(job),
 
-      "Job ID": job.id,
+  "Payment Date": getJobPaymentDates(job),
+
+  "Job ID": job.id,
+
 
       Customer: getCustomer(job),
 
