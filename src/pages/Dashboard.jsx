@@ -14,7 +14,25 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+const SHOP_THEMES = {
+  1: {
+    name: "Haosheng Car Care",
+    primary: "#d4af37",
+    accent: "#f59e0b",
+    border: "#3b321c",
+    card: "#151515",
+    background: "#0b0b0b",
+  },
 
+  2: {
+    name: "New Car Shop",
+    primary: "#2563eb",
+    accent: "#06b6d4",
+    border: "#1e3a5f",
+    card: "#111827",
+    background: "#0f172a",
+  },
+};
 function Dashboard() {
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -33,6 +51,17 @@ const isAdmin =
   String(user?.role || "")
     .trim()
     .toLowerCase() === "admin";
+// ==========================================
+// SHOP THEME
+// ==========================================
+
+const shopId = Number(user?.shop_id || 1);
+
+
+
+const theme =
+  SHOP_THEMES[shopId] || SHOP_THEMES[1];
+const styles = getStyles(theme);
 
   useEffect(() => {
     loadDashboard();
@@ -1205,9 +1234,9 @@ const filteredJobs = jobs.filter((job) => {
 
         <div style={styles.header}>
           <div>
-            <h1 style={styles.title}>
-              🚗 Haosheng Car Care
-            </h1>
+           <h1 style={styles.title}>
+  🚗 {theme.name}
+</h1>
 
             <p style={styles.subtitle}>
               Workshop Management System
@@ -1893,7 +1922,7 @@ const filteredJobs = jobs.filter((job) => {
 
                 <Bar
                   dataKey="amount"
-                  fill="#d4af37"
+                  fill={theme.primary}
                   radius={[
                     6,
                     6,
@@ -2262,29 +2291,36 @@ function Card({
   icon,
   onClick,
 }) {
+  const user = JSON.parse(
+    localStorage.getItem("user") || "null"
+  );
+
+  const shopId = Number(user?.shop_id || 1);
+
+  const theme =
+    SHOP_THEMES[shopId] || SHOP_THEMES[1];
+
+  const cardStyles = getStyles(theme);
+
   const colors = {
-    "Total Jobs": "#d4af37",
-    New: "#d4af37",
-    "In Progress": "#f59e0b",
+    "Total Jobs": theme.primary,
+    New: theme.primary,
+    "In Progress": theme.accent,
     Finished: "#22c55e",
     Delivered: "#0891b2",
 
-    "Total Sales": "#d4af37",
+    "Total Sales": theme.primary,
+    "Teyseer Sales": theme.primary,
+    "Salah Sales": theme.primary,
+    "Bahaa Sales": theme.primary,
+    "Abdou Sales": theme.primary,
+    "Sales Team Sales": theme.primary,
 
-    "Teyseer Sales": "#d4af37",
+    "Salah Balance": theme.accent,
+    "Bahaa Balance": theme.accent,
+    "Abdou Balance": theme.accent,
+    "Sales Team Balance": theme.accent,
 
-    "Salah Sales": "#d4af37",
-
-    "Bahaa Sales": "#d4af37",
-
-    "Abdou Sales": "#d4af37",
-
-    "Sales Team Sales": "#d4af37",
-
-    "Salah Balance": "#f59e0b",
-    "Bahaa Balance": "#f59e0b",
-    "Abdou Balance": "#f59e0b",
-    "Sales Team Balance": "#f59e0b",
     "Total Sales Staff Balance": "#dc2626",
 
     "Salah Paid": "#22c55e",
@@ -2292,32 +2328,21 @@ function Card({
     "Abdou Paid": "#22c55e",
     "Sales Team Paid": "#22c55e",
 
-    "Customer / Personal Sales":
-      "#d4af37",
+    "Customer / Personal Sales": theme.primary,
+    "Customer / Personal Paid": "#22c55e",
+    "Customer / Personal Balance": theme.accent,
 
-    "Customer / Personal Paid":
-      "#22c55e",
-
-    "Customer / Personal Balance":
-      "#f59e0b",
-
-    "Teyseer Paid":
-      "#22c55e",
-
-    "Teyseer Balance":
-      "#dc2626",
+    "Teyseer Paid": "#22c55e",
+    "Teyseer Balance": "#dc2626",
   };
 
   const content = (
     <div
       style={{
-        ...styles.card,
-
-        borderTop:
-          `4px solid ${
-            colors[title] ||
-            "#d4af37"
-          }`,
+        ...cardStyles.card,
+        borderTop: `4px solid ${
+          colors[title] || theme.primary
+        }`,
         ...(onClick
           ? {
               cursor: "pointer",
@@ -2327,23 +2352,13 @@ function Card({
       }}
       onClick={onClick}
     >
-      <div style={styles.icon}>
-        {icon}
-      </div>
+      <div style={cardStyles.icon}>{icon}</div>
 
-      <h3
-        style={
-          styles.cardTitle
-        }
-      >
+      <h3 style={cardStyles.cardTitle}>
         {title}
       </h3>
 
-      <h2
-        style={
-          styles.cardValue
-        }
-      >
+      <h2 style={cardStyles.cardValue}>
         {value}
       </h2>
     </div>
@@ -2352,12 +2367,9 @@ function Card({
   if (status) {
     return (
       <Link
-        to={`/jobs?status=${encodeURIComponent(
-          status
-        )}`}
+        to={`/jobs?status=${encodeURIComponent(status)}`}
         style={{
-          textDecoration:
-            "none",
+          textDecoration: "none",
         }}
       >
         {content}
@@ -2372,11 +2384,11 @@ function Card({
 // STYLES
 // ==========================================
 
-const styles = {
+const getStyles = (theme) => ({
   page: {
     minHeight: "100vh",
     padding: "30px",
-    background: "#0b0b0b",
+    background: theme.background,
     color: "#f5f5f5",
     boxSizing: "border-box",
   },
@@ -2398,10 +2410,11 @@ const styles = {
   },
 
   title: {
-    color: "#d4af37",
-    fontSize: "30px",
-    margin: 0,
-  },
+  fontSize: "28px",
+  fontWeight: "700",
+  color: theme.primary,
+  marginBottom: "25px",
+},
 
   subtitle: {
     color: "#999",
@@ -2415,16 +2428,16 @@ const styles = {
     flexWrap: "wrap",
   },
 
-  newButton: {
-    background: "#d4af37",
-    color: "#080808",
-    border: "none",
-    padding: "12px 22px",
-    borderRadius: "10px",
-    fontSize: "16px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
+ newButton: {
+  background: theme.primary,
+  color: "#080808",
+  border: "none",
+  padding: "12px 22px",
+  borderRadius: "10px",
+  fontSize: "16px",
+  cursor: "pointer",
+  fontWeight: "bold",
+},
 
   secondaryButton: {
     background: "#222",
@@ -2439,23 +2452,23 @@ const styles = {
     fontWeight: "bold",
   },
 
-  filterBox: {
-    background: "#151515",
-    border:
-      "1px solid #3b321c",
-    borderRadius: "12px",
-    padding: "18px",
-    marginBottom: "25px",
-    display: "flex",
-    alignItems: "center",
-    gap: "15px",
-    flexWrap: "wrap",
-  },
+filterBox: {
+  background: "#151515",
+  border:
+    `1px solid ${theme.border}`,
+  borderRadius: "12px",
+  padding: "18px",
+  marginBottom: "25px",
+  display: "flex",
+  alignItems: "center",
+  gap: "15px",
+  flexWrap: "wrap",
+},
 
   filterLabel: {
-    color: "#d4af37",
-    fontWeight: "bold",
-  },
+  color: theme.primary,
+  fontWeight: "bold",
+},
 
   select: {
     padding: "12px",
@@ -2477,12 +2490,12 @@ const styles = {
   },
 
   card: {
-    background: "#151515",
+    background: theme.card,
     padding: "22px",
     borderRadius: "12px",
     textAlign: "center",
     border:
-      "1px solid #3b321c",
+  `1px solid ${theme.border}`,
     boxShadow:
       "0 8px 20px rgba(0,0,0,0.35)",
     color: "#f5f5f5",
@@ -2502,21 +2515,21 @@ const styles = {
   },
 
   cardValue: {
-    color: "#d4af37",
+    color: theme.primary,
     margin: 0,
     fontSize: "24px",
   },
 
-  heading: {
-    color: "#d4af37",
-    marginTop: "35px",
-    marginBottom: "18px",
-  },
+ heading: {
+  color: theme.primary,
+  marginTop: "35px",
+  marginBottom: "18px",
+},
 
   tableBox: {
     background: "#151515",
     border:
-      "1px solid #3b321c",
+  `1px solid ${theme.border}`,
     borderRadius: "12px",
     padding: "20px",
     boxShadow:
@@ -2533,12 +2546,12 @@ const styles = {
   },
 
   th: {
-    color: "#d4af37",
-    padding: "14px",
-    borderBottom:
-      "1px solid #3b321c",
-    whiteSpace: "nowrap",
-  },
+  color: theme.primary,
+  padding: "14px",
+  borderBottom:
+    `1px solid ${theme.border}`,
+  whiteSpace: "nowrap",
+},
 
   td: {
     padding: "14px",
@@ -2548,14 +2561,14 @@ const styles = {
     whiteSpace: "nowrap",
   },
 
-  status: {
-    background: "#3b321c",
-    color: "#d4af37",
-    padding:
-      "6px 12px",
-    borderRadius: "20px",
-    fontSize: "14px",
-  },
+ status: {
+  background: theme.border,
+  color: theme.primary,
+  padding:
+    "6px 12px",
+  borderRadius: "20px",
+  fontSize: "14px",
+},
 
   charts: {
     display: "grid",
@@ -2566,25 +2579,24 @@ const styles = {
   },
 
   chartBox: {
-    background: "#151515",
-    border:
-      "1px solid #3b321c",
-    padding: "20px",
-    borderRadius: "12px",
-    boxShadow:
-      "0 8px 20px rgba(0,0,0,0.35)",
-  },
+  background: "#151515",
+  border:
+    `1px solid ${theme.border}`,
+  padding: "20px",
+  borderRadius: "12px",
+  boxShadow:
+    "0 8px 20px rgba(0,0,0,0.35)",
+},
+chartTitle: {
+  color: theme.primary,
+},
 
-  chartTitle: {
-    color: "#d4af37",
-  },
-
-  tooltip: {
-    background: "#151515",
-    border:
-      "1px solid #d4af37",
-    color: "#fff",
-  },
+tooltip: {
+  background: "#151515",
+  border:
+    `1px solid ${theme.primary}`,
+  color: "#fff",
+},
 
   recent: {
     display: "grid",
@@ -2594,19 +2606,19 @@ const styles = {
     marginBottom: "40px",
   },
 
-  recentCard: {
-    background: "#151515",
-    padding: "20px",
-    borderRadius: "12px",
-    border:
-      "1px solid #3b321c",
-    boxShadow:
-      "0 8px 20px rgba(0,0,0,0.35)",
-  },
+ recentCard: {
+  background: "#151515",
+  padding: "20px",
+  borderRadius: "12px",
+  border:
+    `1px solid ${theme.border}`,
+  boxShadow:
+    "0 8px 20px rgba(0,0,0,0.35)",
+},
 
-  goldText: {
-    color: "#d4af37",
-  },
+ goldText: {
+  color: theme.primary,
+},
 
   bigNumber: {
     color: "#fff",
@@ -2627,19 +2639,19 @@ const styles = {
   },
 
   actionCard: {
-    background: "#151515",
-    padding: "25px",
-    borderRadius: "12px",
-    textDecoration: "none",
-    color: "#f5f5f5",
-    textAlign: "center",
-    border:
-      "1px solid #3b321c",
-    boxShadow:
-      "0 8px 20px rgba(0,0,0,0.35)",
-    display: "block",
-    transition: "0.2s",
-  },
+  background: "#151515",
+  padding: "25px",
+  borderRadius: "12px",
+  textDecoration: "none",
+  color: "#f5f5f5",
+  textAlign: "center",
+  border:
+    `1px solid ${theme.border}`,
+  boxShadow:
+    "0 8px 20px rgba(0,0,0,0.35)",
+  display: "block",
+  transition: "0.2s",
+},
 
   actionIcon: {
     fontSize: "32px",
@@ -2662,29 +2674,29 @@ const styles = {
     whiteSpace: "nowrap",
   },
 
-  totalTd: {
-    padding: "14px",
-    borderTop: "2px solid #d4af37",
-    color: "#d4af37",
-    fontWeight: "bold",
-    whiteSpace: "nowrap",
-  },
+totalTd: {
+  padding: "14px",
+  borderTop: `2px solid ${theme.primary}`,
+  color: theme.primary,
+  fontWeight: "bold",
+  whiteSpace: "nowrap",
+},
 
-  totalPaidTd: {
-    padding: "14px",
-    borderTop: "2px solid #d4af37",
-    color: "#22c55e",
-    fontWeight: "bold",
-    whiteSpace: "nowrap",
-  },
+totalPaidTd: {
+  padding: "14px",
+  borderTop: `2px solid ${theme.primary}`,
+  color: "#22c55e",
+  fontWeight: "bold",
+  whiteSpace: "nowrap",
+},
 
-  totalBalanceTd: {
-    padding: "14px",
-    borderTop: "2px solid #d4af37",
-    color: "#dc2626",
-    fontWeight: "bold",
-    whiteSpace: "nowrap",
-  },
+totalBalanceTd: {
+  padding: "14px",
+  borderTop: `2px solid ${theme.primary}`,
+  color: "#dc2626",
+  fontWeight: "bold",
+  whiteSpace: "nowrap",
+},
 
   modalOverlay: {
     position: "fixed",
@@ -2698,18 +2710,18 @@ const styles = {
     boxSizing: "border-box",
   },
 
-  modal: {
-    width: "100%",
-    maxWidth: "1250px",
-    maxHeight: "90vh",
-    overflow: "auto",
-    background: "#111",
-    border: "1px solid #3b321c",
-    borderRadius: "14px",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-    padding: "24px",
-    boxSizing: "border-box",
-  },
+ modal: {
+  width: "100%",
+  maxWidth: "1250px",
+  maxHeight: "90vh",
+  overflow: "auto",
+  background: "#111",
+  border: `1px solid ${theme.border}`,
+  borderRadius: "14px",
+  boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+  padding: "24px",
+  boxSizing: "border-box",
+},
 
   modalHeader: {
     display: "flex",
@@ -2719,11 +2731,11 @@ const styles = {
     marginBottom: "20px",
   },
 
-  modalTitle: {
-    margin: 0,
-    color: "#d4af37",
-    fontSize: "24px",
-  },
+modalTitle: {
+  margin: 0,
+  color: theme.primary,
+  fontSize: "24px",
+},
 
   modalSubtitle: {
     margin: "8px 0 0",
@@ -2773,18 +2785,18 @@ const styles = {
     fontSize: "22px",
   },
 
-  modalSearch: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "12px 14px",
-    borderRadius: "8px",
-    border: "1px solid #3b321c",
-    background: "#0b0b0b",
-    color: "#fff",
-    outline: "none",
-    marginBottom: "18px",
-    fontSize: "14px",
-  },
+ modalSearch: {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "12px 14px",
+  borderRadius: "8px",
+  border: `1px solid ${theme.border}`,
+  background: "#0b0b0b",
+  color: "#fff",
+  outline: "none",
+  marginBottom: "18px",
+  fontSize: "14px",
+},
 
   modalTableWrap: {
     overflowX: "auto",
@@ -2797,6 +2809,6 @@ const styles = {
     textAlign: "center",
     padding: "20px",
   },
-};
+});
 
 export default Dashboard;
