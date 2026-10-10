@@ -14,6 +14,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+
 const SHOP_THEMES = {
   1: {
     name: "Haosheng Car Care",
@@ -33,6 +34,7 @@ const SHOP_THEMES = {
     background: "#0f172a",
   },
 };
+
 function Dashboard() {
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -40,34 +42,27 @@ function Dashboard() {
   const [selectedSalesStaff, setSelectedSalesStaff] = useState(null);
   const [staffCustomerSearch, setStaffCustomerSearch] = useState("");
 
-  // ==========================================
-  // LOAD
-  // ==========================================
-const user = JSON.parse(
-  localStorage.getItem("user") || "null"
-);
+  const user = JSON.parse(
+    localStorage.getItem("user") || "null"
+  );
 
-const isAdmin =
-  String(user?.role || "")
-    .trim()
-    .toLowerCase() === "admin";
-// ==========================================
-// SHOP THEME
-// ==========================================
+  const isAdmin =
+    String(user?.role || "")
+      .trim()
+      .toLowerCase() === "admin";
 
-const shopId = Number(user?.shop_id || 1);
+  const shopId = Number(user?.shop_id || 1);
 
+  const theme =
+    SHOP_THEMES[shopId] || SHOP_THEMES[1];
 
-
-const theme =
-  SHOP_THEMES[shopId] || SHOP_THEMES[1];
-const styles = getStyles(theme);
+  const styles = getStyles(theme);
 
   useEffect(() => {
     loadDashboard();
 
     const jobsChannel = supabase
-      .channel("dashboard-jobs")
+      .channel(`dashboard-jobs-${shopId}`)
       .on(
         "postgres_changes",
         {
@@ -80,7 +75,7 @@ const styles = getStyles(theme);
       .subscribe();
 
     const paymentsChannel = supabase
-      .channel("dashboard-payments")
+      .channel(`dashboard-payments-${shopId}`)
       .on(
         "postgres_changes",
         {
@@ -96,7 +91,7 @@ const styles = getStyles(theme);
       supabase.removeChannel(jobsChannel);
       supabase.removeChannel(paymentsChannel);
     };
-  }, []);
+  }, [shopId]);
 
   async function loadDashboard() {
     await Promise.all([
@@ -106,13 +101,15 @@ const styles = getStyles(theme);
   }
 
   async function loadJobs() {
-    const user = JSON.parse(
-      localStorage.getItem("user")
+    const currentUser = JSON.parse(
+      localStorage.getItem("user") || "null"
     );
 
-    const shopId = user?.shop_id;
+    const currentShopId = Number(
+      currentUser?.shop_id || 0
+    );
 
-    if (!shopId) {
+    if (!currentShopId) {
       console.error("NO SHOP ID FOUND");
       return;
     }
@@ -123,7 +120,7 @@ const styles = getStyles(theme);
     } = await supabase
       .from("jobs")
       .select("*")
-      .eq("shop_id", shopId)
+      .eq("shop_id", currentShopId)
       .order("created_at", {
         ascending: false,
       });
@@ -140,13 +137,15 @@ const styles = getStyles(theme);
   }
 
   async function loadPayments() {
-    const user = JSON.parse(
-      localStorage.getItem("user")
+    const currentUser = JSON.parse(
+      localStorage.getItem("user") || "null"
     );
 
-    const shopId = user?.shop_id;
+    const currentShopId = Number(
+      currentUser?.shop_id || 0
+    );
 
-    if (!shopId) {
+    if (!currentShopId) {
       console.error("NO SHOP ID FOUND");
       return;
     }
@@ -160,7 +159,7 @@ const styles = getStyles(theme);
         *,
         jobs!inner(shop_id)
       `)
-      .eq("jobs.shop_id", shopId);
+      .eq("jobs.shop_id", currentShopId);
 
     if (error) {
       console.error(
@@ -172,10 +171,6 @@ const styles = getStyles(theme);
 
     setPayments(data || []);
   }
-
-  // ==========================================
-  // HELPERS
-  // ==========================================
 
   function money(value) {
     return Number(value || 0).toFixed(2);
@@ -215,31 +210,13 @@ const styles = getStyles(theme);
     );
   }
 
-  function isTeyseerAbdouSource(source) {
-    const value = normalizeSource(source);
-
-    return (
-      value === "teyseer motors - abdou" ||
-      value === "teyseer motors-abdou" ||
-      value === "teyseer-abdou"
-    );
-  }
+  
 
   function isWttService(serviceName) {
     return String(serviceName || "")
       .toLowerCase()
       .includes("wtt");
   }
-
-  // ==========================================
-  // SERVICE GROSS
-  //
-  // IMPORTANT:
-  // Dashboard uses the same value saved by
-  // NewJob:
-  //
-  // price × quantity - service discount
-  // ==========================================
 
   function getServiceGross(
     serviceName,
@@ -266,10 +243,6 @@ const styles = getStyles(theme);
       0
     );
   }
-
-  // ==========================================
-  // JOB GROSS
-  // ==========================================
 
   function getJobGross(job) {
     const services = Array.isArray(
@@ -298,37 +271,6 @@ const styles = getStyles(theme);
     );
   }
 
-  // ==========================================
-  // SALES BREAKDOWN
-  //
-  // Teyseer Motors
-  //   -> ALL = Teyseer
-  //
-  // Teyseer Motors - Salah
-  //   -> WTT = Teyseer
-  //   -> Other = Salah
-  //
-  // Teyseer Motors - Bahaa
-  //   -> WTT = Teyseer
-  //   -> Other = Bahaa
-  //
-  // Teyseer Motors - Abdou
-  //   -> WTT = Teyseer
-  //   -> Other = Abdou
-  //
-  // Salah
-  //   -> ALL = Salah
-  //
-  // Bahaa
-  //   -> ALL = Bahaa
-  //
-  // Abdou
-  //   -> ALL = Abdou
-  //
-  // Walk-in / Other
-  //   -> ALL = Sales Team
-  // ==========================================
-
   function getJobSalesBreakdown(job) {
     const services = Array.isArray(
       job?.services
@@ -342,15 +284,37 @@ const styles = getStyles(theme);
         ? job.serviceDetails
         : {};
 
+    if (shopId === 2) {
+      const gross = services.reduce(
+        (total, serviceName) => {
+          return (
+            total +
+            getServiceGross(
+              serviceName,
+              serviceDetails
+            )
+          );
+        },
+        0
+      );
+
+      return {
+        gross,
+        teyseer: 0,
+        salah: 0,
+        bahaa: 0,
+        salesTeam: 0,
+        customerSales: gross,
+      };
+    }
+
     const source =
       normalizeSource(job?.source);
 
     let gross = 0;
-
     let teyseer = 0;
     let salah = 0;
     let bahaa = 0;
-    let abdou = 0;
     let salesTeam = 0;
 
     services.forEach((serviceName) => {
@@ -365,20 +329,12 @@ const styles = getStyles(theme);
       const isWtt =
         isWttService(serviceName);
 
-      // ======================================
-      // PURE TEYSEER
-      // ======================================
-
       if (
         isPureTeyseerSource(source)
       ) {
         teyseer += amount;
         return;
       }
-
-      // ======================================
-      // TEYSEER - SALAH
-      // ======================================
 
       if (
         isTeyseerSalahSource(source)
@@ -392,10 +348,6 @@ const styles = getStyles(theme);
         return;
       }
 
-      // ======================================
-      // TEYSEER - BAHAA
-      // ======================================
-
       if (
         isTeyseerBahaaSource(source)
       ) {
@@ -406,62 +358,25 @@ const styles = getStyles(theme);
         }
 
         return;
+     
       }
-
-      // ======================================
-      // TEYSEER - ABDOU
-      // ======================================
-
-      if (
-        isTeyseerAbdouSource(source)
-      ) {
-        if (isWtt) {
-          teyseer += amount;
-        } else {
-          abdou += amount;
-        }
-
-        return;
-      }
-
-      // ======================================
-      // NORMAL SALAH
-      // ======================================
 
       if (source === "salah") {
         salah += amount;
         return;
       }
 
-      // ======================================
-      // NORMAL BAHAA
-      // ======================================
-
       if (source === "bahaa") {
         bahaa += amount;
         return;
       }
 
-      // ======================================
-      // NORMAL ABDOU
-      // ======================================
-
-      if (source === "abdou") {
-        abdou += amount;
-        return;
-      }
-
-      // ======================================
-      // WALK-IN / OTHER
-      // ======================================
-
-      salesTeam += amount;
+           salesTeam += amount;
     });
 
     const customerSales =
       salah +
       bahaa +
-      abdou +
       salesTeam;
 
     return {
@@ -469,129 +384,74 @@ const styles = getStyles(theme);
       teyseer,
       salah,
       bahaa,
-      abdou,
       salesTeam,
       customerSales,
     };
   }
 
-  // ==========================================
-// DATE FILTER OPTIONS
-// ==========================================
+  const filteredJobs = jobs.filter((job) => {
+    if (dateFilter === "All") {
+      return true;
+    }
 
-const dateFilters = [
-  { label: "All", value: "All" },
-  { label: "Today", value: "Today" },
+    if (!job.created_at) {
+      return false;
+    }
 
-  { label: "January", value: 0 },
-  { label: "February", value: 1 },
-  { label: "March", value: 2 },
-  { label: "April", value: 3 },
-  { label: "May", value: 4 },
-  { label: "June", value: 5 },
-  { label: "July", value: 6 },
-  { label: "August", value: 7 },
-  { label: "September", value: 8 },
-  { label: "October", value: 9 },
-  { label: "November", value: 10 },
-  { label: "December", value: 11 },
+    const jobDate = new Date(
+      job.created_at
+    );
 
-  { label: "Year", value: "Year" },
-];
+    const now = new Date();
 
+    if (isNaN(jobDate.getTime())) {
+      return false;
+    }
 
-// ==========================================
-// DATE FILTER
-// ==========================================
+    if (dateFilter === "Today") {
+      return (
+        jobDate.getDate() === now.getDate() &&
+        jobDate.getMonth() === now.getMonth() &&
+        jobDate.getFullYear() === now.getFullYear()
+      );
+    }
 
-// ==========================================
-// DATE FILTER
-// ==========================================
+    if (dateFilter === "Year") {
+      return (
+        jobDate.getFullYear() ===
+        now.getFullYear()
+      );
+    }
 
-const filteredJobs = jobs.filter((job) => {
-  // ==========================================
-  // ALL TIME
-  // ==========================================
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
 
-  if (dateFilter === "All") {
+    const selectedMonth =
+      monthNames.indexOf(dateFilter);
+
+    if (selectedMonth !== -1) {
+      return (
+        jobDate.getMonth() ===
+          selectedMonth &&
+        jobDate.getFullYear() ===
+          now.getFullYear()
+      );
+    }
+
     return true;
-  }
-
-  // ==========================================
-  // CHECK DATE
-  // ==========================================
-
-  if (!job.created_at) {
-    return false;
-  }
-
-  const jobDate = new Date(job.created_at);
-  const now = new Date();
-
-  // Invalid date
-  if (isNaN(jobDate.getTime())) {
-    return false;
-  }
-
-  // ==========================================
-  // TODAY
-  // ==========================================
-
-  if (dateFilter === "Today") {
-    return (
-      jobDate.getDate() === now.getDate() &&
-      jobDate.getMonth() === now.getMonth() &&
-      jobDate.getFullYear() === now.getFullYear()
-    );
-  }
-
-  // ==========================================
-  // THIS YEAR
-  // ==========================================
-
-  if (dateFilter === "Year") {
-    return (
-      jobDate.getFullYear() === now.getFullYear()
-    );
-  }
-
-  // ==========================================
-  // MONTH FILTER
-  // ==========================================
-
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  const selectedMonth =
-    monthNames.indexOf(dateFilter);
-
-  if (selectedMonth !== -1) {
-    return (
-      jobDate.getMonth() === selectedMonth &&
-      jobDate.getFullYear() === now.getFullYear()
-    );
-  }
-
-  return true;
-});
-
-
-
-  // ==========================================
-  // JOB COUNTS
-  // ==========================================
+  });
 
   const totalJobs =
     filteredJobs.length;
@@ -621,14 +481,9 @@ const filteredJobs = jobs.filter((job) => {
         job.status === "Delivered"
     ).length;
 
-  // ==========================================
-  // SALES CALCULATION
-  // ==========================================
-
   let teyseerSales = 0;
   let salahSales = 0;
   let bahaaSales = 0;
-  let abdouSales = 0;
   let salesTeamSales = 0;
 
   let rawGrossSales = 0;
@@ -636,6 +491,13 @@ const filteredJobs = jobs.filter((job) => {
   filteredJobs.forEach((job) => {
     const breakdown =
       getJobSalesBreakdown(job);
+
+    rawGrossSales +=
+      breakdown.gross;
+
+    if (shopId === 2) {
+      return;
+    }
 
     teyseerSales +=
       breakdown.teyseer;
@@ -646,86 +508,27 @@ const filteredJobs = jobs.filter((job) => {
     bahaaSales +=
       breakdown.bahaa;
 
-    abdouSales +=
-      breakdown.abdou;
-
     salesTeamSales +=
       breakdown.salesTeam;
-
-    rawGrossSales +=
-      breakdown.gross;
   });
 
-  const customerSales =
-    salahSales +
-    bahaaSales +
-    abdouSales +
-    salesTeamSales;
+  let customerSales = 0;
+
+  if (shopId === 2) {
+    customerSales =
+      rawGrossSales;
+  } else {
+    customerSales =
+      salahSales +
+      bahaaSales +
+      salesTeamSales;
+  }
 
   const totalSales =
-    teyseerSales +
-    customerSales;
-
-  // ==========================================
-  // DEBUG
-  // ==========================================
-
-  console.log(
-    "========== SALES CALCULATION =========="
-  );
-
-  console.log(
-    "TEYSEER SALES:",
-    teyseerSales
-  );
-
-  console.log(
-    "SALAH SALES:",
-    salahSales
-  );
-
-  console.log(
-    "BAHAA SALES:",
-    bahaaSales
-  );
-
-  console.log(
-    "ABDOU SALES:",
-    abdouSales
-  );
-
-  console.log(
-    "SALES TEAM SALES:",
-    salesTeamSales
-  );
-
-  console.log(
-    "CUSTOMER / PERSONAL SALES:",
-    customerSales
-  );
-
-  console.log(
-    "CALCULATED TOTAL SALES:",
-    totalSales
-  );
-
-  console.log(
-    "RAW GROSS SALES:",
-    rawGrossSales
-  );
-
-  console.log(
-    "DIFFERENCE:",
-    totalSales - rawGrossSales
-  );
-
-  console.log(
-    "======================================="
-  );
-
-  // ==========================================
-  // PAYMENTS
-  // ==========================================
+    shopId === 2
+      ? customerSales
+      : teyseerSales +
+        customerSales;
 
   const filteredJobIds =
     new Set(
@@ -745,11 +548,8 @@ const filteredJobs = jobs.filter((job) => {
   let customerPaid = 0;
   let teyseerPaid = 0;
 
-  // Individual sales-staff payment totals.
-  // These use the exact same sales breakdown as the dashboard.
   let salahPaid = 0;
   let bahaaPaid = 0;
-  let abdouPaid = 0;
   let salesTeamPaid = 0;
 
   filteredPayments.forEach(
@@ -765,9 +565,6 @@ const filteredJobs = jobs.filter((job) => {
         return;
       }
 
-      const breakdown =
-        getJobSalesBreakdown(job);
-
       const paymentAmount =
         Number(
           payment.amount || 0
@@ -777,9 +574,15 @@ const filteredJobs = jobs.filter((job) => {
         return;
       }
 
-      // ======================================
-      // PURE TEYSEER JOB
-      // ======================================
+      if (shopId === 2) {
+        customerPaid +=
+          paymentAmount;
+
+        return;
+      }
+
+      const breakdown =
+        getJobSalesBreakdown(job);
 
       if (
         breakdown.teyseer > 0 &&
@@ -791,18 +594,6 @@ const filteredJobs = jobs.filter((job) => {
         return;
       }
 
-      // ======================================
-      // CUSTOMER / PERSONAL / SALES TEAM JOB
-      //
-      // Keep the existing dashboard logic for
-      // total customer paid.
-      //
-      // Also distribute the same payment among
-      // the individual sales staff according to
-      // their share of the customer-side sales.
-      // This keeps: staff paid total = customer paid.
-      // ======================================
-
       if (
         breakdown.customerSales > 0
       ) {
@@ -812,77 +603,56 @@ const filteredJobs = jobs.filter((job) => {
         const customerBase =
           breakdown.customerSales;
 
-        // Salah share
         if (breakdown.salah > 0) {
           salahPaid +=
             paymentAmount *
-            (breakdown.salah / customerBase);
+            (breakdown.salah /
+              customerBase);
         }
 
-        // Bahaa share
         if (breakdown.bahaa > 0) {
           bahaaPaid +=
             paymentAmount *
-            (breakdown.bahaa / customerBase);
+            (breakdown.bahaa /
+              customerBase);
         }
 
-        // Abdou share
-        if (breakdown.abdou > 0) {
-          abdouPaid +=
-            paymentAmount *
-            (breakdown.abdou / customerBase);
-        }
-
-        // Sales Team share
-        if (breakdown.salesTeam > 0) {
+        if (
+          breakdown.salesTeam > 0
+        ) {
           salesTeamPaid +=
             paymentAmount *
-            (breakdown.salesTeam / customerBase);
+            (breakdown.salesTeam /
+              customerBase);
         }
       }
     }
   );
 
-  // ==========================================
-  // INDIVIDUAL SALES-STAFF BALANCES
-  //
-  // Balance = sales assigned to the staff
-  //           - payments allocated to the staff
-  // ==========================================
-
   const salahBalance =
     Math.max(
-      salahSales - salahPaid,
+      salahSales -
+        salahPaid,
       0
     );
 
   const bahaaBalance =
     Math.max(
-      bahaaSales - bahaaPaid,
+      bahaaSales -
+        bahaaPaid,
       0
     );
-
-  const abdouBalance =
-    Math.max(
-      abdouSales - abdouPaid,
-      0
-    );
-
   const salesTeamBalance =
     Math.max(
-      salesTeamSales - salesTeamPaid,
+      salesTeamSales -
+        salesTeamPaid,
       0
     );
 
   const salesStaffBalanceTotal =
     salahBalance +
     bahaaBalance +
-    abdouBalance +
     salesTeamBalance;
-
-  // ==========================================
-  // BALANCES
-  // ==========================================
 
   const customerBalance =
     Math.max(
@@ -898,19 +668,25 @@ const filteredJobs = jobs.filter((job) => {
       0
     );
 
-  // ==========================================
-  // SALES STAFF OUTSTANDING CUSTOMER LISTS
-  // ==========================================
-
   const paymentByJobId = {};
 
-  filteredPayments.forEach((payment) => {
-    const amount = Number(payment.amount || 0);
-    if (amount > 0) {
-      paymentByJobId[payment.job_id] =
-        (paymentByJobId[payment.job_id] || 0) + amount;
+  filteredPayments.forEach(
+    (payment) => {
+      const amount =
+        Number(
+          payment.amount || 0
+        );
+
+      if (amount > 0) {
+        paymentByJobId[
+          payment.job_id
+        ] =
+          (paymentByJobId[
+            payment.job_id
+          ] || 0) + amount;
+      }
     }
-  });
+  );
 
   const salesStaffCustomerRows = {
     Salah: [],
@@ -922,256 +698,263 @@ const filteredJobs = jobs.filter((job) => {
   const staffKeys = {
     Salah: "salah",
     Bahaa: "bahaa",
-    Abdou: "abdou",
     "Sales Team": "salesTeam",
   };
 
   filteredJobs.forEach((job) => {
-    const breakdown = getJobSalesBreakdown(job);
-    const jobPaymentTotal = paymentByJobId[job.id] || 0;
-    const customerSidePaid = Math.min(
-      Math.max(jobPaymentTotal, 0),
-      Math.max(breakdown.customerSales, 0)
-    );
+    const breakdown =
+      getJobSalesBreakdown(job);
 
-    Object.entries(staffKeys).forEach(([staffName, staffKey]) => {
-      const staffSales = Number(breakdown[staffKey] || 0);
+    const jobPaymentTotal =
+      paymentByJobId[job.id] || 0;
 
-      if (staffSales <= 0) return;
-
-      const staffPaid =
-        breakdown.customerSales > 0
-          ? customerSidePaid *
-            (staffSales / breakdown.customerSales)
-          : 0;
-
-      const staffBalance = Math.max(
-        staffSales - staffPaid,
-        0
+    const customerSidePaid =
+      Math.min(
+        Math.max(
+          jobPaymentTotal,
+          0
+        ),
+        Math.max(
+          breakdown.customerSales,
+          0
+        )
       );
 
-      if (staffBalance <= 0) return;
-
-      salesStaffCustomerRows[staffName].push({
-        job,
-        sales: staffSales,
-        paid: staffPaid,
-        balance: staffBalance,
-      });
-    });
-  });
-
-  const selectedStaffRows = selectedSalesStaff
-    ? salesStaffCustomerRows[selectedSalesStaff] || []
-    : [];
-
-  const normalizedStaffSearch = staffCustomerSearch
-    .trim()
-    .toLowerCase();
-
-  const visibleStaffRows = selectedStaffRows.filter((row) => {
-    if (!normalizedStaffSearch) return true;
-
-    const job = row.job;
-    const searchable = [
-      job.customer,
-      job.carModel,
-      job.vehicle,
-      job.plateNumber,
-      job.plate,
-      job.licensePlate,
-      job.source,
-      job.id,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return searchable.includes(normalizedStaffSearch);
-  });
-
-  // ==========================================
-  // SOURCE REPORT
-  // ==========================================
-
-  const sourceReport = {
-    "Teyseer Motors": {
-      jobs: 0,
-      sales: 0,
-    },
-
-    Salah: {
-      jobs: 0,
-      sales: 0,
-    },
-
-    Bahaa: {
-      jobs: 0,
-      sales: 0,
-    },
-
-    Abdou: {
-      jobs: 0,
-      sales: 0,
-    },
-
-    "Sales Team": {
-      jobs: 0,
-      sales: 0,
-    },
-  };
-
-  filteredJobs.forEach((job) => {
-    const services =
-      Array.isArray(job.services)
-        ? job.services
-        : [];
-
-    const serviceDetails =
-      job.serviceDetails &&
-      typeof job.serviceDetails ===
-        "object"
-        ? job.serviceDetails
-        : {};
-
-    const source =
-      normalizeSource(job.source);
-
-    services.forEach(
-      (serviceName) => {
-        const amount =
-          getServiceGross(
-            serviceName,
-            serviceDetails
+    Object.entries(
+      staffKeys
+    ).forEach(
+      ([staffName, staffKey]) => {
+        const staffSales =
+          Number(
+            breakdown[staffKey] || 0
           );
 
-        const isWtt =
-          isWttService(
-            serviceName
+        if (staffSales <= 0) {
+          return;
+        }
+
+        const staffPaid =
+          breakdown.customerSales >
+          0
+            ? customerSidePaid *
+              (staffSales /
+                breakdown.customerSales)
+            : 0;
+
+        const staffBalance =
+          Math.max(
+            staffSales -
+              staffPaid,
+            0
           );
 
-        let reportSource =
-          "Sales Team";
-
-        // ====================================
-        // PURE TEYSEER
-        // ====================================
-
-        if (
-          isPureTeyseerSource(source)
-        ) {
-          reportSource =
-            "Teyseer Motors";
+        if (staffBalance <= 0) {
+          return;
         }
 
-        // ====================================
-        // TEYSEER - SALAH
-        // ====================================
-
-        else if (
-          isTeyseerSalahSource(source)
-        ) {
-          reportSource =
-            isWtt
-              ? "Teyseer Motors"
-              : "Salah";
-        }
-
-        // ====================================
-        // TEYSEER - BAHAA
-        // ====================================
-
-        else if (
-          isTeyseerBahaaSource(source)
-        ) {
-          reportSource =
-            isWtt
-              ? "Teyseer Motors"
-              : "Bahaa";
-        }
-
-        // ====================================
-        // TEYSEER - ABDOU
-        // ====================================
-
-        else if (
-          isTeyseerAbdouSource(source)
-        ) {
-          reportSource =
-            isWtt
-              ? "Teyseer Motors"
-              : "Abdou";
-        }
-
-        // ====================================
-        // NORMAL SALAH
-        // ====================================
-
-        else if (
-          source === "salah"
-        ) {
-          reportSource =
-            "Salah";
-        }
-
-        // ====================================
-        // NORMAL BAHAA
-        // ====================================
-
-        else if (
-          source === "bahaa"
-        ) {
-          reportSource =
-            "Bahaa";
-        }
-
-        // ====================================
-        // NORMAL ABDOU
-        // ====================================
-
-        else if (
-          source === "abdou"
-        ) {
-          reportSource =
-            "Abdou";
-        }
-
-        // ====================================
-        // WALK-IN / OTHER
-        // ====================================
-
-        else {
-          reportSource =
-            "Sales Team";
-        }
-
-        if (
-          !sourceReport[
-            reportSource
-          ]
-        ) {
-          sourceReport[
-            reportSource
-          ] = {
-            jobs: 0,
-            sales: 0,
-          };
-        }
-
-        sourceReport[
-          reportSource
-        ].jobs += 1;
-
-        sourceReport[
-          reportSource
-        ].sales += amount;
+        salesStaffCustomerRows[
+          staffName
+        ].push({
+          job,
+          sales: staffSales,
+          paid: staffPaid,
+          balance: staffBalance,
+        });
       }
     );
   });
 
-  // ==========================================
-  // CHART DATA
-  // ==========================================
+  const selectedStaffRows =
+    selectedSalesStaff
+      ? salesStaffCustomerRows[
+          selectedSalesStaff
+        ] || []
+      : [];
+
+  const normalizedStaffSearch =
+    staffCustomerSearch
+      .trim()
+      .toLowerCase();
+
+  const visibleStaffRows =
+    selectedStaffRows.filter(
+      (row) => {
+        if (!normalizedStaffSearch) {
+          return true;
+        }
+
+        const job = row.job;
+
+        const searchable = [
+          job.customer,
+          job.carModel,
+          job.vehicle,
+          job.plateNumber,
+          job.plate,
+          job.licensePlate,
+          job.source,
+          job.id,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return searchable.includes(
+          normalizedStaffSearch
+        );
+      }
+    );
+
+  let sourceReport;
+
+  if (shopId === 2) {
+    sourceReport = {
+      "Customer Sales": {
+        jobs: 0,
+        sales: 0,
+      },
+    };
+
+    filteredJobs.forEach((job) => {
+      const gross =
+        getJobSalesBreakdown(
+          job
+        ).gross;
+
+      if (gross > 0) {
+        sourceReport[
+          "Customer Sales"
+        ].jobs += 1;
+
+        sourceReport[
+          "Customer Sales"
+        ].sales += gross;
+      }
+    });
+  } else {
+    sourceReport = {
+      "Teyseer Motors": {
+        jobs: 0,
+        sales: 0,
+      },
+
+      Salah: {
+        jobs: 0,
+        sales: 0,
+      },
+
+      Bahaa: {
+        jobs: 0,
+        sales: 0,
+      },
+
+      Abdou: {
+        jobs: 0,
+        sales: 0,
+      },
+
+      "Sales Team": {
+        jobs: 0,
+        sales: 0,
+      },
+    };
+
+    filteredJobs.forEach((job) => {
+      const services =
+        Array.isArray(
+          job.services
+        )
+          ? job.services
+          : [];
+
+      const serviceDetails =
+        job.serviceDetails &&
+        typeof job.serviceDetails ===
+          "object"
+          ? job.serviceDetails
+          : {};
+
+      const source =
+        normalizeSource(
+          job.source
+        );
+
+      services.forEach(
+        (serviceName) => {
+          const amount =
+            getServiceGross(
+              serviceName,
+              serviceDetails
+            );
+
+          const isWtt =
+            isWttService(
+              serviceName
+            );
+
+          let reportSource =
+            "Sales Team";
+
+          if (
+            isPureTeyseerSource(
+              source
+            )
+          ) {
+            reportSource =
+              "Teyseer Motors";
+          } else if (
+            isTeyseerSalahSource(
+              source
+            )
+          ) {
+            reportSource =
+              isWtt
+                ? "Teyseer Motors"
+                : "Salah";
+          } else if (
+            isTeyseerBahaaSource(
+              source
+            )
+          ) {
+            reportSource =
+              isWtt
+                ? "Teyseer Motors"
+                : "Bahaa";
+          } else if (
+            source === "salah"
+          ) {
+            reportSource =
+              "Salah";
+          } else if (
+            source === "bahaa"
+          ) {
+            reportSource =
+              "Bahaa";
+          } 
+          if (
+            !sourceReport[
+              reportSource
+            ]
+          ) {
+            sourceReport[
+              reportSource
+            ] = {
+              jobs: 0,
+              sales: 0,
+            };
+          }
+
+          sourceReport[
+            reportSource
+          ].jobs += 1;
+
+          sourceReport[
+            reportSource
+          ].sales += amount;
+        }
+      );
+    });
+  }
 
   const statusData = [
     {
@@ -1192,28 +975,32 @@ const filteredJobs = jobs.filter((job) => {
     },
   ];
 
-  const salesData = [
-    {
-      name: "Teyseer",
-      amount: teyseerSales,
-    },
-    {
-      name: "Salah",
-      amount: salahSales,
-    },
-    {
-      name: "Bahaa",
-      amount: bahaaSales,
-    },
-    {
-      name: "Abdou",
-      amount: abdouSales,
-    },
-    {
-      name: "Sales Team",
-      amount: salesTeamSales,
-    },
-  ];
+  const salesData =
+    shopId === 2
+      ? [
+          {
+            name: "Customer Sales",
+            amount: customerSales,
+          },
+        ]
+      : [
+          {
+            name: "Teyseer",
+            amount: teyseerSales,
+          },
+          {
+            name: "Salah",
+            amount: salahSales,
+          },
+          {
+            name: "Bahaa",
+            amount: bahaaSales,
+          },
+          {
+            name: "Sales Team",
+            amount: salesTeamSales,
+          },
+        ];
 
   const COLORS = [
     "#d4af37",
@@ -1222,21 +1009,15 @@ const filteredJobs = jobs.filter((job) => {
     "#0891b2",
   ];
 
-  // ==========================================
-  // RENDER
-  // ==========================================
-
   return (
     <div style={styles.page}>
       <div style={styles.container}>
 
-        {/* HEADER */}
-
         <div style={styles.header}>
           <div>
-           <h1 style={styles.title}>
-  🚗 {theme.name}
-</h1>
+            <h1 style={styles.title}>
+              🚗 {theme.name}
+            </h1>
 
             <p style={styles.subtitle}>
               Workshop Management System
@@ -1291,8 +1072,6 @@ const filteredJobs = jobs.filter((job) => {
           </div>
         </div>
 
-        {/* DATE FILTER */}
-
         <div style={styles.filterBox}>
           <label
             style={styles.filterLabel}
@@ -1300,78 +1079,76 @@ const filteredJobs = jobs.filter((job) => {
             Dashboard Period
           </label>
 
-        <select
-  value={dateFilter}
-  onChange={(e) =>
-    setDateFilter(e.target.value)
-  }
-  style={styles.select}
->
-  <option value="All">
-    All Time
-  </option>
+          <select
+            value={dateFilter}
+            onChange={(e) =>
+              setDateFilter(
+                e.target.value
+              )
+            }
+            style={styles.select}
+          >
+            <option value="All">
+              All Time
+            </option>
 
-  <option value="Today">
-    Today
-  </option>
+            <option value="Today">
+              Today
+            </option>
 
-  <option value="January">
-    January
-  </option>
+            <option value="January">
+              January
+            </option>
 
-  <option value="February">
-    February
-  </option>
+            <option value="February">
+              February
+            </option>
 
-  <option value="March">
-    March
-  </option>
+            <option value="March">
+              March
+            </option>
 
-  <option value="April">
-    April
-  </option>
+            <option value="April">
+              April
+            </option>
 
-  <option value="May">
-    May
-  </option>
+            <option value="May">
+              May
+            </option>
 
-  <option value="June">
-    June
-  </option>
+            <option value="June">
+              June
+            </option>
 
-  <option value="July">
-    July
-  </option>
+            <option value="July">
+              July
+            </option>
 
-  <option value="August">
-    August
-  </option>
+            <option value="August">
+              August
+            </option>
 
-  <option value="September">
-    September
-  </option>
+            <option value="September">
+              September
+            </option>
 
-  <option value="October">
-    October
-  </option>
+            <option value="October">
+              October
+            </option>
 
-  <option value="November">
-    November
-  </option>
+            <option value="November">
+              November
+            </option>
 
-  <option value="December">
-    December
-  </option>
+            <option value="December">
+              December
+            </option>
 
-  <option value="Year">
-    This Year
-  </option>
-</select>
-
-
+            <option value="Year">
+              This Year
+            </option>
+          </select>
         </div>
-
-        {/* SUMMARY CARDS */}
 
         <div style={styles.cards}>
 
@@ -1417,135 +1194,143 @@ const filteredJobs = jobs.filter((job) => {
             icon="💰"
           />
 
-          <Card
-            title="Teyseer Sales"
-            value={`QAR ${money(
-              teyseerSales
-            )}`}
-            icon="🏢"
-          />
+          {shopId === 1 && (
+            <Card
+              title="Teyseer Sales"
+              value={`QAR ${money(
+                teyseerSales
+              )}`}
+              icon="🏢"
+            />
+          )}
 
-          <Card
-            title="Salah Sales"
-            value={`QAR ${money(
-              salahSales
-            )}`}
-            icon="👤"
-          />
+          {shopId === 1 && (
+            <>
+              <Card
+                title="Salah Sales"
+                value={`QAR ${money(
+                  salahSales
+                )}`}
+                icon="👤"
+              />
 
-          <Card
-            title="Bahaa Sales"
-            value={`QAR ${money(
-              bahaaSales
-            )}`}
-            icon="👤"
-          />
+              <Card
+                title="Bahaa Sales"
+                value={`QAR ${money(
+                  bahaaSales
+                )}`}
+                icon="👤"
+              />
 
-          <Card
-            title="Abdou Sales"
-            value={`QAR ${money(
-              abdouSales
-            )}`}
-            icon="👤"
-          />
+              <Card
+                title="Sales Team Sales"
+                value={`QAR ${money(
+                  salesTeamSales
+                )}`}
+                icon="💵"
+              />
+            </>
+          )}
 
-          <Card
-            title="Sales Team Sales"
-            value={`QAR ${money(
-              salesTeamSales
-            )}`}
-            icon="💵"
-          />
+          {shopId === 1 && (
+            <>
+              <Card
+                title="Salah Balance"
+                value={`QAR ${money(
+                  salahBalance
+                )}`}
+                icon="⚠️"
+                onClick={() => {
+                  setSelectedSalesStaff(
+                    "Salah"
+                  );
+                  setStaffCustomerSearch(
+                    ""
+                  );
+                }}
+              />
 
-          {/* INDIVIDUAL SALES-STAFF BALANCES */}
+              <Card
+                title="Bahaa Balance"
+                value={`QAR ${money(
+                  bahaaBalance
+                )}`}
+                icon="⚠️"
+                onClick={() => {
+                  setSelectedSalesStaff(
+                    "Bahaa"
+                  );
+                  setStaffCustomerSearch(
+                    ""
+                  );
+                }}
+              />
 
-          <Card
-            title="Salah Balance"
-            value={`QAR ${money(
-              salahBalance
-            )}`}
-            icon="⚠️"
-            onClick={() => {
-              setSelectedSalesStaff("Salah");
-              setStaffCustomerSearch("");
-            }}
-          />
+              <Card
+                title="Sales Team Balance"
+                value={`QAR ${money(
+                  salesTeamBalance
+                )}`}
+                icon="⚠️"
+                onClick={() => {
+                  setSelectedSalesStaff(
+                    "Sales Team"
+                  );
+                  setStaffCustomerSearch(
+                    ""
+                  );
+                }}
+              />
 
-          <Card
-            title="Bahaa Balance"
-            value={`QAR ${money(
-              bahaaBalance
-            )}`}
-            icon="⚠️"
-            onClick={() => {
-              setSelectedSalesStaff("Bahaa");
-              setStaffCustomerSearch("");
-            }}
-          />
+              <Card
+                title="Total Sales Staff Balance"
+                value={`QAR ${money(
+                  salesStaffBalanceTotal
+                )}`}
+                icon="📊"
+              />
 
-          <Card
-            title="Abdou Balance"
-            value={`QAR ${money(
-              abdouBalance
-            )}`}
-            icon="⚠️"
-            onClick={() => {
-              setSelectedSalesStaff("Abdou");
-              setStaffCustomerSearch("");
-            }}
-          />
+              <Card
+                title="Salah Paid"
+                value={`QAR ${money(
+                  salahPaid
+                )}`}
+                icon="💳"
+              />
 
-          <Card
-            title="Sales Team Balance"
-            value={`QAR ${money(
-              salesTeamBalance
-            )}`}
-            icon="⚠️"
-            onClick={() => {
-              setSelectedSalesStaff("Sales Team");
-              setStaffCustomerSearch("");
-            }}
-          />
+              <Card
+                title="Bahaa Paid"
+                value={`QAR ${money(
+                  bahaaPaid
+                )}`}
+                icon="💳"
+              />
 
-          <Card
-            title="Total Sales Staff Balance"
-            value={`QAR ${money(
-              salesStaffBalanceTotal
-            )}`}
-            icon="📊"
-          />
+              <Card
+                title="Sales Team Paid"
+                value={`QAR ${money(
+                  salesTeamPaid
+                )}`}
+                icon="💳"
+              />
 
-          <Card
-            title="Salah Paid"
-            value={`QAR ${money(
-              salahPaid
-            )}`}
-            icon="💳"
-          />
+              <Card
+                title="Teyseer Paid"
+                value={`QAR ${money(
+                  teyseerPaid
+                )}`}
+                icon="🏢💳"
+              />
 
-          <Card
-            title="Bahaa Paid"
-            value={`QAR ${money(
-              bahaaPaid
-            )}`}
-            icon="💳"
-          />
-
-          <Card
-            title="Abdou Paid"
-            value={`QAR ${money(
-              abdouPaid
-            )}`}
-            icon="💳"
-          />
-
-          <Card
-            title="Sales Team Paid"
-            value={`QAR ${money(
-              salesTeamPaid
-            )}`}
-            icon="💳"
-          />
+              <Card
+                title="Teyseer Balance"
+                value={`QAR ${money(
+                  teyseerBalance
+                )}`}
+                icon="🏢⚠️"
+              />
+            </>
+          )}
 
           <Card
             title="Customer / Personal Sales"
@@ -1570,129 +1355,207 @@ const filteredJobs = jobs.filter((job) => {
             )}`}
             icon="⚠️"
           />
-
-          <Card
-            title="Teyseer Paid"
-            value={`QAR ${money(
-              teyseerPaid
-            )}`}
-            icon="🏢💳"
-          />
-
-          <Card
-            title="Teyseer Balance"
-            value={`QAR ${money(
-              teyseerBalance
-            )}`}
-            icon="🏢⚠️"
-          />
         </div>
 
-        {/* INDIVIDUAL SALES STAFF BALANCE */}
+        {shopId === 1 && (
+          <>
+            <h2 style={styles.heading}>
+              Individual Sales Staff Balances
+            </h2>
 
-        <h2 style={styles.heading}>
-          Individual Sales Staff Balances
-        </h2>
+            <div style={styles.tableBox}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>
+                      Sales Staff
+                    </th>
 
-        <div style={styles.tableBox}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Sales Staff</th>
-                <th style={styles.th}>Sales</th>
-                <th style={styles.th}>Paid</th>
-                <th style={styles.th}>Balance</th>
-                <th style={styles.th}>Collection %</th>
-              </tr>
-            </thead>
+                    <th style={styles.th}>
+                      Sales
+                    </th>
 
-            <tbody>
-              {[
-                {
-                  name: "Salah",
-                  sales: salahSales,
-                  paid: salahPaid,
-                  balance: salahBalance,
-                },
-                {
-                  name: "Bahaa",
-                  sales: bahaaSales,
-                  paid: bahaaPaid,
-                  balance: bahaaBalance,
-                },
-                {
-                  name: "Abdou",
-                  sales: abdouSales,
-                  paid: abdouPaid,
-                  balance: abdouBalance,
-                },
-                {
-                  name: "Sales Team",
-                  sales: salesTeamSales,
-                  paid: salesTeamPaid,
-                  balance: salesTeamBalance,
-                },
-              ].map((staff) => {
-                const collection =
-                  staff.sales > 0
-                    ? Math.min(
-                        (staff.paid / staff.sales) * 100,
-                        100
-                      )
-                    : 0;
+                    <th style={styles.th}>
+                      Paid
+                    </th>
 
-                return (
-                  <tr key={staff.name}>
-                    <td style={{ ...styles.td, fontWeight: "bold" }}>
-                      {staff.name}
+                    <th style={styles.th}>
+                      Balance
+                    </th>
+
+                    <th style={styles.th}>
+                      Collection %
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {[
+                    {
+                      name: "Salah",
+                      sales: salahSales,
+                      paid: salahPaid,
+                      balance:
+                        salahBalance,
+                    },
+                    {
+                      name: "Bahaa",
+                      sales: bahaaSales,
+                      paid: bahaaPaid,
+                      balance:
+                        bahaaBalance,
+                    },
+                    {
+                      name: "Sales Team",
+                      sales:
+                        salesTeamSales,
+                      paid:
+                        salesTeamPaid,
+                      balance:
+                        salesTeamBalance,
+                    },
+                  ].map(
+                    (staff) => {
+                      const collection =
+                        staff.sales > 0
+                          ? Math.min(
+                              (staff.paid /
+                                staff.sales) *
+                                100,
+                              100
+                            )
+                          : 0;
+
+                      return (
+                        <tr
+                          key={
+                            staff.name
+                          }
+                        >
+                          <td
+                            style={{
+                              ...styles.td,
+                              fontWeight:
+                                "bold",
+                            }}
+                          >
+                            {staff.name}
+                          </td>
+
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            QAR{" "}
+                            {money(
+                              staff.sales
+                            )}
+                          </td>
+
+                          <td
+                            style={
+                              styles.paidTd
+                            }
+                          >
+                            QAR{" "}
+                            {money(
+                              staff.paid
+                            )}
+                          </td>
+
+                          <td
+                            style={
+                              styles.balanceTd
+                            }
+                          >
+                            QAR{" "}
+                            {money(
+                              staff.balance
+                            )}
+                          </td>
+
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            {collection.toFixed(
+                              1
+                            )}
+                            %
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )}
+
+                  <tr>
+                    <td
+                      style={
+                        styles.totalTd
+                      }
+                    >
+                      TOTAL
                     </td>
 
-                    <td style={styles.td}>
-                      QAR {money(staff.sales)}
+                    <td
+                      style={
+                        styles.totalTd
+                      }
+                    >
+                      QAR{" "}
+                      {money(
+                        customerSales
+                      )}
                     </td>
 
-                    <td style={styles.paidTd}>
-                      QAR {money(staff.paid)}
+                    <td
+                      style={
+                        styles.totalPaidTd
+                      }
+                    >
+                      QAR{" "}
+                      {money(
+                        customerPaid
+                      )}
                     </td>
 
-                    <td style={styles.balanceTd}>
-                      QAR {money(staff.balance)}
+                    <td
+                      style={
+                        styles.totalBalanceTd
+                      }
+                    >
+                      QAR{" "}
+                      {money(
+                        salesStaffBalanceTotal
+                      )}
                     </td>
 
-                    <td style={styles.td}>
-                      {collection.toFixed(1)}%
+                    <td
+                      style={
+                        styles.totalTd
+                      }
+                    >
+                      {customerSales >
+                      0
+                        ? Math.min(
+                            (customerPaid /
+                              customerSales) *
+                              100,
+                            100
+                          ).toFixed(
+                            1
+                          )
+                        : "0.0"}
+                      %
                     </td>
                   </tr>
-                );
-              })}
-
-              <tr>
-                <td style={styles.totalTd}>
-                  TOTAL
-                </td>
-                <td style={styles.totalTd}>
-                  QAR {money(customerSales)}
-                </td>
-                <td style={styles.totalPaidTd}>
-                  QAR {money(customerPaid)}
-                </td>
-                <td style={styles.totalBalanceTd}>
-                  QAR {money(salesStaffBalanceTotal)}
-                </td>
-                <td style={styles.totalTd}>
-                  {customerSales > 0
-                    ? Math.min(
-                        (customerPaid / customerSales) * 100,
-                        100
-                      ).toFixed(1)
-                    : "0.0"}%
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* RECENT JOBS */}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
         <h2 style={styles.heading}>
           Recent Jobs
@@ -1700,7 +1563,6 @@ const filteredJobs = jobs.filter((job) => {
 
         <div style={styles.tableBox}>
           <table style={styles.table}>
-
             <thead>
               <tr>
                 <th style={styles.th}>
@@ -1723,25 +1585,35 @@ const filteredJobs = jobs.filter((job) => {
                   Amount
                 </th>
 
-                <th style={styles.th}>
-                  Teyseer
-                </th>
+                {shopId === 1 && (
+                  <>
+                    <th style={styles.th}>
+                      Teyseer
+                    </th>
 
-                <th style={styles.th}>
-                  Salah
-                </th>
+                    <th style={styles.th}>
+                      Salah
+                    </th>
 
-                <th style={styles.th}>
-                  Bahaa
-                </th>
+                    <th style={styles.th}>
+                      Bahaa
+                    </th>
 
-                <th style={styles.th}>
-                  Abdou
-                </th>
+                    <th style={styles.th}>
+                      Abdou
+                    </th>
 
-                <th style={styles.th}>
-                  Sales Team
-                </th>
+                    <th style={styles.th}>
+                      Sales Team
+                    </th>
+                  </>
+                )}
+
+                {shopId === 2 && (
+                  <th style={styles.th}>
+                    Customer Sales
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -1758,22 +1630,31 @@ const filteredJobs = jobs.filter((job) => {
                     <tr
                       key={job.id}
                     >
-                      <td style={styles.td}>
+                      <td
+                        style={styles.td}
+                      >
                         {job.customer ||
                           "Unknown"}
                       </td>
 
-                      <td style={styles.td}>
+                      <td
+                        style={styles.td}
+                      >
                         {job.carModel ||
+                          job.vehicle ||
                           "-"}
                       </td>
 
-                      <td style={styles.td}>
+                      <td
+                        style={styles.td}
+                      >
                         {job.source ||
                           "-"}
                       </td>
 
-                      <td style={styles.td}>
+                      <td
+                        style={styles.td}
+                      >
                         <span
                           style={
                             styles.status
@@ -1784,47 +1665,75 @@ const filteredJobs = jobs.filter((job) => {
                         </span>
                       </td>
 
-                      <td style={styles.td}>
+                      <td
+                        style={styles.td}
+                      >
                         QAR{" "}
                         {money(
                           breakdown.gross
                         )}
                       </td>
 
-                      <td style={styles.td}>
-                        QAR{" "}
-                        {money(
-                          breakdown.teyseer
-                        )}
-                      </td>
+                      {shopId === 1 && (
+                        <>
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            QAR{" "}
+                            {money(
+                              breakdown.teyseer
+                            )}
+                          </td>
 
-                      <td style={styles.td}>
-                        QAR{" "}
-                        {money(
-                          breakdown.salah
-                        )}
-                      </td>
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            QAR{" "}
+                            {money(
+                              breakdown.salah
+                            )}
+                          </td>
 
-                      <td style={styles.td}>
-                        QAR{" "}
-                        {money(
-                          breakdown.bahaa
-                        )}
-                      </td>
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            QAR{" "}
+                            {money(
+                              breakdown.bahaa
+                            )}
+                          </td>
 
-                      <td style={styles.td}>
-                        QAR{" "}
-                        {money(
-                          breakdown.abdou
-                        )}
-                      </td>
+                          <td
+                            style={
+                              styles.td
+                            }
+                          >
+                            QAR{" "}
+                            {money(
+                              breakdown.salesTeam
+                            )}
+                          </td>
+                        </>
+                      )}
 
-                      <td style={styles.td}>
-                        QAR{" "}
-                        {money(
-                          breakdown.salesTeam
-                        )}
-                      </td>
+                      {shopId === 2 && (
+                        <td
+                          style={
+                            styles.td
+                          }
+                        >
+                          QAR{" "}
+                          {money(
+                            breakdown.customerSales
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -1833,14 +1742,16 @@ const filteredJobs = jobs.filter((job) => {
 
           {filteredJobs.length ===
             0 && (
-            <p style={styles.empty}>
+            <p
+              style={
+                styles.empty
+              }
+            >
               No jobs found for this
               period.
             </p>
           )}
         </div>
-
-        {/* STATISTICS */}
 
         <h2 style={styles.heading}>
           Statistics
@@ -1875,7 +1786,9 @@ const filteredJobs = jobs.filter((job) => {
                       <Cell
                         key={index}
                         fill={
-                          COLORS[index]
+                          COLORS[
+                            index
+                          ]
                         }
                       />
                     )
@@ -1922,7 +1835,9 @@ const filteredJobs = jobs.filter((job) => {
 
                 <Bar
                   dataKey="amount"
-                  fill={theme.primary}
+                  fill={
+                    theme.primary
+                  }
                   radius={[
                     6,
                     6,
@@ -1935,14 +1850,11 @@ const filteredJobs = jobs.filter((job) => {
           </div>
         </div>
 
-        {/* CUSTOMER SOURCES */}
-
         <h2 style={styles.heading}>
           Customer Sources
         </h2>
 
         <div style={styles.recent}>
-
           {Object.entries(
             sourceReport
           ).map(
@@ -1970,7 +1882,9 @@ const filteredJobs = jobs.filter((job) => {
                 </h2>
 
                 <p
-                  style={styles.muted}
+                  style={
+                    styles.muted
+                  }
                 >
                   Service Items
                 </p>
@@ -1992,8 +1906,6 @@ const filteredJobs = jobs.filter((job) => {
             )
           )}
         </div>
-
-        {/* QUICK ACTIONS */}
 
         <h2 style={styles.heading}>
           Quick Actions
@@ -2095,23 +2007,29 @@ const filteredJobs = jobs.filter((job) => {
           </Link>
 
           {isAdmin && (
-  <Link
-    to="/reports"
-    style={styles.actionCard}
-  >
-    <div style={styles.actionIcon}>
-      📊
-    </div>
+            <Link
+              to="/reports"
+              style={
+                styles.actionCard
+              }
+            >
+              <div
+                style={
+                  styles.actionIcon
+                }
+              >
+                📊
+              </div>
 
-    <h3>
-      Reports
-    </h3>
+              <h3>
+                Reports
+              </h3>
 
-    <p>
-      Financial overview
-    </p>
-  </Link>
-)}
+              <p>
+                Financial overview
+              </p>
+            </Link>
+          )}
 
           <Link
             to="/inventory"
@@ -2137,49 +2055,121 @@ const filteredJobs = jobs.filter((job) => {
           </Link>
         </div>
 
-        {/* SALES STAFF OUTSTANDING CUSTOMERS MODAL */}
         {selectedSalesStaff && (
           <div
-            style={styles.modalOverlay}
-            onClick={() => setSelectedSalesStaff(null)}
+            style={
+              styles.modalOverlay
+            }
+            onClick={() =>
+              setSelectedSalesStaff(
+                null
+              )
+            }
           >
             <div
               style={styles.modal}
-              onClick={(event) => event.stopPropagation()}
+              onClick={(event) =>
+                event.stopPropagation()
+              }
             >
-              <div style={styles.modalHeader}>
+              <div
+                style={
+                  styles.modalHeader
+                }
+              >
                 <div>
-                  <h2 style={styles.modalTitle}>
-                    {selectedSalesStaff} — Outstanding Customers
+                  <h2
+                    style={
+                      styles.modalTitle
+                    }
+                  >
+                    {selectedSalesStaff} —
+                    Outstanding Customers
                   </h2>
-                  <p style={styles.modalSubtitle}>
-                    Customers/jobs with an unpaid balance assigned to {selectedSalesStaff}.
+
+                  <p
+                    style={
+                      styles.modalSubtitle
+                    }
+                  >
+                    Customers/jobs with an
+                    unpaid balance assigned
+                    to{" "}
+                    {selectedSalesStaff}.
                   </p>
                 </div>
 
                 <button
                   type="button"
-                  style={styles.modalCloseButton}
-                  onClick={() => setSelectedSalesStaff(null)}
+                  style={
+                    styles.modalCloseButton
+                  }
+                  onClick={() =>
+                    setSelectedSalesStaff(
+                      null
+                    )
+                  }
                 >
                   ×
                 </button>
               </div>
 
-              <div style={styles.modalSummaryRow}>
-                <div style={styles.modalSummaryCard}>
-                  <span style={styles.modalSummaryLabel}>Customers / Jobs</span>
-                  <strong style={styles.modalSummaryValue}>
-                    {selectedStaffRows.length}
+              <div
+                style={
+                  styles.modalSummaryRow
+                }
+              >
+                <div
+                  style={
+                    styles.modalSummaryCard
+                  }
+                >
+                  <span
+                    style={
+                      styles.modalSummaryLabel
+                    }
+                  >
+                    Customers / Jobs
+                  </span>
+
+                  <strong
+                    style={
+                      styles.modalSummaryValue
+                    }
+                  >
+                    {
+                      selectedStaffRows.length
+                    }
                   </strong>
                 </div>
 
-                <div style={styles.modalSummaryCard}>
-                  <span style={styles.modalSummaryLabel}>Outstanding Balance</span>
-                  <strong style={styles.modalBalanceValue}>
-                    QAR {money(
+                <div
+                  style={
+                    styles.modalSummaryCard
+                  }
+                >
+                  <span
+                    style={
+                      styles.modalSummaryLabel
+                    }
+                  >
+                    Outstanding Balance
+                  </span>
+
+                  <strong
+                    style={
+                      styles.modalBalanceValue
+                    }
+                  >
+                    QAR{" "}
+                    {money(
                       selectedStaffRows.reduce(
-                        (sum, row) => sum + row.balance,
+                        (
+                          sum,
+                          row
+                        ) =>
+                          sum +
+                          row.balance,
                         0
                       )
                     )}
@@ -2189,85 +2179,204 @@ const filteredJobs = jobs.filter((job) => {
 
               <input
                 type="text"
-                value={staffCustomerSearch}
+                value={
+                  staffCustomerSearch
+                }
                 onChange={(event) =>
-                  setStaffCustomerSearch(event.target.value)
+                  setStaffCustomerSearch(
+                    event.target.value
+                  )
                 }
                 placeholder="Search customer, vehicle, plate, source, or job ID..."
-                style={styles.modalSearch}
+                style={
+                  styles.modalSearch
+                }
               />
 
-              <div style={styles.modalTableWrap}>
-                <table style={styles.table}>
+              <div
+                style={
+                  styles.modalTableWrap
+                }
+              >
+                <table
+                  style={styles.table}
+                >
                   <thead>
                     <tr>
-                      <th style={styles.th}>Customer</th>
-                      <th style={styles.th}>Vehicle</th>
-                      <th style={styles.th}>Source</th>
-                      <th style={styles.th}>Date</th>
-                      <th style={styles.th}>Sales</th>
-                      <th style={styles.th}>Paid</th>
-                      <th style={styles.th}>Balance</th>
+                      <th
+                        style={
+                          styles.th
+                        }
+                      >
+                        Customer
+                      </th>
+
+                      <th
+                        style={
+                          styles.th
+                        }
+                      >
+                        Vehicle
+                      </th>
+
+                      <th
+                        style={
+                          styles.th
+                        }
+                      >
+                        Source
+                      </th>
+
+                      <th
+                        style={
+                          styles.th
+                        }
+                      >
+                        Date
+                      </th>
+
+                      <th
+                        style={
+                          styles.th
+                        }
+                      >
+                        Sales
+                      </th>
+
+                      <th
+                        style={
+                          styles.th
+                        }
+                      >
+                        Paid
+                      </th>
+
+                      <th
+                        style={
+                          styles.th
+                        }
+                      >
+                        Balance
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {visibleStaffRows.length === 0 ? (
+                    {visibleStaffRows.length ===
+                    0 ? (
                       <tr>
-                        <td colSpan="7" style={styles.empty}>
-                          {selectedStaffRows.length === 0
+                        <td
+                          colSpan="7"
+                          style={
+                            styles.empty
+                          }
+                        >
+                          {selectedStaffRows.length ===
+                          0
                             ? "No outstanding customers for this sales staff."
                             : "No customers match your search."}
                         </td>
                       </tr>
                     ) : (
-                      visibleStaffRows.map((row) => {
-                        const job = row.job;
-                        const vehicle =
-                          job.carModel ||
-                          job.vehicle ||
-                          "-";
-                        const plate =
-                          job.plateNumber ||
-                          job.plate ||
-                          job.licensePlate ||
-                          "";
+                      visibleStaffRows.map(
+                        (row) => {
+                          const job =
+                            row.job;
 
-                        return (
-                          <tr key={`${selectedSalesStaff}-${job.id}`}>
-                            <td style={{ ...styles.td, fontWeight: "bold" }}>
-                              {job.customer || "Walk-in Customer"}
-                            </td>
+                          const vehicle =
+                            job.carModel ||
+                            job.vehicle ||
+                            "-";
 
-                            <td style={styles.td}>
-                              {vehicle}
-                              {plate ? ` • ${plate}` : ""}
-                            </td>
+                          const plate =
+                            job.plateNumber ||
+                            job.plate ||
+                            job.licensePlate ||
+                            "";
 
-                            <td style={styles.td}>
-                              {job.source || "-"}
-                            </td>
+                          return (
+                            <tr
+                              key={`${selectedSalesStaff}-${job.id}`}
+                            >
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  fontWeight:
+                                    "bold",
+                                }}
+                              >
+                                {job.customer ||
+                                  "Walk-in Customer"}
+                              </td>
 
-                            <td style={styles.td}>
-                              {job.created_at
-                                ? new Date(job.created_at).toLocaleDateString()
-                                : "-"}
-                            </td>
+                              <td
+                                style={
+                                  styles.td
+                                }
+                              >
+                                {vehicle}
+                                {plate
+                                  ? ` • ${plate}`
+                                  : ""}
+                              </td>
 
-                            <td style={styles.td}>
-                              QAR {money(row.sales)}
-                            </td>
+                              <td
+                                style={
+                                  styles.td
+                                }
+                              >
+                                {job.source ||
+                                  "-"}
+                              </td>
 
-                            <td style={styles.paidTd}>
-                              QAR {money(row.paid)}
-                            </td>
+                              <td
+                                style={
+                                  styles.td
+                                }
+                              >
+                                {job.created_at
+                                  ? new Date(
+                                      job.created_at
+                                    ).toLocaleDateString()
+                                  : "-"}
+                              </td>
 
-                            <td style={styles.balanceTd}>
-                              QAR {money(row.balance)}
-                            </td>
-                          </tr>
-                        );
-                      })
+                              <td
+                                style={
+                                  styles.td
+                                }
+                              >
+                                QAR{" "}
+                                {money(
+                                  row.sales
+                                )}
+                              </td>
+
+                              <td
+                                style={
+                                  styles.paidTd
+                                }
+                              >
+                                QAR{" "}
+                                {money(
+                                  row.paid
+                                )}
+                              </td>
+
+                              <td
+                                style={
+                                  styles.balanceTd
+                                }
+                              >
+                                QAR{" "}
+                                {money(
+                                  row.balance
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        }
+                      )
                     )}
                   </tbody>
                 </table>
@@ -2280,10 +2389,6 @@ const filteredJobs = jobs.filter((job) => {
   );
 }
 
-// ==========================================
-// CARD
-// ==========================================
-
 function Card({
   title,
   value,
@@ -2295,12 +2400,16 @@ function Card({
     localStorage.getItem("user") || "null"
   );
 
-  const shopId = Number(user?.shop_id || 1);
+  const shopId = Number(
+    user?.shop_id || 1
+  );
 
   const theme =
-    SHOP_THEMES[shopId] || SHOP_THEMES[1];
+    SHOP_THEMES[shopId] ||
+    SHOP_THEMES[1];
 
-  const cardStyles = getStyles(theme);
+  const cardStyles =
+    getStyles(theme);
 
   const colors = {
     "Total Jobs": theme.primary,
@@ -2310,30 +2419,63 @@ function Card({
     Delivered: "#0891b2",
 
     "Total Sales": theme.primary,
-    "Teyseer Sales": theme.primary,
-    "Salah Sales": theme.primary,
-    "Bahaa Sales": theme.primary,
-    "Abdou Sales": theme.primary,
-    "Sales Team Sales": theme.primary,
 
-    "Salah Balance": theme.accent,
-    "Bahaa Balance": theme.accent,
-    "Abdou Balance": theme.accent,
-    "Sales Team Balance": theme.accent,
+    "Teyseer Sales":
+      theme.primary,
 
-    "Total Sales Staff Balance": "#dc2626",
+    "Salah Sales":
+      theme.primary,
 
-    "Salah Paid": "#22c55e",
-    "Bahaa Paid": "#22c55e",
-    "Abdou Paid": "#22c55e",
-    "Sales Team Paid": "#22c55e",
+    "Bahaa Sales":
+      theme.primary,
 
-    "Customer / Personal Sales": theme.primary,
-    "Customer / Personal Paid": "#22c55e",
-    "Customer / Personal Balance": theme.accent,
+    "Abdou Sales":
+      theme.primary,
 
-    "Teyseer Paid": "#22c55e",
-    "Teyseer Balance": "#dc2626",
+    "Sales Team Sales":
+      theme.primary,
+
+    "Salah Balance":
+      theme.accent,
+
+    "Bahaa Balance":
+      theme.accent,
+
+    "Abdou Balance":
+      theme.accent,
+
+    "Sales Team Balance":
+      theme.accent,
+
+    "Total Sales Staff Balance":
+      "#dc2626",
+
+    "Salah Paid":
+      "#22c55e",
+
+    "Bahaa Paid":
+      "#22c55e",
+
+    "Abdou Paid":
+      "#22c55e",
+
+    "Sales Team Paid":
+      "#22c55e",
+
+    "Customer / Personal Sales":
+      theme.primary,
+
+    "Customer / Personal Paid":
+      "#22c55e",
+
+    "Customer / Personal Balance":
+      theme.accent,
+
+    "Teyseer Paid":
+      "#22c55e",
+
+    "Teyseer Balance":
+      "#dc2626",
   };
 
   const content = (
@@ -2341,8 +2483,10 @@ function Card({
       style={{
         ...cardStyles.card,
         borderTop: `4px solid ${
-          colors[title] || theme.primary
+          colors[title] ||
+          theme.primary
         }`,
+
         ...(onClick
           ? {
               cursor: "pointer",
@@ -2352,13 +2496,27 @@ function Card({
       }}
       onClick={onClick}
     >
-      <div style={cardStyles.icon}>{icon}</div>
+      <div
+        style={
+          cardStyles.icon
+        }
+      >
+        {icon}
+      </div>
 
-      <h3 style={cardStyles.cardTitle}>
+      <h3
+        style={
+          cardStyles.cardTitle
+        }
+      >
         {title}
       </h3>
 
-      <h2 style={cardStyles.cardValue}>
+      <h2
+        style={
+          cardStyles.cardValue
+        }
+      >
         {value}
       </h2>
     </div>
@@ -2367,7 +2525,9 @@ function Card({
   if (status) {
     return (
       <Link
-        to={`/jobs?status=${encodeURIComponent(status)}`}
+        to={`/jobs?status=${encodeURIComponent(
+          status
+        )}`}
         style={{
           textDecoration: "none",
         }}
@@ -2379,10 +2539,6 @@ function Card({
 
   return content;
 }
-
-// ==========================================
-// STYLES
-// ==========================================
 
 const getStyles = (theme) => ({
   page: {
@@ -2410,11 +2566,11 @@ const getStyles = (theme) => ({
   },
 
   title: {
-  fontSize: "28px",
-  fontWeight: "700",
-  color: theme.primary,
-  marginBottom: "25px",
-},
+    fontSize: "28px",
+    fontWeight: "700",
+    color: theme.primary,
+    marginBottom: "25px",
+  },
 
   subtitle: {
     color: "#999",
@@ -2428,16 +2584,16 @@ const getStyles = (theme) => ({
     flexWrap: "wrap",
   },
 
- newButton: {
-  background: theme.primary,
-  color: "#080808",
-  border: "none",
-  padding: "12px 22px",
-  borderRadius: "10px",
-  fontSize: "16px",
-  cursor: "pointer",
-  fontWeight: "bold",
-},
+  newButton: {
+    background: theme.primary,
+    color: "#080808",
+    border: "none",
+    padding: "12px 22px",
+    borderRadius: "10px",
+    fontSize: "16px",
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
 
   secondaryButton: {
     background: "#222",
@@ -2452,23 +2608,23 @@ const getStyles = (theme) => ({
     fontWeight: "bold",
   },
 
-filterBox: {
-  background: "#151515",
-  border:
-    `1px solid ${theme.border}`,
-  borderRadius: "12px",
-  padding: "18px",
-  marginBottom: "25px",
-  display: "flex",
-  alignItems: "center",
-  gap: "15px",
-  flexWrap: "wrap",
-},
+  filterBox: {
+    background: "#151515",
+    border:
+      `1px solid ${theme.border}`,
+    borderRadius: "12px",
+    padding: "18px",
+    marginBottom: "25px",
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    flexWrap: "wrap",
+  },
 
   filterLabel: {
-  color: theme.primary,
-  fontWeight: "bold",
-},
+    color: theme.primary,
+    fontWeight: "bold",
+  },
 
   select: {
     padding: "12px",
@@ -2495,7 +2651,7 @@ filterBox: {
     borderRadius: "12px",
     textAlign: "center",
     border:
-  `1px solid ${theme.border}`,
+      `1px solid ${theme.border}`,
     boxShadow:
       "0 8px 20px rgba(0,0,0,0.35)",
     color: "#f5f5f5",
@@ -2520,16 +2676,16 @@ filterBox: {
     fontSize: "24px",
   },
 
- heading: {
-  color: theme.primary,
-  marginTop: "35px",
-  marginBottom: "18px",
-},
+  heading: {
+    color: theme.primary,
+    marginTop: "35px",
+    marginBottom: "18px",
+  },
 
   tableBox: {
     background: "#151515",
     border:
-  `1px solid ${theme.border}`,
+      `1px solid ${theme.border}`,
     borderRadius: "12px",
     padding: "20px",
     boxShadow:
@@ -2546,12 +2702,12 @@ filterBox: {
   },
 
   th: {
-  color: theme.primary,
-  padding: "14px",
-  borderBottom:
-    `1px solid ${theme.border}`,
-  whiteSpace: "nowrap",
-},
+    color: theme.primary,
+    padding: "14px",
+    borderBottom:
+      `1px solid ${theme.border}`,
+    whiteSpace: "nowrap",
+  },
 
   td: {
     padding: "14px",
@@ -2561,14 +2717,14 @@ filterBox: {
     whiteSpace: "nowrap",
   },
 
- status: {
-  background: theme.border,
-  color: theme.primary,
-  padding:
-    "6px 12px",
-  borderRadius: "20px",
-  fontSize: "14px",
-},
+  status: {
+    background: theme.border,
+    color: theme.primary,
+    padding:
+      "6px 12px",
+    borderRadius: "20px",
+    fontSize: "14px",
+  },
 
   charts: {
     display: "grid",
@@ -2579,24 +2735,25 @@ filterBox: {
   },
 
   chartBox: {
-  background: "#151515",
-  border:
-    `1px solid ${theme.border}`,
-  padding: "20px",
-  borderRadius: "12px",
-  boxShadow:
-    "0 8px 20px rgba(0,0,0,0.35)",
-},
-chartTitle: {
-  color: theme.primary,
-},
+    background: "#151515",
+    border:
+      `1px solid ${theme.border}`,
+    padding: "20px",
+    borderRadius: "12px",
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)",
+  },
 
-tooltip: {
-  background: "#151515",
-  border:
-    `1px solid ${theme.primary}`,
-  color: "#fff",
-},
+  chartTitle: {
+    color: theme.primary,
+  },
+
+  tooltip: {
+    background: "#151515",
+    border:
+      `1px solid ${theme.primary}`,
+    color: "#fff",
+  },
 
   recent: {
     display: "grid",
@@ -2606,19 +2763,19 @@ tooltip: {
     marginBottom: "40px",
   },
 
- recentCard: {
-  background: "#151515",
-  padding: "20px",
-  borderRadius: "12px",
-  border:
-    `1px solid ${theme.border}`,
-  boxShadow:
-    "0 8px 20px rgba(0,0,0,0.35)",
-},
+  recentCard: {
+    background: "#151515",
+    padding: "20px",
+    borderRadius: "12px",
+    border:
+      `1px solid ${theme.border}`,
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)",
+  },
 
- goldText: {
-  color: theme.primary,
-},
+  goldText: {
+    color: theme.primary,
+  },
 
   bigNumber: {
     color: "#fff",
@@ -2639,19 +2796,19 @@ tooltip: {
   },
 
   actionCard: {
-  background: "#151515",
-  padding: "25px",
-  borderRadius: "12px",
-  textDecoration: "none",
-  color: "#f5f5f5",
-  textAlign: "center",
-  border:
-    `1px solid ${theme.border}`,
-  boxShadow:
-    "0 8px 20px rgba(0,0,0,0.35)",
-  display: "block",
-  transition: "0.2s",
-},
+    background: "#151515",
+    padding: "25px",
+    borderRadius: "12px",
+    textDecoration: "none",
+    color: "#f5f5f5",
+    textAlign: "center",
+    border:
+      `1px solid ${theme.border}`,
+    boxShadow:
+      "0 8px 20px rgba(0,0,0,0.35)",
+    display: "block",
+    transition: "0.2s",
+  },
 
   actionIcon: {
     fontSize: "32px",
@@ -2660,7 +2817,8 @@ tooltip: {
 
   paidTd: {
     padding: "14px",
-    borderBottom: "1px solid #292929",
+    borderBottom:
+      "1px solid #292929",
     color: "#22c55e",
     fontWeight: "bold",
     whiteSpace: "nowrap",
@@ -2668,40 +2826,45 @@ tooltip: {
 
   balanceTd: {
     padding: "14px",
-    borderBottom: "1px solid #292929",
+    borderBottom:
+      "1px solid #292929",
     color: "#f59e0b",
     fontWeight: "bold",
     whiteSpace: "nowrap",
   },
 
-totalTd: {
-  padding: "14px",
-  borderTop: `2px solid ${theme.primary}`,
-  color: theme.primary,
-  fontWeight: "bold",
-  whiteSpace: "nowrap",
-},
+  totalTd: {
+    padding: "14px",
+    borderTop:
+      `2px solid ${theme.primary}`,
+    color: theme.primary,
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
 
-totalPaidTd: {
-  padding: "14px",
-  borderTop: `2px solid ${theme.primary}`,
-  color: "#22c55e",
-  fontWeight: "bold",
-  whiteSpace: "nowrap",
-},
+  totalPaidTd: {
+    padding: "14px",
+    borderTop:
+      `2px solid ${theme.primary}`,
+    color: "#22c55e",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
 
-totalBalanceTd: {
-  padding: "14px",
-  borderTop: `2px solid ${theme.primary}`,
-  color: "#dc2626",
-  fontWeight: "bold",
-  whiteSpace: "nowrap",
-},
+  totalBalanceTd: {
+    padding: "14px",
+    borderTop:
+      `2px solid ${theme.primary}`,
+    color: "#dc2626",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
 
   modalOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.78)",
+    background:
+      "rgba(0,0,0,0.78)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -2710,32 +2873,35 @@ totalBalanceTd: {
     boxSizing: "border-box",
   },
 
- modal: {
-  width: "100%",
-  maxWidth: "1250px",
-  maxHeight: "90vh",
-  overflow: "auto",
-  background: "#111",
-  border: `1px solid ${theme.border}`,
-  borderRadius: "14px",
-  boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-  padding: "24px",
-  boxSizing: "border-box",
-},
+  modal: {
+    width: "100%",
+    maxWidth: "1250px",
+    maxHeight: "90vh",
+    overflow: "auto",
+    background: "#111",
+    border:
+      `1px solid ${theme.border}`,
+    borderRadius: "14px",
+    boxShadow:
+      "0 20px 60px rgba(0,0,0,0.6)",
+    padding: "24px",
+    boxSizing: "border-box",
+  },
 
   modalHeader: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "flex-start",
     gap: "20px",
     marginBottom: "20px",
   },
 
-modalTitle: {
-  margin: 0,
-  color: theme.primary,
-  fontSize: "24px",
-},
+  modalTitle: {
+    margin: 0,
+    color: theme.primary,
+    fontSize: "24px",
+  },
 
   modalSubtitle: {
     margin: "8px 0 0",
@@ -2746,7 +2912,8 @@ modalTitle: {
     width: "40px",
     height: "40px",
     borderRadius: "8px",
-    border: "1px solid #444",
+    border:
+      "1px solid #444",
     background: "#1b1b1b",
     color: "#fff",
     fontSize: "28px",
@@ -2756,14 +2923,16 @@ modalTitle: {
 
   modalSummaryRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit,minmax(200px,1fr))",
     gap: "14px",
     marginBottom: "18px",
   },
 
   modalSummaryCard: {
     background: "#171717",
-    border: "1px solid #292929",
+    border:
+      "1px solid #292929",
     borderRadius: "10px",
     padding: "16px",
   },
@@ -2785,22 +2954,24 @@ modalTitle: {
     fontSize: "22px",
   },
 
- modalSearch: {
-  width: "100%",
-  boxSizing: "border-box",
-  padding: "12px 14px",
-  borderRadius: "8px",
-  border: `1px solid ${theme.border}`,
-  background: "#0b0b0b",
-  color: "#fff",
-  outline: "none",
-  marginBottom: "18px",
-  fontSize: "14px",
-},
+  modalSearch: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    border:
+      `1px solid ${theme.border}`,
+    background: "#0b0b0b",
+    color: "#fff",
+    outline: "none",
+    marginBottom: "18px",
+    fontSize: "14px",
+  },
 
   modalTableWrap: {
     overflowX: "auto",
-    border: "1px solid #292929",
+    border:
+      "1px solid #292929",
     borderRadius: "10px",
   },
 

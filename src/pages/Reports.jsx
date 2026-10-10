@@ -66,7 +66,6 @@ function isTeyseerSource(source) {
     "teyseer motors",
     "teyseer motors - salah",
     "teyseer motors - bahaa",
-    "teyseer motors - abdou",
   ].includes(value);
 }
 
@@ -329,16 +328,6 @@ function isTeyseerBahaaSource(source) {
     value === "teyseer-bahaa"
   );
 }
-
-function isTeyseerAbdouSource(source) {
-  const value = normalizeSource(source);
-  return (
-    value === "teyseer motors - abdou" ||
-    value === "teyseer motors-abdou" ||
-    value === "teyseer-abdou"
-  );
-}
-
 function isWttService(serviceName) {
   return String(serviceName || "")
     .toLowerCase()
@@ -379,7 +368,6 @@ function getJobSalesBreakdown(job) {
   let teyseer = 0;
   let salah = 0;
   let bahaa = 0;
-  let abdou = 0;
   let salesTeam = 0;
 
   services.forEach((serviceName) => {
@@ -409,12 +397,6 @@ function getJobSalesBreakdown(job) {
       return;
     }
 
-    if (isTeyseerAbdouSource(source)) {
-      if (isWtt) teyseer += amount;
-      else abdou += amount;
-      return;
-    }
-
     if (source === "salah") {
       salah += amount;
       return;
@@ -422,11 +404,6 @@ function getJobSalesBreakdown(job) {
 
     if (source === "bahaa") {
       bahaa += amount;
-      return;
-    }
-
-    if (source === "abdou") {
-      abdou += amount;
       return;
     }
 
@@ -438,12 +415,10 @@ function getJobSalesBreakdown(job) {
     teyseer,
     salah,
     bahaa,
-    abdou,
     salesTeam,
     customerSales:
       salah +
       bahaa +
-      abdou +
       salesTeam,
   };
 }
@@ -519,7 +494,6 @@ function calculateJob(job, _jobServices, paymentsByJob) {
     teyseerSales: breakdown.teyseer,
     salahSales: breakdown.salah,
     bahaaSales: breakdown.bahaa,
-    abdouSales: breakdown.abdou,
     salesTeamSales: breakdown.salesTeam,
     customerSales: breakdown.customerSales,
 
@@ -619,6 +593,14 @@ function Card({
 }
 
 function Reports() {
+  
+  const user = JSON.parse(
+    localStorage.getItem("user") || "null"
+  );
+
+  const shopId = Number(user?.shop_id || 1);
+  const isShop1 = shopId === 1;
+
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
   const [jobServices, setJobServices] =
@@ -771,23 +753,7 @@ const [reportMonth, setReportMonth] = useState(
 
     if (!data) return;
 
-    const june = data.find(
-      (item) =>
-        item.setting_name ===
-        "June Pending"
-    );
-
-    const july = data.find(
-      (item) =>
-        item.setting_name ===
-        "July Pending"
-    );
-
-    const august = data.find(
-      (item) =>
-        item.setting_name ===
-        "August Pending"
-    );
+    
     const september = data.find(
       (item) =>
         item.setting_name ===
@@ -801,17 +767,7 @@ const [reportMonth, setReportMonth] = useState(
     );
 
     setManualPending({
-      June: june
-        ? number(june.amount)
-        : DEFAULT_PENDING.June,
-
-      July: july
-        ? number(july.amount)
-        : DEFAULT_PENDING.July,
-
-      August: august
-        ? number(august.amount)
-        : DEFAULT_PENDING.August,
+      
 
         September: september
         ? number(september.amount)
@@ -1067,7 +1023,6 @@ const financial = useMemo(() => {
   let teyseerSales = 0;
   let salahSales = 0;
   let bahaaSales = 0;
-  let abdouSales = 0;
   let salesTeamSales = 0;
 
   let customerPaid = 0;
@@ -1077,7 +1032,6 @@ const financial = useMemo(() => {
     teyseerSales += number(job.teyseerSales);
     salahSales += number(job.salahSales);
     bahaaSales += number(job.bahaaSales);
-    abdouSales += number(job.abdouSales);
     salesTeamSales += number(job.salesTeamSales);
 
     customerPaid += number(job.customerPaid);
@@ -1087,7 +1041,6 @@ const financial = useMemo(() => {
   const customerSales =
     salahSales +
     bahaaSales +
-    abdouSales +
     salesTeamSales;
 
   const totalSales =
@@ -1120,7 +1073,6 @@ const financial = useMemo(() => {
   console.log("TEYSEER SALES:", teyseerSales);
   console.log("SALAH SALES:", salahSales);
   console.log("BAHAA SALES:", bahaaSales);
-  console.log("ABDOU SALES:", abdouSales);
   console.log("SALES TEAM SALES:", salesTeamSales);
   console.log("CUSTOMER / PERSONAL SALES:", customerSales);
   console.log("TOTAL SALES:", totalSales);
@@ -1345,11 +1297,6 @@ const getJobPaymentDates = (job) => {
     0
   );
 
-  const monthlyAbdouSales = monthJobs.reduce(
-    (sum, job) => sum + number(job.abdouSales),
-    0
-  );
-
   const monthlySalesTeamSales = monthJobs.reduce(
     (sum, job) => sum + number(job.salesTeamSales),
     0
@@ -1528,11 +1475,6 @@ const getJobPaymentDates = (job) => {
       0
     );
 
-    const dayAbdouSales = dayJobs.reduce(
-      (sum, job) => sum + number(job.abdouSales),
-      0
-    );
-
     const daySalesTeamSales = dayJobs.reduce(
       (sum, job) => sum + number(job.salesTeamSales),
       0
@@ -1674,10 +1616,6 @@ const getJobPaymentDates = (job) => {
       number(job.bahaaSales).toFixed(2)
     ),
 
-    "Abdou Sales": Number(
-      number(job.abdouSales).toFixed(2)
-    ),
-
     "Sales Team": Number(
       number(job.salesTeamSales).toFixed(2)
     ),
@@ -1797,10 +1735,6 @@ const customerRows = monthJobs
 
       "Bahaa Sales": Number(
         number(job.bahaaSales).toFixed(2)
-      ),
-
-      "Abdou Sales": Number(
-        number(job.abdouSales).toFixed(2)
       ),
 
       "Sales Team": Number(
@@ -3008,11 +2942,6 @@ const teyseerSourceAmounts = useMemo(() => {
         number(job?.teyseerSales);
       return;
     }
-
-    if (source === "teyseer motors - abdou") {
-      totals["Teyseer Motors - Abdou"] +=
-        number(job?.teyseerSales);
-    }
   });
 
   return totals;
@@ -3026,10 +2955,6 @@ const salahAmount =
 
 const bahaaAmount =
   teyseerSourceAmounts["Teyseer Motors - Bahaa"];
-
-const abdouAmount =
-  teyseerSourceAmounts["Teyseer Motors - Abdou"];
-
 
 /*
 ============================================================
@@ -3077,23 +3002,6 @@ const bahaaServiceItems = useMemo(() => {
       (job) =>
         normalizeSource(job?.source) ===
         "Teyseer Motors - Bahaa"
-    )
-    .reduce(
-      (count, job) =>
-        count +
-        (Array.isArray(job?.services)
-          ? job.services.length
-          : 0),
-      0
-    );
-}, [filteredTeyseerJobs]);
-
-const abdouServiceItems = useMemo(() => {
-  return filteredTeyseerJobs
-    .filter(
-      (job) =>
-        normalizeSource(job?.source) ===
-        "Teyseer Motors - Abdou"
     )
     .reduce(
       (count, job) =>
@@ -3189,7 +3097,8 @@ async function printTeyseerReport() {
     }
   );
 
-  function normalizeSource(source) { return String(source || "") .trim() .toLowerCase() .replace(/\s+/g, " ") .replace(/\s*-\s*/g, " - "); } function isTeyseerSource(source) { const normalized = normalizeSource(source); return [ "teyseer motors", "teyseer motors - salah", "teyseer motors - bahaa", "teyseer motors - abdou", ].includes(normalized); }
+  function normalizeSource(source) { return String(source || "") .trim() .toLowerCase() .replace(/\s+/g, " ") .replace(/\s*-\s*/g, " - "); }
+   function isTeyseerSource(source) { const normalized = normalizeSource(source); return [ "teyseer motors", "teyseer motors - salah", "teyseer motors - bahaa", ].includes(normalized); }
   function getCarMake(job) {
     return (
       job.carType ||
@@ -4137,7 +4046,6 @@ async function exportTeyseerReportExcel() {
       "teyseer motors",
       "teyseer motors - salah",
       "teyseer motors - bahaa",
-      "teyseer motors - abdou"
     ].includes(normalized);
   }
 
@@ -5786,12 +5694,16 @@ td {
       <div className="tabs">
 
         {[
-          ["overview", "Overview"],
-          ["teyseer", "Teyseer"],
-          ["alnusoor", "Al Nusoor"],
-          ["daily", "Daily"],
-          ["settings", "Settings"],
-        ].map(([key, label]) => (
+  ["overview", "Overview"],
+  ...(isShop1
+    ? [
+        ["teyseer", "Teyseer"],
+        ["alnusoor", "Al Nusoor"],
+      ]
+    : []),
+  ["daily", "Daily"],
+  ["settings", "Settings"],
+].map(([key, label]) => (
           <button
             key={key}
             className={`tab ${
@@ -5829,13 +5741,15 @@ td {
   color="purple"
 />
 
-<Card
-  title="Teyseer Sales"
-  value={`QAR ${money(
-    financial.teyseerSales
-  )}`}
-  color="orange"
-/>
+{isShop1 && (
+  <Card
+    title="Teyseer Sales"
+    value={`QAR ${money(
+      financial.teyseerSales
+    )}`}
+    color="orange"
+  />
+)}
 
 <Card
   title="Total Paid"
@@ -5883,7 +5797,8 @@ td {
 
 </div>
 
-    <div className="section">
+    {isShop1 && (
+  <div className="section">
 
       <h2>
         Customer vs Teyseer
@@ -5906,22 +5821,25 @@ td {
           )}`}
           color="red"
         />
+{isShop1 && (
+  <Card
+    title="Teyseer Sales"
+    value={`QAR ${money(
+      financial.teyseerSales
+    )}`}
+    color="purple"
+  />
+)}
 
-        <Card
-          title="Teyseer Sales"
-          value={`QAR ${money(
-            financial.teyseerSales
-          )}`}
-          color="purple"
-        />
-
-        <Card
-          title="Teyseer Balance"
-          value={`QAR ${money(
-            financial.teyseerBalance
-          )}`}
-          color="orange"
-        />
+       {isShop1 && (
+  <Card
+    title="Teyseer Balance"
+    value={`QAR ${money(
+      financial.teyseerBalance
+    )}`}
+    color="orange"
+  />
+)}
 
         <Card
           title="Unallocated Payment"
@@ -5935,8 +5853,9 @@ td {
           }
         />
 
-      </div>
+            </div>
     </div>
+)}
 
           <div className="section">
 
@@ -6012,7 +5931,7 @@ td {
             )}
 
           </div>
-
+{isShop1 && (
           <div className="section">
 
             <div className="section-header">
@@ -6142,13 +6061,14 @@ td {
                   </table>
 
                 </div>
-              )}
+                            )}
 
           </div>
+          )}
         </>
       )}
 
-      {activeSection === "teyseer" && (
+      {isShop1 && activeSection === "teyseer" && (
         <>
           <div className="section">
 
@@ -6321,21 +6241,6 @@ td {
 
               </div>
 
-              <div className="source-box">
-
-                <div className="source-name">
-                  Teyseer Motors - Abdou
-                </div>
-
-                <div className="source-value">
-                  QAR{" "}
-                  {money(
-                    abdouAmount
-                  )}
-                </div>
-
-              </div>
-
             </div>
 
           </div>
@@ -6403,26 +6308,7 @@ td {
                   )}
                 </div>
 
-              </div>
-
-              <div className="source-box">
-
-                <div className="source-name">
-                  Abdou
-                </div>
-
-                <div className="source-value">
-                  {abdouServiceItems}
-                </div>
-
-                <div>
-                  Net Sales: QAR{" "}
-                  {money(
-                    abdouAmount
-                  )}
-                </div>
-
-              </div>
+             </div>
 
             </div>
 
@@ -6565,7 +6451,7 @@ td {
         </>
       )}
 
-      {activeSection === "alnusoor" && (
+      {isShop1 && activeSection === "alnusoor" && (
         <>
           <div className="section">
 
@@ -6896,13 +6782,15 @@ td {
                 color="purple"
               />
 
-              <Card
-                title="Teyseer Sales"
-                value={`QAR ${money(
-                  selectedDateTeyseerSales
-                )}`}
-                color="orange"
-              />
+              {isShop1 && (
+  <Card
+    title="Teyseer Sales"
+    value={`QAR ${money(
+      selectedDateTeyseerSales
+    )}`}
+    color="orange"
+  />
+)}
 
               <Card
                 title="Total Sales"
@@ -7290,18 +7178,7 @@ td {
             <div className="settings-grid">
 
               {[
-                [
-                  "June",
-                  manualPending.June,
-                ],
-                [
-                  "July",
-                  manualPending.July,
-                ],
-                [
-                  "August",
-                  manualPending.August,
-                ],
+                
                 [
                   "September",
                   manualPending.September,
