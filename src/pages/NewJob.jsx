@@ -86,24 +86,13 @@ function NewJob() {
       value === "teyseer-bahaa"
     );
   }
-
-  function isTeyseerAbdouSource(sourceName) {
-    const value = normalizeSource(sourceName);
-
-    return (
-      value === "teyseer motors - abdou" ||
-      value === "teyseer motors-abdou" ||
-      value === "teyseer-abdou"
-    );
-  }
-
+ 
   function isTeyseerSource(sourceName) {
     return (
       isPureTeyseerSource(sourceName) ||
       isTeyseerSalahSource(sourceName) ||
-      isTeyseerBahaaSource(sourceName) ||
-      isTeyseerAbdouSource(sourceName)
-    );
+      isTeyseerBahaaSource(sourceName) 
+        );
   }
 
   function isWttService(serviceName) {
@@ -290,7 +279,9 @@ function NewJob() {
     if (carType === "Suzuki") {
       price = 800;
     }
-
+ if (carType === "Peugot") {
+      price = 1000;
+    }
     if (price === null) {
       return;
     }
@@ -320,9 +311,6 @@ function NewJob() {
   //   -> WTT = Teyseer
   //   -> Other = Bahaa
   //
-  // Teyseer Motors - Abdou
-  //   -> WTT = Teyseer
-  //   -> Other = Abdou
   //
   // Salah
   //   -> Salah
@@ -330,8 +318,6 @@ function NewJob() {
   // Bahaa
   //   -> Bahaa
   //
-  // Abdou
-  //   -> Abdou
   //
   // Walk-in / Other
   //   -> Sales Team
@@ -353,20 +339,12 @@ function NewJob() {
       return isWtt ? "Teyseer" : "Bahaa";
     }
 
-    if (isTeyseerAbdouSource(sourceValue)) {
-      return isWtt ? "Teyseer" : "Abdou";
-    }
-
     if (sourceValue === "salah") {
       return "Salah";
     }
 
     if (sourceValue === "bahaa") {
       return "Bahaa";
-    }
-
-    if (sourceValue === "abdou") {
-      return "Abdou";
     }
 
     return "Sales Team";
@@ -774,20 +752,12 @@ function NewJob() {
             Teyseer Motors - Salah
           </option>
 
-          <option value="Teyseer Motors - Abdou">
-            Teyseer Motors - Abdou
-          </option>
-
           <option value="Bahaa">
             Bahaa
           </option>
 
           <option value="Salah">
             Salah
-          </option>
-
-          <option value="Abdou">
-            Abdou
           </option>
 
           <option value="Walk-in">
@@ -866,7 +836,9 @@ function NewJob() {
           <option value="Suzuki">
             Suzuki
           </option>
-
+<option value="Peugot">
+            Peugot
+          </option>
           <option value="Toyota">
             Toyota
           </option>
