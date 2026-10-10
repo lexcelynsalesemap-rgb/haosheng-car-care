@@ -691,7 +691,6 @@ function Dashboard() {
   const salesStaffCustomerRows = {
     Salah: [],
     Bahaa: [],
-    Abdou: [],
     "Sales Team": [],
   };
 
@@ -844,11 +843,6 @@ function Dashboard() {
       },
 
       Bahaa: {
-        jobs: 0,
-        sales: 0,
-      },
-
-      Abdou: {
         jobs: 0,
         sales: 0,
       },
@@ -1597,10 +1591,6 @@ function Dashboard() {
 
                     <th style={styles.th}>
                       Bahaa
-                    </th>
-
-                    <th style={styles.th}>
-                      Abdou
                     </th>
 
                     <th style={styles.th}>
@@ -2429,9 +2419,6 @@ function Card({
     "Bahaa Sales":
       theme.primary,
 
-    "Abdou Sales":
-      theme.primary,
-
     "Sales Team Sales":
       theme.primary,
 
@@ -2439,9 +2426,6 @@ function Card({
       theme.accent,
 
     "Bahaa Balance":
-      theme.accent,
-
-    "Abdou Balance":
       theme.accent,
 
     "Sales Team Balance":
@@ -2454,9 +2438,6 @@ function Card({
       "#22c55e",
 
     "Bahaa Paid":
-      "#22c55e",
-
-    "Abdou Paid":
       "#22c55e",
 
     "Sales Team Paid":
