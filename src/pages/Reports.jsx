@@ -291,7 +291,7 @@ Teyseer Motors = all services → Teyseer
 Teyseer Motors - Salah/Bahaa/Abdou:
   WTT → Teyseer
   other → respective customer/sales person
-Salah/Bahaa/Abdou = customer sales
+Salah/Bahaa/= customer sales
 Walk-in/Other = Sales Team/customer sales
 
 Payments:
@@ -1155,6 +1155,8 @@ EXPORT WHOLE MONTH TO EXCEL
 */
 
 function exportMonthlyExcel() {
+   console.log("EXPORT BUTTON CLICKED");
+  alert("Export function started");
   if (!reportMonth) {
     alert("Please select a month.");
     return;
@@ -1305,7 +1307,6 @@ const getJobPaymentDates = (job) => {
   const monthlyCustomerSales =
     monthlySalahSales +
     monthlyBahaaSales +
-    monthlyAbdouSales +
     monthlySalesTeamSales;
 
   const monthlyTotalSales =
@@ -1483,7 +1484,6 @@ const getJobPaymentDates = (job) => {
     const dayCustomerSales =
       daySalahSales +
       dayBahaaSales +
-      dayAbdouSales +
       daySalesTeamSales;
 
     const dayTotalSales =
@@ -1534,10 +1534,6 @@ const getJobPaymentDates = (job) => {
 
       "Bahaa Sales": Number(
         dayBahaaSales.toFixed(2)
-      ),
-
-      "Abdou Sales": Number(
-        dayAbdouSales.toFixed(2)
       ),
 
       "Sales Team": Number(
@@ -1942,10 +1938,6 @@ const customerRows = monthJobs
 
       "Bahaa Sales": Number(
         monthlyBahaaSales.toFixed(2)
-      ),
-
-      "Abdou Sales": Number(
-        monthlyAbdouSales.toFixed(2)
       ),
 
       "Sales Team": Number(
