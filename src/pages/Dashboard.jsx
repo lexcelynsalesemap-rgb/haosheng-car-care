@@ -1307,22 +1307,6 @@ function Dashboard() {
                 )}`}
                 icon="💳"
               />
-
-              <Card
-                title="Teyseer Paid"
-                value={`QAR ${money(
-                  teyseerPaid
-                )}`}
-                icon="🏢💳"
-              />
-
-              <Card
-                title="Teyseer Balance"
-                value={`QAR ${money(
-                  teyseerBalance
-                )}`}
-                icon="🏢⚠️"
-              />
             </>
           )}
 
@@ -2379,6 +2363,9 @@ function Dashboard() {
   );
 }
 
+
+
+
 function Card({
   title,
   value,
@@ -2390,126 +2377,168 @@ function Card({
     localStorage.getItem("user") || "null"
   );
 
-  const shopId = Number(
-    user?.shop_id || 1
-  );
+  const shopId = Number(user?.shop_id || 1);
 
   const theme =
-    SHOP_THEMES[shopId] ||
-    SHOP_THEMES[1];
+    SHOP_THEMES[shopId] || SHOP_THEMES[1];
 
-  const cardStyles =
-    getStyles(theme);
+  const cardStyles = getStyles(theme);
+
+  const gold = "#D4AF37";
+  const lightGold = "#F0D98A";
+  const darkGold = "#9C7A20";
 
   const colors = {
-    "Total Jobs": theme.primary,
-    New: theme.primary,
-    "In Progress": theme.accent,
-    Finished: "#22c55e",
-    Delivered: "#0891b2",
+    "Total Jobs": gold,
+    New: gold,
+    "In Progress": lightGold,
+    Finished: lightGold,
+    Delivered: gold,
 
-    "Total Sales": theme.primary,
+    "Total Sales": gold,
+    "Teyseer Sales": gold,
+    "Salah Sales": gold,
+    "Bahaa Sales": gold,
+    "Sales Team Sales": gold,
 
-    "Teyseer Sales":
-      theme.primary,
+    "Salah Balance": lightGold,
+    "Bahaa Balance": lightGold,
+    "Sales Team Balance": lightGold,
+    "Total Sales Staff Balance": gold,
 
-    "Salah Sales":
-      theme.primary,
+    "Salah Paid": lightGold,
+    "Bahaa Paid": lightGold,
+    "Sales Team Paid": lightGold,
 
-    "Bahaa Sales":
-      theme.primary,
+    "Customer / Personal Sales": gold,
+    "Customer / Personal Paid": lightGold,
+    "Customer / Personal Balance": lightGold,
 
-    "Sales Team Sales":
-      theme.primary,
-
-    "Salah Balance":
-      theme.accent,
-
-    "Bahaa Balance":
-      theme.accent,
-
-    "Sales Team Balance":
-      theme.accent,
-
-    "Total Sales Staff Balance":
-      "#dc2626",
-
-    "Salah Paid":
-      "#22c55e",
-
-    "Bahaa Paid":
-      "#22c55e",
-
-    "Sales Team Paid":
-      "#22c55e",
-
-    "Customer / Personal Sales":
-      theme.primary,
-
-    "Customer / Personal Paid":
-      "#22c55e",
-
-    "Customer / Personal Balance":
-      theme.accent,
-
-    "Teyseer Paid":
-      "#22c55e",
-
-    "Teyseer Balance":
-      "#dc2626",
+    "Teyseer Paid": lightGold,
+    "Teyseer Balance": gold,
   };
+
+  const accentColor = colors[title] || gold;
+
+  const cardBackground = "#111111";
+  const cardBorder = "#39301B";
 
   const content = (
     <div
       style={{
         ...cardStyles.card,
-        borderTop: `4px solid ${
-          colors[title] ||
-          theme.primary
-        }`,
 
-        ...(onClick
-          ? {
-              cursor: "pointer",
-              transition: "0.2s",
-            }
-          : {}),
+        boxSizing: "border-box",
+        width: "100%",
+        minWidth: 0,
+        minHeight: "78px",
+        padding: "9px 11px",
+
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: "7px",
+
+        background: cardBackground,
+        border: `1px solid ${cardBorder}`,
+        borderLeft: `2px solid ${darkGold}`,
+        borderRadius: "7px",
+
+        boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+
+        cursor:
+          onClick || status ? "pointer" : "default",
+
+        transition:
+          "background 0.18s ease, border-color 0.18s ease, transform 0.18s ease",
       }}
-      onClick={onClick}
-    >
-      <div
-        style={
-          cardStyles.icon
+      onClick={status ? undefined : onClick}
+      onMouseEnter={(e) => {
+        if (onClick || status) {
+          e.currentTarget.style.background = "#1C1912";
+          e.currentTarget.style.borderColor = gold;
+          e.currentTarget.style.transform = "translateY(-1px)";
         }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = cardBackground;
+        e.currentTarget.style.borderColor = cardBorder;
+        e.currentTarget.style.borderLeftColor = darkGold;
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
+    >
+      {/* Compact heading */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "6px",
+          minWidth: 0,
+        }}
       >
-        {icon}
+        <h3
+          style={{
+            margin: 0,
+            color: lightGold,
+            fontSize: "9px",
+            fontWeight: 600,
+            letterSpacing: "0.5px",
+            lineHeight: 1.35,
+            textTransform: "uppercase",
+            overflowWrap: "anywhere",
+            minWidth: 0,
+          }}
+        >
+          {title}
+        </h3>
+
+        <span
+          style={{
+            width: "23px",
+            height: "23px",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "5px",
+            background: "#292315",
+            color: gold,
+            fontSize: "12px",
+          }}
+        >
+          {icon}
+        </span>
       </div>
 
-      <h3
-        style={
-          cardStyles.cardTitle
-        }
-      >
-        {title}
-      </h3>
-
-      <h2
-        style={
-          cardStyles.cardValue
-        }
+      {/* Gold financial figures */}
+      <div
+        style={{
+          margin: 0,
+          color: gold,
+          fontSize: "clamp(14px, 1.15vw, 18px)",
+          fontWeight: 700,
+          lineHeight: 1.2,
+          letterSpacing: "-0.3px",
+          fontVariantNumeric: "tabular-nums",
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+        }}
       >
         {value}
-      </h2>
+      </div>
     </div>
   );
 
   if (status) {
     return (
       <Link
-        to={`/jobs?status=${encodeURIComponent(
-          status
-        )}`}
+        to={`/jobs?status=${encodeURIComponent(status)}`}
         style={{
+          display: "block",
+          height: "100%",
+          minWidth: 0,
+          color: "inherit",
           textDecoration: "none",
         }}
       >
@@ -2520,6 +2549,9 @@ function Card({
 
   return content;
 }
+
+
+
 
 const getStyles = (theme) => ({
   page: {
