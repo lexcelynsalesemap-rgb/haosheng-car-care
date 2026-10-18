@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase/client";
 import { useParams, useNavigate } from "react-router-dom";
@@ -37,28 +38,82 @@ function EditJob() {
   const [payments, setPayments] = useState([]);
 
   // -----------------------------------
-  // TEYSEER CHECK
+  // TEYSEER CHECKS
   // -----------------------------------
 
-function isTeyseerSource(sourceName) {
-  return (
-    sourceName === "Teyseer Motors" ||
-    sourceName === "Teyseer Motors - Bahaa" ||
-    sourceName === "Teyseer Motors - Salah" ||
-    sourceName === "Teyseer Motors - Abdou"
-  );
-}
+  function isFullTeyseerSource(sourceName) {
+    return (
+      String(sourceName || "").trim().toLowerCase() ===
+      "teyseer motors"
+    );
+  }
+
+  function isTeyseerSource(sourceName) {
+    const normalizedSource = String(sourceName || "")
+      .trim()
+      .toLowerCase();
+
+    return [
+      "teyseer motors",
+      "teyseer motors - bahaa",
+      "teyseer motors - salah",
+      "teyseer motors - abdou"
+    ].includes(normalizedSource);
+  }
 
   function isWttService(serviceName) {
-    return serviceName
-      ?.toLowerCase()
+    return String(serviceName || "")
+      .toLowerCase()
       .includes("wtt");
   }
+
+  // -----------------------------------
+  // CALCULATE CUSTOMER PAYABLE AMOUNT
+  // -----------------------------------
+
+  function calculateCustomerTotal(
+    serviceNames,
+    detailsByService,
+    sourceName
+  ) {
+    // Pure Teyseer Motors jobs are fully paid through Teyseer.
+    if (isFullTeyseerSource(sourceName)) {
+      return 0;
+    }
+
+    return (Array.isArray(serviceNames) ? serviceNames : []).reduce(
+      (sum, serviceName) => {
+        // WTT is excluded for Teyseer source variants.
+        if (
+          isTeyseerSource(sourceName) &&
+          isWttService(serviceName)
+        ) {
+          return sum;
+        }
+
+        const details = detailsByService?.[serviceName] || {};
+        const price = Number(details.price || 0);
+        const quantity = Number(details.quantity || 1);
+        const discount = Number(details.discount || 0);
+
+        return (
+          sum +
+          Math.max(price * quantity - discount, 0)
+        );
+      },
+      0
+    );
+  }
+
+  // -----------------------------------
+  // LOAD DATA
+  // -----------------------------------
 
   useEffect(() => {
     loadJob();
     loadServices();
     loadPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // -----------------------------------
@@ -82,174 +137,167 @@ function isTeyseerSource(sourceName) {
   // LOAD JOB
   // -----------------------------------
 
- async function loadJob() {
-  setLoading(true);
+  async function loadJob() {
+    setLoading(true);
 
-  const loggedInUser = JSON.parse(
-    localStorage.getItem("user")
-  );
-
-  if (!loggedInUser?.shop_id) {
-    alert("User shop could not be determined.");
-    setLoading(false);
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("jobs")
-    .select("*")
-    .eq("id", id)
-    .eq("shop_id", loggedInUser.shop_id)
-    .single();
-
-  if (error) {
-    console.error("LOAD JOB ERROR:", error);
-    alert(error.message);
-    setLoading(false);
-    return;
-  }
-
-  console.log("EDIT JOB:", data);
-
-  // KEEP EVERYTHING BELOW HERE EXACTLY AS YOU ALREADY HAVE IT
-
-    setCustomer(data.customer || "");
-    setPhone(data.phone || "");
-    setCarModel(data.carModel || "");
-    setCarType(data.carType || "");
-    setColor(data.color || "");
-    setPlate(data.plate || "");
-
-    // -----------------------------------
-    // JOB DATE
-    // -----------------------------------
-
-    if (data.created_at) {
-      const date = new Date(data.created_at);
-
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-
-      setJobDate(`${year}-${month}-${day}`);
-    } else {
-      setJobDate(
-        new Date().toISOString().split("T")[0]
+    try {
+      const loggedInUser = JSON.parse(
+        localStorage.getItem("user") || "null"
       );
+
+      if (!loggedInUser?.shop_id) {
+        alert("User shop could not be determined.");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("jobs")
+        .select("*")
+        .eq("id", Number(id))
+        .eq("shop_id", loggedInUser.shop_id)
+        .single();
+
+      if (error) {
+        console.error("LOAD JOB ERROR:", error);
+        alert(error.message);
+        setLoading(false);
+        return;
+      }
+
+      console.log("EDIT JOB:", data);
+
+      setCustomer(data.customer || "");
+      setPhone(data.phone || "");
+      setCarModel(data.carModel || "");
+      setCarType(data.carType || "");
+      setColor(data.color || "");
+      setPlate(data.plate || "");
+
+      // JOB DATE
+      if (data.created_at) {
+        const date = new Date(data.created_at);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        setJobDate(`${year}-${month}-${day}`);
+      } else {
+        setJobDate(new Date().toISOString().split("T")[0]);
+      }
+
+      // SOURCE
+      const existingSource = String(data.source || "").trim();
+
+      const standardSources = [
+        "Teyseer Motors",
+        "Teyseer Motors - Bahaa",
+        "Teyseer Motors - Salah",
+        "Teyseer Motors - Abdou",
+        "Bahaa",
+        "Salah",
+        "Walk-in"
+      ];
+
+      const matchedSource = standardSources.find(
+        (item) =>
+          item.toLowerCase() === existingSource.toLowerCase()
+      );
+
+      if (matchedSource) {
+        setSource(matchedSource);
+        setOtherSource("");
+      } else if (existingSource) {
+        setSource("Other");
+        setOtherSource(existingSource);
+      } else {
+        setSource("");
+        setOtherSource("");
+      }
+
+      // SERVICES
+      const existingServices = Array.isArray(data.services)
+        ? data.services
+        : [];
+
+      const normalizedServices = existingServices
+        .map((service) => {
+          if (typeof service === "string") {
+            return service;
+          }
+
+          return (
+            service?.name ||
+            service?.service_name ||
+            service?.title ||
+            ""
+          );
+        })
+        .filter(Boolean);
+
+      setServices(normalizedServices);
+
+      if (
+        data.serviceDetails &&
+        typeof data.serviceDetails === "object"
+      ) {
+        setServiceDetails(data.serviceDetails);
+      } else {
+        setServiceDetails({});
+      }
+    } catch (error) {
+      console.error("LOAD JOB EXCEPTION:", error);
+      alert(error.message || "Could not load the job.");
+    } finally {
+      setLoading(false);
     }
-
-    // -----------------------------------
-    // SOURCE
-    // -----------------------------------
-
-    const existingSource = String(data.source || "").trim();
-
-    const standardSources = [
-  "Teyseer Motors",
-  "Teyseer Motors - Bahaa",
-  "Teyseer Motors - Salah",
-  "Teyseer Motors - Abdou",
-  "Bahaa",
-  "Salah",
-  "Abdou",
-  "Walk-in"
-];
-
-    const matchedSource = standardSources.find(
-      (item) =>
-        item.toLowerCase() ===
-        existingSource.toLowerCase()
-    );
-
-    if (matchedSource) {
-      setSource(matchedSource);
-      setOtherSource("");
-    } else if (existingSource) {
-      setSource("Other");
-      setOtherSource(existingSource);
-    } else {
-      setSource("");
-      setOtherSource("");
-    }
-
-    // -----------------------------------
-    // SERVICES
-    // -----------------------------------
-
-    const existingServices = Array.isArray(data.services)
-      ? data.services
-      : [];
-
-    const normalizedServices = existingServices
-      .map((service) => {
-        if (typeof service === "string") {
-          return service;
-        }
-
-        return (
-          service?.name ||
-          service?.service_name ||
-          service?.title ||
-          ""
-        );
-      })
-      .filter(Boolean);
-
-    setServices(normalizedServices);
-
-    if (
-      data.serviceDetails &&
-      typeof data.serviceDetails === "object"
-    ) {
-      setServiceDetails(data.serviceDetails);
-    } else {
-      setServiceDetails({});
-    }
-
-    setLoading(false);
   }
 
   // -----------------------------------
   // LOAD PAYMENTS
   // -----------------------------------
 
- async function loadPayments() {
-  const loggedInUser = JSON.parse(
-    localStorage.getItem("user")
-  );
+  async function loadPayments() {
+    try {
+      const loggedInUser = JSON.parse(
+        localStorage.getItem("user") || "null"
+      );
 
-  if (!loggedInUser?.shop_id) {
-    console.error("User shop could not be determined.");
-    return;
+      if (!loggedInUser?.shop_id) {
+        console.error("User shop could not be determined.");
+        return;
+      }
+
+      // Confirm the job belongs to this user's shop.
+      const { data: job, error: jobError } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("id", Number(id))
+        .eq("shop_id", loggedInUser.shop_id)
+        .single();
+
+      if (jobError || !job) {
+        console.error("JOB ACCESS ERROR:", jobError);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("job_id", Number(id))
+        .order("payment_date", { ascending: false });
+
+      if (error) {
+        console.error("LOAD PAYMENTS ERROR:", error);
+        return;
+      }
+
+      setPayments(data || []);
+    } catch (error) {
+      console.error("LOAD PAYMENTS EXCEPTION:", error);
+    }
   }
 
-  const { data: job, error: jobError } = await supabase
-    .from("jobs")
-    .select("id")
-    .eq("id", Number(id))
-    .eq("shop_id", loggedInUser.shop_id)
-    .single();
-
-  if (jobError || !job) {
-    console.error("JOB ACCESS ERROR:", jobError);
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("job_id", Number(id))
-    .order("payment_date", {
-      ascending: false
-    });
-
-  if (error) {
-    console.error("LOAD PAYMENTS ERROR:", error);
-    return;
-  }
-
-  setPayments(data || []);
-}
   // -----------------------------------
   // TOGGLE SERVICE
   // -----------------------------------
@@ -259,9 +307,7 @@ function isTeyseerSource(sourceName) {
 
     if (services.includes(serviceName)) {
       setServices((prev) =>
-        prev.filter(
-          (service) => service !== serviceName
-        )
+        prev.filter((service) => service !== serviceName)
       );
 
       setServiceDetails((prev) => {
@@ -270,10 +316,7 @@ function isTeyseerSource(sourceName) {
         return copy;
       });
     } else {
-      setServices((prev) => [
-        ...prev,
-        serviceName
-      ]);
+      setServices((prev) => [...prev, serviceName]);
 
       setServiceDetails((prev) => ({
         ...prev,
@@ -305,10 +348,7 @@ function isTeyseerSource(sourceName) {
   // UPDATE SERVICE DISCOUNT
   // -----------------------------------
 
-  function updateServiceDiscount(
-    serviceName,
-    discount
-  ) {
+  function updateServiceDiscount(serviceName, discount) {
     setServiceDetails((prev) => ({
       ...prev,
       [serviceName]: {
@@ -322,103 +362,85 @@ function isTeyseerSource(sourceName) {
   // DELETE PAYMENT
   // -----------------------------------
 
-async function deletePayment(paymentId) {
-  const confirmDelete = window.confirm(
-    "Are you sure you want to delete this payment?"
-  );
-
-  if (!confirmDelete) {
-    return;
-  }
-
-  try {
-    const loggedInUser = JSON.parse(
-      localStorage.getItem("user")
+  async function deletePayment(paymentId) {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this payment?"
     );
 
-    if (!loggedInUser?.shop_id) {
-      alert("User shop could not be determined.");
+    if (!confirmDelete) {
       return;
     }
 
-    // Make sure this job belongs to the user's shop
-    const { data: job, error: jobError } = await supabase
-      .from("jobs")
-      .select("id")
-      .eq("id", Number(id))
-      .eq("shop_id", loggedInUser.shop_id)
-      .single();
-
-    if (jobError || !job) {
-      console.error("JOB ACCESS ERROR:", jobError);
-      alert("You are not allowed to delete this payment.");
-      return;
-    }
-
-    // Delete payment belonging to this job
-    const { error: deleteError } = await supabase
-      .from("payments")
-      .delete()
-      .eq("id", paymentId)
-      .eq("job_id", Number(id));
-
-    if (deleteError) {
-      console.error(
-        "DELETE PAYMENT ERROR:",
-        deleteError
+    try {
+      const loggedInUser = JSON.parse(
+        localStorage.getItem("user") || "null"
       );
 
-      alert(deleteError.message);
-      return;
+      if (!loggedInUser?.shop_id) {
+        alert("User shop could not be determined.");
+        return;
+      }
+
+      // Confirm this job belongs to the user's shop.
+      const { data: job, error: jobError } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("id", Number(id))
+        .eq("shop_id", loggedInUser.shop_id)
+        .single();
+
+      if (jobError || !job) {
+        console.error("JOB ACCESS ERROR:", jobError);
+        alert("You are not allowed to delete this payment.");
+        return;
+      }
+
+      // Delete only the payment belonging to this job.
+      const { error: deleteError } = await supabase
+        .from("payments")
+        .delete()
+        .eq("id", paymentId)
+        .eq("job_id", Number(id));
+
+      if (deleteError) {
+        console.error("DELETE PAYMENT ERROR:", deleteError);
+        alert(deleteError.message);
+        return;
+      }
+
+      await recalculateJobBalance();
+      await loadPayments();
+
+      alert("Payment deleted successfully.");
+    } catch (error) {
+      console.error("DELETE PAYMENT ERROR:", error);
+      alert(error.message || "Something went wrong.");
     }
-
-    // Recalculate balance after deletion
-    await recalculateJobBalance();
-
-    // Reload payment history
-    await loadPayments();
-
-    alert("Payment deleted successfully.");
-
-  } catch (error) {
-    console.error(
-      "DELETE PAYMENT ERROR:",
-      error
-    );
-
-    alert(
-      error.message ||
-      "Something went wrong."
-    );
   }
-}
+
   // -----------------------------------
   // RECALCULATE BALANCE
   // -----------------------------------
 
   async function recalculateJobBalance() {
     const loggedInUser = JSON.parse(
-  localStorage.getItem("user")
-);
+      localStorage.getItem("user") || "null"
+    );
 
-if (!loggedInUser?.shop_id) {
-  throw new Error("User shop could not be determined.");
-}
+    if (!loggedInUser?.shop_id) {
+      throw new Error("User shop could not be determined.");
+    }
 
-const { data: job, error: jobError } =
-  await supabase
-    .from("jobs")
-    .select(
-      "price, discount, services, serviceDetails, source"
-    )
-    .eq("id", Number(id))
-    .eq("shop_id", loggedInUser.shop_id)
-    .single();
+    const { data: job, error: jobError } = await supabase
+      .from("jobs")
+      .select("price, discount, services, serviceDetails, source")
+      .eq("id", Number(id))
+      .eq("shop_id", loggedInUser.shop_id)
+      .single();
 
     if (jobError) {
       throw new Error(
-        "Could not load job totals: " +
-        jobError.message
+        "Could not load job totals: " + jobError.message
       );
     }
 
@@ -434,112 +456,52 @@ const { data: job, error: jobError } =
 
     const savedSource = job.source || "";
 
-    // -----------------------------------
-    // CUSTOMER SERVICE TOTAL
-    //
-    // WTT is excluded from customer's
-    // payable amount for Teyseer jobs.
-    // -----------------------------------
+    // Pure Teyseer Motors = QAR 0 customer payable.
+    // Teyseer variants exclude WTT but charge for other services.
+    const customerTotal = calculateCustomerTotal(
+      savedServices,
+      savedDetails,
+      savedSource
+    );
 
-    const customerServicesTotal =
-      savedServices.reduce(
-        (sum, serviceName) => {
-          if (
-            isTeyseerSource(savedSource) &&
-            isWttService(serviceName)
-          ) {
-            return sum;
-          }
-
-          const details =
-            savedDetails[serviceName] || {};
-
-          const price =
-            Number(details.price || 0);
-
-          const quantity =
-            Number(details.quantity || 1);
-
-          const serviceDiscount =
-            Number(details.discount || 0);
-
-          return (
-            sum +
-            Math.max(
-              price * quantity -
-                serviceDiscount,
-              0
-            )
-          );
-        },
-        0
-      );
-
-   const finalTotal = Math.max(
-  customerServicesTotal,
-  0
-);
-
-    // -----------------------------------
-    // TOTAL PAID
-    // -----------------------------------
-
-    const {
-      data: paymentsData,
-      error: paymentsError
-    } = await supabase
-      .from("payments")
-      .select("amount")
-      .eq("job_id", Number(id));
+    const { data: paymentsData, error: paymentsError } =
+      await supabase
+        .from("payments")
+        .select("amount")
+        .eq("job_id", Number(id));
 
     if (paymentsError) {
       throw new Error(
-        "Could not load payments: " +
-        paymentsError.message
+        "Could not load payments: " + paymentsError.message
       );
     }
 
-    const totalPaid =
-      (paymentsData || []).reduce(
-        (sum, payment) =>
-          sum + Number(payment.amount || 0),
-        0
-      );
-
-    const balance = Math.max(
-      finalTotal - totalPaid,
+    const totalPaid = (paymentsData || []).reduce(
+      (sum, payment) => sum + Number(payment.amount || 0),
       0
     );
 
-    // -----------------------------------
-    // UPDATE JOB
-    // -----------------------------------
+    const balance = Math.max(customerTotal - totalPaid, 0);
 
-    const {
-      data: updatedJob,
-      error: updateError
-    } = await supabase
-      .from("jobs")
-      .update({
-  deposit: totalPaid,
-  balance: balance
-})
-.eq("id", Number(id))
-.eq("shop_id", loggedInUser.shop_id)
-.select()
-.single();
+    const { data: updatedJob, error: updateError } =
+      await supabase
+        .from("jobs")
+        .update({
+          deposit: totalPaid,
+          balance
+        })
+        .eq("id", Number(id))
+        .eq("shop_id", loggedInUser.shop_id)
+        .select()
+        .single();
 
     if (updateError) {
       throw new Error(
-        "Could not update balance: " +
-        updateError.message
+        "Could not update balance: " + updateError.message
       );
     }
 
-    console.log(
-      "BALANCE RECALCULATED:",
-      updatedJob
-    );
+    console.log("BALANCE RECALCULATED:", updatedJob);
 
     return updatedJob;
   }
@@ -552,53 +514,32 @@ const { data: job, error: jobError } =
     if (saving) return;
 
     setSaving(true);
-const loggedInUser = JSON.parse(
-  localStorage.getItem("user")
-);
 
-if (!loggedInUser?.shop_id) {
-  alert("User shop could not be determined.");
-  setSaving(false);
-  return;
-}
     try {
-      // -----------------------------------
-      // CALCULATE INTERNAL TOTAL
-      //
-      // This includes WTT.
-      // -----------------------------------
+      const loggedInUser = JSON.parse(
+        localStorage.getItem("user") || "null"
+      );
 
+      if (!loggedInUser?.shop_id) {
+        alert("User shop could not be determined.");
+        return;
+      }
+
+      // INTERNAL TOTAL: includes WTT.
       const totals = services.reduce(
         (result, serviceName) => {
-          const details =
-            serviceDetails[serviceName] || {};
+          const details = serviceDetails[serviceName] || {};
+          const price = Number(details.price || 0);
+          const quantity = Number(details.quantity || 1);
+          const discount = Number(details.discount || 0);
 
-          const price =
-            Number(details.price || 0);
-
-          const quantity =
-            Number(details.quantity || 1);
-
-          const discount =
-            Number(details.discount || 0);
-
-          result.price +=
-            price * quantity;
-
-          result.discount +=
-            discount;
+          result.price += price * quantity;
+          result.discount += discount;
 
           return result;
         },
-        {
-          price: 0,
-          discount: 0
-        }
+        { price: 0, discount: 0 }
       );
-
-      // -----------------------------------
-      // INTERNAL ALL SERVICES TOTAL
-      // -----------------------------------
 
       const totalPrice = totals.price;
       const totalDiscount = totals.discount;
@@ -608,235 +549,135 @@ if (!loggedInUser?.shop_id) {
         0
       );
 
-      // -----------------------------------
       // SOURCE
-      // -----------------------------------
-
       const finalSource =
         source === "Other"
           ? otherSource.trim()
           : source;
 
-      // -----------------------------------
-      // CUSTOMER PAYABLE TOTAL
-      //
-      // WTT is paid by Teyseer and is
-      // therefore NOT charged to customer.
-      // -----------------------------------
+      // CUSTOMER PAYABLE TOTAL.
+      // Pure Teyseer = 0; Teyseer variants exclude WTT.
+      const customerNetAmount = calculateCustomerTotal(
+        services,
+        serviceDetails,
+        finalSource
+      );
 
-      const customerServicesTotal =
-        services.reduce(
-          (sum, serviceName) => {
-            if (
-              isTeyseerSource(finalSource) &&
-              isWttService(serviceName)
-            ) {
-              return sum;
-            }
+      // PAYMENT VALIDATION
+      const amount = Number(paymentAmount || 0);
 
-            const details =
-              serviceDetails[serviceName] || {};
-
-            const price =
-              Number(details.price || 0);
-
-            const quantity =
-              Number(details.quantity || 1);
-
-            const serviceDiscount =
-              Number(details.discount || 0);
-
-            return (
-              sum +
-              Math.max(
-                price * quantity -
-                  serviceDiscount,
-                0
-              )
-            );
-          },
-          0
-        );
-
-      // -----------------------------------
-      // CUSTOMER NET AMOUNT
-      // -----------------------------------
-
-     const customerNetAmount = Math.max(
-  customerServicesTotal,
-  0
-);
-
-      // -----------------------------------
-      // PAYMENT
-      // -----------------------------------
-
-      const amount =
-        Number(paymentAmount || 0);
-
-      /*
-       * Payment method is only required
-       * when entering a payment.
-       */
-
-      if (amount > 0 && !paymentMethod) {
-        alert(
-          "Please select a payment method."
-        );
-
-        setSaving(false);
+      if (amount < 0) {
+        alert("Payment amount cannot be negative.");
         return;
       }
 
-      // -----------------------------------
-      // ADD PAYMENT
-      // -----------------------------------
+      if (amount > 0 && !paymentMethod) {
+        alert("Please select a payment method.");
+        return;
+      }
 
+      // ADD PAYMENT
       if (amount > 0) {
-        const {
-          error: paymentError
-        } = await supabase
+        const { error: paymentError } = await supabase
           .from("payments")
           .insert({
             job_id: Number(id),
-            amount: amount,
+            amount,
             payment_method: paymentMethod,
             payment_date: paymentDate,
-            notes:
-              paymentNotes.trim() || null
+            notes: paymentNotes.trim() || null
           });
 
         if (paymentError) {
-          console.error(
-            "PAYMENT ERROR:",
-            paymentError
-          );
+          console.error("PAYMENT ERROR:", paymentError);
 
           throw new Error(
             "Payment could not be saved: " +
-            paymentError.message
+              paymentError.message
           );
         }
       }
 
-      // -----------------------------------
-      // GET ALL PAYMENTS
-      // -----------------------------------
-
-      const {
-        data: paymentData,
-        error: paymentLoadError
-      } = await supabase
-        .from("payments")
-        .select("amount")
-        .eq("job_id", Number(id));
+      // GET ALL PAYMENTS AFTER ANY NEW PAYMENT.
+      const { data: paymentData, error: paymentLoadError } =
+        await supabase
+          .from("payments")
+          .select("amount")
+          .eq("job_id", Number(id));
 
       if (paymentLoadError) {
         throw new Error(
           "Could not calculate payment balance: " +
-          paymentLoadError.message
+            paymentLoadError.message
         );
       }
 
-      // -----------------------------------
-      // TOTAL PAID
-      // -----------------------------------
-
-      const totalPaid =
-        (paymentData || []).reduce(
-          (sum, payment) =>
-            sum + Number(payment.amount || 0),
-          0
-        );
-
-      // -----------------------------------
-      // CUSTOMER BALANCE
-      //
-      // WTT is already excluded above.
-      // -----------------------------------
+      const totalPaid = (paymentData || []).reduce(
+        (sum, payment) => sum + Number(payment.amount || 0),
+        0
+      );
 
       const balance = Math.max(
         customerNetAmount - totalPaid,
         0
       );
 
-      // -----------------------------------
       // UPDATE JOB
-      //
-      // price = INTERNAL TOTAL
-      //
-      // This keeps WTT inside the internal
-      // job total while balance uses the
-      // customer payable total.
-      // -----------------------------------
+      const { data: updatedJob, error: jobError } =
+        await supabase
+          .from("jobs")
+          .update({
+            customer,
+            phone,
+            source: finalSource,
+            carModel,
+            carType,
+            color,
+            plate,
 
-      const {
-        error: jobError
-      } = await supabase
-        .from("jobs")
-        .update({
-          customer,
-          phone,
-          source: finalSource,
+            created_at: jobDate
+              ? new Date(`${jobDate}T12:00:00`).toISOString()
+              : undefined,
 
-          carModel,
-          carType,
-          color,
-          plate,
+            services,
+            serviceDetails,
 
-          created_at: jobDate
-            ? new Date(
-                `${jobDate}T12:00:00`
-              ).toISOString()
-            : undefined,
+            // Internal total continues to include WTT.
+            price: internalTotal,
 
-          services,
-          serviceDetails,
+            // Total service discounts for internal tracking.
+            discount: totalDiscount,
 
-          // INTERNAL TOTAL
-          price: internalTotal,
+            // Payments recorded against this job.
+            deposit: totalPaid,
 
-          // TOTAL SERVICE DISCOUNTS
-          discount: totalDiscount,
-
-          // CUSTOMER PAYMENTS ONLY
-          deposit: totalPaid,
-
-          // CUSTOMER BALANCE
-          balance: balance
-        })
-        .eq("id", Number(id))
-.eq("shop_id", loggedInUser.shop_id);
+            // Customer balance follows the Teyseer rules.
+            balance
+          })
+          .eq("id", Number(id))
+          .eq("shop_id", loggedInUser.shop_id)
+          .select()
+          .single();
 
       if (jobError) {
-        console.error(
-          "JOB UPDATE ERROR:",
-          jobError
-        );
+        console.error("JOB UPDATE ERROR:", jobError);
 
         throw new Error(
-          "Job could not be saved: " +
-          jobError.message
+          "Job could not be saved: " + jobError.message
         );
       }
 
-      // -----------------------------------
-      // CLEAR PAYMENT FORM
-      // -----------------------------------
+      if (!updatedJob) {
+        throw new Error("Job was not updated.");
+      }
 
+      // CLEAR PAYMENT FORM
       setPaymentAmount("");
       setPaymentMethod("");
-
-      setPaymentDate(
-        new Date().toISOString().split("T")[0]
-      );
-
+      setPaymentDate(new Date().toISOString().split("T")[0]);
       setPaymentNotes("");
 
-      // -----------------------------------
       // RELOAD
-      // -----------------------------------
-
       await loadJob();
       await loadPayments();
 
@@ -847,109 +688,63 @@ if (!loggedInUser?.shop_id) {
       );
 
       navigate(`/jobs/${id}`);
-
     } catch (error) {
-      console.error(
-        "SAVE JOB ERROR:",
-        error
-      );
+      console.error("SAVE JOB ERROR:", error);
 
-      alert(
-        error.message ||
-        "Something went wrong."
-      );
-
+      alert(error.message || "Something went wrong.");
     } finally {
       setSaving(false);
     }
   }
 
   // -----------------------------------
-// CALCULATED DISPLAY TOTALS
-// -----------------------------------
+  // CALCULATED DISPLAY TOTALS
+  // -----------------------------------
 
-const allServicesTotal = services.reduce(
-  (sum, serviceName) => {
-    const details = serviceDetails[serviceName] || {};
+  // All services total includes WTT.
+  const allServicesTotal = services.reduce(
+    (sum, serviceName) => {
+      const details = serviceDetails[serviceName] || {};
+      const price = Number(details.price || 0);
+      const quantity = Number(details.quantity || 1);
+      const discount = Number(details.discount || 0);
 
-    const price = Number(details.price || 0);
-    const quantity = Number(details.quantity || 1);
-    const discount = Number(details.discount || 0);
+      return sum + Math.max(price * quantity - discount, 0);
+    },
+    0
+  );
 
-    return sum + Math.max(price * quantity - discount, 0);
-  },
-  0
-);
+  // Customer amount follows the same rule as Save and Recalculate.
+  const customerNetAmount = calculateCustomerTotal(
+    services,
+    serviceDetails,
+    source === "Other" ? otherSource.trim() : source
+  );
 
-// Customer total after service discounts.
-// WTT is excluded for Teyseer jobs.
-const customerServicesTotal = services.reduce(
-  (sum, serviceName) => {
-    if (
-      isTeyseerSource(source) &&
-      isWttService(serviceName)
-    ) {
-      return sum;
-    }
+  const totalServiceDiscount = services.reduce(
+    (sum, serviceName) => {
+      const details = serviceDetails[serviceName] || {};
+      return sum + Number(details.discount || 0);
+    },
+    0
+  );
 
-    const details = serviceDetails[serviceName] || {};
+  const totalPaid = payments.reduce(
+    (sum, payment) => sum + Number(payment.amount || 0),
+    0
+  );
 
-    const price = Number(details.price || 0);
-    const quantity = Number(details.quantity || 1);
-    const discount = Number(details.discount || 0);
+  const customerBalance = Math.max(
+    customerNetAmount - totalPaid,
+    0
+  );
 
-    return (
-      sum +
-      Math.max(
-        price * quantity - discount,
-        0
-      )
-    );
-  },
-  0
-);
-
-// Total discounts for display/internal tracking
-const totalServiceDiscount = services.reduce(
-  (sum, serviceName) => {
-    const details = serviceDetails[serviceName] || {};
-
-    return (
-      sum +
-      Number(details.discount || 0)
-    );
-  },
-  0
-);
-
-// IMPORTANT:
-// Do NOT subtract totalServiceDiscount again.
-// The discount was already removed above.
-const customerNetAmount = Math.max(
-  customerServicesTotal,
-  0
-);
-
-const totalPaid = payments.reduce(
-  (sum, payment) =>
-    sum + Number(payment.amount || 0),
-  0
-);
-
-const customerBalance = Math.max(
-  customerNetAmount - totalPaid,
-  0
-);
   // -----------------------------------
   // LOADING
   // -----------------------------------
 
   if (loading) {
-    return (
-      <div style={styles.loading}>
-        Loading...
-      </div>
-    );
+    return <div style={styles.loading}>Loading...</div>;
   }
 
   // -----------------------------------
@@ -958,585 +753,338 @@ const customerBalance = Math.max(
 
   return (
     <div style={styles.page}>
-
       <div style={styles.container}>
-
-        <h2 style={styles.title}>
-          Edit Job #{id}
-        </h2>
+        <h2 style={styles.title}>Edit Job #{id}</h2>
 
         {/* CUSTOMER */}
-
         <div style={styles.section}>
-
-          <h3 style={styles.sectionTitle}>
-            Customer Information
-          </h3>
+          <h3 style={styles.sectionTitle}>Customer Information</h3>
 
           <label>Customer</label>
-
           <input
             value={customer}
-            onChange={(e) =>
-              setCustomer(e.target.value)
-            }
+            onChange={(e) => setCustomer(e.target.value)}
             placeholder="Customer"
             style={styles.input}
           />
 
           <label>Phone</label>
-
           <input
             value={phone}
-            onChange={(e) =>
-              setPhone(e.target.value)
-            }
+            onChange={(e) => setPhone(e.target.value)}
             placeholder="Phone"
             style={styles.input}
           />
 
           <label>Job Date</label>
-
           <input
             type="date"
             value={jobDate}
-            onChange={(e) =>
-              setJobDate(e.target.value)
-            }
+            onChange={(e) => setJobDate(e.target.value)}
             style={styles.input}
           />
-
         </div>
 
         {/* VEHICLE */}
-
         <div style={styles.section}>
-
-          <h3 style={styles.sectionTitle}>
-            Vehicle Information
-          </h3>
+          <h3 style={styles.sectionTitle}>Vehicle Information</h3>
 
           <input
             value={carModel}
-            onChange={(e) =>
-              setCarModel(e.target.value)
-            }
+            onChange={(e) => setCarModel(e.target.value)}
             placeholder="Model"
             style={styles.input}
           />
 
           <input
             value={carType}
-            onChange={(e) =>
-              setCarType(e.target.value)
-            }
+            onChange={(e) => setCarType(e.target.value)}
             placeholder="Type"
             style={styles.input}
           />
 
           <input
             value={color}
-            onChange={(e) =>
-              setColor(e.target.value)
-            }
+            onChange={(e) => setColor(e.target.value)}
             placeholder="Color"
             style={styles.input}
           />
 
           <input
             value={plate}
-            onChange={(e) =>
-              setPlate(e.target.value)
-            }
+            onChange={(e) => setPlate(e.target.value)}
             placeholder="Plate"
             style={styles.input}
           />
-
         </div>
 
         {/* SOURCE */}
-
         <div style={styles.section}>
-
-          <h3 style={styles.sectionTitle}>
-            Source
-          </h3>
+          <h3 style={styles.sectionTitle}>Source</h3>
 
           <select
             value={source}
-            onChange={(e) =>
-              setSource(e.target.value)
-            }
+            onChange={(e) => setSource(e.target.value)}
             style={styles.select}
           >
-
-            <option value="">
-              Select Source
-            </option>
-
-            <option value="Teyseer Motors">
-              Teyseer Motors
-            </option>
-
+            <option value="">Select Source</option>
+            <option value="Teyseer Motors">Teyseer Motors</option>
             <option value="Teyseer Motors - Bahaa">
               Teyseer Motors - Bahaa
             </option>
-
             <option value="Teyseer Motors - Salah">
               Teyseer Motors - Salah
             </option>
-<option value="Teyseer Motors - Abdou">
-  Teyseer Motors - Abdou
-</option>
-            <option value="Bahaa">
-              Bahaa
+            <option value="Teyseer Motors - Abdou">
+              Teyseer Motors - Abdou
             </option>
-
-            <option value="Salah">
-              Salah
-            </option>
-<option value="Abdou">
-  Abdou
-</option>
-            <option value="Walk-in">
-              Walk-in
-            </option>
-
-            <option value="Other">
-              Other
-            </option>
-
+            <option value="Bahaa">Bahaa</option>
+            <option value="Salah">Salah</option>
+            <option value="Walk-in">Walk-in</option>
+            <option value="Other">Other</option>
           </select>
 
           {source === "Other" && (
             <input
               value={otherSource}
-              onChange={(e) =>
-                setOtherSource(e.target.value)
-              }
+              onChange={(e) => setOtherSource(e.target.value)}
               placeholder="Enter source"
               style={styles.input}
             />
           )}
-
         </div>
 
         {/* TEYSEER NOTICE */}
-
         {isTeyseerSource(source) && (
           <div style={styles.teyseerBox}>
-
-            <strong>
-              TEYSEER JOB
-            </strong>
-
+            <strong>TEYSEER JOB</strong>
             <span>
-              WTT is paid through Teyseer and is
-              excluded from the customer's amount.
+              {isFullTeyseerSource(source)
+                ? "All services are paid through Teyseer. Customer net amount is QAR 0."
+                : "WTT is paid through Teyseer and excluded from the customer's payable amount. Other services remain payable."}
             </span>
-
           </div>
         )}
 
         {/* SERVICES */}
-
         <div style={styles.section}>
-
-          <h3 style={styles.sectionTitle}>
-            Services
-          </h3>
+          <h3 style={styles.sectionTitle}>Services</h3>
 
           {serviceList.map((item) => {
+            const selected = services.includes(item.name);
 
-            const selected =
-              services.includes(item.name);
+            const details = serviceDetails[item.name] || {
+              price: item.price || 0,
+              discount: 0,
+              quantity: 1
+            };
 
-            const details =
-              serviceDetails[item.name] || {
-                price: item.price || 0,
-                discount: 0,
-                quantity: 1
-              };
-
-            const isWtt =
-              isWttService(item.name);
-
+            const isWtt = isWttService(item.name);
             const isTeyseerWtt =
-              isTeyseerSource(source) &&
-              isWtt;
+              isTeyseerSource(source) && isWtt;
 
             return (
-              <div
-                key={item.id}
-                style={styles.serviceBox}
-              >
-
+              <div key={item.id} style={styles.serviceBox}>
                 <label style={styles.serviceLabel}>
-
                   <input
                     type="checkbox"
                     checked={selected}
-                    onChange={() =>
-                      toggleService(item)
-                    }
+                    onChange={() => toggleService(item)}
                   />
 
-                  <span>
-                    {item.name}
-                  </span>
+                  <span>{item.name}</span>
 
                   {isTeyseerWtt && (
-                    <span
-                      style={
-                        styles.teyseerLabel
-                      }
-                    >
+                    <span style={styles.teyseerLabel}>
                       Paid through Teyseer
                     </span>
                   )}
-
                 </label>
 
                 {selected && (
-                  <div
-                    style={
-                      styles.serviceDetails
-                    }
-                  >
-
-                    <label>
-                      Price
-                    </label>
-
+                  <div style={styles.serviceDetails}>
+                    <label>Price</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={
-                        details.price || 0
-                      }
+                      value={details.price ?? 0}
                       onChange={(e) =>
-                        updateServicePrice(
-                          item.name,
-                          e.target.value
-                        )
+                        updateServicePrice(item.name, e.target.value)
                       }
                       style={styles.input}
                     />
 
-                    <label>
-                      Quantity
-                    </label>
-
+                    <label>Quantity</label>
                     <input
                       type="number"
                       min="1"
                       step="1"
-                      value={
-                        details.quantity || 1
-                      }
+                      value={details.quantity ?? 1}
                       onChange={(e) =>
-                        setServiceDetails(
-                          (prev) => ({
-                            ...prev,
-                            [item.name]: {
-                              ...(prev[
-                                item.name
-                              ] || {}),
-                              quantity:
-                                Number(
-                                  e.target.value
-                                ) || 1
-                            }
-                          })
-                        )
+                        setServiceDetails((prev) => ({
+                          ...prev,
+                          [item.name]: {
+                            ...(prev[item.name] || {}),
+                            quantity: Number(e.target.value) || 1
+                          }
+                        }))
                       }
                       style={styles.input}
                     />
 
-                    <label>
-                      Discount
-                    </label>
-
+                    <label>Discount</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={
-                        details.discount || 0
-                      }
+                      value={details.discount ?? 0}
                       onChange={(e) =>
-                        updateServiceDiscount(
-                          item.name,
-                          e.target.value
-                        )
+                        updateServiceDiscount(item.name, e.target.value)
                       }
                       style={styles.input}
                     />
 
-                    <div
-                      style={
-                        styles.finalService
-                      }
-                    >
+                    <div style={styles.finalService}>
                       Final: QAR{" "}
                       {Math.max(
-                        Number(
-                          details.price || 0
-                        ) *
-                          Number(
-                            details.quantity || 1
-                          ) -
-                          Number(
-                            details.discount || 0
-                          ),
+                        Number(details.price || 0) *
+                          Number(details.quantity || 1) -
+                          Number(details.discount || 0),
                         0
                       ).toFixed(2)}
                     </div>
 
                     {isTeyseerWtt && (
-                      <div
-                        style={
-                          styles.teyseerServiceNotice
-                        }
-                      >
-                        This WTT amount is paid by
-                        Teyseer and is not included
-                        in the customer's balance.
+                      <div style={styles.teyseerServiceNotice}>
+                        This WTT amount is paid by Teyseer and is not
+                        included in the customer's balance.
                       </div>
                     )}
-
                   </div>
                 )}
-
               </div>
             );
           })}
-
         </div>
 
         {/* TOTAL */}
-
         <div style={styles.totalBox}>
-
           <div style={styles.total}>
-
-            All Services Total: QAR{" "}
-
-            {allServicesTotal.toFixed(2)}
-
+            All Services Total: QAR {allServicesTotal.toFixed(2)}
           </div>
 
           {isTeyseerSource(source) && (
-            <div
-              style={
-                styles.teyseerTotalNotice
-              }
-            >
-              WTT is included in the internal
-              total but paid through Teyseer.
+            <div style={styles.teyseerTotalNotice}>
+              {isFullTeyseerSource(source)
+                ? "All services are paid through Teyseer. Customer net amount is QAR 0."
+                : "WTT is included in the internal total but paid through Teyseer and excluded from the customer amount."}
             </div>
           )}
 
-          <div
-            style={
-              styles.customerTotal
-            }
-          >
-            Customer Net Amount: QAR{" "}
-            {customerNetAmount.toFixed(2)}
+          <div style={styles.customerTotal}>
+            Customer Net Amount: QAR {customerNetAmount.toFixed(2)}
           </div>
 
-          <div
-            style={
-              styles.customerBalance
-            }
-          >
-            Customer Balance: QAR{" "}
-            {customerBalance.toFixed(2)}
+          <div style={styles.customerBalance}>
+            Customer Balance: QAR {customerBalance.toFixed(2)}
           </div>
 
+          <div style={{ color: "#aaa", marginTop: "8px", fontSize: "13px" }}>
+            Total service discounts: QAR {totalServiceDiscount.toFixed(2)}
+          </div>
         </div>
 
         {/* PAYMENT HISTORY */}
-
         <div style={styles.paymentBox}>
-
-          <h3 style={styles.sectionTitle}>
-            Payment History
-          </h3>
+          <h3 style={styles.sectionTitle}>Payment History</h3>
 
           {payments.length === 0 ? (
-
-            <p style={styles.noPayments}>
-              No payments recorded.
-            </p>
-
+            <p style={styles.noPayments}>No payments recorded.</p>
           ) : (
-
             payments.map((payment) => (
-
-              <div
-                key={payment.id}
-                style={styles.paymentRow}
-              >
-
+              <div key={payment.id} style={styles.paymentRow}>
                 <div>
-
                   <strong>
-                    QAR{" "}
-                    {Number(
-                      payment.amount || 0
-                    ).toFixed(2)}
+                    QAR {Number(payment.amount || 0).toFixed(2)}
                   </strong>
 
                   <div>
-                    Method:{" "}
-                    {payment.payment_method ||
-                      "N/A"}
+                    Method: {payment.payment_method || "N/A"}
                   </div>
 
                   <div>
-                    Date:{" "}
-                    {payment.payment_date ||
-                      "N/A"}
+                    Date: {payment.payment_date || "N/A"}
                   </div>
 
                   {payment.notes && (
-                    <div>
-                      Notes:{" "}
-                      {payment.notes}
-                    </div>
+                    <div>Notes: {payment.notes}</div>
                   )}
-
                 </div>
 
                 <button
                   type="button"
-                  onClick={() =>
-                    deletePayment(
-                      payment.id
-                    )
-                  }
-                  style={
-                    styles.deletePaymentButton
-                  }
+                  onClick={() => deletePayment(payment.id)}
+                  style={styles.deletePaymentButton}
                 >
                   🗑 Delete
                 </button>
-
               </div>
-
             ))
           )}
-
         </div>
 
         {/* MAKE PAYMENT */}
-
         <div style={styles.makePaymentBox}>
-
-          <h3 style={styles.sectionTitle}>
-            Make Payment
-          </h3>
+          <h3 style={styles.sectionTitle}>Make Payment</h3>
 
           <p style={styles.paymentInfo}>
-            If the customer has not paid yet,
-            leave Payment Amount empty.
+            If the customer has not paid yet, leave Payment Amount empty.
           </p>
 
-          <label>
-            Payment Amount
-          </label>
-
+          <label>Payment Amount</label>
           <input
             type="number"
             min="0"
             step="0.01"
             value={paymentAmount}
-            onChange={(e) =>
-              setPaymentAmount(
-                e.target.value
-              )
-            }
+            onChange={(e) => setPaymentAmount(e.target.value)}
             placeholder="Enter payment amount"
             style={styles.input}
           />
 
-          <label>
-            Payment Method
-          </label>
-
+          <label>Payment Method</label>
           <select
             value={paymentMethod}
-            onChange={(e) =>
-              setPaymentMethod(
-                e.target.value
-              )
-            }
+            onChange={(e) => setPaymentMethod(e.target.value)}
             style={styles.select}
           >
-
-            <option value="">
-              Select Payment Method
-            </option>
-
-            <option value="Cash">
-              Cash
-            </option>
-
-            <option value="Visa">
-              Visa
-            </option>
-
-            <option value="Mastercard">
-              Mastercard
-            </option>
-
-            <option value="PayLater">
-              PayLater
-            </option>
-
-            <option value="Bank Transfer">
-              Bank Transfer
-            </option>
-
+            <option value="">Select Payment Method</option>
+            <option value="Cash">Cash</option>
+            <option value="Visa">Visa</option>
+            <option value="Mastercard">Mastercard</option>
+            <option value="PayLater">PayLater</option>
+            <option value="Bank Transfer">Bank Transfer</option>
           </select>
 
-          <label>
-            Payment Date
-          </label>
-
+          <label>Payment Date</label>
           <input
             type="date"
             value={paymentDate}
-            onChange={(e) =>
-              setPaymentDate(
-                e.target.value
-              )
-            }
+            onChange={(e) => setPaymentDate(e.target.value)}
             style={styles.input}
           />
 
-          <label>
-            Notes
-          </label>
-
+          <label>Notes</label>
           <input
             value={paymentNotes}
-            onChange={(e) =>
-              setPaymentNotes(
-                e.target.value
-              )
-            }
+            onChange={(e) => setPaymentNotes(e.target.value)}
             placeholder="Payment notes"
             style={styles.input}
           />
-
         </div>
 
         {/* SAVE */}
-
         <button
           onClick={save}
           disabled={saving}
@@ -1545,15 +1093,9 @@ const customerBalance = Math.max(
             opacity: saving ? 0.6 : 1
           }}
         >
-
-          {saving
-            ? "SAVING..."
-            : "SAVE CHANGES"}
-
+          {saving ? "SAVING..." : "SAVE CHANGES"}
         </button>
-
       </div>
-
     </div>
   );
 }
@@ -1563,7 +1105,6 @@ const customerBalance = Math.max(
 // -----------------------------------
 
 const styles = {
-
   page: {
     minHeight: "100vh",
     padding: "30px",
@@ -1790,7 +1331,6 @@ const styles = {
     color: "#d4af37",
     fontSize: "20px"
   }
-
 };
 
 export default EditJob;
