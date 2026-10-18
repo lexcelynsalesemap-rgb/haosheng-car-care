@@ -168,6 +168,66 @@ useEffect(() => {
   }
 
   // -----------------------------------
+  // CUSTOMER BALANCE — MATCH INVOICE.JSX
+  // -----------------------------------
+
+  function getInvoiceCustomerBalance(job) {
+    const source = String(job.source || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+    // Exact Teyseer Motors: Teyseer covers every service.
+    const isFullTeyseer = source === "teyseer motors";
+
+    // For Teyseer Motors - Salah/Bahaa/Abdou, Teyseer covers WTT only.
+    const isTeyseer =
+      isFullTeyseer ||
+      source === "teyseer motors - salah" ||
+      source === "teyseer motors-salah" ||
+      source === "teyseer-salah" ||
+      source === "teyseer motors - bahaa" ||
+      source === "teyseer motors-bahaa" ||
+      source === "teyseer-bahaa" ||
+      source === "teyseer motors - abdou" ||
+      source === "teyseer motors-abdou" ||
+      source === "teyseer-abdou";
+
+    const services = Array.isArray(job.services)
+      ? job.services
+      : typeof job.services === "string" && job.services.trim()
+      ? [job.services.trim()]
+      : [];
+
+    // This matches Invoice.jsx: calculate customer-paid services only,
+    // subtract each service discount, and exclude Teyseer-covered WTT.
+    const customerNetAmount = isFullTeyseer
+      ? 0
+      : services.reduce((total, service) => {
+          const serviceName =
+            typeof service === "string"
+              ? service
+              : service?.name || service?.service_name || service?.title || "";
+
+          const details = job.serviceDetails?.[serviceName] || {};
+          const isWTT = serviceName.toLowerCase().includes("wtt");
+
+          if (isTeyseer && isWTT) {
+            return total;
+          }
+
+          const price = Number(details.price) || 0;
+          const quantity = Number(details.quantity) || 1;
+          const discount = Number(details.discount) || 0;
+
+          return total + Math.max(price * quantity - discount, 0);
+        }, 0);
+
+    // Invoice net amount less the deposit already paid by the customer.
+    return Math.max(customerNetAmount - (Number(job.deposit) || 0), 0);
+  }
+
+  // -----------------------------------
   // FILTER JOBS
   // -----------------------------------
 
@@ -408,22 +468,17 @@ useEffect(() => {
 
             </div>
 
-            {/* BALANCE */}
+            {/* BALANCE — MATCHES INVOICE TEYSEER CALCULATION */}
 
             <p style={styles.money}>
-
               💰 Balance: QAR{" "}
-
-              {Number(
-                job.balance || 0
-              ).toLocaleString(
+              {getInvoiceCustomerBalance(job).toLocaleString(
                 "en-US",
                 {
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 2
                 }
               )}
-
             </p>
 
             {/* SOURCE */}

@@ -162,7 +162,15 @@ function JobDetails() {
         ? currentJob.serviceDetails
         : {};
 
-    const source = currentJob.source || "";
+    const source = String(currentJob.source || "").trim();
+
+    // Match Invoice.jsx:
+    // All services for the exact "Teyseer Motors" source are paid through Teyseer.
+    // For Salah/Bahaa sources, WTT is paid through Teyseer, while other services
+    // remain customer-payable after service-level discounts.
+    if (source === "Teyseer Motors") {
+      return 0;
+    }
 
     const total = services.reduce(
       (sum, serviceName) => {
@@ -343,92 +351,25 @@ function JobDetails() {
   // -----------------------------------
 
   async function saveTechnicians(service) {
-  try {
-    const jobId = Number(id);
-
-    if (!jobId) {
-      alert("Invalid Job ID");
-      return;
-    }
-
-    if (!service || !String(service).trim()) {
-      alert("Invalid service name");
-      return;
-    }
-
-    const serviceName = String(service).trim();
-
-    // -----------------------------------
-    // FIND JOB SERVICE
-    // -----------------------------------
-
-    const { data: existingServices, error: findError } =
+    const { data: jobService, error } =
       await supabase
         .from("job_services")
-        .select("id, job_id, service_name")
-        .eq("job_id", jobId)
-        .eq("service_name", serviceName)
-        .limit(1);
+        .select("id")
+        .eq("job_id", Number(id))
+        .eq("service_name", service)
+        .single();
 
-    if (findError) {
+    if (error || !jobService) {
       console.error(
-        "FIND JOB SERVICE ERROR:",
-        findError
+        "SERVICE NOT FOUND:",
+        error
       );
 
-      alert(
-        "Could not find service:\n\n" +
-        findError.message
-      );
-
+      alert("Service not found");
       return;
     }
 
-    let jobService = existingServices?.[0];
-
-    // -----------------------------------
-    // CREATE JOB SERVICE IF MISSING
-    // -----------------------------------
-
-    if (!jobService) {
-      console.warn(
-        "JOB SERVICE NOT FOUND - CREATING:",
-        serviceName
-      );
-
-      const { data: newJobService, error: createError } =
-        await supabase
-          .from("job_services")
-          .insert([
-            {
-              job_id: jobId,
-              service_name: serviceName
-            }
-          ])
-          .select("id, job_id, service_name")
-          .single();
-
-      if (createError) {
-        console.error(
-          "CREATE JOB SERVICE ERROR:",
-          createError
-        );
-
-        alert(
-          "The service exists in the job, but its job_services record is missing.\n\n" +
-          createError.message
-        );
-
-        return;
-      }
-
-      jobService = newJobService;
-    }
-
-    // -----------------------------------
-    // DELETE OLD TECHNICIAN ASSIGNMENTS
-    // -----------------------------------
-
+    // Delete old assignments
     const { error: deleteError } =
       await supabase
         .from("service_technicians")
@@ -441,18 +382,11 @@ function JobDetails() {
         deleteError
       );
 
-      alert(
-        "Could not remove previous technicians:\n\n" +
-        deleteError.message
-      );
-
+      alert(deleteError.message);
       return;
     }
 
-    // -----------------------------------
-    // CREATE NEW TECHNICIAN ASSIGNMENTS
-    // -----------------------------------
-
+    // Create new assignments
     const rows = selectedTechs.map((tech) => ({
       service_id: jobService.id,
       technician_id: tech.id,
@@ -473,40 +407,19 @@ function JobDetails() {
           insertError
         );
 
-        alert(
-          "Could not save technicians:\n\n" +
-          insertError.message
-        );
-
+        alert(insertError.message);
         return;
       }
     }
-
-    // -----------------------------------
-    // REFRESH
-    // -----------------------------------
 
     await loadServiceTechnicians();
 
     setEditingService(null);
     setSelectedTechs([]);
 
-    alert(
-      `Technicians updated for "${serviceName}"`
-    );
-
-  } catch (error) {
-    console.error(
-      "SAVE TECHNICIANS EXCEPTION:",
-      error
-    );
-
-    alert(
-      "Unexpected error while saving technicians:\n\n" +
-      error.message
-    );
+    alert("Technicians Updated");
   }
-}
+
   // -----------------------------------
   // ADD PAYMENT
   // -----------------------------------
@@ -726,7 +639,7 @@ function JobDetails() {
 
   let paymentStatus = "Unpaid";
 
-  if (balance <= 0 && totalPaid > 0) {
+  if (balance <= 0 && (totalPaid > 0 || customerNetAmount <= 0)) {
     paymentStatus = "Paid";
   } else if (totalPaid > 0) {
     paymentStatus = "Partially Paid";
@@ -1162,21 +1075,16 @@ function JobDetails() {
 
           </p>
 
-          {isTeyseerSource(
-            job.source
-          ) && (
-
-            <div
-              style={
-                styles.teyseerNotice
-              }
-            >
-              WTT is included in the
-              internal services total but
-              excluded from the customer's
-              payable balance.
+          {job.source === "Teyseer Motors" ? (
+            <div style={styles.teyseerNotice}>
+              All services are paid through Teyseer Motors and excluded from the customer's payable balance.
             </div>
-
+          ) : (
+            isTeyseerSource(job.source) && (
+              <div style={styles.teyseerNotice}>
+                WTT is included in the internal services total but excluded from the customer's payable balance. Other services remain customer-payable after service discounts.
+              </div>
+            )
           )}
 
         </div>

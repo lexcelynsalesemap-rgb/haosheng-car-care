@@ -69,10 +69,14 @@ function Invoice() {
   // TEYSEER DETECTION
   // =========================================================
 
+  // Exact Teyseer Motors source: Teyseer pays for every service.
+  // The Salah/Bahaa sources retain the existing WTT-only Teyseer rule.
+  const isFullTeyseerSource =
+    job.source === "Teyseer Motors";
+
   const isTeyseer =
-    job.source === "Teyseer Motors" ||
+    isFullTeyseerSource ||
     job.source === "Teyseer Motors - Bahaa" ||
-    job.source === "Teyseer Motors - Abdou" ||
     job.source === "Teyseer Motors - Salah";
 
   // =========================================================
@@ -114,10 +118,11 @@ function Invoice() {
       const details =
         job.serviceDetails?.[service] || {};
 
-      // WTT is paid through Teyseer.
+      // For the exact Teyseer Motors source, Teyseer covers all services.
+      // For Salah/Bahaa sources, Teyseer covers WTT only.
       if (
-        isTeyseer &&
-        isWTTService(service)
+        isFullTeyseerSource ||
+        (isTeyseer && isWTTService(service))
       ) {
         return total;
       }
@@ -131,58 +136,42 @@ function Invoice() {
   // =========================================================
   // CUSTOMER NET AMOUNT
   //
-  // If this is a Teyseer job:
-  // WTT is NOT included in the customer amount.
-  //
-  // Example:
-  //
-  // WTT       = QAR 1,000
-  // PPF       = QAR 2,000
-  // Customer  = QAR 2,000
-  //
-  // WTT is paid by Teyseer.
+  // Exact "Teyseer Motors" source: every service is paid by Teyseer,
+  // so the customer payable amount is zero.
+  // "Teyseer Motors - Salah/Bahaa": only WTT is paid by Teyseer.
   // =========================================================
 
-  const netAmount =
-    job.services?.reduce((total, service) => {
-      const details =
-        job.serviceDetails?.[service] || {};
+  const netAmount = isFullTeyseerSource
+    ? 0
+    : job.services?.reduce((total, service) => {
+        const details =
+          job.serviceDetails?.[service] || {};
 
-      const isWTT =
-        isWTTService(service);
+        const isWTT =
+          isWTTService(service);
 
-      // -----------------------------------------
-      // TEYSEER WTT
-      // -----------------------------------------
+        // WTT is paid by Teyseer for all Teyseer sources.
+        if (isTeyseer && isWTT) {
+          return total;
+        }
 
-      if (
-        isTeyseer &&
-        isWTT
-      ) {
-        return total;
-      }
+        const price =
+          Number(details.price) || 0;
 
-      // -----------------------------------------
-      // CUSTOMER SERVICE
-      // -----------------------------------------
+        const quantity =
+          Number(details.quantity) || 1;
 
-      const price =
-        Number(details.price) || 0;
+        const discount =
+          Number(details.discount) || 0;
 
-      const quantity =
-        Number(details.quantity) || 1;
-
-      const discount =
-        Number(details.discount) || 0;
-
-      return (
-        total +
-        Math.max(
-          price * quantity - discount,
-          0
-        )
-      );
-    }, 0) || 0;
+        return (
+          total +
+          Math.max(
+            price * quantity - discount,
+            0
+          )
+        );
+      }, 0) || 0;
 
   // =========================================================
   // WTT TOTAL
@@ -466,7 +455,9 @@ function Invoice() {
                         styles.teyseerNoticeTitle
                       }
                     >
-                      WTT
+                      {isFullTeyseerSource
+                        ? "ALL SERVICES"
+                        : "WTT"}
                     </div>
 
                     <div
@@ -474,7 +465,9 @@ function Invoice() {
                         styles.teyseerNoticeText
                       }
                     >
-                      PAID THROUGH TEYSEER
+                      {isFullTeyseerSource
+                        ? "ALL SERVICES PAID THROUGH TEYSEER"
+                        : "PAID THROUGH TEYSEER"}
                     </div>
 
                   </div>
@@ -708,9 +701,9 @@ function Invoice() {
                     0
                   );
 
-                const wttPaidByTeyseer =
-                  isTeyseer &&
-                  isWTTService(service);
+                const servicePaidByTeyseer =
+                  isFullTeyseerSource ||
+                  (isTeyseer && isWTTService(service));
 
                 return (
                   <tr key={index}>
@@ -729,7 +722,7 @@ function Invoice() {
                         {service}
                       </div>
 
-                      {wttPaidByTeyseer && (
+                      {servicePaidByTeyseer && (
                         <div
                           style={
                             styles.wttPaidLabel
@@ -750,7 +743,7 @@ function Invoice() {
                       }
                     >
 
-                      {wttPaidByTeyseer ? (
+                      {servicePaidByTeyseer ? (
                         <span
                           style={
                             styles.paidThroughText
@@ -787,7 +780,7 @@ function Invoice() {
                       }
                     >
 
-                      {wttPaidByTeyseer ? (
+                      {servicePaidByTeyseer ? (
                         "-"
                       ) : (
                         <>
@@ -810,7 +803,7 @@ function Invoice() {
                       }}
                     >
 
-                      {wttPaidByTeyseer ? (
+                      {servicePaidByTeyseer ? (
                         <span
                           style={
                             styles.paidThroughText
