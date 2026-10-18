@@ -1858,64 +1858,67 @@ const customerRows = monthJobs
         ).toFixed(2)
       )
     }));
-
+console.log("REPORTS.JSX ACTIVE — AL NUSOOR SECTION REACHED");
+console.log("MONTH JOBS COUNT:", monthJobs.length);
   /*
   ----------------------------------------------------------
   AL NUSOOR
   ----------------------------------------------------------
   */
+console.log(
+  "AL NUSOOR DEBUG - ALL MONTH JOBS:",
+  monthJobs.map((job) => ({
+    id: job.id,
+    customer: getCustomer(job),
+    date: getJobDate(job),
+    price: job.price,
+    gross: job.gross,
+    discount: job.discount,
+  }))
+);
 
-  const alNusoorRows = monthJobs
-    .filter((job) => {
-      const customer = String(
-        getCustomer(job)
-      ).toLowerCase();
+console.log(
+  "AL NUSOOR MATCH COUNT:",
+  monthJobs.filter((job) => {
+    const customer = String(getCustomer(job)).toLowerCase();
+    return customer.includes("al nusoor") ||
+           customer.includes("alnusoor");
+  }).length
+);
+ console.log(
+  "AL NUSOOR RAW DATA:",
+  alnusoorJobs.map((job) => ({
+    id: job.id,
+    plate: job.plate,
+    price: job.price,
+    gross: job.gross,
+    discount: job.discount,
+    canonicalNet: job.canonicalNet,
+    customerPaid: job.customerPaid,
+    customerBalance: job.customerBalance,
+  }))
+); 
 
-      return (
-        customer.includes("al nusoor") ||
-        customer.includes("alnusoor")
-      );
-    })
-    .map((job) => ({
-  "Customer Came Date": getJobDate(job),
+const alNusoorRows = alnusoorJobs.map((job) => {
+  const discount = number(job?.discount);
+  const net = number(job?.canonicalNet);
 
-  "Payment Date": getJobPaymentDates(job),
-
-  "Job ID": job.id,
-
-
-      Customer: getCustomer(job),
-
-      "Car Make": getMake(job),
-
-      Model: getModel(job),
-
-      Plate: getPlate(job),
-
-      Services: getServiceText(job),
-Gross: Number(
-  (
-    number(job.canonicalNet) +
-    number(job.discount)
-  ).toFixed(2)
-),
-
-Discount: Number(
-  number(job.discount).toFixed(2)
-),
-
-Net: Number(
-  number(job.canonicalNet).toFixed(2)
-),
-
-Paid: Number(
-  number(job.customerPaid).toFixed(2)
-),
-
-Balance: Number(
-  number(job.customerBalance).toFixed(2)
-)
-    }));
+  return {
+    "Customer Came Date": getJobDate(job),
+    "Payment Date": getJobPaymentDates(job),
+    "Job ID": job.id,
+    Customer: getCustomer(job),
+    "Car Make": getMake(job),
+    Model: getModel(job),
+    Plate: getPlate(job),
+    Services: getServiceText(job),
+    Gross: Number((net + discount).toFixed(2)),
+    Discount: Number(discount.toFixed(2)),
+    Net: Number(net.toFixed(2)),
+    Paid: Number(number(job?.customerPaid).toFixed(2)),
+    Balance: Number(number(job?.customerBalance).toFixed(2)),
+  };
+});
 
   /*
   ----------------------------------------------------------
@@ -2548,7 +2551,8 @@ const alnusoorJobs = useMemo(() => {
 ]);
 
 const alnusoorGross = alnusoorJobs.reduce(
-  (sum, job) => sum + number(job?.gross),
+  (sum, job) =>
+    sum + number(job?.canonicalNet) + number(job?.discount),
   0
 );
 
