@@ -1893,29 +1893,28 @@ const customerRows = monthJobs
       Plate: getPlate(job),
 
       Services: getServiceText(job),
+Gross: Number(
+  (
+    number(job.canonicalNet) +
+    number(job.discount)
+  ).toFixed(2)
+),
 
-            Gross: Number(
-        number(job.gross).toFixed(2)
-      ),
+Discount: Number(
+  number(job.discount).toFixed(2)
+),
 
-      Discount: Number(
-        number(job.discount).toFixed(2)
-      ),
+Net: Number(
+  number(job.canonicalNet).toFixed(2)
+),
 
-      Net: Number(
-        (
-          number(job.gross) -
-          number(job.discount)
-        ).toFixed(2)
-      ),
+Paid: Number(
+  number(job.customerPaid).toFixed(2)
+),
 
-      Paid: Number(
-        number(job.customerPaid).toFixed(2)
-      ),
-
-      Balance: Number(
-        number(job.customerBalance).toFixed(2)
-      )
+Balance: Number(
+  number(job.customerBalance).toFixed(2)
+)
     }));
 
   /*
