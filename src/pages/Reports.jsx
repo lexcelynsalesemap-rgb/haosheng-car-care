@@ -1894,7 +1894,7 @@ const customerRows = monthJobs
 
       Services: getServiceText(job),
 
-      Gross: Number(
+            Gross: Number(
         number(job.gross).toFixed(2)
       ),
 
@@ -1903,7 +1903,10 @@ const customerRows = monthJobs
       ),
 
       Net: Number(
-        number(job.canonicalNet).toFixed(2)
+        (
+          number(job.gross) -
+          number(job.discount)
+        ).toFixed(2)
       ),
 
       Paid: Number(
@@ -3349,7 +3352,7 @@ function getJobPrice(job) {
       typeof teyseerInvoiceNumber !==
         "undefined"
         ? teyseerInvoiceNumber
-        : "0006"
+        : "0007"
     ).padStart(4, "0");
 
   const printWindow = window.open(

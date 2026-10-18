@@ -1742,7 +1742,7 @@ function Dashboard() {
 
             <ResponsiveContainer
               width="100%"
-              height={250}
+              height={200}
             >
               <PieChart>
                 <Pie
@@ -1787,7 +1787,7 @@ function Dashboard() {
 
             <ResponsiveContainer
               width="100%"
-              height={250}
+              height={200}
             >
               <BarChart
                 data={salesData}
