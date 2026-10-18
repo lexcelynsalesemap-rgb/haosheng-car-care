@@ -162,10 +162,7 @@ function NewJob() {
     const quantity = Number(details.quantity || 1);
     const serviceDiscount = Number(details.discount || 0);
 
-    const amount = Math.max(
-      price * quantity - serviceDiscount,
-      0
-    );
+    const amount = price * quantity;
 
     return sum + amount;
   }, 0);
@@ -180,6 +177,12 @@ function NewJob() {
     (sum, serviceName) => {
       const details = serviceDetails[serviceName] || {};
 
+      // Exact source "Teyseer Motors": Teyseer pays for every service.
+      if (isPureTeyseerSource(source)) {
+        return sum;
+      }
+
+      // For Teyseer Motors - Salah/Bahaa, only WTT is paid by Teyseer.
       if (
         isTeyseerSource(source) &&
         isWttService(serviceName)
@@ -645,7 +648,9 @@ function NewJob() {
     if (isTeyseer) {
       successMessage +=
         `Teyseer Voucher: ${voucherNumber}\n\n` +
-        `WTT: Paid through Teyseer\n\n` +
+        (isPureTeyseerSource(savedSource)
+          ? `All Services: Paid through Teyseer\n\n`
+          : `WTT: Paid through Teyseer\n\n`) +
         `Customer Net Amount: QAR ${finalNetAmount.toFixed(
           2
         )}`;
@@ -920,9 +925,9 @@ function NewJob() {
             const isWtt =
               isWttService(service);
 
-            const isTeyseerWtt =
-              isTeyseerSource(source) &&
-              isWtt;
+            const isTeyseerPaidService =
+              isPureTeyseerSource(source) ||
+              (isTeyseerSource(source) && isWtt);
 
             return (
               <div
@@ -949,7 +954,7 @@ function NewJob() {
 
                   {service}
 
-                  {isTeyseerWtt && (
+                  {isTeyseerPaidService && (
                     <span
                       style={
                         styles.teyseerLabel
@@ -1287,8 +1292,9 @@ function NewJob() {
 
           {isTeyseerSource(source) && (
             <p style={styles.teyseerNotice}>
-              WTT is paid through Teyseer and is
-              excluded from the customer's amount.
+              {isPureTeyseerSource(source)
+                ? "All services are paid through Teyseer and excluded from the customer's amount."
+                : "WTT is paid through Teyseer and excluded from the customer's amount."}
             </p>
           )}
 
