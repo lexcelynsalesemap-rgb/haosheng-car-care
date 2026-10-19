@@ -2576,11 +2576,6 @@ const alnusoorBalance = alnusoorJobs.reduce(
   0
 );
 
-/*
-============================================================
-PRINT AL NUSOOR
-============================================================
-*/
 
 function printAlnusoorReport() {
   if (alnusoorJobs.length === 0) {
@@ -2592,8 +2587,7 @@ function printAlnusoorReport() {
     .map(
       (job) => `
         <tr>
-          <td>${getJobDate(job) || "-"}</td>
-          <td>${escapeHtml(job?.customer || "-")}</td>
+          <td>${escapeHtml(getJobDate(job) || "-")}</td>
           <td>${escapeHtml(
             job?.carMake ||
             job?.carType ||
@@ -2639,55 +2633,83 @@ function printAlnusoorReport() {
 
         body {
           font-family: Arial, sans-serif;
-          color: #000;
+          color: #111;
           font-size: 10px;
           margin: 0;
-          padding: 10px;
+          padding: 5px;
         }
 
         .header {
           display: flex;
+          align-items: center;
           gap: 18px;
-          margin-bottom: 25px;
+          margin-bottom: 22px;
         }
 
         .logo {
           width: 95px;
-          height: 95px;
+          height: 85px;
           object-fit: contain;
         }
 
         .companyName {
-          font-size: 17px;
+          font-size: 16px;
           font-weight: bold;
           margin-bottom: 8px;
         }
 
         .arabicName {
-          font-size: 15px;
+          font-size: 14px;
           font-weight: bold;
-          margin-bottom: 8px;
+          margin-bottom: 7px;
         }
 
         .address {
-          font-size: 11px;
+          font-size: 10px;
         }
 
-        table {
+        h2 {
+          text-align: center;
+          font-size: 16px;
+          margin: 18px 0;
+        }
+
+        .customer-details {
           width: 100%;
+          margin-bottom: 18px;
           border-collapse: collapse;
         }
 
-        th {
-          text-align: left;
-          padding: 7px;
-          background: #111827;
-          color: white;
+        .customer-details td {
+          padding: 6px 4px;
+          border: none;
         }
 
-        td {
-          padding: 7px;
+        .customer-details td:first-child {
+          width: 155px;
+          font-weight: bold;
+        }
+
+        table.report {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+
+        .report th {
+          background: #111827;
+          color: white;
+          text-align: left;
+          padding: 6px 4px;
+          font-size: 8px;
+          overflow-wrap: anywhere;
+        }
+
+        .report td {
+          padding: 6px 4px;
           border-bottom: 1px solid #ddd;
+          font-size: 8px;
+          overflow-wrap: anywhere;
         }
 
         .money {
@@ -2695,44 +2717,99 @@ function printAlnusoorReport() {
         }
 
         .summary {
-          margin-top: 20px;
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 10px;
+          margin-top: 18px;
+          width: 100%;
+          border-collapse: collapse;
         }
 
-        .box {
-          border: 1px solid #ccc;
-          padding: 10px;
+        .summary td {
+          padding: 6px;
+          border: none;
         }
 
-        .label {
-          font-size: 9px;
-          color: #666;
-        }
-
-        .value {
-          font-size: 14px;
+        .summary td:first-child {
           font-weight: bold;
-          margin-top: 5px;
+          width: 180px;
+        }
+
+        .payment {
+          margin-top: 18px;
+          line-height: 1.8;
+        }
+
+        .signature-panel {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 35px;
+          margin: 35px 10px 0;
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+
+        .signature-box {
+          min-height: 105px;
+          padding: 10px 12px;
+          border: 1px solid #aaa;
+        }
+
+        .signature-title {
+          font-size: 10px;
+          font-weight: bold;
+          text-align: center;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #ccc;
+          margin-bottom: 14px;
+        }
+
+        .signature-line {
+          font-size: 9px;
+          margin-top: 15px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #888;
         }
 
         .footer {
-          margin-top: 40px;
-          border-top: 1px solid #000;
-          padding-top: 10px;
+          margin-top: 25px;
+          padding-top: 9px;
+          border-top: 2px solid #111827;
           text-align: center;
           font-size: 8px;
+          line-height: 1.7;
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+
+        .footer-company {
+          font-size: 10px;
+          font-weight: bold;
+        }
+
+        .footer-confidential {
+          margin-top: 4px;
+          color: #555;
+          font-style: italic;
+        }
+
+        @media print {
+          thead {
+            display: table-header-group;
+          }
+
+          tr {
+            break-inside: avoid;
+          }
+
+          .signature-panel,
+          .footer {
+            break-inside: avoid;
+          }
         }
       </style>
     </head>
 
     <body>
       <div class="header">
-        <img
-          src="${gaLogo}"
-          class="logo"
-        />
+        <img src="${gaLogo}" class="logo" />
 
         <div>
           <div class="companyName">
@@ -2751,92 +2828,110 @@ function printAlnusoorReport() {
 
       <h2>AL NUSOOR CENTER REPORT</h2>
 
-      <p>
-        Period:
-        ${alnusoorStartDate || "All dates"}
-        -
-        ${alnusoorEndDate || "All dates"}
-      </p>
+      <table class="customer-details">
+        <tr>
+          <td>REPORTING PERIOD:</td>
+          <td>
+            ${escapeHtml(alnusoorStartDate || "All dates")}
+            -
+            ${escapeHtml(alnusoorEndDate || "All dates")}
+          </td>
+        </tr>
+        <tr>
+          <td>NAME / COMPANY:</td>
+          <td>AL NUSOOR CENTER</td>
+        </tr>
+        <tr>
+          <td>ADDRESS:</td>
+          <td>SALWA ROAD</td>
+        </tr>
+        <tr>
+          <td>CONTACT NUMBER:</td>
+          <td>30124444</td>
+        </tr>
+      </table>
 
-      <table>
+      <table class="report">
         <thead>
           <tr>
             <th>DATE</th>
-            <th>CUSTOMER</th>
-            <th>CAR</th>
-            <th>PLATE</th>
-            <th>GROSS</th>
+            <th>CAR MAKE</th>
+            <th>PLATE NUMBER</th>
+            <th>PRICE</th>
             <th>DISCOUNT</th>
-            <th>NET</th>
+            <th>NET TOTAL</th>
             <th>PAID</th>
             <th>BALANCE</th>
           </tr>
         </thead>
-
         <tbody>
           ${rows}
         </tbody>
       </table>
 
-      <div class="summary">
+      <table class="summary">
+        <tr>
+          <td>AMOUNT:</td>
+          <td class="money">QAR ${money(alnusoorGross)}</td>
+        </tr>
+        <tr>
+          <td>TOTAL DISCOUNT:</td>
+          <td class="money">QAR ${money(alnusoorDiscount)}</td>
+        </tr>
+        <tr>
+          <td>NET AMOUNT:</td>
+          <td class="money">QAR ${money(alnusoorNet)}</td>
+        </tr>
+        <tr>
+          <td>TOTAL PAID:</td>
+          <td class="money">QAR ${money(alnusoorPaid)}</td>
+        </tr>
+        <tr>
+          <td>OUTSTANDING BALANCE:</td>
+          <td class="money">QAR ${money(alnusoorBalance)}</td>
+        </tr>
+      </table>
 
-        <div class="box">
-          <div class="label">CARS</div>
-          <div class="value">
-            ${alnusoorJobs.length}
-          </div>
+      <div class="payment">
+        <strong>PAYMENT METHOD:</strong><br />
+        CASH / VISA / MASTERCARD / AMEX / NAPS
+      </div>
+
+      <div class="signature-panel">
+        <div class="signature-box">
+          <div class="signature-title">PREPARED BY</div>
+          <div class="signature-line">Name:</div>
+          <div class="signature-line">Signature:</div>
+          <div class="signature-line">Date:</div>
         </div>
 
-        <div class="box">
-          <div class="label">GROSS</div>
-          <div class="value">
-            QAR ${money(alnusoorGross)}
-          </div>
+        <div class="signature-box">
+          <div class="signature-title">RECEIVED / APPROVED BY</div>
+          <div class="signature-line">Name:</div>
+          <div class="signature-line">Signature:</div>
+          <div class="signature-line">Date:</div>
         </div>
-
-        <div class="box">
-          <div class="label">DISCOUNT</div>
-          <div class="value">
-            QAR ${money(alnusoorDiscount)}
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="label">NET</div>
-          <div class="value">
-            QAR ${money(alnusoorNet)}
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="label">PAID</div>
-          <div class="value">
-            QAR ${money(alnusoorPaid)}
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="label">BALANCE</div>
-          <div class="value">
-            QAR ${money(alnusoorBalance)}
-          </div>
-        </div>
-
       </div>
 
       <div class="footer">
-        <strong>
+        <div class="footer-company">
+          HAOSHENG CAR SERVICE AND ACCESSORIES
+        </div>
+
+        <div>
           Tel: +974 4441 5866 |
-          C.R.NO: 199725 |
-          E-mail: info@haoshengcar.com
-        </strong>
+          C.R. No: 199725 |
+          Email: info@haoshengcar.com
+        </div>
 
-        <br />
+        <div>
+          Fereej Al Manaseer, Zone 55, Street 340,
+          Building 358, Salwa Road, Doha, Qatar
+        </div>
 
-        Fereej Al Manaseer,
-        Zone 55, St. 340,
-        Bldg 358, Salwa Road,
-        Doha, Qatar
+        <div class="footer-confidential">
+          Confidential - For Internal Use Only
+        </div>
       </div>
     </body>
     </html>
@@ -2844,8 +2939,6 @@ function printAlnusoorReport() {
 
   printWindow.document.close();
 
-  // Give Edge time to finish rendering the real top-level popup
-  // before invoking the native Windows print pipeline.
   setTimeout(() => {
     try {
       printWindow.focus();
@@ -2855,7 +2948,7 @@ function printAlnusoorReport() {
       alert("The report could not be printed. Please try again.");
     }
   }, 800);
-};
+}
 
 
 /*
@@ -4790,299 +4883,681 @@ async function exportTeyseerReportExcel() {
   URL.revokeObjectURL(url);
 }
 
-  /*
-  ============================================================
-  EXPORT AL NUSOOR REPORT TO EXCEL
-  Uses the currently selected Al Nusoor date range.
-  ============================================================
-  */
+ 
+/*
+============================================================
+EXPORT AL NUSOOR REPORT TO EXCEL
+Matches the Al Nusoor print report layout.
+Preserves existing calculations and date filters.
+============================================================
+*/
 
-  async function exportAlnusoorReportExcel() {
-    if (!alnusoorJobs.length) {
-      alert("No Al Nusoor jobs found for the selected date range.");
-      return;
+async function exportAlnusoorReportExcel() {
+  if (!alnusoorJobs.length) {
+    alert("No Al Nusoor jobs found for the selected date range.");
+    return;
+  }
+
+  const sortedJobs = [...alnusoorJobs].sort((a, b) =>
+    String(getJobDate(a) || "").localeCompare(
+      String(getJobDate(b) || "")
+    )
+  );
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = "Haosheng Car Service and Accessories";
+  workbook.subject = "Al Nusoor Center Report";
+  workbook.title = "Al Nusoor Center Report";
+
+  const worksheet = workbook.addWorksheet("Al Nusoor Report");
+
+  // ---------------------------------------------------------
+  // PAGE AND COLUMN SETTINGS
+  // ---------------------------------------------------------
+
+  worksheet.columns = [
+    { key: "date", width: 15 },
+    { key: "make", width: 22 },
+    { key: "plate", width: 16 },
+    { key: "gross", width: 16 },
+    { key: "discount", width: 16 },
+    { key: "net", width: 16 },
+    { key: "paid", width: 16 },
+    { key: "balance", width: 17 },
+  ];
+
+  const columnCount = 8;
+
+  const thinBorder = {
+    top: { style: "thin", color: { argb: "FFD1D5DB" } },
+    left: { style: "thin", color: { argb: "FFD1D5DB" } },
+    bottom: { style: "thin", color: { argb: "FFD1D5DB" } },
+    right: { style: "thin", color: { argb: "FFD1D5DB" } },
+  };
+
+  const moneyFormat = '"QAR " #,##0.00;[Red]-"QAR " #,##0.00';
+
+  const setMergedValue = (
+    range,
+    value,
+    options = {}
+  ) => {
+    worksheet.mergeCells(range);
+
+    const cell = worksheet.getCell(range.split(":")[0]);
+    cell.value = value;
+    cell.font = {
+      name: "Arial",
+      size: 10,
+      ...options.font,
+    };
+    cell.alignment = {
+      vertical: "middle",
+      ...options.alignment,
+    };
+
+    if (options.fill) {
+      cell.fill = options.fill;
     }
 
-    const sortedJobs = [...alnusoorJobs].sort((a, b) =>
-      String(getJobDate(a) || "").localeCompare(
-        String(getJobDate(b) || "")
-      )
+    return cell;
+  };
+
+  // ---------------------------------------------------------
+  // COMPANY HEADER
+  // ---------------------------------------------------------
+
+  // Reserve space for the company logo.
+  worksheet.mergeCells("A1:B5");
+  worksheet.getCell("A1").alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+  setMergedValue(
+    "C1:H1",
+    "HAOSHENG CAR SERVICE AND ACCESSORIES",
+    {
+      font: { size: 17, bold: true },
+      alignment: { horizontal: "center" },
+    }
+  );
+
+  setMergedValue(
+    "C2:H2",
+    "هاوشنغ لخدمات وزينة السيارات",
+    {
+      font: { size: 14, bold: true },
+      alignment: { horizontal: "center" },
+    }
+  );
+
+  setMergedValue(
+    "C3:H3",
+    "Building 358, Salwa Road, Doha - Qatar",
+    {
+      font: { size: 10 },
+      alignment: { horizontal: "center" },
+    }
+  );
+
+  worksheet.getRow(1).height = 27;
+  worksheet.getRow(2).height = 24;
+  worksheet.getRow(3).height = 20;
+  worksheet.getRow(4).height = 8;
+  worksheet.getRow(5).height = 8;
+
+  // Embed the existing company logo, if accessible.
+  // Supports an imported image URL or a data URL.
+  try {
+    if (gaLogo) {
+      let logoDataUrl = gaLogo;
+
+      if (
+        typeof gaLogo === "string" &&
+        !gaLogo.startsWith("data:")
+      ) {
+        const response = await fetch(gaLogo);
+
+        if (!response.ok) {
+          throw new Error("Unable to load company logo.");
+        }
+
+        const blob = await response.blob();
+
+        const reader = new FileReader();
+
+        logoDataUrl = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      if (
+        typeof logoDataUrl === "string" &&
+        logoDataUrl.startsWith("data:image/")
+      ) {
+        const imageMatch = logoDataUrl.match(
+          /^data:image\/(png|jpeg|jpg|gif|webp);base64,/i
+        );
+
+        if (imageMatch) {
+          let extension = imageMatch[1].toLowerCase();
+
+          if (extension === "jpg") {
+            extension = "jpeg";
+          }
+
+          // ExcelJS does not support WebP images in all versions.
+          // If the logo is WebP, leave the logo area blank rather
+          // than risk failing the entire Excel export.
+          if (extension !== "webp") {
+            const imageId = workbook.addImage({
+              base64: logoDataUrl,
+              extension,
+            });
+
+            worksheet.addImage(imageId, {
+              tl: { col: 0.15, row: 0.15 },
+              br: { col: 1.85, row: 4.85 },
+              editAs: "oneCell",
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "The report will export without the logo:",
+      error
     );
+  }
 
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = "Haosheng Car Service and Accessories";
-    workbook.subject = "Al Nusoor Center Report";
-    workbook.title = "Al Nusoor Center Report";
+  // ---------------------------------------------------------
+  // REPORT TITLE
+  // ---------------------------------------------------------
 
-    const worksheet = workbook.addWorksheet("Al Nusoor Report");
+  setMergedValue(
+    "A7:H7",
+    "AL NUSOOR CENTER REPORT",
+    {
+      font: { size: 18, bold: true },
+      alignment: { horizontal: "center" },
+    }
+  );
 
-    worksheet.columns = [
-      { header: "DATE", key: "date", width: 14 },
-      { header: "CUSTOMER", key: "customer", width: 24 },
-      { header: "CAR MAKE", key: "make", width: 16 },
-      { header: "MODEL", key: "model", width: 18 },
-      { header: "PLATE NO.", key: "plate", width: 15 },
-      { header: "DESCRIPTION", key: "description", width: 38 },
-      { header: "GROSS", key: "gross", width: 16 },
-      { header: "DISCOUNT", key: "discount", width: 16 },
-      { header: "NET", key: "net", width: 16 },
-      { header: "PAID", key: "paid", width: 16 },
-      { header: "BALANCE", key: "balance", width: 16 },
-    ];
+  worksheet.getRow(7).height = 32;
 
-    // Company heading, styled to match the Teyseer Excel report.
-    worksheet.mergeCells("A1:K1");
-    worksheet.getCell("A1").value =
-      "HAOSHENG CAR SERVICE AND ACCESSORIES";
-    worksheet.getCell("A1").font = {
-      name: "Arial",
-      size: 18,
-      bold: true,
-    };
-    worksheet.getCell("A1").alignment = {
-      horizontal: "center",
-      vertical: "middle",
-    };
-    worksheet.getRow(1).height = 30;
+  // ---------------------------------------------------------
+  // CUSTOMER DETAILS
+  // ---------------------------------------------------------
 
-    worksheet.mergeCells("A2:K2");
-    worksheet.getCell("A2").value = "هاوشنغ لخدمات وزينة السيارات";
-    worksheet.getCell("A2").font = {
-      name: "Arial",
-      size: 14,
-      bold: true,
-    };
-    worksheet.getCell("A2").alignment = { horizontal: "center" };
+  const customerDetails = [
+    [
+      "REPORTING PERIOD:",
+      `${alnusoorStartDate || "All dates"} - ${
+        alnusoorEndDate || "All dates"
+      }`,
+    ],
+    ["NAME / COMPANY:", "AL NUSOOR CENTER"],
+    ["ADDRESS:", "SALWA ROAD"],
+    ["CONTACT NUMBER:", "30124444"],
+  ];
 
-    worksheet.mergeCells("A3:K3");
-    worksheet.getCell("A3").value =
-      "Building 358, Salwa Road, Doha - Qatar";
-    worksheet.getCell("A3").font = {
-      name: "Arial",
-      size: 9,
-    };
-    worksheet.getCell("A3").alignment = { horizontal: "center" };
+  let detailRow = 9;
 
-    worksheet.mergeCells("A5:K5");
-    worksheet.getCell("A5").value = "AL NUSOOR CENTER REPORT";
-    worksheet.getCell("A5").font = {
-      name: "Arial",
-      size: 20,
-      bold: true,
-    };
-    worksheet.getCell("A5").alignment = { horizontal: "center" };
+  customerDetails.forEach(([label, value]) => {
+    worksheet.mergeCells(`A${detailRow}:B${detailRow}`);
+    worksheet.mergeCells(`C${detailRow}:H${detailRow}`);
 
-    worksheet.mergeCells("A6:K6");
-    worksheet.getCell("A6").value =
-      `Period: ${alnusoorStartDate || "All dates"} to ${alnusoorEndDate || "All dates"}`;
-    worksheet.getCell("A6").font = {
+    const labelCell = worksheet.getCell(`A${detailRow}`);
+    labelCell.value = label;
+    labelCell.font = {
       name: "Arial",
       size: 10,
       bold: true,
     };
-    worksheet.getCell("A6").alignment = { horizontal: "center" };
+    labelCell.alignment = {
+      vertical: "middle",
+    };
 
-    // Summary totals use the same calculations as the on-screen Al Nusoor cards.
-    const summaryLabelRow = 8;
-    const summaryValueRow = 9;
-    const summary = [
-      ["CARS", sortedJobs.length],
-      ["GROSS", alnusoorGross],
-      ["DISCOUNT", alnusoorDiscount],
-      ["NET", alnusoorNet],
-      ["PAID", alnusoorPaid],
-      ["BALANCE", alnusoorBalance],
+    const valueCell = worksheet.getCell(`C${detailRow}`);
+    valueCell.value = value;
+    valueCell.font = {
+      name: "Arial",
+      size: 10,
+    };
+    valueCell.alignment = {
+      vertical: "middle",
+      wrapText: true,
+    };
+
+    worksheet.getRow(detailRow).height = 22;
+
+    detailRow++;
+  });
+
+  // ---------------------------------------------------------
+  // VEHICLE TABLE
+  // ---------------------------------------------------------
+
+  const headerRow = 14;
+
+  const headers = [
+    "DATE",
+    "CAR MAKE",
+    "PLATE NUMBER",
+    "PRICE",
+    "DISCOUNT",
+    "NET TOTAL",
+    "PAID",
+    "BALANCE",
+  ];
+
+  headers.forEach((header, index) => {
+    const cell = worksheet.getCell(
+      headerRow,
+      index + 1
+    );
+
+    cell.value = header;
+    cell.font = {
+      name: "Arial",
+      size: 9,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF111827" },
+    };
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+      wrapText: true,
+    };
+    cell.border = thinBorder;
+  });
+
+  worksheet.getRow(headerRow).height = 30;
+
+  let rowNumber = headerRow + 1;
+
+  sortedJobs.forEach((job) => {
+    const discount = number(job?.discount);
+    const net = number(job?.canonicalNet);
+
+    const gross = Number(
+      (net + discount).toFixed(2)
+    );
+
+    const row = worksheet.getRow(rowNumber);
+
+    row.values = [
+      getJobDate(job) || "-",
+      job?.carMake ||
+        job?.car_make ||
+        job?.carType ||
+        job?.carModel ||
+        "-",
+      job?.plate ||
+        job?.plate_number ||
+        job?.plateNumber ||
+        "-",
+      gross,
+      Number(discount.toFixed(2)),
+      Number(net.toFixed(2)),
+      Number(number(job?.customerPaid).toFixed(2)),
+      Number(number(job?.customerBalance).toFixed(2)),
     ];
-    const summaryRanges = [
-      ["A", "B"],
-      ["C", "D"],
-      ["E", "F"],
-      ["G", "H"],
-      ["I", "J"],
-      ["K", "K"],
-    ];
 
-    summary.forEach(([label, value], index) => {
-      const [firstCol, lastCol] = summaryRanges[index];
-      const labelRange = `${firstCol}${summaryLabelRow}:${lastCol}${summaryLabelRow}`;
-      const valueRange = `${firstCol}${summaryValueRow}:${lastCol}${summaryValueRow}`;
+    row.height = 23;
 
-      if (firstCol !== lastCol) {
-        worksheet.mergeCells(labelRange);
-        worksheet.mergeCells(valueRange);
-      }
+    for (let col = 1; col <= columnCount; col++) {
+      const cell = row.getCell(col);
 
-      const labelCell = worksheet.getCell(`${firstCol}${summaryLabelRow}`);
-      const valueCell = worksheet.getCell(`${firstCol}${summaryValueRow}`);
-      labelCell.value = label;
-      labelCell.font = { name: "Arial", size: 9, bold: true };
-      labelCell.alignment = { horizontal: "center", vertical: "middle" };
-      labelCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFE5E7EB" },
+      cell.font = {
+        name: "Arial",
+        size: 9,
       };
-      valueCell.value = value;
-      valueCell.font = { name: "Arial", size: 10, bold: true };
-      valueCell.alignment = { horizontal: "center", vertical: "middle" };
-      if (index > 0) valueCell.numFmt = '"QAR " #,##0.00';
 
-      [labelCell, valueCell].forEach((cell) => {
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-      });
-    });
-
-    const headerRow = 11;
-    const headers = [
-      "DATE",
-      "CUSTOMER",
-      "CAR MAKE",
-      "MODEL",
-      "PLATE NO.",
-      "DESCRIPTION",
-      "GROSS",
-      "DISCOUNT",
-      "NET",
-      "PAID",
-      "BALANCE",
-    ];
-
-    headers.forEach((header, index) => {
-      const cell = worksheet.getCell(headerRow, index + 1);
-      cell.value = header;
-      cell.font = { name: "Arial", size: 9, bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF111827" },
-      };
       cell.alignment = {
-        horizontal: "center",
         vertical: "middle",
+        horizontal: col >= 4 ? "right" : "left",
         wrapText: true,
       };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-    });
 
-    let rowNumber = headerRow + 1;
+      cell.border = thinBorder;
 
-    sortedJobs.forEach((job) => {
-      const discount = number(job?.discount);
-      const net = number(job?.canonicalNet);
-      const row = worksheet.getRow(rowNumber);
+      if (col >= 4) {
+        cell.numFmt = moneyFormat;
+      }
+    }
 
-      row.values = [
-        getJobDate(job) || "-",
-        job?.customer || job?.customer_name || "-",
-        job?.carMake || job?.car_make || job?.carType || job?.carModel || "-",
-        job?.carModel || job?.car_model || job?.model || "-",
-        job?.plate || job?.plate_number || job?.plateNumber || "-",
-        getJobServicesDescription(job, jobServices) || "-",
-        Number((net + discount).toFixed(2)),
-        Number(discount.toFixed(2)),
-        Number(net.toFixed(2)),
-        Number(number(job?.customerPaid).toFixed(2)),
-        Number(number(job?.customerBalance).toFixed(2)),
-      ];
+    rowNumber++;
+  });
 
-      row.height = 28;
-      row.eachCell((cell, columnNumber) => {
-        cell.font = { name: "Arial", size: 9 };
-        cell.alignment = {
-          vertical: "top",
-          wrapText: true,
-          horizontal: columnNumber >= 7 ? "right" : "left",
-        };
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-        if (columnNumber >= 7) {
-          cell.numFmt = '"QAR " #,##0.00';
-        }
-      });
+  // ---------------------------------------------------------
+  // FINANCIAL TOTALS
+  // ---------------------------------------------------------
 
-      rowNumber++;
-    });
+  rowNumber += 1;
 
-    // Totals row for the detailed table.
-    const totalRow = worksheet.getRow(rowNumber);
-    totalRow.getCell(1).value = "TOTAL";
-    worksheet.mergeCells(`A${rowNumber}:F${rowNumber}`);
-    totalRow.getCell(1).alignment = { horizontal: "right" };
-    totalRow.getCell(1).font = { name: "Arial", size: 10, bold: true };
+  const totals = [
+    ["AMOUNT:", alnusoorGross],
+    ["TOTAL DISCOUNT:", alnusoorDiscount],
+    ["NET AMOUNT:", alnusoorNet],
+    ["TOTAL PAID:", alnusoorPaid],
+    ["OUTSTANDING BALANCE:", alnusoorBalance],
+  ];
 
-    const totalValues = [
-      alnusoorGross,
-      alnusoorDiscount,
-      alnusoorNet,
-      alnusoorPaid,
-      alnusoorBalance,
-    ];
+  totals.forEach(([label, value]) => {
+    worksheet.mergeCells(
+      `A${rowNumber}:C${rowNumber}`
+    );
 
-    totalValues.forEach((value, index) => {
-      const cell = totalRow.getCell(index + 7);
-      cell.value = Number(number(value).toFixed(2));
-      cell.numFmt = '"QAR " #,##0.00';
-      cell.font = { name: "Arial", size: 10, bold: true };
-      cell.alignment = { horizontal: "right" };
-    });
+    worksheet.mergeCells(
+      `D${rowNumber}:H${rowNumber}`
+    );
 
-    totalRow.eachCell((cell) => {
-      cell.border = {
-        top: { style: "double" },
-        bottom: { style: "thin" },
-      };
-    });
-
-    worksheet.autoFilter = {
-      from: { row: headerRow, column: 1 },
-      to: { row: rowNumber - 1, column: 11 },
+    const labelCell = worksheet.getCell(`A${rowNumber}`);
+    labelCell.value = label;
+    labelCell.font = {
+      name: "Arial",
+      size: 10,
+      bold: true,
+    };
+    labelCell.alignment = {
+      vertical: "middle",
     };
 
-    worksheet.views = [{ state: "frozen", ySplit: headerRow, showGridLines: false }];
-    worksheet.pageSetup = {
-      paperSize: 9,
-      orientation: "landscape",
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: {
-        left: 0.25,
-        right: 0.25,
-        top: 0.35,
-        bottom: 0.35,
-        header: 0.15,
-        footer: 0.15,
-      },
+    const valueCell = worksheet.getCell(`D${rowNumber}`);
+    valueCell.value = Number(number(value).toFixed(2));
+    valueCell.numFmt = moneyFormat;
+    valueCell.font = {
+      name: "Arial",
+      size: 10,
+      bold: true,
     };
-    worksheet.pageSetup.printArea = `A1:K${rowNumber}`;
+    valueCell.alignment = {
+      horizontal: "right",
+      vertical: "middle",
+    };
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Al_Nusoor_Report_${alnusoorStartDate || "all"}_to_${alnusoorEndDate || "all"}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    worksheet.getRow(rowNumber).height = 22;
+
+    rowNumber++;
+  });
+
+  // Highlight the final net amount.
+  const netAmountRow = rowNumber - 3;
+
+  for (let col = 1; col <= 8; col++) {
+    worksheet.getCell(netAmountRow, col).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE5E7EB" },
+    };
   }
+
+  // ---------------------------------------------------------
+  // PAYMENT METHOD
+  // ---------------------------------------------------------
+
+  rowNumber += 1;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(`A${rowNumber}`).value =
+    "PAYMENT METHOD:";
+
+  worksheet.getCell(`A${rowNumber}`).font = {
+    name: "Arial",
+    size: 10,
+    bold: true,
+  };
+
+  worksheet.getRow(rowNumber).height = 22;
+
+  rowNumber++;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(`A${rowNumber}`).value =
+    "CASH / VISA / MASTERCARD / AMEX / NAPS";
+
+  worksheet.getCell(`A${rowNumber}`).font = {
+    name: "Arial",
+    size: 9,
+  };
+
+  worksheet.getRow(rowNumber).height = 22;
+
+  // ---------------------------------------------------------
+  // TWO SIGNATURE PANELS
+  // ---------------------------------------------------------
+
+  rowNumber += 2;
+
+  const signatureTop = rowNumber;
+  const signatureBottom = rowNumber + 4;
+
+  worksheet.mergeCells(
+    `A${signatureTop}:D${signatureBottom}`
+  );
+
+  worksheet.mergeCells(
+    `E${signatureTop}:H${signatureBottom}`
+  );
+
+  const signatureBoxes = [
+    {
+      cell: `A${signatureTop}`,
+      title: "PREPARED BY",
+      startCol: 1,
+      endCol: 4,
+    },
+    {
+      cell: `E${signatureTop}`,
+      title: "RECEIVED / APPROVED BY",
+      startCol: 5,
+      endCol: 8,
+    },
+  ];
+
+  signatureBoxes.forEach((signature) => {
+    const cell = worksheet.getCell(signature.cell);
+
+    cell.value =
+      `${signature.title}\n\n` +
+      "Name: __________________________\n\n" +
+      "Signature: ______________________\n\n" +
+      "Date: ___________________________";
+
+    cell.font = {
+      name: "Arial",
+      size: 10,
+      bold: false,
+    };
+
+    cell.alignment = {
+      vertical: "top",
+      horizontal: "left",
+      wrapText: true,
+    };
+
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF999999" } },
+      left: { style: "thin", color: { argb: "FF999999" } },
+      bottom: { style: "thin", color: { argb: "FF999999" } },
+      right: { style: "thin", color: { argb: "FF999999" } },
+    };
+  });
+
+  // The signature cells are merged; set a consistent writing area.
+  for (let r = signatureTop; r <= signatureBottom; r++) {
+    worksheet.getRow(r).height = 23;
+  }
+
+  // ---------------------------------------------------------
+  // COMPANY FOOTER
+  // ---------------------------------------------------------
+
+  rowNumber = signatureBottom + 2;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  const footerTitle = worksheet.getCell(`A${rowNumber}`);
+  footerTitle.value =
+    "HAOSHENG CAR SERVICE AND ACCESSORIES";
+  footerTitle.font = {
+    name: "Arial",
+    size: 10,
+    bold: true,
+  };
+  footerTitle.alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+  worksheet.getRow(rowNumber).height = 21;
+
+  rowNumber++;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(`A${rowNumber}`).value =
+    "Tel: +974 4441 5866 | C.R. No: 199725 | Email: info@haoshengcar.com";
+
+  worksheet.getCell(`A${rowNumber}`).font = {
+    name: "Arial",
+    size: 9,
+  };
+
+  worksheet.getCell(`A${rowNumber}`).alignment = {
+    horizontal: "center",
+    vertical: "middle",
+    wrapText: true,
+  };
+
+  worksheet.getRow(rowNumber).height = 22;
+
+  rowNumber++;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(`A${rowNumber}`).value =
+    "Fereej Al Manaseer, Zone 55, Street 340, Building 358, Salwa Road, Doha, Qatar";
+
+  worksheet.getCell(`A${rowNumber}`).font = {
+    name: "Arial",
+    size: 8,
+  };
+
+  worksheet.getCell(`A${rowNumber}`).alignment = {
+    horizontal: "center",
+    vertical: "middle",
+    wrapText: true,
+  };
+
+  worksheet.getRow(rowNumber).height = 22;
+
+  rowNumber++;
+
+  worksheet.mergeCells(
+    `A${rowNumber}:H${rowNumber}`
+  );
+
+  worksheet.getCell(`A${rowNumber}`).value =
+    "Confidential - For Internal Use Only";
+
+  worksheet.getCell(`A${rowNumber}`).font = {
+    name: "Arial",
+    size: 8,
+    italic: true,
+    color: { argb: "FF666666" },
+  };
+
+  worksheet.getCell(`A${rowNumber}`).alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+  worksheet.getRow(rowNumber).height = 20;
+
+  // ---------------------------------------------------------
+  // PRINT AND PAGE SETTINGS
+  // ---------------------------------------------------------
+
+  worksheet.views = [
+    {
+      state: "normal",
+      showGridLines: false,
+    },
+  ];
+
+  worksheet.pageSetup = {
+    paperSize: 9,
+    orientation: "landscape",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: {
+      left: 0.25,
+      right: 0.25,
+      top: 0.35,
+      bottom: 0.35,
+      header: 0.15,
+      footer: 0.15,
+    },
+  };
+
+  worksheet.pageSetup.printArea = `A1:H${rowNumber}`;
+
+  worksheet.pageSetup.horizontalCentered = true;
+
+  worksheet.pageSetup.printTitlesRow = `${headerRow}:${headerRow}`;
+
+  // ---------------------------------------------------------
+  // DOWNLOAD EXCEL
+  // ---------------------------------------------------------
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  const blob = new Blob([buffer], {
+    type:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+
+  link.download =
+    `Al_Nusoor_Report_${alnusoorStartDate || "all"}_to_${
+      alnusoorEndDate || "all"
+    }.xlsx`;
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
   /*
   ============================================================
