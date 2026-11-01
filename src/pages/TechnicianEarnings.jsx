@@ -1168,10 +1168,10 @@ function TechnicianEarnings() {
 
         @media print {
 
-          @page {
-            size: landscape;
-            margin: 8mm;
-          }
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
 
           html,
           body,
@@ -1267,19 +1267,19 @@ function TechnicianEarnings() {
           }
 
           .earnings-page table {
-            width: 100% !important;
-            min-width: 0 !important;
-            table-layout: auto !important;
-            border-collapse: collapse !important;
-          }
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+  font-size: 7px !important;
+}
 
-          .earnings-page th {
-            background: #eee !important;
-            color: black !important;
-            font-size: 8px !important;
-            padding: 5px !important;
-            border: 1px solid #ccc !important;
-          }
+.earnings-page th,
+.earnings-page td {
+  padding: 4px 2px !important;
+  font-size: 7px !important;
+  overflow-wrap: anywhere !important;
+}
 
           .earnings-page td {
             font-size: 8px !important;
