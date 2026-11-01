@@ -83,9 +83,8 @@ const TEYSEER_SOURCES = [
 ];
 
 const DEFAULT_PENDING = {
-  June: 7000,
-  July: 10000,
-  August: 18700,
+  September: 0,
+  October: 0,
 };
 
 const DEFAULT_PREVIOUS_TEYSEER = 181200;
@@ -738,48 +737,38 @@ const [reportMonth, setReportMonth] = useState(
   */
 
   async function loadReportSettings() {
-    const { data, error } =
-      await supabase
-        .from("report_settings")
-        .select("*");
+  const { data, error } = await supabase
+    .from("report_settings")
+    .select("*");
 
-    if (error) {
-      console.error(
-        "REPORT SETTINGS ERROR:",
-        error
-      );
-      return;
-    }
-
-    if (!data) return;
-
-    
-    const september = data.find(
-      (item) =>
-        item.setting_name ===
-        "September Pending"
-    );
-
-    const teyseer = data.find(
-      (item) =>
-        item.setting_name ===
-        "Previous Teyseer"
-    );
-
-    setManualPending({
-      
-
-        September: september
-        ? number(september.amount)
-        : DEFAULT_PENDING.August,
-    });
-
-    if (teyseer) {
-      setManualTeyseer(
-        number(teyseer.amount)
-      );
-    }
+  if (error) {
+    console.error("REPORT SETTINGS ERROR:", error);
+    return;
   }
+
+  if (!data) return;
+
+  const september = data.find(
+    (item) => item.setting_name === "September Pending"
+  );
+
+  const october = data.find(
+    (item) => item.setting_name === "October Pending"
+  );
+
+  const teyseer = data.find(
+    (item) => item.setting_name === "Previous Teyseer"
+  );
+
+  setManualPending({
+    September: september ? number(september.amount) : 0,
+    October: october ? number(october.amount) : 0,
+  });
+
+  if (teyseer) {
+    setManualTeyseer(number(teyseer.amount));
+  }
+}
 
   async function saveSetting(
     settingName,
@@ -7634,7 +7623,7 @@ td {
                     </th>
 
                     <th className="right">
-                      OTHER
+                      PAYLATER
                     </th>
 
                     <th className="right">
@@ -7685,7 +7674,7 @@ td {
                         <td className="right">
                           QAR{" "}
                           {money(
-                            data.other
+                            data.paylater
                           )}
                         </td>
 
@@ -7956,6 +7945,10 @@ td {
                 [
                   "September",
                   manualPending.September,
+                ],
+                [
+                  "October",
+                  manualPending.October,
                 ],
               ].map(
                 ([month, amount]) => (
