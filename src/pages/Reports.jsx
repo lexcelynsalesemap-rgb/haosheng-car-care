@@ -3,6 +3,7 @@ import { supabase } from "../supabase/client";
 import gaLogo from "../assets/ga-logo.png";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
+import { useTranslation } from "react-i18next";
 
 function isCash(payment) {
   const method = String(
@@ -592,7 +593,9 @@ function Card({
 }
 
 function Reports() {
-  
+  const { t, i18n } = useTranslation();
+const language = i18n.language;
+const isArabic = language === "ar";
   const user = JSON.parse(
     localStorage.getItem("user") || "null"
   );
@@ -6437,7 +6440,7 @@ td {
 
         <div>
           <h1>
-            Financial Reports
+            {t("reports")}
           </h1>
 
           <p>
@@ -6449,16 +6452,36 @@ td {
 
       <div className="tabs">
 
-        {[
-  ["overview", "Overview"],
+     {[
+  [
+    "overview",
+    language === "ar" ? "نظرة عامة" :
+    language === "zh" ? "总览" : "Overview"
+  ],
   ...(isShop1
     ? [
-        ["teyseer", "Teyseer"],
-        ["alnusoor", "Al Nusoor"],
+        [
+          "teyseer",
+          language === "ar" ? "تيسير" :
+          language === "zh" ? "تيسير" : "Teyseer"
+        ],
+        [
+          "alnusoor",
+          language === "ar" ? "النصور" :
+          language === "zh" ? "النصور" : "Al Nusoor"
+        ],
       ]
     : []),
-  ["daily", "Daily"],
-  ["settings", "Settings"],
+  [
+    "daily",
+    language === "ar" ? "يومي" :
+    language === "zh" ? "每日" : "Daily"
+  ],
+  [
+    "settings",
+    language === "ar" ? "الإعدادات" :
+    language === "zh" ? "设置" : "Settings"
+  ],
 ].map(([key, label]) => (
           <button
             key={key}
@@ -6482,83 +6505,106 @@ td {
     <div className="cards">
 
   <Card
-  title="Internal Sales"
-  value={`QAR ${money(
-    financial.netSales
-  )}`}
+  title={
+    language === "ar" ? "المبيعات الداخلية" :
+    language === "zh" ? "内部销售" :
+    "Internal Sales"
+  }
+  value={`QAR ${money(financial.netSales)}`}
   color="blue"
 />
 
 <Card
-  title="Customer Net Sales"
-  value={`QAR ${money(
-    financial.customerSales
-  )}`}
+  title={
+    language === "ar" ? "صافي مبيعات العملاء" :
+    language === "zh" ? "客户净销售额" :
+    "Customer Net Sales"
+  }
+  value={`QAR ${money(financial.customerSales)}`}
   color="purple"
 />
 
 {isShop1 && (
   <Card
-    title="Teyseer Sales"
-    value={`QAR ${money(
-      financial.teyseerSales
-    )}`}
+    title={
+      language === "ar" ? "مبيعات تيسير" :
+      language === "zh" ? "تيسير销售额" :
+      "Teyseer Sales"
+    }
+    value={`QAR ${money(financial.teyseerSales)}`}
     color="orange"
   />
 )}
 
 <Card
-  title="Total Paid"
-  value={`QAR ${money(
-    financial.paid
-  )}`}
+  title={
+    language === "ar" ? "إجمالي المدفوع" :
+    language === "zh" ? "已付款总额" :
+    "Total Paid"
+  }
+  value={`QAR ${money(financial.paid)}`}
   color="green"
 />
 
 <Card
-  title="Customer Balance"
-  value={`QAR ${money(
-    financial.customerBalance
-  )}`}
-  color={
-    financial.customerBalance > 0
-      ? "red"
-      : "green"
+  title={
+    language === "ar" ? "رصيد العملاء" :
+    language === "zh" ? "客户余额" :
+    "Customer Balance"
   }
+  value={`QAR ${money(financial.customerBalance)}`}
+  color={financial.customerBalance > 0 ? "red" : "green"}
 />
 
-  <Card
-    title="Total Cars"
-    value={calculatedJobs.length}
-    color="blue"
-  />
+<Card
+  title={
+    language === "ar" ? "إجمالي السيارات" :
+    language === "zh" ? "车辆总数" :
+    "Total Cars"
+  }
+  value={calculatedJobs.length}
+  color="blue"
+/>
 
-  <Card
-    title="Cars Today"
-    value={carsToday}
-    color="green"
-  />
+<Card
+  title={
+    language === "ar" ? "سيارات اليوم" :
+    language === "zh" ? "今日车辆" :
+    "Cars Today"
+  }
+  value={carsToday}
+  color="green"
+/>
 
-  <Card
-    title="Cars This Week"
-    value={carsThisWeek}
-    color="purple"
-  />
+<Card
+  title={
+    language === "ar" ? "سيارات هذا الأسبوع" :
+    language === "zh" ? "本周车辆" :
+    "Cars This Week"
+  }
+  value={carsThisWeek}
+  color="purple"
+/>
 
-  <Card
-    title="Cars This Month"
-    value={carsThisMonth}
-    color="orange"
-  />
-
+<Card
+  title={
+    language === "ar" ? "سيارات هذا الشهر" :
+    language === "zh" ? "本月车辆" :
+    "Cars This Month"
+  }
+  value={carsThisMonth}
+  color="orange"
+/>
 </div>
 
     {isShop1 && (
   <div className="section">
 
       <h2>
-        Customer vs Teyseer
-      </h2>
+  {language === "ar" ? "العملاء مقابل تيسير" :
+   language === "zh" ? "客户与 تيسير 对比" :
+   "Customer vs Teyseer"}
+</h2>
 
       <div className="cards">
 
@@ -6615,43 +6661,53 @@ td {
 
           <div className="section">
 
-            <h2>
-              Payment Methods
-            </h2>
+           <h2>
+  {language === "ar" ? "طرق الدفع" :
+   language === "zh" ? "付款方式" :
+   "Payment Methods"}
+</h2>
 
             <div className="cards">
 
-              <Card
-                title="Cash"
-                value={`QAR ${money(
-                  financial.cashPaid
-                )}`}
-                color="green"
-              />
+             <Card
+  title={
+    language === "ar" ? "نقداً" :
+    language === "zh" ? "现金" :
+    "Cash"
+  }
+  value={`QAR ${money(financial.cashPaid)}`}
+  color="green"
+/>
 
-              <Card
-                title="Card"
-                value={`QAR ${money(
-                  financial.cardPaid
-                )}`}
-                color="blue"
-              />
+<Card
+  title={
+    language === "ar" ? "بطاقة" :
+    language === "zh" ? "银行卡" :
+    "Card"
+  }
+  value={`QAR ${money(financial.cardPaid)}`}
+  color="blue"
+/>
 
-              <Card
-                title="Bank Transfer"
-                value={`QAR ${money(
-                  financial.bankTransferPaid
-                )}`}
-                color="purple"
-              />
+<Card
+  title={
+    language === "ar" ? "تحويل بنكي" :
+    language === "zh" ? "银行转账" :
+    "Bank Transfer"
+  }
+  value={`QAR ${money(financial.bankTransferPaid)}`}
+  color="purple"
+/>
 
-              <Card
-                title="Other"
-                value={`QAR ${money(
-                  financial.otherPaid
-                )}`}
-                color="orange"
-              />
+<Card
+  title={
+    language === "ar" ? "أخرى" :
+    language === "zh" ? "其他" :
+    "Other"
+  }
+  value={`QAR ${money(financial.otherPaid)}`}
+  color="orange"
+/>
 
             </div>
 
@@ -6660,20 +6716,27 @@ td {
                 financial.categorizedPaid
             ) > 0.01 && (
               <div className="warning">
-                Payment method totals do not
-                equal total linked payments.
-                Please check payment methods.
+                {language === "ar"
+  ? "إجمالي طرق الدفع لا يساوي إجمالي المدفوعات المرتبطة. يرجى مراجعة طرق الدفع."
+  : language === "zh"
+  ? "付款方式总额与已关联付款总额不一致。请检查付款方式。"
+  : "Payment method totals do not equal total linked payments. Please check payment methods."}
               </div>
             )}
 
             {unlinkedPayments.length > 0 && (
               <div className="warning">
-                There are{" "}
-                <strong>
-                  {unlinkedPayments.length}
-                </strong>{" "}
-                payments without a job ID,
-                totaling{" "}
+                {language === "ar"
+  ? "هناك "
+  : language === "zh"
+  ? "有 "
+  : "There are "}
+<strong>{unlinkedPayments.length}</strong>{" "}
+{language === "ar"
+  ? "مدفوعات بدون رقم عمل، بإجمالي "
+  : language === "zh"
+  ? "笔付款没有工作编号，总金额为 "
+  : "payments without a job ID, totaling "}
                 <strong>
                   QAR{" "}
                   {money(
@@ -6681,8 +6744,11 @@ td {
                   )}
                 </strong>
                 .
-                These are intentionally NOT
-                included in job balances.
+                {language === "ar"
+  ? "هذه المدفوعات غير مشمولة عمداً في أرصدة الأعمال."
+  : language === "zh"
+  ? "这些付款不会计入工作余额。"
+  : "These are intentionally NOT included in job balances."}
               </div>
             )}
 
@@ -6693,8 +6759,10 @@ td {
             <div className="section-header">
 
               <h2>
-                Teyseer Discrepancies
-              </h2>
+  {language === "ar" ? "اختلافات تيسير" :
+   language === "zh" ? "تيسير差异" :
+   "Teyseer Discrepancies"}
+</h2>
 
               <button
                 className="btn btn-gray"
@@ -6705,39 +6773,41 @@ td {
                 }
               >
                 {showDiscrepancies
-                  ? "Hide"
-                  : "Show"}
+  ? (language === "ar" ? "إخفاء" : language === "zh" ? "隐藏" : "Hide")
+  : (language === "ar" ? "عرض" : language === "zh" ? "显示" : "Show")}
               </button>
 
             </div>
 
             <div className="cards">
 
-              <Card
-                title="Jobs With Difference"
-                value={
-                  discrepancyJobs.length
-                }
-                color={
-                  discrepancyJobs.length
-                    ? "red"
-                    : "green"
-                }
-              />
+             <Card
+  title={
+    language === "ar" ? "الوظائف ذات الاختلاف" :
+    language === "zh" ? "存在差异的工作" :
+    "Jobs With Difference"
+  }
+  value={discrepancyJobs.length}
+  color={
+    discrepancyJobs.length
+      ? "red"
+      : "green"
+  }
+/>
 
-              <Card
-                title="Total Difference"
-                value={`QAR ${money(
-                  totalTeyseerDiscrepancy
-                )}`}
-                color={
-                  Math.abs(
-                    totalTeyseerDiscrepancy
-                  ) > 0.01
-                    ? "red"
-                    : "green"
-                }
-              />
+<Card
+  title={
+    language === "ar" ? "إجمالي الاختلاف" :
+    language === "zh" ? "差异总额" :
+    "Total Difference"
+  }
+  value={`QAR ${money(totalTeyseerDiscrepancy)}`}
+  color={
+    Math.abs(totalTeyseerDiscrepancy) > 0.01
+      ? "red"
+      : "green"
+  }
+/>
 
             </div>
 
@@ -6748,15 +6818,15 @@ td {
                   <table>
 
                     <thead>
-                      <tr>
-                        <th>DATE</th>
-                        <th>SOURCE</th>
-                        <th>CUSTOMER</th>
-                        <th>JOB NET</th>
-                        <th>SERVICES</th>
-                        <th>DIFFERENCE</th>
-                      </tr>
-                    </thead>
+  <tr>
+    <th>{language === "ar" ? "التاريخ" : language === "zh" ? "日期" : "DATE"}</th>
+    <th>{language === "ar" ? "المصدر" : language === "zh" ? "来源" : "SOURCE"}</th>
+    <th>{language === "ar" ? "العميل" : language === "zh" ? "客户" : "CUSTOMER"}</th>
+    <th>{language === "ar" ? "صافي العمل" : language === "zh" ? "工作净额" : "JOB NET"}</th>
+    <th>{language === "ar" ? "الخدمات" : language === "zh" ? "服务" : "SERVICES"}</th>
+    <th>{language === "ar" ? "الفرق" : language === "zh" ? "差额" : "DIFFERENCE"}</th>
+  </tr>
+</thead>
 
                     <tbody>
 
@@ -6831,22 +6901,27 @@ td {
             <div className="section-header">
 
               <h2>
-                Teyseer Motors Report
-              </h2>
+  {language === "ar" ? "تقرير تيسير موتورز" :
+   language === "zh" ? "Teyseer Motors 报告" :
+   "Teyseer Motors Report"}
+</h2>
 
-              <button
-                className="btn btn-dark"
-                onClick={
-                  printTeyseerReport
-                }
-              >
-                Print Report
-              </button>
+<button
+  className="btn btn-dark"
+  onClick={printTeyseerReport}
+>
+  {language === "ar" ? "طباعة التقرير" :
+   language === "zh" ? "打印报告" :
+   "Print Report"}
+</button>
+
 <button
   className="btn btn-dark"
   onClick={exportTeyseerReportExcel}
 >
-  Export Teyseer Excel
+  {language === "ar" ? "تصدير إكسل تيسير" :
+   language === "zh" ? "导出 Teyseer Excel" :
+   "Export Teyseer Excel"}
 </button>
 
 
@@ -6857,7 +6932,8 @@ td {
               <div className="field">
 
                 <label>
-                  Start Date
+                  {language === "ar" ? "تاريخ البداية" :
+ language === "zh" ? "开始日期" : "Start Date"}
                 </label>
 
                 <input
@@ -6877,7 +6953,8 @@ td {
               <div className="field">
 
                 <label>
-                  End Date
+                  {language === "ar" ? "تاريخ النهاية" :
+ language === "zh" ? "结束日期" : "End Date"}
                 </label>
 
                 <input
@@ -6901,7 +6978,8 @@ td {
                   setTeyseerEndDate("");
                 }}
               >
-                Clear
+                {language === "ar" ? "مسح" :
+ language === "zh" ? "清除" : "Clear"}
               </button>
 
             </div>
@@ -6911,7 +6989,11 @@ td {
           <div className="cards">
 
             <Card
-              title="Teyseer Cars"
+              title={
+  language === "ar" ? "سيارات تيسير" :
+  language === "zh" ? "Teyseer车辆" :
+  "Teyseer Cars"
+}
               value={
                 filteredTeyseerCars
               }
@@ -6919,7 +7001,11 @@ td {
             />
 
             <Card
-              title="Net Sales"
+              title={
+  language === "ar" ? "صافي المبيعات" :
+  language === "zh" ? "净销售额" :
+  "Net Sales"
+}
               value={`QAR ${money(
                 filteredTeyseerSales
               )}`}
@@ -6927,7 +7013,11 @@ td {
             />
 
             <Card
-              title="Paid"
+              title={
+  language === "ar" ? "المدفوع" :
+  language === "zh" ? "已付款" :
+  "Paid"
+}
               value={`QAR ${money(
                 filteredTeyseerPaid
               )}`}
@@ -6935,7 +7025,11 @@ td {
             />
 
             <Card
-              title="Balance"
+              title={
+  language === "ar" ? "الرصيد" :
+  language === "zh" ? "余额" :
+  "Balance"
+}
               value={`QAR ${money(
                 filteredTeyseerBalance
               )}`}
@@ -6947,7 +7041,9 @@ td {
           <div className="section">
 
             <h2>
-              Teyseer By Source
+              {language === "ar" ? "تيسير حسب المصدر" :
+ language === "zh" ? "按来源分类的Teyseer" :
+ "Teyseer By Source"}
             </h2>
 
             <div className="source-grid">
@@ -7004,7 +7100,9 @@ td {
           <div className="section">
 
             <h2>
-              Service Items
+             {language === "ar" ? "عناصر الخدمة" :
+ language === "zh" ? "服务项目" :
+ "Service Items"}
             </h2>
 
             <div className="source-grid">
@@ -7079,24 +7177,18 @@ td {
                 <thead>
 
                   <tr>
-                    <th>#</th>
-                    <th>DATE</th>
-                    <th>SOURCE</th>
-                    <th>CUSTOMER</th>
-                    <th>CAR</th>
-                    <th>PLATE</th>
-                    <th>SERVICES</th>
-                    <th>VOUCHER</th>
-                    <th>RECEIPT</th>
-                    <th className="right">
-                      TEYSEER NET
-                    </th>
-                    <th className="right">
-                      PAID
-                    </th>
-                    <th className="right">
-                      BALANCE
-                    </th>
+                   <th>#</th>
+<th>{language === "ar" ? "التاريخ" : language === "zh" ? "日期" : "DATE"}</th>
+<th>{language === "ar" ? "المصدر" : language === "zh" ? "来源" : "SOURCE"}</th>
+<th>{language === "ar" ? "العميل" : language === "zh" ? "客户" : "CUSTOMER"}</th>
+<th>{language === "ar" ? "السيارة" : language === "zh" ? "车辆" : "CAR"}</th>
+<th>{language === "ar" ? "رقم اللوحة" : language === "zh" ? "车牌" : "PLATE"}</th>
+<th>{language === "ar" ? "الخدمات" : language === "zh" ? "服务" : "SERVICES"}</th>
+<th>{language === "ar" ? "القسيمة" : language === "zh" ? "凭证" : "VOUCHER"}</th>
+<th>{language === "ar" ? "الإيصال" : language === "zh" ? "收据" : "RECEIPT"}</th>
+<th className="right">{language === "ar" ? "صافي تيسير" : language === "zh" ? "Teyseer净额" : "TEYSEER NET"}</th>
+<th className="right">{language === "ar" ? "المدفوع" : language === "zh" ? "已付款" : "PAID"}</th>
+<th className="right">{language === "ar" ? "الرصيد" : language === "zh" ? "余额" : "BALANCE"}</th>
                   </tr>
 
                 </thead>
@@ -7192,7 +7284,9 @@ td {
                           padding: 30,
                         }}
                       >
-                        No Teyseer jobs found.
+                        {language === "ar" ? "لم يتم العثور على أعمال تيسير." :
+ language === "zh" ? "未找到 Teyseer 工作记录。" :
+ "No Teyseer jobs found."}
                       </td>
                     </tr>
                   )}
@@ -7207,699 +7301,476 @@ td {
         </>
       )}
 
-      {isShop1 && activeSection === "alnusoor" && (
-        <>
-          <div className="section">
+     
+{isShop1 && activeSection === "alnusoor" && (
+  <>
+    <div className="section">
+      <div className="section-header">
+        <h2>
+          {language === "ar" ? "مركز النصور" :
+           language === "zh" ? "Al Nusoor 中心" :
+           "Al Nusoor Center"}
+        </h2>
 
-            <div className="section-header">
+        <button
+          className="btn btn-dark"
+          onClick={printAlnusoorReport}
+        >
+          {language === "ar" ? "طباعة التقرير" :
+           language === "zh" ? "打印报告" :
+           "Print Report"}
+        </button>
 
-              <h2>
-                Al Nusoor Center
-              </h2>
+        <button
+          className="btn btn-dark"
+          onClick={exportAlnusoorReportExcel}
+        >
+          {language === "ar" ? "تصدير إكسل النصور" :
+           language === "zh" ? "导出 Al Nusoor Excel" :
+           "Export Al Nusoor Excel"}
+        </button>
+      </div>
 
-              <button
-                className="btn btn-dark"
-                onClick={
-                  printAlnusoorReport
-                }
-              >
-                Print Report
-              </button>
+      <div className="filters">
+        <div className="field">
+          <label>
+            {language === "ar" ? "تاريخ البداية" :
+             language === "zh" ? "开始日期" :
+             "Start Date"}
+          </label>
 
-              <button
-                className="btn btn-dark"
-                onClick={exportAlnusoorReportExcel}
-              >
-                Export Al Nusoor Excel
-              </button>
+          <input
+            type="date"
+            value={alnusoorStartDate}
+            onChange={(e) =>
+              setAlnusoorStartDate(e.target.value)
+            }
+          />
+        </div>
 
-            </div>
+        <div className="field">
+          <label>
+            {language === "ar" ? "تاريخ النهاية" :
+             language === "zh" ? "结束日期" :
+             "End Date"}
+          </label>
 
-            <div className="filters">
+          <input
+            type="date"
+            value={alnusoorEndDate}
+            onChange={(e) =>
+              setAlnusoorEndDate(e.target.value)
+            }
+          />
+        </div>
 
-              <div className="field">
+        <button
+          className="btn btn-gray"
+          onClick={() => {
+            setAlnusoorStartDate("");
+            setAlnusoorEndDate("");
+          }}
+        >
+          {language === "ar" ? "مسح" :
+           language === "zh" ? "清除" :
+           "Clear"}
+        </button>
+      </div>
+    </div>
 
-                <label>
-                  Start Date
-                </label>
+    <div className="cards">
+      <Card
+        title={
+          language === "ar" ? "السيارات" :
+          language === "zh" ? "车辆" : "Cars"
+        }
+        value={alnusoorJobs.length}
+        color="blue"
+      />
 
-                <input
-                  type="date"
-                  value={
-                    alnusoorStartDate
-                  }
-                  onChange={(e) =>
-                    setAlnusoorStartDate(
-                      e.target.value
-                    )
-                  }
-                />
+      <Card
+        title={
+          language === "ar" ? "الإجمالي قبل الخصم" :
+          language === "zh" ? "折扣前总额" : "Gross"
+        }
+        value={`QAR ${money(alnusoorGross)}`}
+        color="blue"
+      />
 
-              </div>
+      <Card
+        title={
+          language === "ar" ? "الخصم" :
+          language === "zh" ? "折扣" : "Discount"
+        }
+        value={`QAR ${money(alnusoorDiscount)}`}
+        color="orange"
+      />
 
-              <div className="field">
+      <Card
+        title={
+          language === "ar" ? "الصافي" :
+          language === "zh" ? "净额" : "Net"
+        }
+        value={`QAR ${money(alnusoorNet)}`}
+        color="purple"
+      />
 
-                <label>
-                  End Date
-                </label>
+      <Card
+        title={
+          language === "ar" ? "المدفوع" :
+          language === "zh" ? "已付款" : "Paid"
+        }
+        value={`QAR ${money(alnusoorPaid)}`}
+        color="green"
+      />
 
-                <input
-                  type="date"
-                  value={
-                    alnusoorEndDate
-                  }
-                  onChange={(e) =>
-                    setAlnusoorEndDate(
-                      e.target.value
-                    )
-                  }
-                />
+      <Card
+        title={
+          language === "ar" ? "الرصيد" :
+          language === "zh" ? "余额" : "Balance"
+        }
+        value={`QAR ${money(alnusoorBalance)}`}
+        color="red"
+      />
+    </div>
 
-              </div>
+    <div className="section">
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{language === "ar" ? "التاريخ" : language === "zh" ? "日期" : "DATE"}</th>
+              <th>{language === "ar" ? "العميل" : language === "zh" ? "客户" : "CUSTOMER"}</th>
+              <th>{language === "ar" ? "السيارة" : language === "zh" ? "车辆" : "CAR"}</th>
+              <th>{language === "ar" ? "رقم اللوحة" : language === "zh" ? "车牌" : "PLATE"}</th>
+              <th className="right">{language === "ar" ? "الإجمالي" : language === "zh" ? "总额" : "GROSS"}</th>
+              <th className="right">{language === "ar" ? "الخصم" : language === "zh" ? "折扣" : "DISCOUNT"}</th>
+              <th className="right">{language === "ar" ? "الصافي" : language === "zh" ? "净额" : "NET"}</th>
+              <th className="right">{language === "ar" ? "المدفوع" : language === "zh" ? "已付款" : "PAID"}</th>
+              <th className="right">{language === "ar" ? "الرصيد" : language === "zh" ? "余额" : "BALANCE"}</th>
+            </tr>
+          </thead>
 
-              <button
-                className="btn btn-gray"
-                onClick={() => {
-                  setAlnusoorStartDate("");
-                  setAlnusoorEndDate("");
-                }}
-              >
-                Clear
-              </button>
-
-            </div>
-
-          </div>
-
-          <div className="cards">
-
-            <Card
-              title="Cars"
-              value={
-                alnusoorJobs.length
-              }
-              color="blue"
-            />
-
-            <Card
-              title="Gross"
-              value={`QAR ${money(
-                alnusoorGross
-              )}`}
-              color="blue"
-            />
-
-            <Card
-              title="Discount"
-              value={`QAR ${money(
-                alnusoorDiscount
-              )}`}
-              color="orange"
-            />
-
-            <Card
-              title="Net"
-              value={`QAR ${money(
-                alnusoorNet
-              )}`}
-              color="purple"
-            />
-
-            <Card
-              title="Paid"
-              value={`QAR ${money(
-                alnusoorPaid
-              )}`}
-              color="green"
-            />
-
-            <Card
-              title="Balance"
-              value={`QAR ${money(
-                alnusoorBalance
-              )}`}
-              color="red"
-            />
-
-          </div>
-
-          <div className="section">
-
-            <div className="table-wrap">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>DATE</th>
-                    <th>CUSTOMER</th>
-                    <th>CAR</th>
-                    <th>PLATE</th>
-                    <th className="right">
-                      GROSS
-                    </th>
-                    <th className="right">
-                      DISCOUNT
-                    </th>
-                    <th className="right">
-                      NET
-                    </th>
-                    <th className="right">
-                      PAID
-                    </th>
-                    <th className="right">
-                      BALANCE
-                    </th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {alnusoorJobs.map(
-                    (job) => (
-                      <tr key={job.id}>
-
-                        <td>
-                          {getJobDate(
-                            job
-                          ) || "-"}
-                        </td>
-
-                        <td>
-                          {job.customer ||
-                            "-"}
-                        </td>
-
-                        <td>
-                          {job.carMake ||
-                            job.carType ||
-                            job.carModel ||
-                            "-"}
-                        </td>
-
-                        <td>
-                          {job.plate ||
-                            "-"}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            job.gross
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            job.discount
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            job.canonicalNet
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            job.customerPaid
-                          )}
-                        </td>
-
-                        <td
-                          className={`right ${
-                            job.customerBalance >
-                            0
-                              ? "negative"
-                              : "positive"
-                          }`}
-                        >
-                          QAR{" "}
-                          {money(
-                            job.customerBalance
-                          )}
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-
-                  {alnusoorJobs.length ===
-                    0 && (
-                    <tr>
-                      <td
-                        colSpan="9"
-                        style={{
-                          textAlign:
-                            "center",
-                          padding: 30,
-                        }}
-                      >
-                        No Al Nusoor
-                        jobs found.
-                      </td>
-                    </tr>
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-        </>
-      )}
-
-      {activeSection === "daily" && (
-        <>
-          <div className="section">
-
-            <div className="section-header">
-
-              <h2>
-                Daily Report
-              </h2>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "end",
-                  flexWrap: "wrap",
-                }}
-              >
-
-                <div className="field">
-
-                  <label>
-                    Select Date
-                  </label>
-
-                  <input
-                    type="date"
-                    value={reportDate}
-                    onChange={(e) =>
-                      setReportDate(
-                        e.target.value
-                      )
-                    }
-                  />
-
-                </div>
-
-                <button
-                  className="btn btn-dark"
-                  onClick={
-                    printDailyReport
-                  }
+          <tbody>
+            {alnusoorJobs.map((job) => (
+              <tr key={job.id}>
+                <td>{getJobDate(job) || "-"}</td>
+                <td>{job.customer || "-"}</td>
+                <td>
+                  {job.carMake ||
+                    job.carType ||
+                    job.carModel ||
+                    "-"}
+                </td>
+                <td>{job.plate || "-"}</td>
+                <td className="right">
+                  QAR {money(job.gross)}
+                </td>
+                <td className="right">
+                  QAR {money(job.discount)}
+                </td>
+                <td className="right">
+                  QAR {money(job.canonicalNet)}
+                </td>
+                <td className="right">
+                  QAR {money(job.customerPaid)}
+                </td>
+                <td
+                  className={`right ${
+                    job.customerBalance > 0
+                      ? "negative"
+                      : "positive"
+                  }`}
                 >
-                  Print Daily Report
-                </button>
+                  QAR {money(job.customerBalance)}
+                </td>
+              </tr>
+            ))}
 
-              </div>
-
-            </div>
-
-            <div className="cards">
-
-              <Card
-                title="Cars"
-                value={
-                  selectedDateJobs.length
-                }
-                color="blue"
-              />
-
-              <Card
-                title="Customer Sales"
-                value={`QAR ${money(
-                  selectedDateCustomerSales
-                )}`}
-                color="purple"
-              />
-
-              {isShop1 && (
-  <Card
-    title="Teyseer Sales"
-    value={`QAR ${money(
-      selectedDateTeyseerSales
-    )}`}
-    color="orange"
-  />
+            {alnusoorJobs.length === 0 && (
+              <tr>
+                <td
+                  colSpan="9"
+                  style={{
+                    textAlign: "center",
+                    padding: 30,
+                  }}
+                >
+                  {language === "ar"
+                    ? "لم يتم العثور على أعمال النصور."
+                    : language === "zh"
+                    ? "未找到 Al Nusoor 工作记录。"
+                    : "No Al Nusoor jobs found."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </>
 )}
 
-              <Card
-                title="Total Sales"
-                value={`QAR ${money(
-                  selectedDateSales
-                )}`}
-                color="blue"
-              />
+{activeSection === "daily" && (
+  <>
+    <div className="section">
+      <div className="section-header">
+        <h2>
+          {language === "ar" ? "التقرير اليومي" :
+           language === "zh" ? "每日报告" :
+           "Daily Report"}
+        </h2>
 
-              <Card
-                title="Customer Paid"
-                value={`QAR ${money(
-                  selectedDateCustomerPaid
-                )}`}
-                color="green"
-              />
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "end",
+            flexWrap: "wrap",
+          }}
+        >
+          <div className="field">
+            <label>
+              {language === "ar" ? "اختر التاريخ" :
+               language === "zh" ? "选择日期" :
+               "Select Date"}
+            </label>
 
-              <Card
-                title="Payment Transactions"
-                value={`QAR ${money(
-                  selectedDatePaymentTotal
-                )}`}
-                color="blue"
-              />
-
-              <Card
-                title="Customer Balance"
-                value={`QAR ${money(
-                  selectedDateBalance
-                )}`}
-                color="red"
-              />
-
-            </div>
-
+            <input
+              type="date"
+              value={reportDate}
+              onChange={(e) =>
+                setReportDate(e.target.value)
+              }
+            />
           </div>
 
-          <div className="section">
-
-            <h2>
-              Daily Payments
-            </h2>
-
-            <div className="table-wrap">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>DATE</th>
-
-                    <th className="right">
-                      CASH
-                    </th>
-
-                    <th className="right">
-                      VISA
-                    </th>
-
-                    <th className="right">
-                      MASTERCARD
-                    </th>
-
-                    <th className="right">
-                      BANK
-                    </th>
-
-                    <th className="right">
-                      PAYLATER
-                    </th>
-
-                    <th className="right">
-                      TOTAL
-                    </th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {dailyPayments.map(
-                    ([date, data]) => (
-                      <tr key={date}>
+          <button
+            className="btn btn-dark"
+            onClick={printDailyReport}
+          >
+            {language === "ar" ? "طباعة التقرير اليومي" :
+             language === "zh" ? "打印每日报告" :
+             "Print Daily Report"}
+          </button>
+        </div>
+      </div>
+
+      <div className="cards">
+        <Card
+          title={language === "ar" ? "السيارات" : language === "zh" ? "车辆" : "Cars"}
+          value={selectedDateJobs.length}
+          color="blue"
+        />
+
+        <Card
+          title={language === "ar" ? "مبيعات العملاء" : language === "zh" ? "客户销售额" : "Customer Sales"}
+          value={`QAR ${money(selectedDateCustomerSales)}`}
+          color="purple"
+        />
+
+        {isShop1 && (
+          <Card
+            title={language === "ar" ? "مبيعات تيسير" : language === "zh" ? "Teyseer销售额" : "Teyseer Sales"}
+            value={`QAR ${money(selectedDateTeyseerSales)}`}
+            color="orange"
+          />
+        )}
+
+        <Card
+          title={language === "ar" ? "إجمالي المبيعات" : language === "zh" ? "销售总额" : "Total Sales"}
+          value={`QAR ${money(selectedDateSales)}`}
+          color="blue"
+        />
+
+        <Card
+          title={language === "ar" ? "مدفوعات العملاء" : language === "zh" ? "客户已付款" : "Customer Paid"}
+          value={`QAR ${money(selectedDateCustomerPaid)}`}
+          color="green"
+        />
+
+        <Card
+          title={language === "ar" ? "معاملات الدفع" : language === "zh" ? "付款交易" : "Payment Transactions"}
+          value={`QAR ${money(selectedDatePaymentTotal)}`}
+          color="blue"
+        />
+
+        <Card
+          title={language === "ar" ? "رصيد العملاء" : language === "zh" ? "客户余额" : "Customer Balance"}
+          value={`QAR ${money(selectedDateBalance)}`}
+          color="red"
+        />
+      </div>
+    </div>
+
+    <div className="section">
+      <h2>
+        {language === "ar" ? "المدفوعات اليومية" :
+         language === "zh" ? "每日付款" :
+         "Daily Payments"}
+      </h2>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{language === "ar" ? "التاريخ" : language === "zh" ? "日期" : "DATE"}</th>
+              <th className="right">{language === "ar" ? "نقداً" : language === "zh" ? "现金" : "CASH"}</th>
+              <th className="right">{language === "ar" ? "فيزا" : language === "zh" ? "Visa卡" : "VISA"}</th>
+              <th className="right">{language === "ar" ? "ماستركارد" : language === "zh" ? "Mastercard卡" : "MASTERCARD"}</th>
+              <th className="right">{language === "ar" ? "البنك" : language === "zh" ? "银行" : "BANK"}</th>
+              <th className="right">{language === "ar" ? "ادفع لاحقاً" : language === "zh" ? "稍后付款" : "PAYLATER"}</th>
+              <th className="right">{language === "ar" ? "الإجمالي" : language === "zh" ? "总额" : "TOTAL"}</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {dailyPayments.map(([date, data]) => (
+              <tr key={date}>
+                <td>{date}</td>
+                <td className="right">QAR {money(data.cash)}</td>
+                <td className="right">QAR {money(data.visa)}</td>
+                <td className="right">QAR {money(data.mastercard)}</td>
+                <td className="right">QAR {money(data.bankTransfer)}</td>
+                <td className="right">QAR {money(data.paylater)}</td>
+                <td className="right">QAR {money(data.total)}</td>
+              </tr>
+            ))}
+
+            {dailyPayments.length === 0 && (
+              <tr>
+                <td
+                  colSpan="7"
+                  style={{
+                    textAlign: "center",
+                    padding: 30,
+                  }}
+                >
+                  {language === "ar" ? "لا توجد بيانات دفع." :
+                   language === "zh" ? "没有付款数据。" :
+                   "No payment data found."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="section">
+      <h2>
+        {language === "ar" ? "السيارات اليومية" :
+         language === "zh" ? "每日车辆" :
+         "Daily Cars"}
+      </h2>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{language === "ar" ? "التاريخ" : language === "zh" ? "日期" : "DATE"}</th>
+              <th className="right">{language === "ar" ? "السيارات" : language === "zh" ? "车辆数" : "CARS"}</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {dailyCarRows.map(([date, count]) => (
+              <tr key={date}>
+                <td>{date}</td>
+                <td className="right">{count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="section">
+      <h2>
+        {language === "ar" ? "الأعمال اليومية" :
+         language === "zh" ? "每日工作记录" :
+         "Daily Jobs"}
+      </h2>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>{language === "ar" ? "التاريخ" : language === "zh" ? "日期" : "DATE"}</th>
+              <th>{language === "ar" ? "المصدر" : language === "zh" ? "来源" : "SOURCE"}</th>
+              <th>{language === "ar" ? "العميل" : language === "zh" ? "客户" : "CUSTOMER"}</th>
+              <th>{language === "ar" ? "السيارة" : language === "zh" ? "车辆" : "CAR"}</th>
+              <th>{language === "ar" ? "رقم اللوحة" : language === "zh" ? "车牌" : "PLATE"}</th>
+              <th>{language === "ar" ? "الخدمات" : language === "zh" ? "服务" : "SERVICES"}</th>
+              <th className="right">{language === "ar" ? "الصافي" : language === "zh" ? "净额" : "NET"}</th>
+              <th className="right">{language === "ar" ? "المدفوع" : language === "zh" ? "已付款" : "PAID"}</th>
+              <th className="right">{language === "ar" ? "الرصيد" : language === "zh" ? "余额" : "BALANCE"}</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {selectedDateJobs.map((job) => (
+              <tr key={job.id}>
+                <td>{getJobDate(job) || "-"}</td>
+                <td>{job.source || "-"}</td>
+                <td>{job.customer || "-"}</td>
+                <td>
+                  {job.carMake ||
+                    job.carType ||
+                    job.carModel ||
+                    "-"}
+                </td>
+                <td>{job.plate || "-"}</td>
+                <td>
+                  {getJobServicesDescription(job, jobServices) || "-"}
+                </td>
+                <td className="right">
+                  QAR {money(job.canonicalNet)}
+                </td>
+                <td className="right">
+                  QAR {money(job.paid)}
+                </td>
+                <td className="right">
+                  QAR {money(job.customerBalance)}
+                </td>
+              </tr>
+            ))}
+
+            {selectedDateJobs.length === 0 && (
+              <tr>
+                <td
+                  colSpan="9"
+                  style={{
+                    textAlign: "center",
+                    padding: 30,
+                  }}
+                >
+                  {language === "ar" ? "لا توجد أعمال لهذا التاريخ." :
+                   language === "zh" ? "该日期没有工作记录。" :
+                   "No jobs found for this date."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </>
+)}
 
-                        <td>
-                          {date}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            data.cash
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            data.visa
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            data.mastercard
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            data.bankTransfer
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            data.paylater
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            data.total
-                          )}
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-
-                  {dailyPayments.length ===
-                    0 && (
-                    <tr>
-                      <td
-                        colSpan="7"
-                        style={{
-                          textAlign:
-                            "center",
-                          padding: 30,
-                        }}
-                      >
-                        No payment data
-                        found.
-                      </td>
-                    </tr>
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-
-          <div className="section">
-
-            <h2>
-              Daily Cars
-            </h2>
-
-            <div className="table-wrap">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>DATE</th>
-
-                    <th className="right">
-                      CARS
-                    </th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {dailyCarRows.map(
-                    ([date, count]) => (
-                      <tr key={date}>
-
-                        <td>
-                          {date}
-                        </td>
-
-                        <td className="right">
-                          {count}
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-
-          <div className="section">
-
-            <h2>
-              Daily Jobs
-            </h2>
-
-            <div className="table-wrap">
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>DATE</th>
-                    <th>SOURCE</th>
-                    <th>CUSTOMER</th>
-                    <th>CAR</th>
-                    <th>PLATE</th>
-                    <th>SERVICES</th>
-                    <th className="right">
-                      NET
-                    </th>
-                    <th className="right">
-                      PAID
-                    </th>
-                    <th className="right">
-                      BALANCE
-                    </th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {selectedDateJobs.map(
-                    (job) => (
-                      <tr key={job.id}>
-
-                        <td>
-                          {getJobDate(
-                            job
-                          ) || "-"}
-                        </td>
-
-                        <td>
-                          {job.source ||
-                            "-"}
-                        </td>
-
-                        <td>
-                          {job.customer ||
-                            "-"}
-                        </td>
-
-                        <td>
-                          {job.carMake ||
-                            job.carType ||
-                            job.carModel ||
-                            "-"}
-                        </td>
-
-                        <td>
-                          {job.plate ||
-                            "-"}
-                        </td>
-
-                        <td>
-                          {getJobServicesDescription(
-                            job,
-                            jobServices
-                          ) || "-"}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            job.canonicalNet
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            job.paid
-                          )}
-                        </td>
-
-                        <td className="right">
-                          QAR{" "}
-                          {money(
-                            job.customerBalance
-                          )}
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-
-                  {selectedDateJobs.length ===
-                    0 && (
-                    <tr>
-                      <td
-                        colSpan="9"
-                        style={{
-                          textAlign:
-                            "center",
-                          padding: 30,
-                        }}
-                      >
-                        No jobs found for
-                        this date.
-                      </td>
-                    </tr>
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-        </>
-      )}
 <div
   style={{
     display: "flex",
     alignItems: "center",
     gap: "10px",
-    marginBottom: "15px"
+    marginBottom: "15px",
+    flexWrap: "wrap",
   }}
 >
-  <label
-    style={{
-      fontWeight: "600"
-    }}
-  >
-    Excel Month:
+  <label style={{ fontWeight: "600" }}>
+    {language === "ar" ? "شهر إكسل:" :
+     language === "zh" ? "Excel月份：" :
+     "Excel Month:"}
   </label>
 
   <input
@@ -7911,7 +7782,7 @@ td {
     style={{
       padding: "8px 10px",
       border: "1px solid #ccc",
-      borderRadius: "6px"
+      borderRadius: "6px",
     }}
   />
 
@@ -7923,165 +7794,138 @@ td {
       border: "none",
       borderRadius: "6px",
       cursor: "pointer",
-      fontWeight: "600"
+      fontWeight: "600",
     }}
   >
-    📊 EXPORT MONTH TO EXCEL
+    📊 {language === "ar" ? "تصدير الشهر إلى إكسل" :
+         language === "zh" ? "导出本月Excel" :
+         "EXPORT MONTH TO EXCEL"}
   </button>
 </div>
 
-      {activeSection === "settings" && (
-        <>
-          <div className="section">
+{activeSection === "settings" && (
+  <>
+    <div className="section">
+      <h2>
+        {language === "ar" ? "إعدادات التقارير اليدوية" :
+         language === "zh" ? "手动报表设置" :
+         "Manual Report Settings"}
+      </h2>
 
-            <h2>
-              Manual Report Settings
-            </h2>
-
-            <div className="settings-grid">
-
-              {[
-                
-                [
-                  "September",
-                  manualPending.September,
-                ],
-                [
-                  "October",
-                  manualPending.October,
-                ],
-              ].map(
-                ([month, amount]) => (
-                  <div
-                    className="setting"
-                    key={month}
-                  >
-
-                    <div className="setting-title">
-                      {month} Pending
-                    </div>
-
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={amount}
-                      onChange={(e) =>
-                        changePending(
-                          month,
-                          e.target.value
-                        )
-                      }
-                    />
-
-                    {savingSetting ===
-                      `${month} Pending` && (
-                      <small>
-                        Saving...
-                      </small>
-                    )}
-
-                  </div>
-                )
-              )}
-
-              <div className="setting">
-
-                <div className="setting-title">
-                  Previous Teyseer
-                </div>
-
-                <input
-                  type="number"
-                  step="0.01"
-                  value={
-                    manualTeyseer
-                  }
-                  onChange={(e) =>
-                    changeTeyseer(
-                      e.target.value
-                    )
-                  }
-                />
-
-                {savingSetting ===
-                  "Previous Teyseer" && (
-                  <small>
-                    Saving...
-                  </small>
-                )}
-
-              </div>
-
+      <div className="settings-grid">
+        {[
+          ["September", manualPending.September],
+          ["October", manualPending.October],
+        ].map(([month, amount]) => (
+          <div
+            className="setting"
+            key={month}
+          >
+            <div className="setting-title">
+              {month === "September"
+                ? (language === "ar" ? "مستحقات سبتمبر" : language === "zh" ? "九月待收款" : "September Pending")
+                : (language === "ar" ? "مستحقات أكتوبر" : language === "zh" ? "十月待收款" : "October Pending")}
             </div>
 
+            <input
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={(e) =>
+                changePending(month, e.target.value)
+              }
+            />
+
+            {savingSetting === `${month} Pending` && (
+              <small>
+                {language === "ar" ? "جارٍ الحفظ..." :
+                 language === "zh" ? "正在保存..." :
+                 "Saving..."}
+              </small>
+            )}
+          </div>
+        ))}
+
+        <div className="setting">
+          <div className="setting-title">
+            {language === "ar" ? "تيسير السابق" :
+             language === "zh" ? "之前的Teyseer余额" :
+             "Previous Teyseer"}
           </div>
 
-          <div className="section">
+          <input
+            type="number"
+            step="0.01"
+            value={manualTeyseer}
+            onChange={(e) =>
+              changeTeyseer(e.target.value)
+            }
+          />
 
-            <h2>
-              Current Data Summary
-            </h2>
-
-            <div className="cards">
-
-              <Card
-                title="Jobs"
-                value={
-                  calculatedJobs.length
-                }
-                color="blue"
-              />
-
-              <Card
-                title="Payments"
-                value={
-                  payments.length
-                }
-                color="green"
-              />
-
-              <Card
-                title="Job Services"
-                value={
-                  jobServices.length
-                }
-                color="purple"
-              />
-
-              <Card
-                title="Unlinked Payments"
-                value={
-                  unlinkedPayments.length
-                }
-                color={
-                  unlinkedPayments.length
-                    ? "red"
-                    : "green"
-                }
-              />
-
-            </div>
-
-          </div>
-        </>
-      )}
-
-      <div
-        style={{
-          textAlign: "center",
-          marginTop: 20,
-        }}
-      >
-        <button
-          className="btn btn-blue"
-          onClick={loadReports}
-        >
-          Refresh Reports
-        </button>
+          {savingSetting === "Previous Teyseer" && (
+            <small>
+              {language === "ar" ? "جارٍ الحفظ..." :
+               language === "zh" ? "正在保存..." :
+               "Saving..."}
+            </small>
+          )}
+        </div>
       </div>
-
     </div>
-  );
+
+    <div className="section">
+      <h2>
+        {language === "ar" ? "ملخص البيانات الحالية" :
+         language === "zh" ? "当前数据摘要" :
+         "Current Data Summary"}
+      </h2>
+
+      <div className="cards">
+        <Card
+          title={language === "ar" ? "الأعمال" : language === "zh" ? "工作记录" : "Jobs"}
+          value={calculatedJobs.length}
+          color="blue"
+        />
+
+        <Card
+          title={language === "ar" ? "المدفوعات" : language === "zh" ? "付款记录" : "Payments"}
+          value={payments.length}
+          color="green"
+        />
+
+        <Card
+          title={language === "ar" ? "خدمات الأعمال" : language === "zh" ? "工作服务项目" : "Job Services"}
+          value={jobServices.length}
+          color="purple"
+        />
+
+        <Card
+          title={language === "ar" ? "المدفوعات غير المرتبطة" : language === "zh" ? "未关联的付款" : "Unlinked Payments"}
+          value={unlinkedPayments.length}
+          color={unlinkedPayments.length ? "red" : "green"}
+        />
+      </div>
+    </div>
+  </>
+)}
+
+<div
+  style={{
+    textAlign: "center",
+    marginTop: 20,
+  }}
+>
+  <button
+    className="btn btn-blue"
+    onClick={loadReports}
+  >
+    {language === "ar" ? "تحديث التقارير" :
+     language === "zh" ? "刷新报表" :
+     "Refresh Reports"}
+  </button>
+</div>
+</div>
+);
 }
 
 export default Reports;

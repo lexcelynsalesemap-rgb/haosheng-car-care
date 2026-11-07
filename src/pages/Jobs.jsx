@@ -1,8 +1,105 @@
+
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../supabase/client.js";
 
+// -----------------------------------
+// JOBS PAGE TRANSLATIONS
+// -----------------------------------
+
+const jobsTranslations = {
+  ar: {
+    "Jobs": "الطلبات",
+    "Loading jobs...": "جارٍ تحميل الطلبات...",
+    "Search customer, phone, plate, car...": "ابحث عن العميل أو الهاتف أو رقم اللوحة أو السيارة...",
+    "All Status": "جميع الحالات",
+    "All Sources": "جميع المصادر",
+    "All": "الكل",
+    "New": "جديد",
+    "In Progress": "قيد التنفيذ",
+    "Finished": "مكتمل",
+    "Delivered": "تم التسليم",
+    "No jobs found": "لم يتم العثور على طلبات",
+    "Phone": "الهاتف",
+    "Vehicle": "السيارة",
+    "Plate": "رقم اللوحة",
+    "Services": "الخدمات",
+    "No services": "لا توجد خدمات",
+    "Balance": "الرصيد المستحق",
+    "Source": "المصدر",
+    "Not specified": "غير محدد",
+    "Edit": "تعديل",
+    "Assign Technician": "تعيين فني",
+    "Invoice": "الفاتورة",
+    "Delete": "حذف",
+    "Are you sure you want to delete this job?": "هل أنت متأكد أنك تريد حذف هذا الطلب؟",
+    "Job Deleted": "تم حذف الطلب",
+    "Teyseer Motors": "تيسير موتورز",
+    "Teyseer Motors - Bahaa": "تيسير موتورز - بهاء",
+    "Teyseer Motors - Salah": "تيسير موتورز - صلاح",
+    "Teyseer Motors - Abdou": "تيسير موتورز - عبدو",
+    "Bahaa": "بهاء",
+    "Salah": "صلاح",
+    "Walk-in": "عميل مباشر",
+    "Other": "أخرى",
+    "QAR": "ريال قطري"
+  },
+
+  zh: {
+    "Jobs": "工单",
+    "Loading jobs...": "正在加载工单...",
+    "Search customer, phone, plate, car...": "搜索客户、电话、车牌或车型...",
+    "All Status": "全部状态",
+    "All Sources": "全部来源",
+    "All": "全部",
+    "New": "新建",
+    "In Progress": "进行中",
+    "Finished": "已完成",
+    "Delivered": "已交车",
+    "No jobs found": "没有找到工单",
+    "Phone": "电话",
+    "Vehicle": "车型",
+    "Plate": "车牌号",
+    "Services": "服务项目",
+    "No services": "没有服务项目",
+    "Balance": "客户未付余额",
+    "Source": "来源",
+    "Not specified": "未指定",
+    "Edit": "编辑",
+    "Assign Technician": "分配技师",
+    "Invoice": "发票",
+    "Delete": "删除",
+    "Are you sure you want to delete this job?": "确定要删除此工单吗？",
+    "Job Deleted": "工单已删除",
+    "Teyseer Motors": "Teyseer Motors",
+    "Teyseer Motors - Bahaa": "Teyseer Motors - Bahaa",
+    "Teyseer Motors - Salah": "Teyseer Motors - Salah",
+    "Teyseer Motors - Abdou": "Teyseer Motors - Abdou",
+    "Bahaa": "Bahaa",
+    "Salah": "Salah",
+    "Walk-in": "直接客户",
+    "Other": "其他",
+    "QAR": "卡塔尔里亚尔"
+  }
+};
+
+function translateJobs(text, language) {
+  if (language === "ar" || language === "zh") {
+    return jobsTranslations[language][text] || text;
+  }
+
+  return text;
+}
+
 function Jobs() {
+  const { i18n } = useTranslation();
+
+  const language =
+    i18n.resolvedLanguage || i18n.language || "en";
+
+  const tr = (text) => translateJobs(text, language);
+
   const [jobs, setJobs] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -13,90 +110,90 @@ function Jobs() {
   // LOAD JOBS FROM DATABASE
   // -----------------------------------
 
- const loadJobs = useCallback(async () => {
-  setLoading(true);
+  const loadJobs = useCallback(async () => {
+    setLoading(true);
 
-  try {
-    const loggedInUser = JSON.parse(
-      localStorage.getItem("user")
-    );
+    try {
+      const loggedInUser = JSON.parse(
+        localStorage.getItem("user")
+      );
 
-    console.log("LOGGED IN USER:", loggedInUser);
-    console.log("SHOP ID:", loggedInUser?.shop_id);
+      console.log("LOGGED IN USER:", loggedInUser);
+      console.log("SHOP ID:", loggedInUser?.shop_id);
 
-    if (!loggedInUser?.shop_id) {
-      console.error("NO SHOP ID FOUND FOR LOGGED-IN USER");
-      setJobs([]);
-      return;
+      if (!loggedInUser?.shop_id) {
+        console.error("NO SHOP ID FOUND FOR LOGGED-IN USER");
+        setJobs([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("jobs")
+        .select("*")
+        .eq("shop_id", loggedInUser.shop_id)
+        .order("created_at", {
+          ascending: false
+        });
+
+      console.log("JOBS DATA:", data);
+      console.log("JOBS ERROR:", error);
+
+      if (error) {
+        console.error("LOAD JOBS ERROR:", error);
+        return;
+      }
+
+      setJobs(data || []);
+
+    } catch (error) {
+      console.error("LOAD JOBS EXCEPTION:", error);
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    const { data, error } = await supabase
-      .from("jobs")
-      .select("*")
-      .eq("shop_id", loggedInUser.shop_id)
-      .order("created_at", {
-        ascending: false
-      });
-
-    console.log("JOBS DATA:", data);
-    console.log("JOBS ERROR:", error);
-
-    if (error) {
-      console.error("LOAD JOBS ERROR:", error);
-      return;
-    }
-
-    setJobs(data || []);
-
-  } catch (error) {
-    console.error("LOAD JOBS EXCEPTION:", error);
-  } finally {
-    setLoading(false);
-  }
-}, []);
   // -----------------------------------
   // LOAD + REALTIME
   // -----------------------------------
 
- // Initial load
-useEffect(() => {
-  loadJobs();
-}, []);
-
-// Reload when returning/focusing browser
-useEffect(() => {
-  const handleFocus = () => {
+  useEffect(() => {
     loadJobs();
-  };
+  }, [loadJobs]);
 
-  window.addEventListener("focus", handleFocus);
+  // Reload when returning/focusing browser
+  useEffect(() => {
+    const handleFocus = () => {
+      loadJobs();
+    };
 
-  return () => {
-    window.removeEventListener("focus", handleFocus);
-  };
-}, []);
+    window.addEventListener("focus", handleFocus);
 
-// Realtime changes
-useEffect(() => {
-  const channel = supabase
-    .channel("jobs-page-changes")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "jobs"
-      },
-      () => {
-        loadJobs();
-      }
-    )
-    .subscribe();
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [loadJobs]);
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, []);
+  // Realtime changes
+  useEffect(() => {
+    const channel = supabase
+      .channel("jobs-page-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "jobs"
+        },
+        () => {
+          loadJobs();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadJobs]);
 
   // -----------------------------------
   // UPDATE STATUS
@@ -111,11 +208,7 @@ useEffect(() => {
       .eq("id", id);
 
     if (error) {
-      console.error(
-        "UPDATE STATUS ERROR:",
-        error
-      );
-
+      console.error("UPDATE STATUS ERROR:", error);
       alert(error.message);
       return;
     }
@@ -138,7 +231,7 @@ useEffect(() => {
 
   async function deleteJob(id) {
     const confirmDelete = window.confirm(
-      "Are you sure you want to delete this job?"
+      tr("Are you sure you want to delete this job?")
     );
 
     if (!confirmDelete) {
@@ -151,11 +244,7 @@ useEffect(() => {
       .eq("id", id);
 
     if (error) {
-      console.error(
-        "DELETE JOB ERROR:",
-        error
-      );
-
+      console.error("DELETE JOB ERROR:", error);
       alert(error.message);
       return;
     }
@@ -164,7 +253,7 @@ useEffect(() => {
       prev.filter((job) => job.id !== id)
     );
 
-    alert("Job Deleted");
+    alert(tr("Job Deleted"));
   }
 
   // -----------------------------------
@@ -177,10 +266,8 @@ useEffect(() => {
       .toLowerCase()
       .replace(/\s+/g, " ");
 
-    // Exact Teyseer Motors: Teyseer covers every service.
     const isFullTeyseer = source === "teyseer motors";
 
-    // For Teyseer Motors - Salah/Bahaa/Abdou, Teyseer covers WTT only.
     const isTeyseer =
       isFullTeyseer ||
       source === "teyseer motors - salah" ||
@@ -199,15 +286,16 @@ useEffect(() => {
       ? [job.services.trim()]
       : [];
 
-    // This matches Invoice.jsx: calculate customer-paid services only,
-    // subtract each service discount, and exclude Teyseer-covered WTT.
     const customerNetAmount = isFullTeyseer
       ? 0
       : services.reduce((total, service) => {
           const serviceName =
             typeof service === "string"
               ? service
-              : service?.name || service?.service_name || service?.title || "";
+              : service?.name ||
+                service?.service_name ||
+                service?.title ||
+                "";
 
           const details = job.serviceDetails?.[serviceName] || {};
           const isWTT = serviceName.toLowerCase().includes("wtt");
@@ -223,8 +311,10 @@ useEffect(() => {
           return total + Math.max(price * quantity - discount, 0);
         }, 0);
 
-    // Invoice net amount less the deposit already paid by the customer.
-    return Math.max(customerNetAmount - (Number(job.deposit) || 0), 0);
+    return Math.max(
+      customerNetAmount - (Number(job.deposit) || 0),
+      0
+    );
   }
 
   // -----------------------------------
@@ -235,37 +325,47 @@ useEffect(() => {
     const text = search.toLowerCase();
 
     const matchesSearch =
-      job.customer
-        ?.toLowerCase()
-        .includes(text) ||
-
-      job.phone
-        ?.toLowerCase()
-        .includes(text) ||
-
-      job.plate
-        ?.toLowerCase()
-        .includes(text) ||
-
-      job.carModel
-        ?.toLowerCase()
-        .includes(text);
+      job.customer?.toLowerCase().includes(text) ||
+      job.phone?.toLowerCase().includes(text) ||
+      job.plate?.toLowerCase().includes(text) ||
+      job.carModel?.toLowerCase().includes(text);
 
     const matchesStatus =
       statusFilter === "All" ||
-      (job.status || "New") ===
-        statusFilter;
+      (job.status || "New") === statusFilter;
 
     const matchesSource =
       sourceFilter === "All" ||
       job.source === sourceFilter;
 
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesSource
-    );
+    return matchesSearch && matchesStatus && matchesSource;
   });
+
+  // -----------------------------------
+  // STATUS OPTIONS
+  // -----------------------------------
+
+  const statusOptions = [
+    "New",
+    "In Progress",
+    "Finished",
+    "Delivered"
+  ];
+
+  // -----------------------------------
+  // SOURCE OPTIONS
+  // -----------------------------------
+
+  const sourceOptions = [
+    "Teyseer Motors",
+    "Teyseer Motors - Bahaa",
+    "Teyseer Motors - Salah",
+    "Teyseer Motors - Abdou",
+    "Bahaa",
+    "Salah",
+    "Walk-in",
+    "Other"
+  ];
 
   // -----------------------------------
   // LOADING
@@ -274,8 +374,8 @@ useEffect(() => {
   if (loading) {
     return (
       <div style={styles.page}>
-        <h1>Jobs</h1>
-        <p>Loading jobs...</p>
+        <h1>{tr("Jobs")}</h1>
+        <p>{tr("Loading jobs...")}</p>
       </div>
     );
   }
@@ -287,102 +387,54 @@ useEffect(() => {
   return (
     <div style={styles.page}>
 
-      <h1>
-        Jobs
-      </h1>
+      <h1>{tr("Jobs")}</h1>
 
       {/* SEARCH */}
 
       <input
         style={styles.search}
-        placeholder="Search customer, phone, plate, car..."
+        placeholder={tr("Search customer, phone, plate, car...")}
         value={search}
-        onChange={(e) =>
-          setSearch(e.target.value)
-        }
+        onChange={(e) => setSearch(e.target.value)}
       />
 
       {/* STATUS FILTER */}
 
       <select
         value={statusFilter}
-        onChange={(e) =>
-          setStatusFilter(e.target.value)
-        }
+        onChange={(e) => setStatusFilter(e.target.value)}
         style={styles.filter}
       >
-        <option value="All">
-          All Status
-        </option>
+        <option value="All">{tr("All Status")}</option>
 
-        <option value="New">
-          New
-        </option>
-
-        <option value="In Progress">
-          In Progress
-        </option>
-
-        <option value="Finished">
-          Finished
-        </option>
-
-        <option value="Delivered">
-          Delivered
-        </option>
+        {statusOptions.map((status) => (
+          <option key={status} value={status}>
+            {tr(status)}
+          </option>
+        ))}
       </select>
 
       {/* SOURCE FILTER */}
 
       <select
         value={sourceFilter}
-        onChange={(e) =>
-          setSourceFilter(e.target.value)
-        }
+        onChange={(e) => setSourceFilter(e.target.value)}
         style={styles.filter}
       >
-        <option value="All">
-          All Sources
-        </option>
+        <option value="All">{tr("All Sources")}</option>
 
-        <option value="Teyseer Motors">
-          Teyseer Motors
-        </option>
-
-        <option value="Teyseer Motors - Bahaa">
-          Teyseer Motors - Bahaa
-        </option>
-
-        <option value="Teyseer Motors - Salah">
-          Teyseer Motors - Salah
-        </option>
-<option value="Teyseer Motors - Abdou">
-  Teyseer Motors - Abdou
-</option>
-        <option value="Bahaa">
-          Bahaa
-        </option>
-
-        <option value="Salah">
-          Salah
-        </option>
-
-        <option value="Walk-in">
-          Walk-in
-        </option>
-
-        <option value="Other">
-          Other
-        </option>
+        {sourceOptions.map((source) => (
+          <option key={source} value={source}>
+            {tr(source)}
+          </option>
+        ))}
       </select>
 
       {/* JOBS */}
 
       {filteredJobs.length === 0 ? (
 
-        <p>
-          No jobs found
-        </p>
+        <p>{tr("No jobs found")}</p>
 
       ) : (
 
@@ -397,9 +449,7 @@ useEffect(() => {
 
             <div style={styles.jobHeader}>
 
-              <Link
-                to={`/jobs/${job.id}`}
-              >
+              <Link to={`/jobs/${job.id}`}>
                 <h2>
                   👤 {job.customer}
                 </h2>
@@ -408,7 +458,6 @@ useEffect(() => {
               <span
                 style={{
                   ...styles.badge,
-
                   background:
                     job.status === "Finished"
                       ? "#16a34a"
@@ -419,7 +468,7 @@ useEffect(() => {
                       : "#2563eb"
                 }}
               >
-                {job.status || "New"}
+                {tr(job.status || "New")}
               </span>
 
             </div>
@@ -427,24 +476,22 @@ useEffect(() => {
             {/* CUSTOMER */}
 
             <p>
-              Phone: {job.phone}
+              {tr("Phone")}: {job.phone}
             </p>
 
             <p>
-              Vehicle: {job.carModel}
+              {tr("Vehicle")}: {job.carModel}
             </p>
 
             <p>
-              Plate: {job.plate}
+              {tr("Plate")}: {job.plate}
             </p>
 
             {/* SERVICES */}
 
             <div style={styles.infoRow}>
 
-              <strong>
-                Services:
-              </strong>{" "}
+              <strong>{tr("Services")}:</strong>{" "}
 
               {Array.isArray(job.services)
                 ? job.services.length > 0
@@ -459,19 +506,19 @@ useEffect(() => {
                       )
                       .filter(Boolean)
                       .join(", ")
-                  : "No services"
+                  : tr("No services")
 
                 : typeof job.services === "string" &&
                   job.services.trim()
                 ? job.services
-                : "No services"}
+                : tr("No services")}
 
             </div>
 
-            {/* BALANCE — MATCHES INVOICE TEYSEER CALCULATION */}
+            {/* BALANCE */}
 
             <p style={styles.money}>
-              💰 Balance: QAR{" "}
+              💰 {tr("Balance")}: {tr("QAR")}{" "}
               {getInvoiceCustomerBalance(job).toLocaleString(
                 "en-US",
                 {
@@ -484,40 +531,26 @@ useEffect(() => {
             {/* SOURCE */}
 
             <p>
-              Source:{" "}
-              {job.source ||
-                "Not specified"}
+              {tr("Source")}:{" "}
+              {job.source
+                ? tr(job.source)
+                : tr("Not specified")}
             </p>
 
             {/* STATUS */}
 
             <select
-              value={
-                job.status || "New"
-              }
+              value={job.status || "New"}
               onChange={(e) =>
-                updateStatus(
-                  job.id,
-                  e.target.value
-                )
+                updateStatus(job.id, e.target.value)
               }
               style={styles.status}
             >
-              <option value="New">
-                New
-              </option>
-
-              <option value="In Progress">
-                In Progress
-              </option>
-
-              <option value="Finished">
-                Finished
-              </option>
-
-              <option value="Delivered">
-                Delivered
-              </option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {tr(status)}
+                </option>
+              ))}
             </select>
 
             <br />
@@ -525,51 +558,29 @@ useEffect(() => {
 
             {/* BUTTONS */}
 
-            <Link
-              to={`/edit-job/${job.id}`}
-            >
-              <button
-                style={
-                  styles.editButton
-                }
-              >
-                ✏️ Edit
+            <Link to={`/edit-job/${job.id}`}>
+              <button style={styles.editButton}>
+                ✏️ {tr("Edit")}
               </button>
             </Link>
 
-            <Link
-              to={`/assign-technician/${job.id}`}
-            >
-              <button
-                style={
-                  styles.techButton
-                }
-              >
-                👷 Assign Technician
+            <Link to={`/assign-technician/${job.id}`}>
+              <button style={styles.techButton}>
+                👷 {tr("Assign Technician")}
               </button>
             </Link>
 
-            <Link
-              to={`/invoice/${job.id}`}
-            >
-              <button
-                style={
-                  styles.invoiceButton
-                }
-              >
-                🧾 Invoice
+            <Link to={`/invoice/${job.id}`}>
+              <button style={styles.invoiceButton}>
+                🧾 {tr("Invoice")}
               </button>
             </Link>
 
             <button
-              style={
-                styles.deleteButton
-              }
-              onClick={() =>
-                deleteJob(job.id)
-              }
+              style={styles.deleteButton}
+              onClick={() => deleteJob(job.id)}
             >
-              🗑 Delete
+              🗑 {tr("Delete")}
             </button>
 
           </div>
@@ -609,7 +620,7 @@ const styles = {
 
   filter: {
     padding: "13px",
-    marginLeft: "10px",
+    marginInlineStart: "10px",
     marginBottom: "15px",
     borderRadius: "8px",
     border: "1px solid #555",

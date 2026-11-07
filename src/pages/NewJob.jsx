@@ -1,7 +1,157 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../supabase/client";
 
+// ============================================
+// NEW JOB TRANSLATIONS
+// ============================================
+
+const newJobTranslations = {
+  ar: {
+    "New Job": "وظيفة جديدة",
+    "Customer Information": "معلومات العميل",
+    "Customer Name": "اسم العميل",
+    "Phone Number": "رقم الهاتف",
+    "Date": "التاريخ",
+    "Source": "المصدر",
+    "Select Source": "اختر المصدر",
+    "Other": "أخرى",
+    "Walk-in": "عميل مباشر",
+    "Other Source": "مصدر آخر",
+    "TEYSEER JOB": "طلب تيسير",
+    "WTT will be paid through Teyseer.": "سيتم دفع خدمة WTT عن طريق تيسير.",
+    "Teyseer Voucher Number": "رقم قسيمة تيسير",
+    "Vehicle Information": "معلومات المركبة",
+    "Car Model": "موديل السيارة",
+    "Car Type": "نوع السيارة",
+    "Select Car Type": "اختر نوع السيارة",
+    "Color": "اللون",
+    "Chassis Number": "رقم الشاسيه",
+    "Plate Number": "رقم اللوحة",
+    "Services": "الخدمات",
+    "Paid through Teyseer": "مدفوع عن طريق تيسير",
+    "Price": "السعر",
+    "Quantity": "الكمية",
+    "Discount": "الخصم",
+    "Technicians": "الفنيون",
+    "Commission": "العمولة",
+    "Payment": "الدفع",
+    "Payment Method": "طريقة الدفع",
+    "Optional — can be added later": "اختياري — يمكن إضافته لاحقاً",
+    "Select Payment Method": "اختر طريقة الدفع",
+    "Cash": "نقداً",
+    "Visa": "فيزا",
+    "Mastercard": "ماستركارد",
+    "PayLater": "الدفع لاحقاً",
+    "Enter discount": "أدخل الخصم",
+    "Customer Deposit Paid": "الدفعة المقدمة من العميل",
+    "Enter customer deposit": "أدخل دفعة العميل",
+    "All Services Total: QAR": "إجمالي جميع الخدمات: ر.ق",
+    "All services are paid through Teyseer and excluded from the customer's amount.":
+      "جميع الخدمات مدفوعة عن طريق تيسير ومستثناة من المبلغ المستحق على العميل.",
+    "WTT is paid through Teyseer and excluded from the customer's amount.":
+      "خدمة WTT مدفوعة عن طريق تيسير ومستثناة من المبلغ المستحق على العميل.",
+    "Customer Net Amount: QAR": "صافي مبلغ العميل: ر.ق",
+    "Customer Balance: QAR": "رصيد العميل: ر.ق",
+    "SAVE JOB": "حفظ الطلب",
+    "Please enter customer name.": "يرجى إدخال اسم العميل.",
+    "Please enter the Teyseer Voucher Number.":
+      "يرجى إدخال رقم قسيمة تيسير.",
+    "Shop ID not found. Please log in again.":
+      "لم يتم العثور على معرف المتجر. يرجى تسجيل الدخول مرة أخرى.",
+    "Job Saved Successfully!": "تم حفظ الطلب بنجاح!",
+    "Receipt Number:": "رقم الإيصال:",
+    "Teyseer Voucher:": "قسيمة تيسير:",
+    "All Services: Paid through Teyseer":
+      "جميع الخدمات: مدفوعة عن طريق تيسير",
+    "WTT: Paid through Teyseer": "WTT: مدفوعة عن طريق تيسير",
+  },
+
+  zh: {
+    "New Job": "新建工单",
+    "Customer Information": "客户信息",
+    "Customer Name": "客户姓名",
+    "Phone Number": "电话号码",
+    "Date": "日期",
+    "Source": "客户来源",
+    "Select Source": "选择来源",
+    "Other": "其他",
+    "Walk-in": "直接到店客户",
+    "Other Source": "其他来源",
+    "TEYSEER JOB": "Teyseer 工单",
+    "WTT will be paid through Teyseer.": "WTT 服务费用将由 Teyseer 支付。",
+    "Teyseer Voucher Number": "Teyseer 凭证号码",
+    "Vehicle Information": "车辆信息",
+    "Car Model": "汽车型号",
+    "Car Type": "车辆品牌",
+    "Select Car Type": "选择车辆品牌",
+    "Color": "颜色",
+    "Chassis Number": "底盘号码",
+    "Plate Number": "车牌号码",
+    "Services": "服务项目",
+    "Paid through Teyseer": "由 Teyseer 支付",
+    "Price": "价格",
+    "Quantity": "数量",
+    "Discount": "折扣",
+    "Technicians": "技术人员",
+    "Commission": "佣金",
+    "Payment": "付款",
+    "Payment Method": "付款方式",
+    "Optional — can be added later": "可选 — 可以稍后添加",
+    "Select Payment Method": "选择付款方式",
+    "Cash": "现金",
+    "Visa": "Visa",
+    "Mastercard": "Mastercard",
+    "PayLater": "稍后付款",
+    "Enter discount": "输入折扣",
+    "Customer Deposit Paid": "客户已付订金",
+    "Enter customer deposit": "输入客户订金",
+    "All Services Total: QAR": "所有服务总额：QAR",
+    "All services are paid through Teyseer and excluded from the customer's amount.":
+      "所有服务均由 Teyseer 支付，不计入客户应付金额。",
+    "WTT is paid through Teyseer and excluded from the customer's amount.":
+      "WTT 服务由 Teyseer 支付，不计入客户应付金额。",
+    "Customer Net Amount: QAR": "客户净金额：QAR",
+    "Customer Balance: QAR": "客户余额：QAR",
+    "SAVE JOB": "保存工单",
+    "Please enter customer name.": "请输入客户姓名。",
+    "Please enter the Teyseer Voucher Number.":
+      "请输入 Teyseer 凭证号码。",
+    "Shop ID not found. Please log in again.":
+      "未找到店铺 ID，请重新登录。",
+    "Job Saved Successfully!": "工单保存成功！",
+    "Receipt Number:": "收据号码：",
+    "Teyseer Voucher:": "Teyseer 凭证：",
+    "All Services: Paid through Teyseer":
+      "所有服务：由 Teyseer 支付",
+    "WTT: Paid through Teyseer": "WTT：由 Teyseer 支付",
+  },
+};
+
+// ============================================
+// TRANSLATION HELPER
+// ============================================
+
+function translateNewJob(text, language) {
+  if (language === "ar" || language === "zh") {
+    return newJobTranslations[language]?.[text] || text;
+  }
+
+  return text;
+}
+
+// ============================================
+// NEW JOB COMPONENT
+// ============================================
+
 function NewJob() {
+  const { i18n } = useTranslation();
+
+  const language =
+    i18n.resolvedLanguage || i18n.language || "en";
+
+  const tr = (text) => translateNewJob(text, language);
+
   const today = new Date().toISOString().split("T")[0];
 
   // ============================================
@@ -86,13 +236,13 @@ function NewJob() {
       value === "teyseer-bahaa"
     );
   }
- 
+
   function isTeyseerSource(sourceName) {
     return (
       isPureTeyseerSource(sourceName) ||
       isTeyseerSalahSource(sourceName) ||
-      isTeyseerBahaaSource(sourceName) 
-        );
+      isTeyseerBahaaSource(sourceName)
+    );
   }
 
   function isWttService(serviceName) {
@@ -149,10 +299,6 @@ function NewJob() {
 
   // ============================================
   // TOTAL OF ALL SERVICES
-  //
-  // Gross/internal total.
-  // Includes WTT.
-  // Service discount is subtracted here.
   // ============================================
 
   const total = services.reduce((sum, serviceName) => {
@@ -169,20 +315,16 @@ function NewJob() {
 
   // ============================================
   // CUSTOMER SERVICES TOTAL
-  //
-  // WTT is excluded only for Teyseer sources.
   // ============================================
 
   const customerServicesTotal = services.reduce(
     (sum, serviceName) => {
       const details = serviceDetails[serviceName] || {};
 
-      // Exact source "Teyseer Motors": Teyseer pays for every service.
       if (isPureTeyseerSource(source)) {
         return sum;
       }
 
-      // For Teyseer Motors - Salah/Bahaa, only WTT is paid by Teyseer.
       if (
         isTeyseerSource(source) &&
         isWttService(serviceName)
@@ -209,8 +351,7 @@ function NewJob() {
   // ============================================
 
   const finalNetAmount = Math.max(
-    customerServicesTotal -
-      Number(discount || 0),
+    customerServicesTotal - Number(discount || 0),
     0
   );
 
@@ -219,8 +360,7 @@ function NewJob() {
   // ============================================
 
   const finalBalance = Math.max(
-    finalNetAmount -
-      Number(deposit || 0),
+    finalNetAmount - Number(deposit || 0),
     0
   );
 
@@ -243,10 +383,7 @@ function NewJob() {
       return;
     }
 
-    setServices((prev) => [
-      ...prev,
-      service,
-    ]);
+    setServices((prev) => [...prev, service]);
 
     setServiceDetails((prev) => ({
       ...prev,
@@ -282,9 +419,11 @@ function NewJob() {
     if (carType === "Suzuki") {
       price = 800;
     }
- if (carType === "Peugot") {
+
+    if (carType === "Peugot") {
       price = 1000;
     }
+
     if (price === null) {
       return;
     }
@@ -300,30 +439,6 @@ function NewJob() {
 
   // ============================================
   // GET SERVICE OWNER
-  //
-  // IMPORTANT:
-  //
-  // Teyseer Motors
-  //   -> all services = Teyseer
-  //
-  // Teyseer Motors - Salah
-  //   -> WTT = Teyseer
-  //   -> Other = Salah
-  //
-  // Teyseer Motors - Bahaa
-  //   -> WTT = Teyseer
-  //   -> Other = Bahaa
-  //
-  //
-  // Salah
-  //   -> Salah
-  //
-  // Bahaa
-  //   -> Bahaa
-  //
-  //
-  // Walk-in / Other
-  //   -> Sales Team
   // ============================================
 
   function getServiceOwner(sourceName, serviceName) {
@@ -359,14 +474,14 @@ function NewJob() {
 
   async function saveJob() {
     if (!customer.trim()) {
-      alert("Please enter customer name.");
+      alert(tr("Please enter customer name."));
       return;
     }
 
     const isTeyseer = isTeyseerSource(source);
 
     if (isTeyseer && !voucherNumber.trim()) {
-      alert("Please enter the Teyseer Voucher Number.");
+      alert(tr("Please enter the Teyseer Voucher Number."));
       return;
     }
 
@@ -377,7 +492,7 @@ function NewJob() {
     const shopId = loggedInUser?.shop_id;
 
     if (!shopId) {
-      alert("Shop ID not found. Please log in again.");
+      alert(tr("Shop ID not found. Please log in again."));
       return;
     }
 
@@ -400,11 +515,7 @@ function NewJob() {
       .maybeSingle();
 
     if (receiptError) {
-      console.error(
-        "RECEIPT NUMBER ERROR:",
-        receiptError
-      );
-
+      console.error("RECEIPT NUMBER ERROR:", receiptError);
       alert(receiptError.message);
       return;
     }
@@ -419,8 +530,7 @@ function NewJob() {
     // ==========================================
 
     const savedPaymentMethod =
-      paymentMethod &&
-      paymentMethod.trim() !== ""
+      paymentMethod && paymentMethod.trim() !== ""
         ? paymentMethod
         : null;
 
@@ -444,15 +554,11 @@ function NewJob() {
       phone,
       date,
 
-      receipt_number:
-        nextReceiptNumber,
+      receipt_number: nextReceiptNumber,
 
       source: savedSource,
 
-      voucherNumber:
-        isTeyseer
-          ? voucherNumber
-          : "",
+      voucherNumber: isTeyseer ? voucherNumber : "",
 
       carModel,
       carType,
@@ -463,28 +569,20 @@ function NewJob() {
       services,
       serviceDetails,
 
-      paymentMethod:
-        savedPaymentMethod,
+      paymentMethod: savedPaymentMethod,
 
-      price:
-        Number(total),
+      price: Number(total),
 
-      discount:
-        Number(discount || 0),
+      discount: Number(discount || 0),
 
-      deposit:
-        Number(deposit || 0),
+      deposit: Number(deposit || 0),
 
-      balance:
-        Number(finalBalance),
+      balance: Number(finalBalance),
 
       status: "New",
     };
 
-    console.log(
-      "JOB TO SAVE:",
-      job
-    );
+    console.log("JOB TO SAVE:", job);
 
     // ==========================================
     // INSERT JOB
@@ -500,11 +598,7 @@ function NewJob() {
       .single();
 
     if (jobError) {
-      console.error(
-        "JOB ERROR:",
-        jobError
-      );
-
+      console.error("JOB ERROR:", jobError);
       alert(jobError.message);
       return;
     }
@@ -514,54 +608,40 @@ function NewJob() {
     // ==========================================
 
     if (Number(deposit) > 0) {
-      const {
-        error: paymentError,
-      } = await supabase
+      const { error: paymentError } = await supabase
         .from("payments")
         .insert([
           {
             job_id: jobData.id,
 
-            amount:
-              Number(deposit),
+            amount: Number(deposit),
 
-            payment_method:
-              savedPaymentMethod,
+            payment_method: savedPaymentMethod,
 
-            payment_source:
-              savedSource,
+            payment_source: savedSource,
 
-            payment_date:
-              new Date(),
+            payment_date: new Date(),
 
-            notes:
-              "Customer payment",
+            notes: "Customer payment",
           },
         ]);
 
       if (paymentError) {
-        console.error(
-          "PAYMENT ERROR:",
-          paymentError
-        );
+        console.error("PAYMENT ERROR:", paymentError);
       }
     }
 
     // ==========================================
     // CREATE JOB SERVICES
-    //
-    // OWNER NOW MATCHES THE SOURCE.
     // ==========================================
 
     for (const serviceName of services) {
-      const details =
-        serviceDetails[serviceName] || {};
+      const details = serviceDetails[serviceName] || {};
 
-      const owner =
-        getServiceOwner(
-          savedSource,
-          serviceName
-        );
+      const owner = getServiceOwner(
+        savedSource,
+        serviceName
+      );
 
       const {
         data: serviceRow,
@@ -570,21 +650,13 @@ function NewJob() {
         .from("job_services")
         .insert([
           {
-            job_id:
-              jobData.id,
+            job_id: jobData.id,
 
-            service_name:
-              serviceName,
+            service_name: serviceName,
 
-            price:
-              Number(
-                details.price || 0
-              ),
+            price: Number(details.price || 0),
 
-            discount:
-              Number(
-                details.discount || 0
-              ),
+            discount: Number(details.discount || 0),
 
             owner,
           },
@@ -593,11 +665,7 @@ function NewJob() {
         .single();
 
       if (serviceError) {
-        console.error(
-          "SERVICE ERROR:",
-          serviceError
-        );
-
+        console.error("SERVICE ERROR:", serviceError);
         continue;
       }
 
@@ -605,67 +673,52 @@ function NewJob() {
       // TECHNICIANS
       // ========================================
 
-      const techRows =
-        (details.technicians || []).map(
-          (technician) => ({
-            service_id:
-              serviceRow.id,
+      const techRows = (
+        details.technicians || []
+      ).map((technician) => ({
+        service_id: serviceRow.id,
 
-            technician_id:
-              technician.id,
+        technician_id: technician.id,
 
-            commission:
-              Number(
-                technician.commission || 0
-              ),
-          })
-        );
+        commission: Number(technician.commission || 0),
+      }));
 
       if (techRows.length > 0) {
-        const {
-          error: techError,
-        } = await supabase
+        const { error: techError } = await supabase
           .from("service_technicians")
           .insert(techRows);
 
         if (techError) {
-          console.error(
-            "TECHNICIAN ERROR:",
-            techError
-          );
+          console.error("TECHNICIAN ERROR:", techError);
         }
       }
     }
 
-    // ==========================================
+    // ============================================
     // SUCCESS
-    // ==========================================
+    // ============================================
 
     let successMessage =
-      `Job Saved Successfully!\n\n` +
-      `Receipt Number: ${nextReceiptNumber}\n\n`;
+      `${tr("Job Saved Successfully!")}\n\n` +
+      `${tr("Receipt Number:")} ${nextReceiptNumber}\n\n`;
 
     if (isTeyseer) {
       successMessage +=
-        `Teyseer Voucher: ${voucherNumber}\n\n` +
+        `${tr("Teyseer Voucher:")} ${voucherNumber}\n\n` +
         (isPureTeyseerSource(savedSource)
-          ? `All Services: Paid through Teyseer\n\n`
-          : `WTT: Paid through Teyseer\n\n`) +
-        `Customer Net Amount: QAR ${finalNetAmount.toFixed(
-          2
-        )}`;
+          ? `${tr("All Services: Paid through Teyseer")}\n\n`
+          : `${tr("WTT: Paid through Teyseer")}\n\n`) +
+        `${tr("Customer Net Amount: QAR")} ${finalNetAmount.toFixed(2)}`;
     } else {
       successMessage +=
-        `Customer Net Amount: QAR ${finalNetAmount.toFixed(
-          2
-        )}`;
+        `${tr("Customer Net Amount: QAR")} ${finalNetAmount.toFixed(2)}`;
     }
 
     alert(successMessage);
 
-    // ==========================================
+    // ============================================
     // RESET
-    // ==========================================
+    // ============================================
 
     setCustomer("");
     setPhone("");
@@ -695,55 +748,38 @@ function NewJob() {
 
   return (
     <div style={styles.page}>
-      <h1>New Job</h1>
+      <h1>{tr("New Job")}</h1>
 
       <div style={styles.form}>
-
-        <h2>
-          Customer Information
-        </h2>
+        <h2>{tr("Customer Information")}</h2>
 
         <input
-          placeholder="Customer Name"
+          placeholder={tr("Customer Name")}
           value={customer}
-          onChange={(e) =>
-            setCustomer(e.target.value)
-          }
+          onChange={(e) => setCustomer(e.target.value)}
         />
 
         <input
-          placeholder="Phone Number"
+          placeholder={tr("Phone Number")}
           value={phone}
-          onChange={(e) =>
-            setPhone(e.target.value)
-          }
+          onChange={(e) => setPhone(e.target.value)}
         />
 
-        <label>
-          Date
-        </label>
+        <label>{tr("Date")}</label>
 
         <input
           type="date"
           value={date}
-          onChange={(e) =>
-            setDate(e.target.value)
-          }
+          onChange={(e) => setDate(e.target.value)}
         />
 
-        <h2>
-          Source
-        </h2>
+        <h2>{tr("Source")}</h2>
 
         <select
           value={source}
-          onChange={(e) =>
-            setSource(e.target.value)
-          }
+          onChange={(e) => setSource(e.target.value)}
         >
-          <option value="">
-            Select Source
-          </option>
+          <option value="">{tr("Select Source")}</option>
 
           <option value="Teyseer Motors">
             Teyseer Motors
@@ -757,463 +793,278 @@ function NewJob() {
             Teyseer Motors - Salah
           </option>
 
-          <option value="Bahaa">
-            Bahaa
-          </option>
+          <option value="Bahaa">Bahaa</option>
 
-          <option value="Salah">
-            Salah
-          </option>
+          <option value="Salah">Salah</option>
 
-          <option value="Walk-in">
-            Walk-in
-          </option>
+          <option value="Walk-in">{tr("Walk-in")}</option>
 
-          <option value="Other">
-            Other
-          </option>
+          <option value="Other">{tr("Other")}</option>
         </select>
 
         {source === "Other" && (
           <input
-            placeholder="Other Source"
+            placeholder={tr("Other Source")}
             value={otherSource}
-            onChange={(e) =>
-              setOtherSource(
-                e.target.value
-              )
-            }
+            onChange={(e) => setOtherSource(e.target.value)}
           />
         )}
 
         {isTeyseerSource(source) && (
           <div style={styles.teyseerBox}>
-            <strong>
-              TEYSEER JOB
-            </strong>
+            <strong>{tr("TEYSEER JOB")}</strong>
 
-            <span>
-              WTT will be paid through Teyseer.
-            </span>
+            <span>{tr("WTT will be paid through Teyseer.")}</span>
 
             <input
-              placeholder="Teyseer Voucher Number"
+              placeholder={tr("Teyseer Voucher Number")}
               value={voucherNumber}
-              onChange={(e) =>
-                setVoucherNumber(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setVoucherNumber(e.target.value)}
             />
           </div>
         )}
 
-        <h2>
-          Vehicle Information
-        </h2>
+        <h2>{tr("Vehicle Information")}</h2>
 
         <input
-          placeholder="Car Model"
+          placeholder={tr("Car Model")}
           value={carModel}
-          onChange={(e) =>
-            setCarModel(e.target.value)
-          }
+          onChange={(e) => setCarModel(e.target.value)}
         />
 
-        <label>
-          Car Type
-        </label>
+        <label>{tr("Car Type")}</label>
 
         <select
           value={carType}
-          onChange={(e) =>
-            setCarType(e.target.value)
-          }
+          onChange={(e) => setCarType(e.target.value)}
         >
-          <option value="">
-            Select Car Type
-          </option>
+          <option value="">{tr("Select Car Type")}</option>
 
-          <option value="GWM">
-            GWM
-          </option>
-
-          <option value="Suzuki">
-            Suzuki
-          </option>
-<option value="Peugot">
-            Peugot
-          </option>
-          <option value="Toyota">
-            Toyota
-          </option>
-
-          <option value="Nissan">
-            Nissan
-          </option>
-
-          <option value="Honda">
-            Honda
-          </option>
-
-          <option value="Kia">
-            Kia
-          </option>
-
-          <option value="Hyundai">
-            Hyundai
-          </option>
-
-          <option value="Ford">
-            Ford
-          </option>
-
-          <option value="BMW">
-            BMW
-          </option>
-
-          <option value="Mercedes">
-            Mercedes
-          </option>
-
-          <option value="Audi">
-            Audi
-          </option>
-
-          <option value="Dodge">
-            Dodge
-          </option>
-
-          <option value="Chevrolet">
-            Chevrolet
-          </option>
+          <option value="GWM">GWM</option>
+          <option value="Suzuki">Suzuki</option>
+          <option value="Peugot">Peugot</option>
+          <option value="Toyota">Toyota</option>
+          <option value="Nissan">Nissan</option>
+          <option value="Honda">Honda</option>
+          <option value="Kia">Kia</option>
+          <option value="Hyundai">Hyundai</option>
+          <option value="Ford">Ford</option>
+          <option value="BMW">BMW</option>
+          <option value="Mercedes">Mercedes</option>
+          <option value="Audi">Audi</option>
+          <option value="Dodge">Dodge</option>
+          <option value="Chevrolet">Chevrolet</option>
         </select>
 
         <input
-          placeholder="Color"
+          placeholder={tr("Color")}
           value={color}
-          onChange={(e) =>
-            setColor(e.target.value)
-          }
+          onChange={(e) => setColor(e.target.value)}
         />
 
         <input
-          placeholder="Chassis Number"
+          placeholder={tr("Chassis Number")}
           value={chassis}
-          onChange={(e) =>
-            setChassis(e.target.value)
-          }
+          onChange={(e) => setChassis(e.target.value)}
         />
 
         <input
-          placeholder="Plate Number"
+          placeholder={tr("Plate Number")}
           value={plate}
-          onChange={(e) =>
-            setPlate(e.target.value)
-          }
+          onChange={(e) => setPlate(e.target.value)}
         />
 
-        <h2>
-          Services
-        </h2>
+        <h2>{tr("Services")}</h2>
 
-        {serviceList.map(
-          (serviceItem) => {
-            const service =
-              serviceItem.name;
+        {serviceList.map((serviceItem) => {
+          const service = serviceItem.name;
 
-            const isWtt =
-              isWttService(service);
+          const isWtt = isWttService(service);
 
-            const isTeyseerPaidService =
-              isPureTeyseerSource(source) ||
-              (isTeyseerSource(source) && isWtt);
+          const isTeyseerPaidService =
+            isPureTeyseerSource(source) ||
+            (isTeyseerSource(source) && isWtt);
 
-            return (
-              <div
-                key={serviceItem.id}
-                style={
-                  styles.serviceBox
-                }
-              >
-                <label>
+          return (
+            <div
+              key={serviceItem.id}
+              style={styles.serviceBox}
+            >
+              <label>
+                <input
+                  type="checkbox"
+                  checked={services.includes(service)}
+                  onChange={() =>
+                    chooseService(service, serviceItem.price)
+                  }
+                />
+
+                {" "}
+
+                {service}
+
+                {isTeyseerPaidService && (
+                  <span style={styles.teyseerLabel}>
+                    {tr("Paid through Teyseer")}
+                  </span>
+                )}
+              </label>
+
+              {services.includes(service) && (
+                <div>
+                  <br />
+
                   <input
-                    type="checkbox"
-                    checked={services.includes(
-                      service
-                    )}
-                    onChange={() =>
-                      chooseService(
-                        service,
-                        serviceItem.price
-                      )
+                    type="number"
+                    placeholder={tr("Price")}
+                    value={
+                      serviceDetails?.[service]?.price || 0
                     }
+                    onChange={(e) => {
+                      setServiceDetails((prev) => ({
+                        ...prev,
+
+                        [service]: {
+                          ...(prev[service] || {}),
+                          price: Number(e.target.value),
+                        },
+                      }));
+                    }}
                   />
 
-                  {" "}
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder={tr("Quantity")}
+                    value={
+                      serviceDetails?.[service]?.quantity || 1
+                    }
+                    onChange={(e) => {
+                      setServiceDetails((prev) => ({
+                        ...prev,
 
-                  {service}
+                        [service]: {
+                          ...(prev[service] || {}),
+                          quantity: Number(e.target.value) || 1,
+                        },
+                      }));
+                    }}
+                  />
 
-                  {isTeyseerPaidService && (
-                    <span
-                      style={
-                        styles.teyseerLabel
-                      }
-                    >
-                      Paid through Teyseer
-                    </span>
-                  )}
-                </label>
+                  <input
+                    type="number"
+                    placeholder={tr("Discount")}
+                    value={
+                      serviceDetails?.[service]?.discount || 0
+                    }
+                    onChange={(e) => {
+                      setServiceDetails((prev) => ({
+                        ...prev,
 
-                {services.includes(
-                  service
-                ) && (
-                  <div>
-                    <br />
+                        [service]: {
+                          ...(prev[service] || {}),
+                          discount: Number(e.target.value),
+                        },
+                      }));
+                    }}
+                  />
 
-                    <input
-                      type="number"
-                      placeholder="Price"
-                      value={
-                        serviceDetails?.[
-                          service
-                        ]?.price || 0
-                      }
-                      onChange={(e) => {
-                        setServiceDetails(
-                          (prev) => ({
-                            ...prev,
+                  <h4>{tr("Technicians")}</h4>
 
-                            [service]: {
-                              ...(prev[
-                                service
-                              ] || {}),
+                  {technicians.map((person) => {
+                    const selected =
+                      serviceDetails[service]?.technicians?.find(
+                        (t) => t.id === person.id
+                      );
 
-                              price:
-                                Number(
-                                  e.target.value
-                                ),
-                            },
-                          })
-                        );
-                      }}
-                    />
+                    return (
+                      <div key={person.id}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={!!selected}
+                            onChange={(e) => {
+                              const oldTech =
+                                serviceDetails[service]?.technicians || [];
 
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="Quantity"
-                      value={
-                        serviceDetails?.[
-                          service
-                        ]?.quantity || 1
-                      }
-                      onChange={(e) => {
-                        setServiceDetails(
-                          (prev) => ({
-                            ...prev,
+                              let updated;
 
-                            [service]: {
-                              ...(prev[
-                                service
-                              ] || {}),
+                              if (e.target.checked) {
+                                updated = [
+                                  ...oldTech,
+                                  {
+                                    id: person.id,
+                                    commission: 0,
+                                  },
+                                ];
+                              } else {
+                                updated = oldTech.filter(
+                                  (t) => t.id !== person.id
+                                );
+                              }
 
-                              quantity:
-                                Number(
-                                  e.target.value
-                                ) || 1,
-                            },
-                          })
-                        );
-                      }}
-                    />
+                              setServiceDetails((prev) => ({
+                                ...prev,
 
-                    <input
-                      type="number"
-                      placeholder="Discount"
-                      value={
-                        serviceDetails?.[
-                          service
-                        ]?.discount || 0
-                      }
-                      onChange={(e) => {
-                        setServiceDetails(
-                          (prev) => ({
-                            ...prev,
+                                [service]: {
+                                  ...(prev[service] || {}),
+                                  technicians: updated,
+                                },
+                              }));
+                            }}
+                          />
 
-                            [service]: {
-                              ...(prev[
-                                service
-                              ] || {}),
+                          {" "}
 
-                              discount:
-                                Number(
-                                  e.target.value
-                                ),
-                            },
-                          })
-                        );
-                      }}
-                    />
+                          {person.name}
+                        </label>
 
-                    <h4>
-                      Technicians
-                    </h4>
-
-                    {technicians.map(
-                      (person) => {
-                        const selected =
-                          serviceDetails[
-                            service
-                          ]?.technicians?.find(
-                            (t) =>
-                              t.id ===
-                              person.id
-                          );
-
-                        return (
-                          <div
-                            key={
-                              person.id
-                            }
-                          >
-                            <label>
-                              <input
-                                type="checkbox"
-                                checked={
-                                  !!selected
-                                }
-                                onChange={(
-                                  e
-                                ) => {
-                                  const oldTech =
-                                    serviceDetails[
-                                      service
-                                    ]?.technicians ||
-                                    [];
-
-                                  let updated;
-
-                                  if (
-                                    e.target
-                                      .checked
-                                  ) {
-                                    updated =
-                                      [
-                                        ...oldTech,
-                                        {
-                                          id:
-                                            person.id,
-                                          commission:
-                                            0,
-                                        },
-                                      ];
-                                  } else {
-                                    updated =
-                                      oldTech.filter(
-                                        (t) =>
-                                          t.id !==
-                                          person.id
-                                      );
+                        {selected && (
+                          <input
+                            type="number"
+                            placeholder={tr("Commission")}
+                            value={selected.commission}
+                            onChange={(e) => {
+                              setServiceDetails((prev) => {
+                                const updated = (
+                                  prev[service]?.technicians || []
+                                ).map((t) => {
+                                  if (t.id === person.id) {
+                                    return {
+                                      ...t,
+                                      commission: Number(e.target.value),
+                                    };
                                   }
 
-                                  setServiceDetails(
-                                    (prev) => ({
-                                      ...prev,
+                                  return t;
+                                });
 
-                                      [service]: {
-                                        ...(prev[
-                                          service
-                                        ] || {}),
+                                return {
+                                  ...prev,
 
-                                        technicians:
-                                          updated,
-                                      },
-                                    })
-                                  );
-                                }}
-                              />
+                                  [service]: {
+                                    ...(prev[service] || {}),
+                                    technicians: updated,
+                                  },
+                                };
+                              });
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
-                              {" "}
-
-                              {person.name}
-                            </label>
-
-                            {selected && (
-                              <input
-                                type="number"
-                                placeholder="Commission"
-                                value={
-                                  selected.commission
-                                }
-                                onChange={(
-                                  e
-                                ) => {
-                                  setServiceDetails(
-                                    (prev) => {
-                                      const updated =
-                                        (
-                                          prev[
-                                            service
-                                          ]
-                                            ?.technicians ||
-                                          []
-                                        ).map(
-                                          (t) => {
-                                            if (
-                                              t.id ===
-                                              person.id
-                                            ) {
-                                              return {
-                                                ...t,
-
-                                                commission:
-                                                  Number(
-                                                    e
-                                                      .target
-                                                      .value
-                                                  ),
-                                              };
-                                            }
-
-                                            return t;
-                                          }
-                                        );
-
-                                      return {
-                                        ...prev,
-
-                                        [service]: {
-                                          ...(prev[
-                                            service
-                                          ] || {}),
-
-                                          technicians:
-                                            updated,
-                                        },
-                                      };
-                                    }
-                                  );
-                                }}
-                              />
-                            )}
-                          </div>
-                        );
-                      }
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          }
-        )}
-
-        <h2>
-          Payment
-        </h2>
+        <h2>{tr("Payment")}</h2>
 
         <label>
-          Payment Method
+          {tr("Payment Method")}
+
           <span
             style={{
               color: "#888",
@@ -1221,90 +1072,65 @@ function NewJob() {
               marginLeft: "8px",
             }}
           >
-            Optional — can be added later
+            {tr("Optional — can be added later")}
           </span>
         </label>
 
         <select
           value={paymentMethod}
-          onChange={(e) =>
-            setPaymentMethod(
-              e.target.value
-            )
-          }
+          onChange={(e) => setPaymentMethod(e.target.value)}
         >
-          <option value="">
-            Select Payment Method
-          </option>
+          <option value="">{tr("Select Payment Method")}</option>
 
-          <option value="Cash">
-            Cash
-          </option>
-
-          <option value="Visa">
-            Visa
-          </option>
-
-          <option value="Mastercard">
-            Mastercard
-          </option>
-
-          <option value="PayLater">
-            PayLater
-          </option>
+          <option value="Cash">{tr("Cash")}</option>
+          <option value="Visa">Visa</option>
+          <option value="Mastercard">Mastercard</option>
+          <option value="PayLater">{tr("PayLater")}</option>
         </select>
 
-        <label>
-          Discount
-        </label>
+        <label>{tr("Discount")}</label>
 
         <input
           type="number"
-          placeholder="Enter discount"
+          placeholder={tr("Enter discount")}
           value={discount}
-          onChange={(e) =>
-            setDiscount(
-              Number(e.target.value)
-            )
-          }
+          onChange={(e) => setDiscount(Number(e.target.value))}
         />
 
-        <label>
-          Customer Deposit Paid
-        </label>
+        <label>{tr("Customer Deposit Paid")}</label>
 
         <input
           type="number"
-          placeholder="Enter customer deposit"
+          placeholder={tr("Enter customer deposit")}
           value={deposit}
-          onChange={(e) =>
-            setDeposit(
-              Number(e.target.value)
-            )
-          }
+          onChange={(e) => setDeposit(Number(e.target.value))}
         />
 
         <div style={styles.summary}>
           <h3>
-            All Services Total: QAR{" "}
+            {tr("All Services Total: QAR")}{" "}
             {total.toFixed(2)}
           </h3>
 
           {isTeyseerSource(source) && (
             <p style={styles.teyseerNotice}>
               {isPureTeyseerSource(source)
-                ? "All services are paid through Teyseer and excluded from the customer's amount."
-                : "WTT is paid through Teyseer and excluded from the customer's amount."}
+                ? tr(
+                    "All services are paid through Teyseer and excluded from the customer's amount."
+                  )
+                : tr(
+                    "WTT is paid through Teyseer and excluded from the customer's amount."
+                  )}
             </p>
           )}
 
           <h3>
-            Customer Net Amount: QAR{" "}
+            {tr("Customer Net Amount: QAR")}{" "}
             {finalNetAmount.toFixed(2)}
           </h3>
 
           <h3>
-            Customer Balance: QAR{" "}
+            {tr("Customer Balance: QAR")}{" "}
             {finalBalance.toFixed(2)}
           </h3>
         </div>
@@ -1314,7 +1140,7 @@ function NewJob() {
           onClick={saveJob}
           style={styles.button}
         >
-          SAVE JOB
+          {tr("SAVE JOB")}
         </button>
       </div>
     </div>

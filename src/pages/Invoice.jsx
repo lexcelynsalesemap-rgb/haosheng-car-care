@@ -1,66 +1,283 @@
+
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../supabase/client";
 import gaLogo from "../assets/ga-logo.png";
 
+// =========================================================
+// INVOICE TRANSLATIONS
+// =========================================================
+
+const invoiceTranslations = {
+  ar: {
+    "Loading Invoice...": "جاري تحميل الفاتورة...",
+    "Invoice Not Found": "الفاتورة غير موجودة",
+    INVOICE: "فاتورة",
+    "CUSTOMER INFORMATION": "معلومات العميل",
+    "CUSTOMER NAME": "اسم العميل",
+    "MOBILE NUMBER": "رقم الهاتف",
+    "INVOICE DATE": "تاريخ الفاتورة",
+    "BILLING INFORMATION": "معلومات الدفع",
+    "CUSTOMER AMOUNT": "المبلغ المستحق من العميل",
+    "ALL SERVICES": "جميع الخدمات",
+    "ALL SERVICES PAID THROUGH TEYSEER": "جميع الخدمات مدفوعة من خلال تيسير",
+    "PAID THROUGH TEYSEER": "مدفوع من خلال تيسير",
+    "TEYSEER VOUCHER NO.": "رقم قسيمة تيسير",
+    "VEHICLE INFORMATION": "معلومات المركبة",
+    MAKE: "الشركة المصنعة",
+    MODEL: "الموديل",
+    COLOR: "اللون",
+    CHASSIS: "رقم الهيكل",
+    PLATE: "رقم اللوحة",
+    "SERVICE OFFERED": "الخدمات المقدمة",
+    SERVICE: "الخدمة",
+    PRICE: "السعر",
+    QTY: "الكمية",
+    DISCOUNT: "الخصم",
+    TOTAL: "الإجمالي",
+    "No services added": "لم تتم إضافة خدمات",
+    TEYSEER: "تيسير",
+    PAID: "مدفوع",
+    "NET AMOUNT": "صافي المبلغ",
+    "PPF WARRANTY": "ضمان حماية الطلاء",
+    "8 YEARS": "8 سنوات",
+    "FREE CHECK UP AFTER 1 WEEK FOR PPF": "فحص مجاني بعد أسبوع واحد لحماية الطلاء",
+    "1X FREE AFTER HALF YEAR PPF CHEMICAL SERVICE PROTECTION": "خدمة حماية كيميائية مجانية مرة واحدة بعد نصف سنة",
+    "CUSTOMER'S SIGNATURE": "توقيع العميل",
+    "AUTHORIZED SIGNATURE": "التوقيع المعتمد",
+    "Thank you for choosing Haosheng Car Care": "شكراً لاختياركم هاوشنغ للعناية بالسيارات",
+    "TERMS AND CONDITIONS": "الشروط والأحكام",
+    WARRANTY: "الضمان",
+    CONDITIONS: "الشروط",
+    "ADDITIONAL SERVICES": "خدمات إضافية",
+    "Print Invoice": "طباعة الفاتورة",
+    "Quarter panel protection: 5-year warranty.": "حماية ربع لوحة السيارة: ضمان 5 سنوات.",
+    "Thermal insulation warranty: 10 years.": "ضمان العزل الحراري: 10 سنوات.",
+    "Nano-ceramic service: 2 years for shine, 6 months for water repellency.": "خدمة نانو سيراميك: سنتان للمعان و6 أشهر لمقاومة الماء.",
+    "FREE CHECK UP AFTER 1 WEEK FOR PPF": "فحص مجاني بعد أسبوع واحد لحماية الطلاء",
+    "8 YEARS": "8 سنوات",
+    "All services": "جميع الخدمات",
+    "Warranty": "الضمان",
+    "Conditions": "الشروط",
+    "Additional Services": "خدمات إضافية"
+  },
+
+  zh: {
+    "Loading Invoice...": "正在加载发票...",
+    "Invoice Not Found": "未找到发票",
+    INVOICE: "发票",
+    "CUSTOMER INFORMATION": "客户信息",
+    "CUSTOMER NAME": "客户姓名",
+    "MOBILE NUMBER": "手机号码",
+    "INVOICE DATE": "发票日期",
+    "BILLING INFORMATION": "账单信息",
+    "CUSTOMER AMOUNT": "客户应付金额",
+    "ALL SERVICES": "所有服务",
+    "ALL SERVICES PAID THROUGH TEYSEER": "所有服务费用由 Teyseer 支付",
+    "PAID THROUGH TEYSEER": "由 Teyseer 支付",
+    "TEYSEER VOUCHER NO.": "Teyseer 凭证号码",
+    "VEHICLE INFORMATION": "车辆信息",
+    MAKE: "品牌",
+    MODEL: "型号",
+    COLOR: "颜色",
+    CHASSIS: "底盘号码",
+    PLATE: "车牌号码",
+    "SERVICE OFFERED": "提供的服务",
+    SERVICE: "服务项目",
+    PRICE: "价格",
+    QTY: "数量",
+    DISCOUNT: "折扣",
+    TOTAL: "总计",
+    "No services added": "尚未添加服务",
+    TEYSEER: "Teyseer",
+    PAID: "已付款",
+    "NET AMOUNT": "净金额",
+    "PPF WARRANTY": "漆面保护膜保修",
+    "8 YEARS": "8年",
+    "FREE CHECK UP AFTER 1 WEEK FOR PPF": "PPF施工后一周免费检查",
+    "1X FREE AFTER HALF YEAR PPF CHEMICAL SERVICE PROTECTION": "半年后免费享受一次PPF化学保护护理",
+    "CUSTOMER'S SIGNATURE": "客户签名",
+    "AUTHORIZED SIGNATURE": "授权签名",
+    "Thank you for choosing Haosheng Car Care": "感谢您选择浩盛汽车护理中心",
+    "TERMS AND CONDITIONS": "条款与条件",
+    WARRANTY: "保修条款",
+    CONDITIONS: "使用条件",
+    "ADDITIONAL SERVICES": "其他服务",
+    "Print Invoice": "打印发票",
+    "Quarter panel protection: 5-year warranty.": "车辆侧后翼子板保护：5年保修。",
+    "Thermal insulation warranty: 10 years.": "隔热膜保修：10年。",
+    "Nano-ceramic service: 2 years for shine, 6 months for water repellency.": "纳米陶瓷护理：光泽保修2年，防水效果6个月。",
+    "All services": "所有服务",
+    Warranty: "保修条款",
+    Conditions: "使用条件",
+    "Additional Services": "其他服务"
+  }
+};
+
+function translateInvoice(text, language) {
+  return invoiceTranslations[language]?.[text] || text;
+}
+
+// =========================================================
+// TERMS AND CONDITIONS
+// =========================================================
+
+const englishTerms = [
+  {
+    heading: "WARRANTY",
+    paragraphs: [
+      "We, the Haosheng Car Care team, are pleased to offer you a warranty when you install full vehicle protection or full front-end protection (excluding misuse).",
+      "Quarter panel protection: 5-year warranty.",
+      "Protection warranty includes Nano-ceramic shine, yellowing, self-healing of scratches, cracking, and paint removal.",
+      "Thermal insulation warranty: 10 years.",
+      "Nano-ceramic service: 2 years for shine, 6 months for water repellency."
+    ]
+  },
+  {
+    heading: "CONDITIONS",
+    paragraphs: [
+      "Signing the invoice or receipt by the customer is considered acceptance and receipt of the protection on the vehicle and cannot be denied or contested.",
+      "The consumer cannot obtain post-installation services during the warranty period for maintenance or replacement if they caused the damage or used inappropriate car washing materials.",
+      "The warranty does not apply to any of our products if tampered with or repaired, modified, or maintained by unauthorized persons.",
+      "The warranty does not cover replacement of parts damaged by severe scratches or accidents. Damage will be assessed by company technicians to determine the cost of replacement.",
+      "The customer must bring the vehicle for maintenance six days after protection installation.",
+      "The customer must bring the vehicle for annual maintenance and protection inspection. Failure to comply with the schedule voids the warranty.",
+      "Washing the car with materials that damage the protection, causing scratches or yellowing, voids the warranty."
+    ]
+  },
+  {
+    heading: "ADDITIONAL SERVICES",
+    paragraphs: [
+      "We offer car washing and protection inspection services once a month for a nominal fee."
+    ]
+  }
+];
+
+const chineseTerms = [
+  {
+    heading: "保修条款",
+    paragraphs: [
+      "浩盛汽车护理团队很高兴为您提供车辆全车保护或前部全面保护服务的保修（不包括不当使用造成的损坏）。",
+      "车辆侧后翼子板保护：5年保修。",
+      "保护膜保修范围包括纳米陶瓷光泽、发黄、自修复划痕、开裂及漆面脱落。",
+      "隔热膜保修：10年。",
+      "纳米陶瓷护理：光泽保修2年，防水效果6个月。"
+    ]
+  },
+  {
+    heading: "使用条件",
+    paragraphs: [
+      "客户签署发票或收据，即表示接受并确认车辆已完成保护施工，不得否认或提出异议。",
+      "如果客户在保修期内因自身原因造成损坏，或使用不适当的汽车清洗材料，则不能享受相关维护或更换服务。",
+      "如果产品被未经授权的人员拆动、维修、改装或保养，本公司将不再提供保修。",
+      "保修不包括因严重划痕或事故损坏而需要更换的零件。公司技术人员将评估损坏情况并确定更换费用。",
+      "客户必须在保护膜施工六天后将车辆送回进行维护。",
+      "客户必须按照安排将车辆送回进行年度维护及保护检查。未按计划进行检查将导致保修失效。",
+      "如果使用会损坏保护膜并导致划痕或发黄的清洗材料，保修将失效。"
+    ]
+  },
+  {
+    heading: "其他服务",
+    paragraphs: [
+      "我们每月提供一次汽车清洗及保护检查服务，并收取少量费用。"
+    ]
+  }
+];
+
+const arabicTerms = [
+  {
+    heading: "الضمان",
+    paragraphs: [
+      "يسرّنا في فريق هاوشنغ للعناية بالسيارات أن نقدم لكم ضمانًا عند تركيب حماية كاملة لسيارتكم أو حماية كاملة للواجهة الأمامية (باستثناء سوء الاستخدام).",
+      "حماية ربع لوحة السيارة: ضمان 5 سنوات.",
+      "يشمل ضمان الحماية لمعان نانو سيراميك، والاصفرار، والمعالجة الذاتية للخدوش والتشققات، وإزالة الطلاء.",
+      "ضمان العزل الحراري: 10 سنوات.",
+      "خدمة نانو سيراميك: سنتان للمعان، و6 أشهر لمقاومة الماء."
+    ]
+  },
+  {
+    heading: "الشروط",
+    paragraphs: [
+      "يُعد توقيع العميل على الفاتورة أو الإيصال قبولاً واستلاماً للحماية على المركبة، ولا يجوز رفضه أو الاعتراض عليه.",
+      "لا يحق للمستهلك الحصول على خدمات ما بعد التركيب خلال فترة الضمان للصيانة أو الاستبدال إذا تسبب في تلف المركبة أو استخدم مواد غسيل غير مناسبة.",
+      "لا ينطبق الضمان على أي من منتجاتنا إذا تم العبث بها أو إصلاحها أو تعديلها أو صيانتها من قبل أشخاص غير مصرح لهم.",
+      "لا يغطي الضمان استبدال الأجزاء التالفة بسبب الخدوش الشديدة أو الحوادث. سيقوم الفريق الفني للشركة بتقييم الضرر لتحديد تكلفة الاستبدال.",
+      "يجب على العميل إحضار المركبة للصيانة بعد 6 أيام من تركيب الحماية.",
+      "يجب على العميل إحضار المركبة للصيانة السنوية وفحص الحماية. يُبطل الضمان عدم الالتزام بالجدول الزمني.",
+      "يُبطل الضمان عند غسل السيارة بمواد تُتلف الحماية، أو تُسبب خدوشاً أو اصفراراً."
+    ]
+  },
+  {
+    heading: "خدمات إضافية",
+    paragraphs: [
+      "نقدم خدمات غسيل السيارات وفحص الحماية مرة واحدة شهريًا مقابل رسوم رمزية."
+    ]
+  }
+];
+
+// =========================================================
+// COMPONENT
+// =========================================================
+
 function Invoice() {
   const { id } = useParams();
+  const { i18n } = useTranslation();
+
+  const language = i18n.resolvedLanguage || i18n.language || "en";
+  const tr = (text) => translateInvoice(text, language);
 
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const isArabic = language === "ar";
+  const isChinese = language === "zh";
 
   // =========================================================
   // LOAD JOB
   // =========================================================
 
   useEffect(() => {
-    loadInvoice();
-  }, [id]);
+    async function loadInvoice() {
+      setLoading(true);
 
-  async function loadInvoice() {
-    setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-    try {
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("*")
-        .eq("id", id)
-        .single();
+        if (error) {
+          console.error("LOAD INVOICE ERROR:", error);
+          setJob(null);
+          return;
+        }
 
-      if (error) {
-        console.error("LOAD INVOICE ERROR:", error);
+        setJob(data);
+      } catch (error) {
+        console.error("INVOICE ERROR:", error);
+        setJob(null);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setJob(data);
-    } catch (error) {
-      console.error("INVOICE ERROR:", error);
     }
 
-    setLoading(false);
-  }
-
-  // =========================================================
-  // LOADING
-  // =========================================================
+    loadInvoice();
+  }, [id]);
 
   if (loading) {
     return (
       <div style={styles.loading}>
-        <h2>Loading Invoice...</h2>
+        <h2>{tr("Loading Invoice...")}</h2>
       </div>
     );
   }
 
-  // =========================================================
-  // NOT FOUND
-  // =========================================================
-
   if (!job) {
     return (
       <div style={styles.loading}>
-        <h2>Invoice Not Found</h2>
+        <h2>{tr("Invoice Not Found")}</h2>
       </div>
     );
   }
@@ -69,57 +286,37 @@ function Invoice() {
   // TEYSEER DETECTION
   // =========================================================
 
-  // Exact Teyseer Motors source: Teyseer pays for every service.
-  // The Salah/Bahaa sources retain the existing WTT-only Teyseer rule.
-  const isFullTeyseerSource =
-    job.source === "Teyseer Motors";
+  const isFullTeyseerSource = job.source === "Teyseer Motors";
 
   const isTeyseer =
     isFullTeyseerSource ||
     job.source === "Teyseer Motors - Bahaa" ||
     job.source === "Teyseer Motors - Salah";
 
-  // =========================================================
-  // CHECK WTT
-  // =========================================================
-
   const isWTTService = (service) =>
     service?.toLowerCase().includes("wtt");
 
   // =========================================================
   // TOTAL AMOUNT
-  //
-  // This is the full value of all services.
-  // WTT is included here only as reference.
   // =========================================================
 
   const totalAmount =
     job.services?.reduce((total, service) => {
-      const details =
-        job.serviceDetails?.[service] || {};
-
-      const price =
-        Number(details.price) || 0;
-
-      const quantity =
-        Number(details.quantity) || 1;
+      const details = job.serviceDetails?.[service] || {};
+      const price = Number(details.price) || 0;
+      const quantity = Number(details.quantity) || 1;
 
       return total + price * quantity;
     }, 0) || 0;
 
   // =========================================================
   // TOTAL DISCOUNT
-  //
-  // Only customer-paid services are included.
   // =========================================================
 
   const totalDiscount =
     job.services?.reduce((total, service) => {
-      const details =
-        job.serviceDetails?.[service] || {};
+      const details = job.serviceDetails?.[service] || {};
 
-      // For the exact Teyseer Motors source, Teyseer covers all services.
-      // For Salah/Bahaa sources, Teyseer covers WTT only.
       if (
         isFullTeyseerSource ||
         (isTeyseer && isWTTService(service))
@@ -127,100 +324,56 @@ function Invoice() {
         return total;
       }
 
-      return (
-        total +
-        (Number(details.discount) || 0)
-      );
+      return total + (Number(details.discount) || 0);
     }, 0) || 0;
 
   // =========================================================
   // CUSTOMER NET AMOUNT
-  //
-  // Exact "Teyseer Motors" source: every service is paid by Teyseer,
-  // so the customer payable amount is zero.
-  // "Teyseer Motors - Salah/Bahaa": only WTT is paid by Teyseer.
   // =========================================================
 
   const netAmount = isFullTeyseerSource
     ? 0
     : job.services?.reduce((total, service) => {
-        const details =
-          job.serviceDetails?.[service] || {};
+        const details = job.serviceDetails?.[service] || {};
+        const isWTT = isWTTService(service);
 
-        const isWTT =
-          isWTTService(service);
-
-        // WTT is paid by Teyseer for all Teyseer sources.
         if (isTeyseer && isWTT) {
           return total;
         }
 
-        const price =
-          Number(details.price) || 0;
+        const price = Number(details.price) || 0;
+        const quantity = Number(details.quantity) || 1;
+        const discount = Number(details.discount) || 0;
 
-        const quantity =
-          Number(details.quantity) || 1;
-
-        const discount =
-          Number(details.discount) || 0;
-
-        return (
-          total +
-          Math.max(
-            price * quantity - discount,
-            0
-          )
-        );
+        return total + Math.max(price * quantity - discount, 0);
       }, 0) || 0;
 
   // =========================================================
   // WTT TOTAL
   // =========================================================
 
-  const teyseerWTTAmount =
-    isTeyseer
-      ? job.services?.reduce(
-          (total, service) => {
-            if (
-              !isWTTService(service)
-            ) {
-              return total;
-            }
+  const teyseerWTTAmount = isTeyseer
+    ? job.services?.reduce((total, service) => {
+        if (!isWTTService(service)) return total;
 
-            const details =
-              job.serviceDetails?.[
-                service
-              ] || {};
+        const details = job.serviceDetails?.[service] || {};
+        const price = Number(details.price) || 0;
+        const quantity = Number(details.quantity) || 1;
+        const discount = Number(details.discount) || 0;
 
-            const price =
-              Number(details.price) || 0;
-
-            const quantity =
-              Number(details.quantity) || 1;
-
-            const discount =
-              Number(details.discount) || 0;
-
-            return (
-              total +
-              Math.max(
-                price * quantity -
-                  discount,
-                0
-              )
-            );
-          },
-          0
-        ) || 0
-      : 0;
-
-  // =========================================================
-  // PRINT
-  // =========================================================
+        return total + Math.max(price * quantity - discount, 0);
+      }, 0) || 0
+    : 0;
 
   function printInvoice() {
     window.print();
   }
+
+  const terms = isArabic
+    ? arabicTerms
+    : isChinese
+      ? chineseTerms
+      : englishTerms;
 
   // =========================================================
   // RENDER
@@ -229,43 +382,21 @@ function Invoice() {
   return (
     <div style={styles.page}>
 
-      {/* =====================================================
-          PAGE 1
-      ====================================================== */}
+      {/* PAGE 1 */}
 
-      <section
-        className="invoice-page"
-        style={styles.invoice}
-      >
-
-        {/* TOP BAR */}
+      <section className="invoice-page" style={styles.invoice}>
 
         <div style={styles.topBar}></div>
 
-
-        {/* =================================================
-            COMPANY HEADER
-        ================================================== */}
+        {/* COMPANY HEADER */}
 
         <header style={styles.header}>
 
-          {/* LOGO */}
-
           <div style={styles.logoArea}>
-
-            <img
-              src={gaLogo}
-              alt="GA Logo"
-              style={styles.logo}
-            />
-
+            <img src={gaLogo} alt="GA Logo" style={styles.logo} />
           </div>
 
-
-          {/* COMPANY */}
-
           <div style={styles.companyInfo}>
-
             <h1 style={styles.companyName}>
               HAOSHENG
               <br />
@@ -282,926 +413,385 @@ function Invoice() {
 
             <p style={styles.contact}>
               Tel: +974 3368 1888
-              <span style={styles.separator}>
-                |
-              </span>
+              <span style={styles.separator}>|</span>
               C.R.NO: 199725
-              <span style={styles.separator}>
-                |
-              </span>
+              <span style={styles.separator}>|</span>
               info@haoshengcar.com
             </p>
-
           </div>
 
-
-          {/* INVOICE BADGE */}
-
           <div style={styles.invoiceBadge}>
-
-            <div style={styles.invoiceLabel}>
-              INVOICE
-            </div>
-
-            <div style={styles.invoiceArabic}>
-              الفاتورة
-            </div>
-
+            <div style={styles.invoiceLabel}>{tr("INVOICE")}</div>
+            <div style={styles.invoiceArabic}>الفاتورة</div>
             <div style={styles.receiptNumber}>
               #{job.receipt_number || "N/A"}
             </div>
-
           </div>
 
         </header>
 
-
-        {/* =================================================
-            CUSTOMER + BILLING
-        ================================================== */}
+        {/* CUSTOMER AND BILLING */}
 
         <div style={styles.infoGrid}>
 
-          {/* CUSTOMER INFORMATION */}
-
           <div style={styles.infoCard}>
-
             <div style={styles.cardHeader}>
-              CUSTOMER INFORMATION
+              {tr("CUSTOMER INFORMATION")}
             </div>
 
             <div style={styles.cardBody}>
 
               <div style={styles.infoRow}>
-
                 <span style={styles.infoLabel}>
-                  CUSTOMER NAME
+                  {tr("CUSTOMER NAME")}
                 </span>
-
                 <span style={styles.infoValue}>
                   {job.customer || "-"}
                 </span>
-
               </div>
 
-
               <div style={styles.infoRow}>
-
                 <span style={styles.infoLabel}>
-                  MOBILE NUMBER
+                  {tr("MOBILE NUMBER")}
                 </span>
-
                 <span style={styles.infoValue}>
                   {job.phone || "-"}
                 </span>
-
               </div>
 
-
-              <div
-                style={{
-                  ...styles.infoRow,
-                  borderBottom: "none",
-                }}
-              >
-
+              <div style={{ ...styles.infoRow, borderBottom: "none" }}>
                 <span style={styles.infoLabel}>
-                  INVOICE DATE
+                  {tr("INVOICE DATE")}
                 </span>
-
                 <span style={styles.infoValue}>
                   {job.date ||
                     (job.created_at
-                      ? new Date(
-                          job.created_at
-                        ).toLocaleDateString(
-                          "en-GB"
-                        )
+                      ? new Date(job.created_at).toLocaleDateString("en-GB")
                       : "-")}
                 </span>
-
               </div>
 
             </div>
-
           </div>
 
-
-          {/* BILLING INFORMATION */}
-
           <div style={styles.infoCard}>
-
             <div style={styles.cardHeader}>
-              BILLING INFORMATION
+              {tr("BILLING INFORMATION")}
             </div>
 
             <div style={styles.cardBody}>
 
-              {/* NORMAL JOB */}
-
               {!isTeyseer && (
-                <div
-                  style={{
-                    ...styles.billingMessage,
-                    borderBottom:
-                      "none",
-                  }}
-                >
-
-                  <span>
-                    CUSTOMER AMOUNT
-                  </span>
-
-                  <strong>
-                    QAR{" "}
-                    {netAmount.toFixed(2)}
-                  </strong>
-
+                <div style={{ ...styles.billingMessage, borderBottom: "none" }}>
+                  <span>{tr("CUSTOMER AMOUNT")}</span>
+                  <strong>QAR {netAmount.toFixed(2)}</strong>
                 </div>
               )}
-
-
-              {/* TEYSEER JOB */}
 
               {isTeyseer && (
                 <>
                   <div style={styles.infoRow}>
-
-                    <span
-                      style={styles.infoLabel}
-                    >
-                      CUSTOMER AMOUNT
+                    <span style={styles.infoLabel}>
+                      {tr("CUSTOMER AMOUNT")}
                     </span>
-
-                    <strong
-                      style={{
-                        ...styles.infoValue,
-                        color: colors.black,
-                      }}
-                    >
-                      QAR{" "}
-                      {netAmount.toFixed(2)}
+                    <strong style={{ ...styles.infoValue, color: colors.black }}>
+                      QAR {netAmount.toFixed(2)}
                     </strong>
-
                   </div>
-
-
-                  {/* KEEP THIS PAID THROUGH TEYSEER NOTICE */}
 
                   <div style={styles.teyseerNotice}>
-
-                    <div
-                      style={
-                        styles.teyseerNoticeTitle
-                      }
-                    >
-                      {isFullTeyseerSource
-                        ? "ALL SERVICES"
-                        : "WTT"}
+                    <div style={styles.teyseerNoticeTitle}>
+                      {tr(isFullTeyseerSource ? "ALL SERVICES" : "WTT")}
                     </div>
-
-                    <div
-                      style={
-                        styles.teyseerNoticeText
-                      }
-                    >
-                      {isFullTeyseerSource
-                        ? "ALL SERVICES PAID THROUGH TEYSEER"
-                        : "PAID THROUGH TEYSEER"}
+                    <div style={styles.teyseerNoticeText}>
+                      {tr(
+                        isFullTeyseerSource
+                          ? "ALL SERVICES PAID THROUGH TEYSEER"
+                          : "PAID THROUGH TEYSEER"
+                      )}
                     </div>
-
                   </div>
 
-
                   {job.voucherNumber && (
-                    <div
-                      style={{
-                        ...styles.infoRow,
-                        borderBottom:
-                          "none",
-                      }}
-                    >
-
-                      <span
-                        style={
-                          styles.infoLabel
-                        }
-                      >
-                        TEYSEER VOUCHER NO.
+                    <div style={{ ...styles.infoRow, borderBottom: "none" }}>
+                      <span style={styles.infoLabel}>
+                        {tr("TEYSEER VOUCHER NO.")}
                       </span>
-
-                      <strong
-                        style={
-                          styles.voucherValue
-                        }
-                      >
+                      <strong style={styles.voucherValue}>
                         {job.voucherNumber}
                       </strong>
-
                     </div>
                   )}
-
                 </>
               )}
 
             </div>
-
           </div>
 
         </div>
 
-
-        {/* =================================================
-            VEHICLE INFORMATION
-        ================================================== */}
+        {/* VEHICLE INFORMATION */}
 
         <div style={styles.sectionHeading}>
-
-          <div>
-            VEHICLE INFORMATION
-          </div>
-
-          <div style={styles.sectionArabic}>
-            معلومات المركبة
-          </div>
-
+          <div>{tr("VEHICLE INFORMATION")}</div>
+          <div style={styles.sectionArabic}>معلومات المركبة</div>
         </div>
-
 
         <div style={styles.vehicleGrid}>
 
-          <div style={styles.vehicleItem}>
-
-            <span style={styles.vehicleLabel}>
-              MAKE
-            </span>
-
-            <strong style={styles.vehicleValue}>
-              {job.carType || "-"}
-            </strong>
-
-            <small style={styles.vehicleArabic}>
-              العلامة
-            </small>
-
-          </div>
-
-
-          <div style={styles.vehicleItem}>
-
-            <span style={styles.vehicleLabel}>
-              MODEL
-            </span>
-
-            <strong style={styles.vehicleValue}>
-              {job.carModel || "-"}
-            </strong>
-
-            <small style={styles.vehicleArabic}>
-              النوع
-            </small>
-
-          </div>
-
-
-          <div style={styles.vehicleItem}>
-
-            <span style={styles.vehicleLabel}>
-              COLOR
-            </span>
-
-            <strong style={styles.vehicleValue}>
-              {job.color || "-"}
-            </strong>
-
-            <small style={styles.vehicleArabic}>
-              اللون
-            </small>
-
-          </div>
-
-
-          <div style={styles.vehicleItem}>
-
-            <span style={styles.vehicleLabel}>
-              CHASSIS
-            </span>
-
-            <strong style={styles.vehicleValue}>
-              {job.chassis || "-"}
-            </strong>
-
-            <small style={styles.vehicleArabic}>
-              الهيكل
-            </small>
-
-          </div>
-
-
-          <div
-            style={{
-              ...styles.vehicleItem,
-              borderRight: "none",
-            }}
-          >
-
-            <span style={styles.vehicleLabel}>
-              PLATE
-            </span>
-
-            <strong style={styles.vehicleValue}>
-              {job.plate || "-"}
-            </strong>
-
-            <small style={styles.vehicleArabic}>
-              اللوحة
-            </small>
-
-          </div>
+          {[
+            ["MAKE", job.carType, "العلامة"],
+            ["MODEL", job.carModel, "النوع"],
+            ["COLOR", job.color, "اللون"],
+            ["CHASSIS", job.chassis, "الهيكل"],
+            ["PLATE", job.plate, "اللوحة"]
+          ].map(([label, value, arabic]) => (
+            <div key={label} style={styles.vehicleItem}>
+              <span style={styles.vehicleLabel}>{tr(label)}</span>
+              <strong style={styles.vehicleValue}>{value || "-"}</strong>
+              <small style={styles.vehicleArabic}>{arabic}</small>
+            </div>
+          ))}
 
         </div>
 
-
-        {/* =================================================
-            SERVICES
-        ================================================== */}
+        {/* SERVICES */}
 
         <div style={styles.sectionHeading}>
-
-          <div>
-            SERVICE OFFERED
-          </div>
-
-          <div style={styles.sectionArabic}>
-            الخدمة المقدمة
-          </div>
-
+          <div>{tr("SERVICE OFFERED")}</div>
+          <div style={styles.sectionArabic}>الخدمة المقدمة</div>
         </div>
 
-
         <table style={styles.serviceTable}>
-
           <thead>
-
             <tr>
-
-              <th style={styles.serviceHeader}>
-                SERVICE
-              </th>
-
-              <th style={styles.serviceHeader}>
-                PRICE
-              </th>
-
-              <th style={styles.serviceHeader}>
-                QTY
-              </th>
-
-              <th style={styles.serviceHeader}>
-                DISCOUNT
-              </th>
-
-              <th style={styles.serviceHeader}>
-                TOTAL
-              </th>
-
+              {["SERVICE", "PRICE", "QTY", "DISCOUNT", "TOTAL"].map((heading) => (
+                <th key={heading} style={styles.serviceHeader}>
+                  {tr(heading)}
+                </th>
+              ))}
             </tr>
-
           </thead>
-
 
           <tbody>
 
-            {job.services?.map(
-              (service, index) => {
+            {job.services?.map((service, index) => {
+              const details = job.serviceDetails?.[service] || {};
+              const price = Number(details.price) || 0;
+              const quantity = Number(details.quantity) || 1;
+              const serviceDiscount = Number(details.discount) || 0;
 
-                const details =
-                  job.serviceDetails?.[
-                    service
-                  ] || {};
+              const serviceTotal = Math.max(
+                price * quantity - serviceDiscount,
+                0
+              );
 
-                const price =
-                  Number(details.price) ||
-                  0;
+              const servicePaidByTeyseer =
+                isFullTeyseerSource ||
+                (isTeyseer && isWTTService(service));
 
-                const quantity =
-                  Number(
-                    details.quantity
-                  ) || 1;
+              return (
+                <tr key={index}>
 
-                const serviceDiscount =
-                  Number(
-                    details.discount
-                  ) || 0;
+                  <td
+                    style={{
+                      ...styles.serviceCell,
+                      textAlign: isArabic ? "right" : "left",
+                      fontWeight: "600"
+                    }}
+                  >
+                    <div>{service}</div>
 
-                const serviceTotal =
-                  Math.max(
-                    price * quantity -
-                      serviceDiscount,
-                    0
-                  );
-
-                const servicePaidByTeyseer =
-                  isFullTeyseerSource ||
-                  (isTeyseer && isWTTService(service));
-
-                return (
-                  <tr key={index}>
-
-                    {/* SERVICE */}
-
-                    <td
-                      style={{
-                        ...styles.serviceCell,
-                        textAlign: "left",
-                        fontWeight: "600",
-                      }}
-                    >
-
-                      <div>
-                        {service}
+                    {servicePaidByTeyseer && (
+                      <div style={styles.wttPaidLabel}>
+                        {tr("PAID THROUGH TEYSEER")}
                       </div>
+                    )}
+                  </td>
 
-                      {servicePaidByTeyseer && (
-                        <div
-                          style={
-                            styles.wttPaidLabel
-                          }
-                        >
-                          PAID THROUGH TEYSEER
-                        </div>
-                      )}
+                  <td style={styles.serviceCell}>
+                    {servicePaidByTeyseer ? (
+                      <span style={styles.paidThroughText}>
+                        {tr("TEYSEER")}
+                      </span>
+                    ) : (
+                      <>QAR {price.toFixed(2)}</>
+                    )}
+                  </td>
 
-                    </td>
+                  <td style={styles.serviceCell}>{quantity}</td>
 
+                  <td style={styles.serviceCell}>
+                    {servicePaidByTeyseer
+                      ? "-"
+                      : `QAR ${serviceDiscount.toFixed(2)}`}
+                  </td>
 
-                    {/* PRICE */}
+                  <td style={{ ...styles.serviceCell, fontWeight: "800" }}>
+                    {servicePaidByTeyseer ? (
+                      <span style={styles.paidThroughText}>
+                        {tr("PAID")}
+                      </span>
+                    ) : (
+                      `QAR ${serviceTotal.toFixed(2)}`
+                    )}
+                  </td>
 
-                    <td
-                      style={
-                        styles.serviceCell
-                      }
-                    >
+                </tr>
+              );
+            })}
 
-                      {servicePaidByTeyseer ? (
-                        <span
-                          style={
-                            styles.paidThroughText
-                          }
-                        >
-                          TEYSEER
-                        </span>
-                      ) : (
-                        <>
-                          QAR{" "}
-                          {price.toFixed(2)}
-                        </>
-                      )}
-
-                    </td>
-
-
-                    {/* QTY */}
-
-                    <td
-                      style={
-                        styles.serviceCell
-                      }
-                    >
-                      {quantity}
-                    </td>
-
-
-                    {/* DISCOUNT */}
-
-                    <td
-                      style={
-                        styles.serviceCell
-                      }
-                    >
-
-                      {servicePaidByTeyseer ? (
-                        "-"
-                      ) : (
-                        <>
-                          QAR{" "}
-                          {serviceDiscount.toFixed(
-                            2
-                          )}
-                        </>
-                      )}
-
-                    </td>
-
-
-                    {/* TOTAL */}
-
-                    <td
-                      style={{
-                        ...styles.serviceCell,
-                        fontWeight: "800",
-                      }}
-                    >
-
-                      {servicePaidByTeyseer ? (
-                        <span
-                          style={
-                            styles.paidThroughText
-                          }
-                        >
-                          PAID
-                        </span>
-                      ) : (
-                        <>
-                          QAR{" "}
-                          {serviceTotal.toFixed(
-                            2
-                          )}
-                        </>
-                      )}
-
-                    </td>
-
-                  </tr>
-                );
-              }
-            )}
-
-
-            {(!job.services ||
-              job.services.length === 0) && (
-
+            {(!job.services || job.services.length === 0) && (
               <tr>
-
-                <td
-                  colSpan="5"
-                  style={styles.emptyCell}
-                >
-                  No services added
+                <td colSpan="5" style={styles.emptyCell}>
+                  {tr("No services added")}
                 </td>
-
               </tr>
-
             )}
 
           </tbody>
-
         </table>
 
-
-        {/* =================================================
-            NET AMOUNT
-        ================================================== */}
+        {/* NET AMOUNT */}
 
         <div style={styles.totalArea}>
-
           <div style={styles.totalBox}>
-
             <div style={styles.totalRow}>
-
-              <span>
-                NET AMOUNT
-              </span>
-
-              <strong>
-                QAR{" "}
-                {netAmount.toFixed(2)}
-              </strong>
-
+              <span>{tr("NET AMOUNT")}</span>
+              <strong>QAR {netAmount.toFixed(2)}</strong>
             </div>
-
           </div>
-
         </div>
 
-
-        {/* =================================================
-            PPF WARRANTY
-        ================================================== */}
+        {/* PPF WARRANTY */}
 
         <div style={styles.ppfBox}>
-
-          <div style={styles.ppfTitle}>
-            PPF WARRANTY
-          </div>
+          <div style={styles.ppfTitle}>{tr("PPF WARRANTY")}</div>
 
           <div style={styles.ppfContent}>
-
-            <div>
-              <strong>8 YEARS</strong>
-            </div>
-
-            <div>
-              FREE CHECK UP AFTER 1 WEEK FOR PPF
-            </div>
-
+            <div><strong>{tr("8 YEARS")}</strong></div>
+            <div>{tr("FREE CHECK UP AFTER 1 WEEK FOR PPF")}</div>
+            <div dir="rtl">فحص مجاني بعد أسبوع واحد لـ PPF</div>
+            <div>{tr("1X FREE AFTER HALF YEAR PPF CHEMICAL SERVICE PROTECTION")}</div>
             <div dir="rtl">
-              فحص مجاني بعد أسبوع واحد لـ PPF
+              بعد نصف سنة تحصل على سيرفس للحماية مجاني لمرة واحدة
             </div>
-
-            <div>
-              1X FREE AFTER HALF YEAR PPF
-              CHEMICAL SERVICE PROTECTION
-            </div>
-
-            <div dir="rtl">
-              بعد نصف سنة تحصل على سيرفس للحماية
-              مجاني لمرة واحدة
-            </div>
-
           </div>
-
         </div>
 
-
-        {/* =================================================
-            SIGNATURES
-        ================================================== */}
+        {/* SIGNATURES */}
 
         <div style={styles.signatureArea}>
 
           <div style={styles.signatureBox}>
-
             <div style={styles.signatureTitle}>
-              CUSTOMER'S SIGNATURE
+              {tr("CUSTOMER'S SIGNATURE")}
             </div>
-
             <div style={styles.signatureLine}></div>
-
-            <div style={styles.signatureSub}>
-              توقيع العميل
-            </div>
-
+            <div style={styles.signatureSub}>توقيع العميل</div>
           </div>
 
-
           <div style={styles.signatureBox}>
-
             <div style={styles.signatureTitle}>
-              AUTHORIZED SIGNATURE
+              {tr("AUTHORIZED SIGNATURE")}
             </div>
-
             <div style={styles.signatureLine}></div>
-
-            <div style={styles.signatureSub}>
-              التوقيع المعتمد
-            </div>
-
+            <div style={styles.signatureSub}>التوقيع المعتمد</div>
           </div>
 
         </div>
 
-
-        {/* FOOTER */}
-
         <div style={styles.footer}>
-          Thank you for choosing Haosheng Car Care
+          {tr("Thank you for choosing Haosheng Car Care")}
         </div>
 
       </section>
 
+      {/* PAGE 2 - TERMS AND CONDITIONS */}
 
-      {/* =====================================================
-          PAGE 2
-      ====================================================== */}
-
-      <section
-        className="terms-page"
-        style={styles.termsPage}
-      >
+      <section className="terms-page" style={styles.termsPage}>
 
         <div style={styles.topBar}></div>
 
-
-        {/* TERMS HEADER */}
-
         <div style={styles.termsHeader}>
 
-          <img
-            src={gaLogo}
-            alt="GA Logo"
-            style={styles.termsLogo}
-          />
+          <img src={gaLogo} alt="GA Logo" style={styles.termsLogo} />
 
           <div>
-
             <h1 style={styles.termsMainTitle}>
-              TERMS AND CONDITIONS
+              {tr("TERMS AND CONDITIONS")}
             </h1>
 
             <h2 style={styles.termsArabicTitle}>
-              شروط و أحكام
+              شروط وأحكام
             </h2>
-
           </div>
 
         </div>
 
-
         <div style={styles.termsDivider}></div>
-
-
-        {/* ENGLISH TERMS */}
-
-        <div style={styles.termsSection}>
-
-          <h2 style={styles.termsHeading}>
-            ❖ WARRANTY
-          </h2>
-
-          <p style={styles.termsParagraph}>
-            We, the Haosheng Car Care team, are pleased
-            to offer you a warranty when you install full
-            vehicle protection or full front-end protection
-            (excluding misuse).
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • Quarter panel protection: 5-year warranty.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • Protection warranty includes Nano-ceramic
-            shine, yellowing, self-healing of scratches,
-            cracking, and paint removal.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • Thermal insulation warranty: 10 years.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • Nano-ceramic service: 2 years for shine,
-            6 months for water repellency.
-          </p>
-
-
-          <h2 style={styles.termsHeading}>
-            ❖ CONDITIONS
-          </h2>
-
-          <p style={styles.termsParagraph}>
-            • Signing the invoice or receipt by the
-            customer is considered acceptance and receipt
-            of the protection on the vehicle and cannot
-            be denied or contested.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • The consumer cannot obtain post-installation
-            services during the warranty period for
-            maintenance or replacement if they caused
-            the damage or used inappropriate car washing
-            materials.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • The warranty does not apply to any of our
-            products if tampered with or repaired,
-            modified, or maintained by unauthorized
-            persons.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • The warranty does not cover replacement of
-            parts damaged by severe scratches or accidents.
-            Damage will be assessed by company technicians
-            to determine the cost of replacement.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • The customer must bring the vehicle for
-            maintenance six days after protection
-            installation.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • The customer must bring the vehicle for
-            annual maintenance and protection inspection.
-            Failure to comply with the schedule voids the
-            warranty.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • Washing the car with materials that damage
-            the protection, causing scratches or yellowing,
-            voids the warranty.
-          </p>
-
-
-          <h2 style={styles.termsHeading}>
-            ❖ ADDITIONAL SERVICES
-          </h2>
-
-          <p style={styles.termsParagraph}>
-            • We offer car washing and protection
-            inspection services once a month for a
-            nominal fee.
-          </p>
-
-        </div>
-
-
-        <div style={styles.termsDivider}></div>
-
-
-        {/* ARABIC TERMS */}
 
         <div
-          style={styles.arabicTerms}
-          dir="rtl"
+          style={{
+            ...styles.termsSection,
+            direction: isArabic ? "rtl" : "ltr",
+            textAlign: isArabic ? "right" : "left"
+          }}
         >
 
-          <h2 style={styles.arabicTermsHeading}>
-            ❖ ضمان
-          </h2>
+          {terms.map((section, index) => (
+            <div key={index}>
 
-          <p style={styles.termsParagraph}>
-            يسرّنا في فريق هاوشنغ للعناية بالسيارات أن
-            نقدم لكم ضمانًا عند تركيب حماية كاملة
-            لسيارتكم أو حماية كاملة للواجهة الأمامية
-            (باستثناء سوء الاستخدام).
-          </p>
+              <h2
+                style={{
+                  ...styles.termsHeading,
+                  borderLeft: isArabic ? "none" : `4px solid ${colors.gold}`,
+                  borderRight: isArabic ? `4px solid ${colors.gold}` : "none",
+                  paddingLeft: isArabic ? "0" : "7px",
+                  paddingRight: isArabic ? "7px" : "0"
+                }}
+              >
+                ❖ {section.heading}
+              </h2>
 
-          <p style={styles.termsParagraph}>
-            • حماية ربع لوحة السيارة: ضمان 5 سنوات.
-          </p>
+              {section.paragraphs.map((paragraph, paragraphIndex) => (
+                <p key={paragraphIndex} style={styles.termsParagraph}>
+                  {paragraphIndex >= 1 && section.heading !== "ADDITIONAL SERVICES" && "• "}
+                  {paragraph}
+                </p>
+              ))}
 
-          <p style={styles.termsParagraph}>
-            • يشمل ضمان الحماية لمعان نانو سيراميك،
-            والاصفرار، والمعالجة الذاتية للخدوش
-            والتشققات، وإزالة الطلاء.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • ضمان العزل الحراري: 10 سنوات.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • خدمة نانو سيراميك: سنتان للمعان،
-            و6 أشهر لمقاومة الماء.
-          </p>
-
-
-          <h2 style={styles.arabicTermsHeading}>
-            ❖ شروط
-          </h2>
-
-          <p style={styles.termsParagraph}>
-            • يُعد توقيع العميل على الفاتورة أو الإيصال
-            قبولاً واستلاماً للحماية على المركبة، ولا
-            يجوز رفضه أو الاعتراض عليه.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • لا يحق للمستهلك الحصول على خدمات ما بعد
-            التركيب خلال فترة الضمان للصيانة أو الاستبدال
-            إذا تسبب في تلف المركبة أو استخدم مواد غسيل
-            غير مناسبة.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • لا ينطبق الضمان على أي من منتجاتنا إذا تم
-            العبث بها أو إصلاحها أو تعديلها أو صيانتها
-            من قبل أشخاص غير مصرح لهم.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • لا يغطي الضمان استبدال الأجزاء التالفة بسبب
-            الخدوش الشديدة أو الحوادث. سيقوم الفريق الفني
-            للشركة بتقييم الضرر لتحديد تكلفة الاستبدال.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • يجب على العميل إحضار المركبة للصيانة بعد
-            6 أيام من تركيب الحماية.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • يجب على العميل إحضار المركبة للصيانة السنوية
-            وفحص الحماية. يُبطل الضمان عدم الالتزام
-            بالجدول الزمني.
-          </p>
-
-          <p style={styles.termsParagraph}>
-            • يُبطل الضمان عند غسل السيارة بمواد تُتلف
-            الحماية، أو تُسبب خدوشاً أو اصفراراً.
-          </p>
-
-
-          <h2 style={styles.arabicTermsHeading}>
-            ❖ خدمات إضافية
-          </h2>
-
-          <p style={styles.termsParagraph}>
-            نقدم خدمات غسيل السيارات وفحص الحماية مرة
-            واحدة شهريًا مقابل رسوم رمزية.
-          </p>
+            </div>
+          ))}
 
         </div>
 
+        <div style={styles.termsDivider}></div>
 
-        {/* TERMS FOOTER */}
+        {/* ADDITIONAL ARABIC TERMS WHEN ENGLISH OR CHINESE IS SELECTED */}
+
+        {!isArabic && (
+          <div style={styles.arabicTerms} dir="rtl">
+
+            {arabicTerms.map((section, index) => (
+              <div key={index}>
+
+                <h2 style={styles.arabicTermsHeading}>
+                  ❖ {section.heading}
+                </h2>
+
+                {section.paragraphs.map((paragraph, paragraphIndex) => (
+                  <p key={paragraphIndex} style={styles.termsParagraph}>
+                    {paragraphIndex >= 1 && "• "}
+                    {paragraph}
+                  </p>
+                ))}
+
+              </div>
+            ))}
+
+          </div>
+        )}
 
         <div style={styles.termsFooter}>
           HAOSHENG CAR SERVICE AND ACCESSORIES
@@ -1209,15 +799,12 @@ function Invoice() {
           Doha - Qatar
         </div>
 
-
-        {/* PRINT BUTTON */}
-
         <button
           className="print-button"
           onClick={printInvoice}
           style={styles.printButton}
         >
-          🖨 Print Invoice
+          🖨 {tr("Print Invoice")}
         </button>
 
       </section>
@@ -1226,10 +813,9 @@ function Invoice() {
   );
 }
 
-
-/* =========================================================
-   COLORS
-========================================================= */
+// =========================================================
+// COLORS
+// =========================================================
 
 const colors = {
   black: "#050505",
@@ -1241,39 +827,29 @@ const colors = {
   gray: "#666666",
   lightGray: "#F6F6F6",
   border: "#D6D0C4",
-  white: "#FFFFFF",
+  white: "#FFFFFF"
 };
 
-
-/* =========================================================
-   STYLES
-========================================================= */
+// =========================================================
+// STYLES
+// =========================================================
 
 const styles = {
-
   page: {
     background: "#E5E5E5",
     minHeight: "100vh",
     padding: "20px 0",
-    fontFamily:
-      "Arial, Helvetica, sans-serif",
-    color: colors.darkText,
+    fontFamily: "Arial, Helvetica, sans-serif",
+    color: colors.darkText
   },
-
 
   loading: {
     minHeight: "100vh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    fontFamily:
-      "Arial, Helvetica, sans-serif",
+    fontFamily: "Arial, Helvetica, sans-serif"
   },
-
-
-  /* =====================================================
-     PAGE 1
-  ====================================================== */
 
   invoice: {
     width: "210mm",
@@ -1284,59 +860,40 @@ const styles = {
     padding: "8mm",
     position: "relative",
     overflow: "hidden",
-    boxShadow:
-      "0 4px 20px rgba(0,0,0,0.15)",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
   },
-
 
   topBar: {
     height: "6px",
     width: "100%",
-    background:
-      `linear-gradient(
-        90deg,
-        ${colors.black} 0%,
-        ${colors.black} 68%,
-        ${colors.gold} 68%,
-        ${colors.gold} 100%
-      )`,
-    marginBottom: "12px",
+    background: `linear-gradient(90deg, ${colors.black} 0%, ${colors.black} 68%, ${colors.gold} 68%, ${colors.gold} 100%)`,
+    marginBottom: "12px"
   },
-
-
-  /* =====================================================
-     HEADER
-  ====================================================== */
 
   header: {
     display: "grid",
-    gridTemplateColumns:
-      "24% 56% 20%",
+    gridTemplateColumns: "24% 56% 20%",
     alignItems: "center",
-    minHeight: "100px",
+    minHeight: "100px"
   },
-
 
   logoArea: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    padding: "4px",
+    padding: "4px"
   },
-
 
   logo: {
     width: "105px",
     maxHeight: "88px",
-    objectFit: "contain",
+    objectFit: "contain"
   },
-
 
   companyInfo: {
     textAlign: "center",
-    padding: "0 5px",
+    padding: "0 5px"
   },
-
 
   companyName: {
     color: colors.black,
@@ -1344,38 +901,33 @@ const styles = {
     lineHeight: "1.1",
     margin: "0 0 5px",
     fontWeight: "900",
-    letterSpacing: "0.4px",
+    letterSpacing: "0.4px"
   },
-
 
   companyArabic: {
     color: colors.gold,
     fontSize: "15px",
     margin: "3px 0 6px",
-    fontWeight: "700",
+    fontWeight: "700"
   },
-
 
   address: {
     fontSize: "9px",
     margin: "3px 0",
-    color: colors.gray,
+    color: colors.gray
   },
-
 
   contact: {
     fontSize: "8px",
     margin: "3px 0",
-    color: colors.gray,
+    color: colors.gray
   },
-
 
   separator: {
     margin: "0 4px",
     color: colors.gold,
-    fontWeight: "bold",
+    fontWeight: "bold"
   },
-
 
   invoiceBadge: {
     background: colors.black,
@@ -1383,53 +935,40 @@ const styles = {
     padding: "12px 7px",
     textAlign: "center",
     borderRadius: "3px",
-    borderBottom:
-      `4px solid ${colors.gold}`,
+    borderBottom: `4px solid ${colors.gold}`
   },
-
 
   invoiceLabel: {
     fontSize: "16px",
     fontWeight: "900",
     letterSpacing: "1px",
-    color: colors.gold,
+    color: colors.gold
   },
-
 
   invoiceArabic: {
     fontSize: "13px",
     marginTop: "2px",
-    color: colors.white,
+    color: colors.white
   },
-
 
   receiptNumber: {
     fontSize: "10px",
     marginTop: "8px",
-    color: colors.white,
+    color: colors.white
   },
-
-
-  /* =====================================================
-     CUSTOMER / BILLING
-  ====================================================== */
 
   infoGrid: {
     display: "grid",
-    gridTemplateColumns:
-      "1fr 1fr",
+    gridTemplateColumns: "1fr 1fr",
     gap: "10px",
-    marginTop: "10px",
+    marginTop: "10px"
   },
-
 
   infoCard: {
-    border:
-      `1px solid ${colors.border}`,
+    border: `1px solid ${colors.border}`,
     borderRadius: "3px",
-    overflow: "hidden",
+    overflow: "hidden"
   },
-
 
   cardHeader: {
     background: colors.black,
@@ -1438,40 +977,33 @@ const styles = {
     fontWeight: "900",
     letterSpacing: "0.6px",
     padding: "7px 9px",
-    borderBottom:
-      `2px solid ${colors.gold}`,
+    borderBottom: `2px solid ${colors.gold}`
   },
-
 
   cardBody: {
-    padding: "6px 9px",
+    padding: "6px 9px"
   },
-
 
   infoRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     padding: "5px 0",
-    borderBottom:
-      "1px solid #EEEEEE",
-    gap: "10px",
+    borderBottom: "1px solid #EEEEEE",
+    gap: "10px"
   },
-
 
   infoLabel: {
     fontSize: "8px",
     color: colors.gray,
-    fontWeight: "800",
+    fontWeight: "800"
   },
-
 
   infoValue: {
     fontSize: "9px",
     fontWeight: "700",
-    textAlign: "right",
+    textAlign: "right"
   },
-
 
   billingMessage: {
     display: "flex",
@@ -1479,46 +1011,36 @@ const styles = {
     alignItems: "center",
     padding: "9px 0",
     fontSize: "10px",
-    fontWeight: "900",
+    fontWeight: "900"
   },
-
 
   voucherValue: {
     fontSize: "10px",
     color: colors.black,
-    fontWeight: "900",
+    fontWeight: "900"
   },
-
 
   teyseerNotice: {
     background: "#F7F0DF",
-    border:
-      `1px solid ${colors.gold}`,
+    border: `1px solid ${colors.gold}`,
     borderRadius: "3px",
     padding: "6px 8px",
     margin: "4px 0",
-    textAlign: "center",
+    textAlign: "center"
   },
-
 
   teyseerNoticeTitle: {
     fontSize: "8px",
     fontWeight: "900",
-    color: colors.black,
+    color: colors.black
   },
-
 
   teyseerNoticeText: {
     fontSize: "8px",
     fontWeight: "900",
     color: colors.gold,
-    marginTop: "2px",
+    marginTop: "2px"
   },
-
-
-  /* =====================================================
-     VEHICLE
-  ====================================================== */
 
   sectionHeading: {
     display: "flex",
@@ -1532,27 +1054,21 @@ const styles = {
     fontSize: "10px",
     fontWeight: "900",
     letterSpacing: "0.7px",
-    borderLeft:
-      `5px solid ${colors.gold}`,
+    borderLeft: `5px solid ${colors.gold}`
   },
-
 
   sectionArabic: {
     fontSize: "10px",
-    color: colors.gold,
+    color: colors.gold
   },
-
 
   vehicleGrid: {
     display: "grid",
-    gridTemplateColumns:
-      "repeat(5, 1fr)",
-    border:
-      `1px solid ${colors.border}`,
+    gridTemplateColumns: "repeat(5, 1fr)",
+    border: `1px solid ${colors.border}`,
     borderRadius: "3px",
-    overflow: "hidden",
+    overflow: "hidden"
   },
-
 
   vehicleItem: {
     minHeight: "55px",
@@ -1561,76 +1077,60 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     padding: "5px",
-    borderRight:
-      `1px solid ${colors.border}`,
+    borderRight: `1px solid ${colors.border}`,
     background: "#FEFEFE",
-    textAlign: "center",
+    textAlign: "center"
   },
-
 
   vehicleLabel: {
     fontSize: "7px",
     color: colors.gray,
     fontWeight: "900",
     letterSpacing: "0.6px",
-    marginBottom: "4px",
+    marginBottom: "4px"
   },
-
 
   vehicleValue: {
     fontSize: "10px",
-    color: colors.black,
+    color: colors.black
   },
-
 
   vehicleArabic: {
     fontSize: "7px",
     color: colors.black,
-    marginTop: "3px",
+    marginTop: "3px"
   },
-
-
-  /* =====================================================
-     SERVICE TABLE
-  ====================================================== */
 
   serviceTable: {
     width: "100%",
     borderCollapse: "collapse",
-    fontSize: "10px",
+    fontSize: "10px"
   },
-
 
   serviceHeader: {
     background: colors.black,
     color: colors.gold,
-    border:
-      `1px solid ${colors.black}`,
+    border: `1px solid ${colors.black}`,
     padding: "8px 5px",
     textAlign: "center",
     fontSize: "8px",
-    letterSpacing: "0.5px",
+    letterSpacing: "0.5px"
   },
 
-
   serviceCell: {
-    border:
-      `1px solid ${colors.border}`,
+    border: `1px solid ${colors.border}`,
     padding: "8px 6px",
     textAlign: "center",
     fontSize: "9px",
-    color: colors.darkText,
+    color: colors.darkText
   },
-
 
   emptyCell: {
-    border:
-      `1px solid ${colors.border}`,
+    border: `1px solid ${colors.border}`,
     padding: "12px",
     textAlign: "center",
-    color: colors.gray,
+    color: colors.gray
   },
-
 
   wttPaidLabel: {
     display: "inline-block",
@@ -1638,36 +1138,27 @@ const styles = {
     fontSize: "6.5px",
     color: colors.gold,
     fontWeight: "900",
-    letterSpacing: "0.3px",
+    letterSpacing: "0.3px"
   },
-
 
   paidThroughText: {
     color: colors.gold,
     fontWeight: "900",
-    fontSize: "8px",
+    fontSize: "8px"
   },
-
-
-  /* =====================================================
-     TOTAL
-  ====================================================== */
 
   totalArea: {
     display: "flex",
     justifyContent: "flex-end",
-    marginTop: "10px",
+    marginTop: "10px"
   },
-
 
   totalBox: {
     width: "48%",
-    border:
-      `1px solid ${colors.border}`,
+    border: `1px solid ${colors.border}`,
     borderRadius: "3px",
-    overflow: "hidden",
+    overflow: "hidden"
   },
-
 
   totalRow: {
     display: "flex",
@@ -1675,23 +1166,15 @@ const styles = {
     padding: "9px",
     fontSize: "10px",
     fontWeight: "900",
-    borderBottom:
-      `2px solid ${colors.gold}`,
+    borderBottom: `2px solid ${colors.gold}`
   },
-
-
-  /* =====================================================
-     PPF
-  ====================================================== */
 
   ppfBox: {
     marginTop: "10px",
-    border:
-      `1px solid ${colors.gold}`,
+    border: `1px solid ${colors.gold}`,
     borderRadius: "3px",
-    overflow: "hidden",
+    overflow: "hidden"
   },
-
 
   ppfTitle: {
     background: colors.black,
@@ -1699,64 +1182,45 @@ const styles = {
     fontSize: "9px",
     fontWeight: "900",
     padding: "7px 9px",
-    borderBottom:
-      `1px solid ${colors.gold}`,
+    borderBottom: `1px solid ${colors.gold}`
   },
-
 
   ppfContent: {
     display: "grid",
-    gridTemplateColumns:
-      "1fr 1fr",
+    gridTemplateColumns: "1fr 1fr",
     gap: "4px 15px",
     padding: "8px 9px",
     fontSize: "8px",
-    lineHeight: "1.3",
+    lineHeight: "1.3"
   },
-
-
-  /* =====================================================
-     SIGNATURES
-  ====================================================== */
 
   signatureArea: {
     display: "grid",
-    gridTemplateColumns:
-      "1fr 1fr",
+    gridTemplateColumns: "1fr 1fr",
     gap: "70px",
-    marginTop: "18px",
+    marginTop: "18px"
   },
-
 
   signatureBox: {
-    textAlign: "center",
+    textAlign: "center"
   },
-
 
   signatureTitle: {
     fontSize: "8px",
     color: colors.black,
-    fontWeight: "900",
+    fontWeight: "900"
   },
-
 
   signatureLine: {
-    borderBottom:
-      `1px solid ${colors.black}`,
-    marginTop: "28px",
+    borderBottom: `1px solid ${colors.black}`,
+    marginTop: "28px"
   },
-
 
   signatureSub: {
     fontSize: "8px",
     color: colors.gray,
-    marginTop: "3px",
+    marginTop: "3px"
   },
-
-
-  /* =====================================================
-     FOOTER
-  ====================================================== */
 
   footer: {
     position: "absolute",
@@ -1766,15 +1230,9 @@ const styles = {
     textAlign: "center",
     fontSize: "8px",
     color: colors.gray,
-    borderTop:
-      `1px solid ${colors.border}`,
-    paddingTop: "5px",
+    borderTop: `1px solid ${colors.border}`,
+    paddingTop: "5px"
   },
-
-
-  /* =====================================================
-     PAGE 2
-  ====================================================== */
 
   termsPage: {
     width: "210mm",
@@ -1785,94 +1243,75 @@ const styles = {
     padding: "8mm",
     position: "relative",
     overflow: "hidden",
-    boxShadow:
-      "0 4px 20px rgba(0,0,0,0.15)",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
     fontSize: "10px",
-    lineHeight: "1.28",
+    lineHeight: "1.28"
   },
-
 
   termsHeader: {
     display: "flex",
     alignItems: "center",
     gap: "18px",
-    padding: "4px 5px 8px",
+    padding: "4px 5px 8px"
   },
-
 
   termsLogo: {
     width: "75px",
     height: "58px",
-    objectFit: "contain",
+    objectFit: "contain"
   },
-
 
   termsMainTitle: {
     margin: "0",
     fontSize: "21px",
     color: colors.black,
     letterSpacing: "0.8px",
-    fontWeight: "900",
+    fontWeight: "900"
   },
-
 
   termsArabicTitle: {
     margin: "4px 0 0",
     fontSize: "16px",
-    color: colors.gold,
+    color: colors.gold
   },
-
 
   termsDivider: {
     height: "2px",
-    background:
-      `linear-gradient(
-        90deg,
-        ${colors.black},
-        ${colors.gold}
-      )`,
-    margin: "4px 0 10px",
+    background: `linear-gradient(90deg, ${colors.black}, ${colors.gold})`,
+    margin: "4px 0 10px"
   },
-
 
   termsSection: {
-    padding: "0 4px",
+    padding: "0 4px"
   },
-
 
   termsHeading: {
     color: colors.gold,
     fontSize: "14px",
     fontWeight: "900",
     margin: "7px 0 4px",
-    borderLeft:
-      `4px solid ${colors.gold}`,
-    paddingLeft: "7px",
+    borderLeft: `4px solid ${colors.gold}`,
+    paddingLeft: "7px"
   },
-
 
   arabicTerms: {
     padding: "0 4px",
-    textAlign: "right",
+    textAlign: "right"
   },
-
 
   arabicTermsHeading: {
     color: colors.gold,
     fontSize: "14px",
     fontWeight: "900",
     margin: "7px 0 4px",
-    borderRight:
-      `4px solid ${colors.gold}`,
-    paddingRight: "7px",
+    borderRight: `4px solid ${colors.gold}`,
+    paddingRight: "7px"
   },
-
 
   termsParagraph: {
     margin: "4px 0",
-    fontSize: "8.8px",
+    fontSize: "8.8px"
   },
-
 
   termsFooter: {
     position: "absolute",
@@ -1880,17 +1319,11 @@ const styles = {
     left: "8mm",
     right: "8mm",
     textAlign: "center",
-    borderTop:
-      `1px solid ${colors.border}`,
+    borderTop: `1px solid ${colors.border}`,
     paddingTop: "5px",
     fontSize: "7px",
-    color: colors.gray,
+    color: colors.gray
   },
-
-
-  /* =====================================================
-     PRINT BUTTON
-  ====================================================== */
 
   printButton: {
     position: "fixed",
@@ -1898,61 +1331,48 @@ const styles = {
     bottom: "25px",
     background: colors.black,
     color: colors.gold,
-    border:
-      `1px solid ${colors.gold}`,
+    border: `1px solid ${colors.gold}`,
     padding: "13px 24px",
     borderRadius: "6px",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: "800",
-    boxShadow:
-      "0 4px 12px rgba(0,0,0,0.25)",
-    zIndex: 9999,
-  },
-
+    boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+    zIndex: 9999
+  }
 };
 
-
-/* =========================================================
-   PRINT CSS
-========================================================= */
+// =========================================================
+// PRINT CSS
+// =========================================================
 
 if (typeof document !== "undefined") {
-
-  const existingStyle =
-    document.getElementById(
-      "professional-invoice-print-style"
-    );
+  const existingStyle = document.getElementById(
+    "professional-invoice-print-style"
+  );
 
   if (!existingStyle) {
+    const printStyle = document.createElement("style");
 
-    const printStyle =
-      document.createElement("style");
-
-    printStyle.id =
-      "professional-invoice-print-style";
+    printStyle.id = "professional-invoice-print-style";
 
     printStyle.innerHTML = `
-
       * {
         box-sizing: border-box;
       }
 
-      html,
-      body {
+      html, body {
         margin: 0;
         padding: 0;
       }
 
       @media print {
-
         @page {
           size: A4 portrait;
           margin: 0;
         }
 
-        html,
-        body {
+        html, body {
           width: 210mm !important;
           margin: 0 !important;
           padding: 0 !important;
@@ -1973,15 +1393,11 @@ if (typeof document !== "undefined") {
           height: 297mm !important;
           min-height: 297mm !important;
           max-height: 297mm !important;
-
           margin: 0 !important;
           padding: 8mm !important;
-
           background: white !important;
           box-shadow: none !important;
-
           overflow: hidden !important;
-
           page-break-after: always !important;
           break-after: page !important;
         }
@@ -1991,23 +1407,18 @@ if (typeof document !== "undefined") {
           height: 297mm !important;
           min-height: 297mm !important;
           max-height: 297mm !important;
-
           margin: 0 !important;
           padding: 8mm !important;
-
           background: white !important;
           box-shadow: none !important;
-
           overflow: hidden !important;
-
           page-break-before: always !important;
           page-break-after: avoid !important;
-
           break-before: page !important;
           break-after: avoid !important;
         }
 
-        table {
+        table, tr, img {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
         }
@@ -2019,35 +1430,20 @@ if (typeof document !== "undefined") {
         tbody {
           display: table-row-group !important;
         }
-
-        tr {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-
-        img {
-          page-break-inside: avoid !important;
-        }
-
       }
 
       @media screen and (max-width: 800px) {
-
-        .invoice-page,
-        .terms-page {
+        .invoice-page, .terms-page {
           width: 210mm;
           transform-origin: top center;
           transform: scale(0.75);
           margin-bottom: -70px !important;
         }
-
       }
-
     `;
 
     document.head.appendChild(printStyle);
   }
 }
-
 
 export default Invoice;

@@ -1,9 +1,194 @@
+
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../supabase/client";
+
+// -----------------------------------
+// TRANSLATIONS
+// -----------------------------------
+
+const jobDetailsTranslations = {
+  ar: {
+    "Job Details": "تفاصيل الطلب",
+    "Loading...": "جارٍ التحميل...",
+    "Customer Information": "معلومات العميل",
+    "Name:": "الاسم:",
+    "Phone:": "الهاتف:",
+    "Date:": "التاريخ:",
+    "Source:": "المصدر:",
+    "Vehicle Information": "معلومات السيارة",
+    "Model:": "الموديل:",
+    "Type:": "النوع:",
+    "Color:": "اللون:",
+    "Plate:": "رقم اللوحة:",
+    "Services": "الخدمات",
+    "Price:": "السعر:",
+    "Quantity:": "الكمية:",
+    "Discount:": "الخصم:",
+    "Final:": "الإجمالي النهائي:",
+    "WTT is paid through Teyseer and is NOT included in the customer's balance.":
+      "تيسير تتحمل تكلفة WTT ولا يتم تضمينها في رصيد العميل.",
+    "Technicians": "الفنيون",
+    "Select Technicians": "اختر الفنيين",
+    "Commission": "العمولة",
+    "Save Technicians": "حفظ الفنيين",
+    "Technicians Updated": "تم تحديث الفنيين",
+    "No technician assigned": "لم يتم تعيين فني",
+    "Unknown Technician": "فني غير معروف",
+    "Edit Technicians": "تعديل الفنيين",
+    "Service not found": "لم يتم العثور على الخدمة",
+    "Payment Summary": "ملخص الدفع",
+    "Internal Services Total:": "إجمالي الخدمات الداخلي:",
+    "Customer Net Amount:": "صافي المبلغ المستحق من العميل:",
+    "Paid:": "المدفوع:",
+    "Balance:": "الرصيد المتبقي:",
+    "Status:": "الحالة:",
+    "Paid": "مدفوع",
+    "Partially Paid": "مدفوع جزئياً",
+    "Unpaid": "غير مدفوع",
+    "All services are paid through Teyseer Motors and excluded from the customer's payable balance.":
+      "جميع الخدمات مدفوعة من خلال تيسير موتورز ولا تدخل ضمن المبلغ المستحق من العميل.",
+    "WTT is included in the internal services total but excluded from the customer's payable balance. Other services remain customer-payable after service discounts.":
+      "يتم تضمين WTT في إجمالي الخدمات الداخلي ولكن يتم استبعاده من المبلغ المستحق من العميل. وتبقى الخدمات الأخرى مستحقة على العميل بعد خصم الخصومات.",
+    "Payment History": "سجل المدفوعات",
+    "No payments yet.": "لا توجد مدفوعات حتى الآن.",
+    "Amount:": "المبلغ:",
+    "Amount": "المبلغ",
+    "Method:": "طريقة الدفع:",
+    "Notes:": "ملاحظات:",
+    "Notes": "ملاحظات",
+    "Edit": "تعديل",
+    "Delete": "حذف",
+    "Add Payment": "إضافة دفعة",
+    "Edit Payment": "تعديل الدفعة",
+    "Cash": "نقداً",
+    "Visa": "فيزا",
+    "Mastercard": "ماستركارد",
+    "PayLater": "الدفع الآجل",
+    "Bank Transfer": "تحويل بنكي",
+    "Update Payment": "تحديث الدفعة",
+    "Cancel": "إلغاء",
+    "Invoice": "الفاتورة",
+    "Edit Job": "تعديل الطلب",
+    "Enter payment amount": "أدخل مبلغ الدفع",
+    "Are you sure you want to delete this payment?":
+      "هل أنت متأكد أنك تريد حذف هذه الدفعة؟",
+    "Could not delete payment:": "تعذر حذف الدفعة:",
+    "Payment deleted and job balance updated!":
+      "تم حذف الدفعة وتحديث رصيد الطلب!",
+    "Payment added and job balance updated!":
+      "تمت إضافة الدفعة وتحديث رصيد الطلب!",
+    "Payment updated and job balance updated!":
+      "تم تحديث الدفعة ورصيد الطلب!",
+    "Payment changed, but job balance could not be updated:":
+      "تم تغيير الدفعة، ولكن تعذر تحديث رصيد الطلب:",
+    "Save Payment": "حفظ الدفعة",
+    "Update Technicians": "تحديث الفنيين",
+    "N/A": "غير متوفر"
+  },
+
+  zh: {
+    "Job Details": "工单详情",
+    "Loading...": "正在加载...",
+    "Customer Information": "客户信息",
+    "Name:": "姓名：",
+    "Phone:": "电话：",
+    "Date:": "日期：",
+    "Source:": "来源：",
+    "Vehicle Information": "车辆信息",
+    "Model:": "车型：",
+    "Type:": "类型：",
+    "Color:": "颜色：",
+    "Plate:": "车牌号：",
+    "Services": "服务项目",
+    "Price:": "价格：",
+    "Quantity:": "数量：",
+    "Discount:": "折扣：",
+    "Final:": "最终金额：",
+    "WTT is paid through Teyseer and is NOT included in the customer's balance.":
+      "WTT费用由Teyseer支付，不计入客户余额。",
+    "Technicians": "技师",
+    "Select Technicians": "选择技师",
+    "Commission": "佣金",
+    "Save Technicians": "保存技师",
+    "Technicians Updated": "技师已更新",
+    "No technician assigned": "尚未分配技师",
+    "Unknown Technician": "未知技师",
+    "Edit Technicians": "编辑技师",
+    "Service not found": "未找到服务项目",
+    "Payment Summary": "付款汇总",
+    "Internal Services Total:": "内部服务总额：",
+    "Customer Net Amount:": "客户应付净额：",
+    "Paid:": "已付款：",
+    "Balance:": "未付余额：",
+    "Status:": "状态：",
+    "Paid": "已付款",
+    "Partially Paid": "部分付款",
+    "Unpaid": "未付款",
+    "All services are paid through Teyseer Motors and excluded from the customer's payable balance.":
+      "所有服务均由Teyseer Motors支付，不计入客户应付余额。",
+    "WTT is included in the internal services total but excluded from the customer's payable balance. Other services remain customer-payable after service discounts.":
+      "WTT计入内部服务总额，但不计入客户应付余额。其他服务扣除折扣后仍由客户支付。",
+    "Payment History": "付款记录",
+    "No payments yet.": "暂无付款记录。",
+    "Amount:": "金额：",
+    "Amount": "金额",
+    "Method:": "付款方式：",
+    "Notes:": "备注：",
+    "Notes": "备注",
+    "Edit": "编辑",
+    "Delete": "删除",
+    "Add Payment": "添加付款",
+    "Edit Payment": "编辑付款",
+    "Cash": "现金",
+    "Visa": "Visa",
+    "Mastercard": "Mastercard",
+    "PayLater": "延期付款",
+    "Bank Transfer": "银行转账",
+    "Update Payment": "更新付款",
+    "Cancel": "取消",
+    "Invoice": "发票",
+    "Edit Job": "编辑工单",
+    "Enter payment amount": "请输入付款金额",
+    "Are you sure you want to delete this payment?":
+      "确定要删除这笔付款吗？",
+    "Could not delete payment:": "无法删除付款：",
+    "Payment deleted and job balance updated!":
+      "付款已删除，工单余额已更新！",
+    "Payment added and job balance updated!":
+      "付款已添加，工单余额已更新！",
+    "Payment updated and job balance updated!":
+      "付款已更新，工单余额已更新！",
+    "Payment changed, but job balance could not be updated:":
+      "付款已更改，但无法更新工单余额：",
+    "Save Payment": "保存付款",
+    "Update Technicians": "更新技师",
+    "N/A": "不适用"
+  }
+};
+
+function translateJobDetails(text, language) {
+  if (language === "ar" || language === "zh") {
+    return jobDetailsTranslations[language][text] || text;
+  }
+
+  return text;
+}
+
+// -----------------------------------
+// JOB DETAILS COMPONENT
+// -----------------------------------
 
 function JobDetails() {
   const { id } = useParams();
+  const { i18n } = useTranslation();
+
+  const language =
+    i18n.resolvedLanguage || i18n.language || "en";
+
+  const tr = (text) =>
+    translateJobDetails(text, language);
 
   const [job, setJob] = useState(null);
   const [technicians, setTechnicians] = useState([]);
@@ -22,14 +207,14 @@ function JobDetails() {
   // TEYSEER CHECK
   // -----------------------------------
 
- function isTeyseerSource(sourceName) {
-  return (
-    sourceName === "Teyseer Motors" ||
-    sourceName === "Teyseer Motors - Bahaa" ||
-    sourceName === "Teyseer Motors - Salah" ||
-    sourceName === "Teyseer Motors - Abdou"
-  );
-}
+  function isTeyseerSource(sourceName) {
+    return (
+      sourceName === "Teyseer Motors" ||
+      sourceName === "Teyseer Motors - Bahaa" ||
+      sourceName === "Teyseer Motors - Salah" ||
+      sourceName === "Teyseer Motors - Abdou"
+    );
+  }
 
   function isWttService(serviceName) {
     return serviceName
@@ -174,8 +359,6 @@ function JobDetails() {
 
     const total = services.reduce(
       (sum, serviceName) => {
-        // WTT is paid by Teyseer
-        // and is NOT charged to customer.
         if (
           isTeyseerSource(source) &&
           isWttService(serviceName)
@@ -260,15 +443,12 @@ function JobDetails() {
       return;
     }
 
-    // Calculate customer payable amount
     const customerTotal =
       calculateCustomerTotal(currentJob);
 
-    // Calculate all payments
     const totalPaid =
       calculateTotalPaid(paymentData);
 
-    // Customer balance
     const balance = Math.max(
       customerTotal - totalPaid,
       0
@@ -287,7 +467,6 @@ function JobDetails() {
       "======================================"
     );
 
-    // Update database
     const { error: updateError } =
       await supabase
         .from("jobs")
@@ -304,14 +483,14 @@ function JobDetails() {
       );
 
       alert(
-        "Payment changed, but job balance could not be updated:\n\n" +
-          updateError.message
+        tr("Payment changed, but job balance could not be updated:") +
+        "\n\n" +
+        updateError.message
       );
 
       return;
     }
 
-    // Update React state
     setJob((prev) => {
       if (!prev) return prev;
 
@@ -365,11 +544,10 @@ function JobDetails() {
         error
       );
 
-      alert("Service not found");
+      alert(tr("Service not found"));
       return;
     }
 
-    // Delete old assignments
     const { error: deleteError } =
       await supabase
         .from("service_technicians")
@@ -386,7 +564,6 @@ function JobDetails() {
       return;
     }
 
-    // Create new assignments
     const rows = selectedTechs.map((tech) => ({
       service_id: jobService.id,
       technician_id: tech.id,
@@ -417,7 +594,7 @@ function JobDetails() {
     setEditingService(null);
     setSelectedTechs([]);
 
-    alert("Technicians Updated");
+    alert(tr("Technicians Updated"));
   }
 
   // -----------------------------------
@@ -426,7 +603,7 @@ function JobDetails() {
 
   async function savePayment() {
     if (!amount || Number(amount) <= 0) {
-      alert("Enter payment amount");
+      alert(tr("Enter payment amount"));
       return;
     }
 
@@ -460,7 +637,7 @@ function JobDetails() {
     await updateJobPaymentSummary();
 
     alert(
-      "Payment added and job balance updated!"
+      tr("Payment added and job balance updated!")
     );
   }
 
@@ -481,7 +658,7 @@ function JobDetails() {
 
   async function deletePayment(paymentId) {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this payment?"
+      tr("Are you sure you want to delete this payment?")
     );
 
     if (!confirmed) return;
@@ -498,8 +675,9 @@ function JobDetails() {
       );
 
       alert(
-        "Could not delete payment:\n\n" +
-          error.message
+        tr("Could not delete payment:") +
+        "\n\n" +
+        error.message
       );
 
       return;
@@ -510,7 +688,7 @@ function JobDetails() {
     await updateJobPaymentSummary();
 
     alert(
-      "Payment deleted and job balance updated!"
+      tr("Payment deleted and job balance updated!")
     );
   }
 
@@ -542,7 +720,7 @@ function JobDetails() {
     if (!editingPayment) return;
 
     if (!amount || Number(amount) <= 0) {
-      alert("Enter payment amount");
+      alert(tr("Enter payment amount"));
       return;
     }
 
@@ -572,7 +750,7 @@ function JobDetails() {
     await updateJobPaymentSummary();
 
     alert(
-      "Payment updated and job balance updated!"
+      tr("Payment updated and job balance updated!")
     );
   }
 
@@ -583,7 +761,7 @@ function JobDetails() {
   if (!job) {
     return (
       <h1 style={styles.loading}>
-        Loading...
+        {tr("Loading...")}
       </h1>
     );
   }
@@ -592,7 +770,6 @@ function JobDetails() {
   // TOTALS
   // -----------------------------------
 
-  // Internal total includes WTT.
   const internalTotal =
     (job.services || []).reduce(
       (sum, serviceName) => {
@@ -619,15 +796,12 @@ function JobDetails() {
       0
     );
 
-  // Customer total excludes WTT for Teyseer.
   const customerNetAmount =
     calculateCustomerTotal(job);
 
-  // Total payments.
   const totalPaid =
     calculateTotalPaid(payments);
 
-  // Correct customer balance.
   const balance = Math.max(
     customerNetAmount - totalPaid,
     0
@@ -653,73 +827,67 @@ function JobDetails() {
     <div style={styles.page}>
 
       <h1>
-        Job Details
+        {tr("Job Details")}
       </h1>
 
       <div style={styles.card}>
 
-        {/* -------------------------------- */}
         {/* CUSTOMER */}
-        {/* -------------------------------- */}
 
         <h2>
-          Customer Information
+          {tr("Customer Information")}
         </h2>
 
         <p>
-          <strong>Name:</strong>{" "}
+          <strong>{tr("Name:")}</strong>{" "}
           {job.customer}
         </p>
 
         <p>
-          <strong>Phone:</strong>{" "}
+          <strong>{tr("Phone:")}</strong>{" "}
           {job.phone}
         </p>
 
         <p>
-          <strong>Date:</strong>{" "}
+          <strong>{tr("Date:")}</strong>{" "}
           {job.date}
         </p>
 
         <p>
-          <strong>Source:</strong>{" "}
+          <strong>{tr("Source:")}</strong>{" "}
           {job.source}
         </p>
 
-        {/* -------------------------------- */}
         {/* VEHICLE */}
-        {/* -------------------------------- */}
 
         <h2>
-          Vehicle Information
+          {tr("Vehicle Information")}
         </h2>
 
         <p>
-          <strong>Model:</strong>{" "}
+          <strong>{tr("Model:")}</strong>{" "}
           {job.carModel}
         </p>
 
         <p>
-          <strong>Type:</strong>{" "}
+          <strong>{tr("Type:")}</strong>{" "}
           {job.carType}
         </p>
 
         <p>
-          <strong>Color:</strong>{" "}
+          <strong>{tr("Color:")}</strong>{" "}
           {job.color}
         </p>
 
         <p>
-          <strong>Plate:</strong>{" "}
+          <strong>{tr("Plate:")}</strong>{" "}
           {job.plate}
         </p>
 
-        {/* -------------------------------- */}
         {/* SERVICES */}
-        {/* -------------------------------- */}
 
         <h2>
-          Services
+          {tr("Services")}
         </h2>
 
         {(job.services || []).map(
@@ -765,39 +933,35 @@ function JobDetails() {
                 </h3>
 
                 <p>
-                  Price: QAR{" "}
+                  {tr("Price:")} QAR{" "}
                   {price.toFixed(2)}
                 </p>
 
                 <p>
-                  Quantity:{" "}
+                  {tr("Quantity:")}{" "}
                   {quantity}
                 </p>
 
                 <p>
-                  Discount: QAR{" "}
+                  {tr("Discount:")} QAR{" "}
                   {discount.toFixed(2)}
                 </p>
 
                 <p>
-                  Final: QAR{" "}
+                  {tr("Final:")} QAR{" "}
                   {finalServicePrice.toFixed(2)}
                 </p>
 
                 {isTeyseerWtt && (
-                  <div
-                    style={
-                      styles.teyseerNotice
-                    }
-                  >
-                    WTT is paid through
-                    Teyseer and is NOT included
-                    in the customer's balance.
+                  <div style={styles.teyseerNotice}>
+                    {tr(
+                      "WTT is paid through Teyseer and is NOT included in the customer's balance."
+                    )}
                   </div>
                 )}
 
                 <h4>
-                  Technicians
+                  {tr("Technicians")}
                 </h4>
 
                 {editingService === service ? (
@@ -805,7 +969,7 @@ function JobDetails() {
                   <div>
 
                     <h4>
-                      Select Technicians
+                      {tr("Select Technicians")}
                     </h4>
 
                     {technicians.map(
@@ -814,59 +978,43 @@ function JobDetails() {
                         const selected =
                           selectedTechs.find(
                             (t) =>
-                              t.id ===
-                              person.id
+                              t.id === person.id
                           );
 
                         return (
                           <div
                             key={person.id}
-                            style={
-                              styles.techRow
-                            }
+                            style={styles.techRow}
                           >
 
                             <label>
 
                               <input
                                 type="checkbox"
-                                checked={
-                                  !!selected
-                                }
+                                checked={!!selected}
                                 onChange={(e) => {
 
-                                  if (
-                                    e.target
-                                      .checked
-                                  ) {
-
-                                    setSelectedTechs(
-                                      [
-                                        ...selectedTechs,
-                                        {
-                                          id: person.id,
-                                          commission: 0
-                                        }
-                                      ]
-                                    );
-
+                                  if (e.target.checked) {
+                                    setSelectedTechs([
+                                      ...selectedTechs,
+                                      {
+                                        id: person.id,
+                                        commission: 0
+                                      }
+                                    ]);
                                   } else {
-
                                     setSelectedTechs(
                                       selectedTechs.filter(
                                         (t) =>
-                                          t.id !==
-                                          person.id
+                                          t.id !== person.id
                                       )
                                     );
-
                                   }
 
                                 }}
                               />
 
                               {" "}
-
                               {person.name}
 
                             </label>
@@ -877,33 +1025,25 @@ function JobDetails() {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                placeholder="Commission"
-                                value={
-                                  selected.commission
-                                }
+                                placeholder={tr("Commission")}
+                                value={selected.commission}
                                 onChange={(e) => {
 
                                   setSelectedTechs(
                                     selectedTechs.map(
                                       (t) =>
-                                        t.id ===
-                                        person.id
+                                        t.id === person.id
                                           ? {
                                               ...t,
                                               commission:
-                                                Number(
-                                                  e.target
-                                                    .value
-                                                )
+                                                Number(e.target.value)
                                             }
                                           : t
                                     )
                                   );
 
                                 }}
-                                style={
-                                  styles.commissionInput
-                                }
+                                style={styles.commissionInput}
                               />
 
                             )}
@@ -918,15 +1058,11 @@ function JobDetails() {
 
                     <button
                       onClick={() =>
-                        saveTechnicians(
-                          service
-                        )
+                        saveTechnicians(service)
                       }
-                      style={
-                        styles.button
-                      }
+                      style={styles.button}
                     >
-                      Save Technicians
+                      {tr("Save Technicians")}
                     </button>
 
                   </div>
@@ -935,33 +1071,26 @@ function JobDetails() {
 
                   <div>
 
-                    {serviceTechs.length >
-                    0 ? (
+                    {serviceTechs.length > 0 ? (
 
                       serviceTechs.map(
                         (tech) => (
 
                           <div
                             key={tech.id}
-                            style={
-                              styles.technicianBox
-                            }
+                            style={styles.technicianBox}
                           >
 
                             <p>
                               👷{" "}
-                              {tech.technicians
-                                ?.name ||
-                                "Unknown Technician"}
+                              {tech.technicians?.name ||
+                                tr("Unknown Technician")}
                             </p>
 
                             <p>
-                              Commission:
-                              {" "}
-                              QAR{" "}
+                              {tr("Commission")}: QAR{" "}
                               {Number(
-                                tech.commission ||
-                                  0
+                                tech.commission || 0
                               ).toFixed(2)}
                             </p>
 
@@ -973,22 +1102,18 @@ function JobDetails() {
                     ) : (
 
                       <p>
-                        No technician assigned
+                        {tr("No technician assigned")}
                       </p>
 
                     )}
 
                     <button
                       onClick={() =>
-                        startEditTechnicians(
-                          service
-                        )
+                        startEditTechnicians(service)
                       }
-                      style={
-                        styles.editButton
-                      }
+                      style={styles.editButton}
                     >
-                      ✏️ Edit Technicians
+                      ✏️ {tr("Edit Technicians")}
                     </button>
 
                   </div>
@@ -1000,61 +1125,43 @@ function JobDetails() {
           }
         )}
 
-        {/* -------------------------------- */}
         {/* PAYMENT SUMMARY */}
-        {/* -------------------------------- */}
 
         <h2>
-          Payment Summary
+          {tr("Payment Summary")}
         </h2>
 
-        <div
-          style={
-            styles.summaryBox
-          }
-        >
+        <div style={styles.summaryBox}>
 
           <p>
             <strong>
-              Internal Services Total:
+              {tr("Internal Services Total:")}
             </strong>
             {" "}
             QAR{" "}
             {internalTotal.toFixed(2)}
           </p>
 
-          <p
-            style={
-              styles.customerTotal
-            }
-          >
+          <p style={styles.customerTotal}>
             <strong>
-              Customer Net Amount:
+              {tr("Customer Net Amount:")}
             </strong>
             {" "}
             QAR{" "}
             {customerNetAmount.toFixed(2)}
           </p>
 
-          <p
-            style={
-              styles.paid
-            }
-          >
+          <p style={styles.paid}>
             <strong>
-              Paid:
+              {tr("Paid:")}
             </strong>
             {" "}
             QAR{" "}
             {totalPaid.toFixed(2)}
           </p>
 
-          <h2
-            style={
-              styles.balance
-            }
-          >
-            Balance:
+          <h2 style={styles.balance}>
+            {tr("Balance:")}
             {" "}
             QAR{" "}
             {balance.toFixed(2)}
@@ -1062,47 +1169,54 @@ function JobDetails() {
 
           <p>
             <strong>
-              Status:
+              {tr("Status:")}
             </strong>
             {" "}
 
             {paymentStatus === "Paid"
-              ? "🟢 Paid"
-              : paymentStatus ===
-                "Partially Paid"
-              ? "🟡 Partially Paid"
-              : "🔴 Unpaid"}
+              ? `🟢 ${tr("Paid")}`
+              : paymentStatus === "Partially Paid"
+              ? `🟡 ${tr("Partially Paid")}`
+              : `🔴 ${tr("Unpaid")}`}
 
           </p>
 
           {job.source === "Teyseer Motors" ? (
+
             <div style={styles.teyseerNotice}>
-              All services are paid through Teyseer Motors and excluded from the customer's payable balance.
+              {tr(
+                "All services are paid through Teyseer Motors and excluded from the customer's payable balance."
+              )}
             </div>
+
           ) : (
+
             isTeyseerSource(job.source) && (
+
               <div style={styles.teyseerNotice}>
-                WTT is included in the internal services total but excluded from the customer's payable balance. Other services remain customer-payable after service discounts.
+                {tr(
+                  "WTT is included in the internal services total but excluded from the customer's payable balance. Other services remain customer-payable after service discounts."
+                )}
               </div>
+
             )
+
           )}
 
         </div>
 
         <hr />
 
-        {/* -------------------------------- */}
         {/* PAYMENT HISTORY */}
-        {/* -------------------------------- */}
 
         <h2>
-          Payment History
+          {tr("Payment History")}
         </h2>
 
         {payments.length === 0 ? (
 
           <p>
-            No payments yet.
+            {tr("No payments yet.")}
           </p>
 
         ) : (
@@ -1112,26 +1226,24 @@ function JobDetails() {
 
               <div
                 key={payment.id}
-                style={
-                  styles.paymentBox
-                }
+                style={styles.paymentBox}
               >
 
                 <p>
                   <strong>
-                    Date:
+                    {tr("Date:")}
                   </strong>
                   {" "}
                   {payment.payment_date
                     ? new Date(
                         payment.payment_date
                       ).toLocaleDateString()
-                    : "N/A"}
+                    : tr("N/A")}
                 </p>
 
                 <p>
                   <strong>
-                    Amount:
+                    {tr("Amount:")}
                   </strong>
                   {" "}
                   QAR{" "}
@@ -1142,17 +1254,27 @@ function JobDetails() {
 
                 <p>
                   <strong>
-                    Method:
+                    {tr("Method:")}
                   </strong>
                   {" "}
-                  {payment.payment_method}
+                  {payment.payment_method === "Cash"
+                    ? tr("Cash")
+                    : payment.payment_method === "Visa"
+                    ? tr("Visa")
+                    : payment.payment_method === "Mastercard"
+                    ? tr("Mastercard")
+                    : payment.payment_method === "PayLater"
+                    ? tr("PayLater")
+                    : payment.payment_method === "Bank Transfer"
+                    ? tr("Bank Transfer")
+                    : payment.payment_method}
                 </p>
 
                 {payment.notes && (
 
                   <p>
                     <strong>
-                      Notes:
+                      {tr("Notes:")}
                     </strong>
                     {" "}
                     {payment.notes}
@@ -1161,29 +1283,21 @@ function JobDetails() {
                 )}
 
                 <button
-                  style={
-                    styles.editButton
-                  }
+                  style={styles.editButton}
                   onClick={() =>
-                    startEditPayment(
-                      payment
-                    )
+                    startEditPayment(payment)
                   }
                 >
-                  ✏️ Edit
+                  ✏️ {tr("Edit")}
                 </button>
 
                 <button
-                  style={
-                    styles.deleteButton
-                  }
+                  style={styles.deleteButton}
                   onClick={() =>
-                    deletePayment(
-                      payment.id
-                    )
+                    deletePayment(payment.id)
                   }
                 >
-                  🗑 Delete
+                  🗑 {tr("Delete")}
                 </button>
 
               </div>
@@ -1195,21 +1309,19 @@ function JobDetails() {
 
         <hr />
 
-        {/* -------------------------------- */}
         {/* ADD / EDIT PAYMENT */}
-        {/* -------------------------------- */}
 
         <h2>
           {editingPayment
-            ? "Edit Payment"
-            : "Add Payment"}
+            ? tr("Edit Payment")
+            : tr("Add Payment")}
         </h2>
 
         <input
           type="number"
           min="0"
           step="0.01"
-          placeholder="Amount"
+          placeholder={tr("Amount")}
           value={amount}
           onChange={(e) =>
             setAmount(e.target.value)
@@ -1226,66 +1338,56 @@ function JobDetails() {
         >
 
           <option value="Cash">
-            Cash
+            {tr("Cash")}
           </option>
 
           <option value="Visa">
-            Visa
+            {tr("Visa")}
           </option>
 
           <option value="Mastercard">
-            Mastercard
+            {tr("Mastercard")}
           </option>
 
           <option value="PayLater">
-            PayLater
+            {tr("PayLater")}
           </option>
 
           <option value="Bank Transfer">
-            Bank Transfer
+            {tr("Bank Transfer")}
           </option>
 
         </select>
 
         <textarea
-          placeholder="Notes"
+          placeholder={tr("Notes")}
           value={notes}
           onChange={(e) =>
             setNotes(e.target.value)
           }
-          style={
-            styles.textarea
-          }
+          style={styles.textarea}
         />
 
         <button
-          style={
-            styles.button
-          }
+          style={styles.button}
           onClick={
             editingPayment
               ? updatePayment
               : savePayment
           }
         >
-
           {editingPayment
-            ? "Update Payment"
-            : "Add Payment"}
-
+            ? tr("Update Payment")
+            : tr("Add Payment")}
         </button>
 
         {editingPayment && (
 
           <button
-            style={
-              styles.cancelButton
-            }
-            onClick={
-              clearPaymentForm
-            }
+            style={styles.cancelButton}
+            onClick={clearPaymentForm}
           >
-            Cancel
+            {tr("Cancel")}
           </button>
 
         )}
@@ -1293,37 +1395,21 @@ function JobDetails() {
         <br />
         <br />
 
-        {/* -------------------------------- */}
         {/* INVOICE */}
-        {/* -------------------------------- */}
 
-        <Link
-          to={`/invoice/${job.id}`}
-        >
-          <button
-            style={
-              styles.invoiceButton
-            }
-          >
-            🧾 Invoice
+        <Link to={`/invoice/${job.id}`}>
+          <button style={styles.invoiceButton}>
+            🧾 {tr("Invoice")}
           </button>
         </Link>
 
         {" "}
 
-        {/* -------------------------------- */}
         {/* EDIT JOB */}
-        {/* -------------------------------- */}
 
-        <Link
-          to={`/edit-job/${job.id}`}
-        >
-          <button
-            style={
-              styles.editJobButton
-            }
-          >
-            ✏️ Edit Job
+        <Link to={`/edit-job/${job.id}`}>
+          <button style={styles.editJobButton}>
+            ✏️ {tr("Edit Job")}
           </button>
         </Link>
 
