@@ -14,10 +14,13 @@ import AssignTechnician from "./pages/AssignTechnician";
 import Reports from "./pages/Reports";
 import Inventory from "./pages/Inventory";
 import Users from "./pages/Users";
+import LanguageSelector from "./components/LanguageSelector";
 
 function App() {
   return (
     <BrowserRouter>
+      <LanguageSelector />
+
       <Routes>
 
         {/* PUBLIC */}

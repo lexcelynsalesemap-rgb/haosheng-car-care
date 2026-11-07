@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { translateDashboard } from "../i18n/dashboardTranslations";
 import { Link } from "react-router-dom";
 import UserMenu from "../components/UserMenu";
 import { supabase } from "../supabase/client";
@@ -36,6 +38,9 @@ const SHOP_THEMES = {
 };
 
 function Dashboard() {
+  const { t, i18n } = useTranslation();
+  const td = (text) =>
+    translateDashboard(text, i18n.resolvedLanguage || i18n.language);
   const [jobs, setJobs] = useState([]);
   const [payments, setPayments] = useState([]);
   const [dateFilter, setDateFilter] = useState("All");
@@ -1010,12 +1015,12 @@ function Dashboard() {
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>
-              🚗 {theme.name}
-            </h1>
+  🚗 {t("appName")}
+</h1>
 
-            <p style={styles.subtitle}>
-              Workshop Management System
-            </p>
+           <p style={styles.subtitle}>
+  {t("workshopManagement")}
+</p>
           </div>
 
           <div style={styles.headerActions}>
@@ -1030,7 +1035,7 @@ function Dashboard() {
               <button
                 style={styles.newButton}
               >
-                + New Job
+                + {td("New Job")}
               </button>
             </Link>
 
@@ -1045,7 +1050,7 @@ function Dashboard() {
                   styles.secondaryButton
                 }
               >
-                📦 Inventory
+                📦 {td("Inventory")}
               </button>
             </Link>
 
@@ -1060,7 +1065,7 @@ function Dashboard() {
                   styles.secondaryButton
                 }
               >
-                👷 Technician Earnings
+                👷 {td("Technician Earnings")}
               </button>
             </Link>
           </div>
@@ -1070,7 +1075,7 @@ function Dashboard() {
           <label
             style={styles.filterLabel}
           >
-            Dashboard Period
+            {td("Dashboard Period")}
           </label>
 
           <select
@@ -1083,63 +1088,63 @@ function Dashboard() {
             style={styles.select}
           >
             <option value="All">
-              All Time
+              {td("All Time")}
             </option>
 
             <option value="Today">
-              Today
+              {td("Today")}
             </option>
 
             <option value="January">
-              January
+              {td("January")}
             </option>
 
             <option value="February">
-              February
+              {td("February")}
             </option>
 
             <option value="March">
-              March
+              {td("March")}
             </option>
 
             <option value="April">
-              April
+              {td("April")}
             </option>
 
             <option value="May">
-              May
+              {td("May")}
             </option>
 
             <option value="June">
-              June
+              {td("June")}
             </option>
 
             <option value="July">
-              July
+              {td("July")}
             </option>
 
             <option value="August">
-              August
+              {td("August")}
             </option>
 
             <option value="September">
-              September
+              {td("September")}
             </option>
 
             <option value="October">
-              October
+              {td("October")}
             </option>
 
             <option value="November">
-              November
+              {td("November")}
             </option>
 
             <option value="December">
-              December
+              {td("December")}
             </option>
 
             <option value="Year">
-              This Year
+              {td("This Year")}
             </option>
           </select>
         </div>
@@ -1338,7 +1343,7 @@ function Dashboard() {
         {shopId === 1 && (
           <>
             <h2 style={styles.heading}>
-              Individual Sales Staff Balances
+              {td("Individual Sales Staff Balances")}
             </h2>
 
             <div style={styles.tableBox}>
@@ -1346,19 +1351,19 @@ function Dashboard() {
                 <thead>
                   <tr>
                     <th style={styles.th}>
-                      Sales Staff
+                      {td("Sales Staff")}
                     </th>
 
                     <th style={styles.th}>
-                      Sales
+                      {td("Sales")}
                     </th>
 
                     <th style={styles.th}>
-                      Paid
+                      {td("Paid")}
                     </th>
 
                     <th style={styles.th}>
-                      Balance
+                      {td("Balance")}
                     </th>
 
                     <th style={styles.th}>
@@ -1474,7 +1479,7 @@ function Dashboard() {
                         styles.totalTd
                       }
                     >
-                      TOTAL
+                      {td("TOTAL")}
                     </td>
 
                     <td
@@ -1536,7 +1541,7 @@ function Dashboard() {
         )}
 
         <h2 style={styles.heading}>
-          Recent Jobs
+          {td("Recent Jobs")}
         </h2>
 
         <div style={styles.tableBox}>
@@ -1544,48 +1549,48 @@ function Dashboard() {
             <thead>
               <tr>
                 <th style={styles.th}>
-                  Customer
+                  {td("Customer")}
                 </th>
 
                 <th style={styles.th}>
-                  Vehicle
+                  {td("Vehicle")}
                 </th>
 
                 <th style={styles.th}>
-                  Source
+                  {td("Source")}
                 </th>
 
                 <th style={styles.th}>
-                  Status
+                  {td("Status")}
                 </th>
 
                 <th style={styles.th}>
-                  Amount
+                  {td("Amount")}
                 </th>
 
                 {shopId === 1 && (
                   <>
                     <th style={styles.th}>
-                      Teyseer
+                      {td("Teyseer")}
                     </th>
 
                     <th style={styles.th}>
-                      Salah
+                      {td("Salah")}
                     </th>
 
                     <th style={styles.th}>
-                      Bahaa
+                      {td("Bahaa")}
                     </th>
 
                     <th style={styles.th}>
-                      Sales Team
+                      {td("Sales Team")}
                     </th>
                   </>
                 )}
 
                 {shopId === 2 && (
                   <th style={styles.th}>
-                    Customer Sales
+                    {td("Customer Sales")}
                   </th>
                 )}
               </tr>
@@ -1721,14 +1726,13 @@ function Dashboard() {
                 styles.empty
               }
             >
-              No jobs found for this
-              period.
+              {td("No jobs found for this period.")}
             </p>
           )}
         </div>
 
         <h2 style={styles.heading}>
-          Statistics
+          {td("Statistics")}
         </h2>
 
         <div style={styles.charts}>
@@ -1737,7 +1741,7 @@ function Dashboard() {
             <h3
               style={styles.chartTitle}
             >
-              Job Status
+              {td("Job Status")}
             </h3>
 
             <ResponsiveContainer
@@ -1782,7 +1786,7 @@ function Dashboard() {
             <h3
               style={styles.chartTitle}
             >
-              Sales Overview
+              {td("Sales Overview")}
             </h3>
 
             <ResponsiveContainer
@@ -1825,7 +1829,7 @@ function Dashboard() {
         </div>
 
         <h2 style={styles.heading}>
-          Customer Sources
+          {td("Customer Sources")}
         </h2>
 
         <div style={styles.recent}>
@@ -1860,7 +1864,7 @@ function Dashboard() {
                     styles.muted
                   }
                 >
-                  Service Items
+                  {td("Service Items")}
                 </p>
 
                 <h3>
@@ -1882,7 +1886,7 @@ function Dashboard() {
         </div>
 
         <h2 style={styles.heading}>
-          Quick Actions
+          {td("Quick Actions")}
         </h2>
 
         <div style={styles.actions}>
@@ -1906,7 +1910,7 @@ function Dashboard() {
             </h3>
 
             <p>
-              Create service order
+              {td("Create service order")}
             </p>
           </Link>
 
@@ -1929,7 +1933,7 @@ function Dashboard() {
             </h3>
 
             <p>
-              Manage repairs
+              {td("Manage repairs")}
             </p>
           </Link>
 
@@ -1952,8 +1956,7 @@ function Dashboard() {
             </h3>
 
             <p>
-              Select a car to create
-              invoice
+              {td("Select a car to create invoice")}
             </p>
           </Link>
 
@@ -1968,7 +1971,7 @@ function Dashboard() {
                 styles.actionIcon
               }
             >
-              ⚙️
+              ⚙️
             </div>
 
             <h3>
@@ -1976,7 +1979,7 @@ function Dashboard() {
             </h3>
 
             <p>
-              System setup
+              {td("System setup")}
             </p>
           </Link>
 
@@ -2000,7 +2003,7 @@ function Dashboard() {
               </h3>
 
               <p>
-                Financial overview
+                {td("Financial overview")}
               </p>
             </Link>
           )}
@@ -2020,11 +2023,11 @@ function Dashboard() {
             </div>
 
             <h3>
-              Inventory
+              {td("Inventory")}
             </h3>
 
             <p>
-              Manage products and stock
+              {td("Manage products and stock")}
             </p>
           </Link>
         </div>
@@ -2058,7 +2061,7 @@ function Dashboard() {
                     }
                   >
                     {selectedSalesStaff} —
-                    Outstanding Customers
+                    {td("Outstanding Customers")}
                   </h2>
 
                   <p
@@ -2084,7 +2087,7 @@ function Dashboard() {
                     )
                   }
                 >
-                  ×
+                  Ã—
                 </button>
               </div>
 
@@ -2103,7 +2106,7 @@ function Dashboard() {
                       styles.modalSummaryLabel
                     }
                   >
-                    Customers / Jobs
+                    {td("Customers / Jobs")}
                   </span>
 
                   <strong
@@ -2127,7 +2130,7 @@ function Dashboard() {
                       styles.modalSummaryLabel
                     }
                   >
-                    Outstanding Balance
+                    {td("Outstanding Balance")}
                   </span>
 
                   <strong
@@ -2182,7 +2185,7 @@ function Dashboard() {
                           styles.th
                         }
                       >
-                        Customer
+                        {td("Customer")}
                       </th>
 
                       <th
@@ -2190,7 +2193,7 @@ function Dashboard() {
                           styles.th
                         }
                       >
-                        Vehicle
+                        {td("Vehicle")}
                       </th>
 
                       <th
@@ -2198,7 +2201,7 @@ function Dashboard() {
                           styles.th
                         }
                       >
-                        Source
+                        {td("Source")}
                       </th>
 
                       <th
@@ -2206,7 +2209,7 @@ function Dashboard() {
                           styles.th
                         }
                       >
-                        Date
+                        {td("Date")}
                       </th>
 
                       <th
@@ -2214,7 +2217,7 @@ function Dashboard() {
                           styles.th
                         }
                       >
-                        Sales
+                        {td("Sales")}
                       </th>
 
                       <th
@@ -2222,7 +2225,7 @@ function Dashboard() {
                           styles.th
                         }
                       >
-                        Paid
+                        {td("Paid")}
                       </th>
 
                       <th
@@ -2230,7 +2233,7 @@ function Dashboard() {
                           styles.th
                         }
                       >
-                        Balance
+                        {td("Balance")}
                       </th>
                     </tr>
                   </thead>
@@ -2247,8 +2250,8 @@ function Dashboard() {
                         >
                           {selectedStaffRows.length ===
                           0
-                            ? "No outstanding customers for this sales staff."
-                            : "No customers match your search."}
+                            ? td("No outstanding customers for this sales staff.")
+                            : td("No customers match your search.")}
                         </td>
                       </tr>
                     ) : (
@@ -2280,7 +2283,7 @@ function Dashboard() {
                                 }}
                               >
                                 {job.customer ||
-                                  "Walk-in Customer"}
+                                  td("Walk-in Customer")}
                               </td>
 
                               <td
@@ -2373,6 +2376,11 @@ function Card({
   icon,
   onClick,
 }) {
+  const { i18n } = useTranslation();
+  const translatedTitle = translateDashboard(
+    title,
+    i18n.resolvedLanguage || i18n.language
+  );
   const user = JSON.parse(
     localStorage.getItem("user") || "null"
   );
@@ -2490,7 +2498,7 @@ function Card({
             minWidth: 0,
           }}
         >
-          {title}
+          {translatedTitle}
         </h3>
 
         <span
@@ -2996,3 +3004,5 @@ const getStyles = (theme) => ({
 });
 
 export default Dashboard;
+
+
