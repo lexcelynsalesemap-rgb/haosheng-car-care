@@ -27,6 +27,7 @@ function EditJob() {
   // SOURCE
   const [source, setSource] = useState("");
   const [otherSource, setOtherSource] = useState("");
+  const [voucherNumber, setVoucherNumber] = useState("");
 
   // PAYMENT
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -188,6 +189,7 @@ function EditJob() {
 
       // SOURCE
       const existingSource = String(data.source || "").trim();
+      setVoucherNumber(String(data.voucherNumber || ""));
 
       const standardSources = [
         "Teyseer Motors",
@@ -554,6 +556,14 @@ function EditJob() {
         source === "Other"
           ? otherSource.trim()
           : source;
+          const finalVoucherNumber = isTeyseerSource(finalSource)
+  ? voucherNumber.trim()
+  : "";
+
+if (isTeyseerSource(finalSource) && !finalVoucherNumber) {
+  alert("Please enter the Teyseer voucher number.");
+  return;
+}
 
       // CUSTOMER PAYABLE TOTAL.
       // Pure Teyseer = 0; Teyseer variants exclude WTT.
@@ -630,6 +640,7 @@ function EditJob() {
             customer,
             phone,
             source: finalSource,
+            voucherNumber: finalVoucherNumber,
             carModel,
             carType,
             color,
@@ -863,6 +874,18 @@ function EditJob() {
                 ? "All services are paid through Teyseer. Customer net amount is QAR 0."
                 : "WTT is paid through Teyseer and excluded from the customer's payable amount. Other services remain payable."}
             </span>
+            <label htmlFor="teyseer-voucher-number">
+  Teyseer Voucher Number
+</label>
+
+<input
+  id="teyseer-voucher-number"
+  type="text"
+  value={voucherNumber}
+  onChange={(e) => setVoucherNumber(e.target.value)}
+  placeholder="Enter Teyseer voucher number"
+  style={styles.input}
+/>
           </div>
         )}
 
