@@ -3233,124 +3233,55 @@ async function printTeyseerReport() {
   }
 
   /*
-   * LOAD ONLY SERVICES OWNED BY TEYSEER
+   * Use the latest saved job fields. Edit Job updates jobs.services and
+   * jobs.serviceDetails, while the legacy job_services rows may be stale.
    */
-  const jobIds = sortedTeyseerJobs.map(
-    (job) => job.id
-  );
+  function getSavedTeyseerServiceEntries(job) {
+    const source = normalizeSource(job?.source);
+    const rawServices = Array.isArray(job?.services)
+      ? job.services
+      : typeof job?.services === "string"
+        ? job.services.split(",").map((name) => name.trim()).filter(Boolean)
+        : [];
+    const detailsByService =
+      job?.serviceDetails && typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
 
-  const { data: teyseerServices, error } =
-  await supabase
-    .from("job_services")
-    .select("*")
-    .in("job_id", jobIds);
+    const entries = rawServices.map((item) => {
+      const name =
+        typeof item === "string"
+          ? item
+          : item?.service_name || item?.serviceName || item?.name || item?.title || "";
+      return {
+        name,
+        ...(item && typeof item === "object" ? item : {}),
+        ...(detailsByService[name] || {}),
+      };
+    }).filter((item) => item.name);
 
-if (error) {
-  console.error(
-    "TEYSEER SERVICES ERROR:",
-    error
-  );
+    if (source === "teyseer motors") return entries;
 
-  alert(error.message);
-  return;
-}
-
-const servicesByJob = {};
-
-(teyseerServices || []).forEach((service) => {
-  if (!servicesByJob[service.job_id]) {
-    servicesByJob[service.job_id] = [];
+    return entries.filter((service) => {
+      const owner = normalizeSource(service.owner);
+      const isWtt = String(service.name || "").toLowerCase().includes("wtt");
+      return owner === "teyseer" || isWtt;
+    });
   }
 
-  servicesByJob[service.job_id].push(service);
-});
-
-
-function getTeyseerServices(job) {
-  const source = normalizeSource(job?.source);
-
-  const services = servicesByJob[job.id] || [];
-
-  if (source === "teyseer motors") {
-    if (!services.length) {
-      return "-";
-    }
-
-    return services
-      .map((service) =>
-        service?.service_name ||
-        service?.name ||
-        service?.title ||
-        ""
-      )
-      .filter(Boolean)
-      .join(", ");
+  function getTeyseerServices(job) {
+    const entries = getSavedTeyseerServiceEntries(job);
+    return entries.length ? entries.map((service) => service.name).join(", ") : "-";
   }
 
-  const teyseerServices = services.filter(
-    (service) =>
-      normalizeSource(service?.owner) === "teyseer"
-  );
-
-  if (!teyseerServices.length) {
-    return "-";
+  function getJobPrice(job) {
+    return getSavedTeyseerServiceEntries(job).reduce((total, service) => {
+      const price = Number(service.price || 0);
+      const quantity = Number(service.quantity || service.qty || 1);
+      const discount = Number(service.discount || 0);
+      return total + Math.max(price * quantity - discount, 0);
+    }, 0);
   }
-
-  return teyseerServices
-    .map((service) =>
-      service?.service_name ||
-      service?.name ||
-      service?.title ||
-      ""
-    )
-    .filter(Boolean)
-    .join(", ");
-}
-
-
-function getJobPrice(job) {
-  const source = normalizeSource(job?.source);
-
-  const services = servicesByJob[job.id] || [];
-
-  let servicesToCalculate;
-
-  if (source === "teyseer motors") {
-    servicesToCalculate = services;
-  } else {
-    servicesToCalculate = services.filter(
-      (service) =>
-        normalizeSource(service?.owner) === "teyseer"
-    );
-  }
-
-  return servicesToCalculate.reduce(
-    (total, service) => {
-      const price = Number(
-        service?.price || 0
-      );
-
-      const quantity = Number(
-        service?.quantity ||
-        service?.qty ||
-        1
-      );
-
-      const discount = Number(
-        service?.discount || 0
-      );
-
-      const amount =
-        Math.max(
-          price * quantity - discount,
-          0
-        );
-
-      return total + amount;
-    },
-    0
-  );
-}
   const rows = sortedTeyseerJobs
     .map((job) => {
       const source = job.source || "";
@@ -4067,51 +3998,7 @@ async function exportTeyseerReportExcel() {
     { header: "PRICE", key: "price", width: 17 }
   ];
 
-  // --------------------------------------------------
-  // LOAD SERVICES
-  // --------------------------------------------------
-
-  const jobIds = sortedTeyseerJobs.map(
-    job => job.id
-  );
-
-  const {
-    data: teyseerServices,
-    error
-  } = await supabase
-    .from("job_services")
-    .select("*")
-    .in("job_id", jobIds);
-
-  if (error) {
-    console.error(
-      "TEYSEER SERVICES ERROR:",
-      error
-    );
-
-    alert(error.message);
-    return;
-  }
-
-  // --------------------------------------------------
-  // GROUP SERVICES BY JOB
-  // --------------------------------------------------
-
-  const servicesByJob = {};
-
-  (teyseerServices || []).forEach(service => {
-
-    if (!servicesByJob[service.job_id]) {
-      servicesByJob[service.job_id] = [];
-    }
-
-    servicesByJob[service.job_id].push(service);
-
-  });
-
-  // --------------------------------------------------
-  // HELPERS
-  // --------------------------------------------------
+  // Read service names and prices from the latest saved job fields.
 
   function normalizeSource(source) {
     return String(source || "")
@@ -4182,103 +4069,56 @@ async function exportTeyseerReportExcel() {
     );
   }
 
+  /*
+   * Use the latest saved job fields. Edit Job updates jobs.services and
+   * jobs.serviceDetails, while the legacy job_services rows may be stale.
+   */
+  function getSavedTeyseerServiceEntries(job) {
+    const source = normalizeSource(job?.source);
+    const rawServices = Array.isArray(job?.services)
+      ? job.services
+      : typeof job?.services === "string"
+        ? job.services.split(",").map((name) => name.trim()).filter(Boolean)
+        : [];
+    const detailsByService =
+      job?.serviceDetails && typeof job.serviceDetails === "object"
+        ? job.serviceDetails
+        : {};
+
+    const entries = rawServices.map((item) => {
+      const name =
+        typeof item === "string"
+          ? item
+          : item?.service_name || item?.serviceName || item?.name || item?.title || "";
+      return {
+        name,
+        ...(item && typeof item === "object" ? item : {}),
+        ...(detailsByService[name] || {}),
+      };
+    }).filter((item) => item.name);
+
+    if (source === "teyseer motors") return entries;
+
+    return entries.filter((service) => {
+      const owner = normalizeSource(service.owner);
+      const isWtt = String(service.name || "").toLowerCase().includes("wtt");
+      return owner === "teyseer" || isWtt;
+    });
+  }
+
   function getTeyseerServices(job) {
-
-    const source =
-      normalizeSource(job?.source);
-
-    const services =
-      servicesByJob[job.id] || [];
-
-    if (source === "teyseer motors") {
-
-      if (!services.length) {
-        return "-";
-      }
-
-      return services
-        .map(service =>
-          service?.service_name ||
-          service?.name ||
-          service?.title ||
-          ""
-        )
-        .filter(Boolean)
-        .join(", ");
-    }
-
-    const ownedServices =
-      services.filter(
-        service =>
-          normalizeSource(
-            service?.owner
-          ) === "teyseer"
-      );
-
-    if (!ownedServices.length) {
-      return "-";
-    }
-
-    return ownedServices
-      .map(service =>
-        service?.service_name ||
-        service?.name ||
-        service?.title ||
-        ""
-      )
-      .filter(Boolean)
-      .join(", ");
+    const entries = getSavedTeyseerServiceEntries(job);
+    return entries.length ? entries.map((service) => service.name).join(", ") : "-";
   }
 
   function getJobPrice(job) {
-
-    const source =
-      normalizeSource(job?.source);
-
-    const services =
-      servicesByJob[job.id] || [];
-
-    const servicesToCalculate =
-      source === "teyseer motors"
-        ? services
-        : services.filter(
-            service =>
-              normalizeSource(
-                service?.owner
-              ) === "teyseer"
-          );
-
-    return servicesToCalculate.reduce(
-      (total, service) => {
-
-        const price =
-          Number(service?.price || 0);
-
-        const quantity =
-          Number(
-            service?.quantity ||
-            service?.qty ||
-            1
-          );
-
-        const discount =
-          Number(
-            service?.discount || 0
-          );
-
-        return (
-          total +
-          Math.max(
-            price * quantity - discount,
-            0
-          )
-        );
-
-      },
-      0
-    );
+    return getSavedTeyseerServiceEntries(job).reduce((total, service) => {
+      const price = Number(service.price || 0);
+      const quantity = Number(service.quantity || service.qty || 1);
+      const discount = Number(service.discount || 0);
+      return total + Math.max(price * quantity - discount, 0);
+    }, 0);
   }
-
   // --------------------------------------------------
   // ADD TITLE
   // --------------------------------------------------
