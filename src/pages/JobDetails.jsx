@@ -592,13 +592,14 @@ function JobDetails() {
         alert(insertError.message);
         return;
       }
+      console.log("TECHNICIAN SAVE SUCCESS:", rows);
     }
 
     await loadServiceTechnicians();
 
     setEditingService(null);
     setSelectedTechs([]);
-
+console.log("FINAL SELECTED TECHNICIANS:", selectedTechs);
     alert(tr("Technicians Updated"));
   }
 
