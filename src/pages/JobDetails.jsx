@@ -530,6 +530,11 @@ function JobDetails() {
   // -----------------------------------
 
   async function saveTechnicians(service) {
+    if (!selectedTechs || selectedTechs.length === 0) {
+  console.error("NO TECHNICIANS SELECTED:", selectedTechs);
+  alert("No technicians selected. Nothing was changed.");
+  return;
+}
     const { data: jobService, error } =
       await supabase
         .from("job_services")
