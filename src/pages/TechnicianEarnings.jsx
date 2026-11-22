@@ -31,39 +31,63 @@ function TechnicianEarnings() {
   }
 
   // Load earnings from existing Supabase tables.
-  async function loadData() {
-    setLoading(true);
-    setErrorMessage("");
+  
+async function loadData() {
+  setLoading(true);
+  setErrorMessage("");
 
-    const { data, error } = await supabase
-      .from("service_technicians")
-      .select(`
-        id,
-        commission,
-        remarks,
-        technicians (
-          name
-        ),
-        job_services (
-          service_name,
-          jobs (
-            carModel,
-            plate,
-            created_at
+  let allEarnings = [];
+  let from = 0;
+  const pageSize = 1000;
+
+  try {
+    while (true) {
+      const { data, error } = await supabase
+        .from("service_technicians")
+        .select(`
+          id,
+          commission,
+          remarks,
+          technicians (
+            name
+          ),
+          job_services!inner (
+            service_name,
+            jobs!inner (
+              carModel,
+              plate,
+              created_at
+            )
           )
-        )
-      `);
+        `)
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
 
-    if (error) {
-      console.error("Technician earnings error:", error);
-      setErrorMessage(error.message || "Could not load earnings.");
-      setLoading(false);
-      return;
+      if (error) {
+        throw error;
+      }
+
+      allEarnings = allEarnings.concat(data || []);
+
+      if (!data || data.length < pageSize) {
+        break;
+      }
+
+      from += pageSize;
     }
 
-    setEarnings(data || []);
+    console.log("ALL TECHNICIAN EARNINGS:", allEarnings);
+    setEarnings(allEarnings);
+  } catch (error) {
+    console.error("Technician earnings error:", error);
+    setErrorMessage(
+      error.message || "Could not load earnings."
+    );
+  } finally {
     setLoading(false);
   }
+}
+
 
   useEffect(() => {
     loadData();
