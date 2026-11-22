@@ -262,39 +262,37 @@ function JobDetails() {
   // -----------------------------------
   // LOAD TECHNICIANS ASSIGNED TO SERVICES
   // -----------------------------------
-
-  async function loadServiceTechnicians() {
-    const { data, error } = await supabase
-      .from("service_technicians")
-      .select(`
+   
+async function loadServiceTechnicians() {
+  const { data, error } = await supabase
+    .from("service_technicians")
+    .select(`
+      id,
+      commission,
+      technician_id,
+      service_id,
+      technicians(
         id,
-        commission,
-        technician_id,
-        service_id,
+        name
+      ),
+      job_services!inner(
+        id,
+        service_name,
+        job_id
+      )
+    `)
+    .eq("job_services.job_id", Number(id));
 
-        technicians(
-          id,
-          name
-        ),
-
-        job_services(
-          id,
-          service_name,
-          job_id
-        )
-      `)
-      .eq("job_services.job_id", Number(id));
-
-    if (error) {
-      console.error(
-        "LOAD SERVICE TECHNICIANS ERROR:",
-        error
-      );
-      return;
-    }
-
-    setServiceTechnicians(data || []);
+  if (error) {
+    console.error("LOAD SERVICE TECHNICIANS ERROR:", error);
+    return;
   }
+
+  console.log("LOADED TECHNICIAN RECORDS:", data);
+
+  setServiceTechnicians(data || []);
+}
+
 
   // -----------------------------------
   // LOAD PAYMENTS
